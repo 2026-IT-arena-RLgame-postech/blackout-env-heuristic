@@ -4,12 +4,16 @@ BlackOut PettingZoo Parallel environment wrapper.
 Wraps mlagents_envs.UnityEnvironment as a PettingZoo ParallelEnv.
 All 10 agents share behavior name "BlackOutUnit" with TeamId 0 (A) or 1 (B).
 
-Graphic observation optimization
----------------------------------
-A dedicated MapObsAgent (behavior "BlackOutMap") sends both team semantic maps once per
-step as two visual observations (TeamA, TeamB). The 10 BlackOutUnit agents carry only
-vector observations. This reduces gRPC graphic transmissions from 10 to 2 per step.
-Python reconstructs per-agent graphic obs from the cached team graphics.
+Graphic + vector observation optimization
+-------------------------------------------
+A dedicated MapObsAgent (behavior "BlackOutMap") broadcasts both the semantic map (visual)
+and the shared 10-unit state + game-state scalars (vector, 44 floats) ONCE per step, instead
+of each of the 10 BlackOutUnit agents redundantly resending its own near-identical copy.
+Each BlackOutUnit agent's own observation shrinks to a single float (its unitIndex, used
+only for action/reward routing). Python decodes MapObsAgent's broadcast once per step via
+MyObsPreprocessor.preprocess_team_graphics()/preprocess_agent_states()/preprocess_team_states()
+(each returns both team perspectives directly — team B is a cheap derivation of team A, not
+a second independent decode) and shares the results across every agent's obs dict.
 
 Usage
 -----
@@ -23,7 +27,7 @@ Usage
     while env.agents:
         actions = {agent: env.action_space(agent).sample() for agent in env.agents}
         obs, rewards, terminations, truncations, infos = env.step(actions)
-        # infos[agent] contains: score_0, score_1, time_left (every step)
+        # infos[agent] contains: score_0, score_1, time_left, absorption_time_left (every step)
         # and winner (0=Team A, 1=Team B, -1=draw) on the terminal step
     env.close()
 
@@ -51,7 +55,8 @@ from mlagents_envs.base_env import ActionTuple
 from mlagents_envs.side_channel.engine_configuration_channel import EngineConfigurationChannel
 
 from .constants import BEHAVIOR_NAME, MAP_BEHAVIOR_NAME, N_AGENTS, N_TEAM_A, all_agents, agent_name, unit_index
-from .obs_preprocessor import ObsPreprocessor, load_semantic_config
+from .obs_preprocessor import load_semantic_config
+from .my_obs_preprocessor import MyObsPreprocessor
 from .seed_channel import SeedChannel
 
 
@@ -69,12 +74,16 @@ class BlackOutEnv(ParallelEnv):
     Observations
     ------------
     Each agent receives a dict observation:
-      "vector" : float32[vector_obs_size]   preprocessed vector obs
-      "graphic"  : float32[H × W × C]        binary semantic channel map
+      "graphic"       : float32[H × W × C]              this agent's team's semantic map
+      "team_state"    : float32[team_state_size]        this agent's team's game-state summary
+                         [own_score, opp_score, episode_time_left, absorption_time_left]
+      "agent_states"  : float32[N_AGENTS, agent_state_size]  shared state table for all 10 units
+                         (same array reference for every agent — see MyObsPreprocessor)
 
     The graphic is sourced from a shared MapObsAgent (behavior "BlackOutMap") that
     broadcasts both team textures once per step, instead of each of the 10 agents
     sending their own copy. This halves the number of visual obs transmitted over gRPC.
+    team_state / agent_states are likewise computed once per step (not once per agent).
 
     Actions
     -------
@@ -134,7 +143,7 @@ class BlackOutEnv(ParallelEnv):
         cfg = load_semantic_config(semantic_config_path)
         n_items = cfg["n_items"]
         n_classes = cfg["n_classes"]
-        self._preprocessor = ObsPreprocessor(cfg, n_items=n_items, n_classes=n_classes)
+        self._preprocessor = MyObsPreprocessor(cfg, n_items=n_items, n_classes=n_classes)
         self._map_w = map_w
         self._map_h = map_h
 
@@ -142,15 +151,19 @@ class BlackOutEnv(ParallelEnv):
         self.agents: list[str] = []
 
         # Build observation / action spaces
-        vec_size = self._preprocessor.vector_obs_size
         graphic_channels = self._preprocessor.n_graphic_channels
+        agent_state_size = self._preprocessor.agent_state_size
+        team_state_size = self._preprocessor.team_state_size
 
         self._obs_space = spaces.Dict({
-            "vector": spaces.Box(
-                low=-1.0, high=1.0, shape=(vec_size,), dtype=np.float32
-            ),
             "graphic": spaces.Box(
                 low=0.0, high=1.0, shape=(map_h, map_w, graphic_channels), dtype=np.float32
+            ),
+            "team_state": spaces.Box(
+                low=-1.0, high=1.0, shape=(team_state_size,), dtype=np.float32
+            ),
+            "agent_states": spaces.Box(
+                low=-1.0, high=1.0, shape=(N_AGENTS, agent_state_size), dtype=np.float32
             ),
         })
         self._act_space = spaces.Box(
@@ -179,11 +192,17 @@ class BlackOutEnv(ParallelEnv):
         self._agent_name_cache: dict[tuple[str, int], str] = {}
         # Cached team graphics from MapObsAgent: 0→TeamA, 1→TeamB
         self._team_graphics: dict[int, np.ndarray] = {}
+        # Cached team-perspective agent-state tables and game-state summaries, both decoded
+        # once per step from MapObsAgent's shared raw state vector (see _collect_map_obs).
+        # 0→TeamA perspective, 1→TeamB perspective.
+        self._agent_states: dict[int, np.ndarray] = {}
+        self._team_states: dict[int, np.ndarray] = {}
         # One-shot warning flags (avoids log spam on repeated calls)
         self._warned_no_map_behavior = False
         self._warned_empty_map_steps = False
         self._warned_empty_map_obs = False
         self._warned_no_visual_obs = False
+        self._warned_no_state_obs = False
 
     # ------------------------------------------------------------------
     # PettingZoo API
@@ -257,13 +276,13 @@ class BlackOutEnv(ParallelEnv):
     def _collect_obs(self) -> dict[str, dict[str, np.ndarray]]:
         """
         Poll DecisionSteps and TerminalSteps from Unity, build preprocessed obs.
-        Graphic observations are read once from MapObsAgent and shared per team.
-        Updates internal reward and termination state.
+        Graphics, agent_states, team_states, and score/time scalars are all read once from
+        MapObsAgent (see _collect_map_obs) and shared across every agent's obs dict — the
+        per-agent loop below only handles reward/termination bookkeeping and routing.
         """
         obs: dict[str, dict[str, np.ndarray]] = {}
         rewards: dict[str, float] = {a: 0.0 for a in self.agents}
         terminations: dict[str, bool] = {a: False for a in self.agents}
-        scalars_captured = False
 
         self._collect_map_obs()
 
@@ -271,28 +290,22 @@ class BlackOutEnv(ParallelEnv):
             decision_steps, terminal_steps = self._unity_env.get_steps(behavior_name)
 
             for agent_id in decision_steps.agent_id:
-                aname, raw_vector = self._extract_step(decision_steps, agent_id)
+                aname = self._extract_step(decision_steps, agent_id)
                 if aname is None:
                     continue
                 self._agent_name_cache[(behavior_name, agent_id)] = aname
-                obs[aname] = self._preprocess(aname, raw_vector)
+                obs[aname] = self._build_obs(aname)
                 rewards[aname] = float(decision_steps[agent_id].reward)
-                if not scalars_captured:
-                    self._latest_scalars = self._extract_scalars(aname, raw_vector)
-                    scalars_captured = True
 
             for agent_id in terminal_steps.agent_id:
-                aname, raw_vector = self._extract_step(terminal_steps, agent_id)
+                aname = self._extract_step(terminal_steps, agent_id)
                 if aname is None:
                     continue
                 self._agent_name_cache[(behavior_name, agent_id)] = aname
-                obs[aname] = self._preprocess(aname, raw_vector)
+                obs[aname] = self._build_obs(aname)
                 r = float(terminal_steps[agent_id].reward)
                 rewards[aname] = r
                 terminations[aname] = True
-                if not scalars_captured:
-                    self._latest_scalars = self._extract_scalars(aname, raw_vector)
-                    scalars_captured = True
 
                 # Derive winner from the first terminal agent's reward.
                 # unit 0~4 = Team A, 5~9 = Team B. Winner gets +1, loser -1, draw 0.
@@ -311,9 +324,11 @@ class BlackOutEnv(ParallelEnv):
 
     def _collect_map_obs(self) -> None:
         """
-        Fetch the two team semantic maps from MapObsAgent and cache them in _team_graphics.
-        MapObsAgent sends obs[0]=TeamA graphic, obs[1]=TeamB graphic every step.
-        If MapObsAgent is not present (e.g. legacy build), graphics remain as previously cached.
+        Fetch the graphic + shared state broadcast from MapObsAgent once per step and cache
+        both team perspectives. MapObsAgent's obs_list holds a 3-D visual observation (the
+        packed semantic map) and a 1-D vector observation (the 44-float shared unit/game
+        state) — order isn't assumed, each is picked out by ndim.
+        If MapObsAgent is not present (e.g. legacy build), cached values remain as before.
         """
         map_behavior = self._resolve_map_behavior_name()
         if map_behavior is None:
@@ -337,76 +352,81 @@ class BlackOutEnv(ParallelEnv):
                       f"Check that a RenderTextureSensorComponent is attached to the MapObsAgent GameObject.")
                 self._warned_empty_map_obs = True
             return
-        # Find the visual (3-D) observation — obs_list[0] is a vector if VectorObs != 0
+        # Find the visual (3-D) and vector (1-D) observations regardless of order.
         visual_obs = None
+        raw_state = None
         for o in obs_list:
             if o.ndim == 3:
                 visual_obs = o
-                break
+            elif o.ndim == 1:
+                raw_state = o
         if visual_obs is None:
             if not self._warned_no_visual_obs:
                 print(f"[BlackOutEnv] WARNING: MapObsAgent has no 3-D visual observation in obs_list. "
                       f"Shapes: {[o.shape for o in obs_list]}. "
                       f"Ensure RenderTextureSensorComponent is attached with Grayscale=true.")
                 self._warned_no_visual_obs = True
-            return
-        # ML-Agents delivers visual obs as (C, H, W); preprocessor expects (H, W, C)
-        team_a = self._preprocessor.preprocess_graphic(
-            np.transpose(visual_obs, (1, 2, 0))
-        )
-        self._team_graphics[0] = team_a
-        self._team_graphics[1] = self._preprocessor.flip_team_perspective(team_a)
+        else:
+            # ML-Agents delivers visual obs as (C, H, W); preprocessor expects (H, W, C)
+            team_a, team_b = self._preprocessor.preprocess_team_graphics(
+                np.transpose(visual_obs, (1, 2, 0))
+            )
+            self._team_graphics[0] = team_a
+            self._team_graphics[1] = team_b
 
-    def _extract_step(
-        self,
-        steps,
-        agent_id: int,
-    ) -> tuple[str | None, np.ndarray | None]:
+        if raw_state is None:
+            if not self._warned_no_state_obs:
+                print(f"[BlackOutEnv] WARNING: MapObsAgent has no 1-D vector observation in obs_list. "
+                      f"Shapes: {[o.shape for o in obs_list]}. "
+                      f"Check MapObsAgent.CollectObservations / Behavior Parameters Vector Observation size.")
+                self._warned_no_state_obs = True
+        else:
+            self._agent_states[0], self._agent_states[1] = self._preprocessor.preprocess_agent_states(raw_state)
+            self._team_states[0], self._team_states[1] = self._preprocessor.preprocess_team_states(raw_state)
+            start = self._preprocessor.RAW_SCALAR_START
+            self._latest_scalars = {
+                "score_0": float(raw_state[start]),
+                "score_1": float(raw_state[start + 1]),
+                "time_left": float(raw_state[start + 2]),
+                "absorption_time_left": float(raw_state[start + 3]),
+            }
+
+    def _extract_step(self, steps, agent_id: int) -> str | None:
         """
-        Extract (agent_name, raw_vector) from a BlackOutUnit Steps object.
-
-        unitIndex is read from raw_vector[ObsPreprocessor.RAW_UNIT_INDEX_SLOT].
-        Visual observation is no longer read here — graphics come from MapObsAgent
-        via _collect_map_obs(), which reduces gRPC graphic transmissions from 10 to 2.
-        Without RenderTextureSensorComponent, VectorSensor is obs[0].
+        Extract this BlackOutUnit's agent_name from its (now 1-float, unitIndex-only) raw
+        observation. Position/item/class/graphic all come from MapObsAgent via
+        _collect_map_obs() instead — this is routing information only.
         """
-        obs_list = steps[agent_id].obs
-        raw_vector: np.ndarray = obs_list[0]
+        raw_vector: np.ndarray = steps[agent_id].obs[0]
 
-        unit_idx = int(round(float(raw_vector[ObsPreprocessor.RAW_UNIT_INDEX_SLOT])))
+        unit_idx = int(round(float(raw_vector[0])))
         if not (0 <= unit_idx < N_AGENTS):
-            return None, None
+            return None
 
-        return agent_name(unit_idx), raw_vector
+        return agent_name(unit_idx)
 
-    def _preprocess(self, aname: str, raw_vector: np.ndarray) -> dict[str, np.ndarray]:
-        """Preprocess vector obs and attach the cached team graphic for this agent."""
+    def _build_obs(self, aname: str) -> dict[str, np.ndarray]:
+        """Assembles this agent's obs dict from the shared, once-per-step precomputed pieces."""
         team_id = 0 if unit_index(aname) < N_TEAM_A else 1
+
         graphic = self._team_graphics.get(team_id)
         if graphic is None:
             graphic = np.zeros(
                 (self._map_h, self._map_w, self._preprocessor.n_graphic_channels),
                 dtype=np.float32,
             )
-        return {
-            "vector": self._preprocessor.preprocess_vector(raw_vector),
-            "graphic": graphic,
-        }
 
-    def _extract_scalars(self, aname: str, raw_vector: np.ndarray) -> dict[str, float]:
-        """
-        Extract score_0, score_1, time_left from a raw vector.
-        own_score / opp_score are relative to the observing agent; convert to absolute (team 0/1).
-        """
-        own_score = float(raw_vector[ObsPreprocessor.RAW_SCALAR_START])
-        opp_score = float(raw_vector[ObsPreprocessor.RAW_SCALAR_START + 1])
-        time_left = float(raw_vector[ObsPreprocessor.RAW_SCALAR_START + 2])
-        is_team_a = unit_index(aname) < N_TEAM_A
-        return {
-            "score_0": own_score if is_team_a else opp_score,
-            "score_1": opp_score if is_team_a else own_score,
-            "time_left": time_left,
-        }
+        team_state = self._team_states.get(team_id)
+        if team_state is None:
+            team_state = np.zeros((self._preprocessor.team_state_size,), dtype=np.float32)
+
+        agent_states = self._agent_states.get(team_id)
+        if agent_states is None:
+            agent_states = np.zeros(
+                (N_AGENTS, self._preprocessor.agent_state_size), dtype=np.float32
+            )
+
+        return {"graphic": graphic, "team_state": team_state, "agent_states": agent_states}
 
     def _send_actions(self, actions: dict[str, np.ndarray]) -> None:
         # Send empty actions to MapObsAgent (it has no real actions, Continuous Actions = 0)

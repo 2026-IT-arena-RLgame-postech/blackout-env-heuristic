@@ -14,7 +14,7 @@ import argparse
 import numpy as np
 
 from blackout_env import BlackOutEnv
-from random_policy import RandomPolicy
+from blackout_env.model.my_policy import MyPolicy
 
 
 def main():
@@ -44,7 +44,7 @@ def main():
         no_graphics=not args.graphics,
     )
 
-    policy = RandomPolicy()
+    policy = MyPolicy()
 
     for ep in range(args.episodes):
         obs, _ = env.reset()
@@ -54,11 +54,7 @@ def main():
         while env.agents:
             actions = policy.act(obs)
             obs, rewards, _, _, _ = env.step(actions)
-            np.set_printoptions(threshold=5000000, linewidth=500, suppress=False)
-            print("----------------1")
-            print(obs["unit_0"]["graphic"][:,:,1].shape)
-            print("----------------5")
-            print(obs["unit_5"]["graphic"][:,:,1].shape)
+
             for agent, reward in rewards.items():
                 total_rewards[agent] += reward
             steps += 1

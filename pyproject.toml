@@ -13,6 +13,7 @@ dependencies = [
     "numpy>=1.23.5",
     # mlagents-envs is intentionally excluded: it declares pettingzoo==1.15.0 which
     # conflicts with pettingzoo>=1.24.0. Install it manually with --no-deps (see README).
+    "tqdm>=4.70.0",
 ]
 
 [project.optional-dependencies]
