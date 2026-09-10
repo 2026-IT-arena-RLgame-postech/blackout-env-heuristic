@@ -41,11 +41,6 @@ class CheckpointModel(BaseModel):
     ) -> dict[str, np.ndarray]:
         agents = list(obs.keys())
 
-        vectors = torch.tensor(
-            np.stack([obs[a]["vector"] for a in agents]),
-            dtype=torch.float32,
-            device=self._device,
-        )
         graphics = torch.tensor(
             np.stack([obs[a]["graphic"] for a in agents]),
             dtype=torch.float32,
@@ -54,8 +49,19 @@ class CheckpointModel(BaseModel):
         # graphics from env: [B, H, W, C] → model expects [B, C, H, W]
         graphics = graphics.permute(0, 3, 1, 2)
 
+        team_states = torch.tensor(
+            np.stack([obs[a]["team_state"] for a in agents]),
+            dtype=torch.float32,
+            device=self._device,
+        )
+        agent_states = torch.tensor(
+            np.stack([obs[a]["agent_states"] for a in agents]),
+            dtype=torch.float32,
+            device=self._device,
+        )
+
         with torch.no_grad():
-            raw: torch.Tensor = self._net(vectors, graphics)
+            raw: torch.Tensor = self._net(graphics, team_states, agent_states)
 
         actions = torch.clamp(raw, -1.0, 1.0).cpu().numpy()
         return {agent: actions[i] for i, agent in enumerate(agents)}

@@ -25,10 +25,11 @@ class BaseModel(ABC):
             def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
                 actions = {}
                 for agent, agent_obs in obs.items():
-                    vec = torch.tensor(agent_obs["vector"]).unsqueeze(0)
-                    graphic = torch.tensor(agent_obs["graphic"]).unsqueeze(0)
+                    graphic = torch.tensor(agent_obs["graphic"]).permute(2, 0, 1).unsqueeze(0)
+                    team_state = torch.tensor(agent_obs["team_state"]).unsqueeze(0)
+                    agent_states = torch.tensor(agent_obs["agent_states"]).unsqueeze(0)
                     with torch.no_grad():
-                        action = self._net(vec, graphic).squeeze(0).numpy()
+                        action = self._net(graphic, team_state, agent_states).squeeze(0).numpy()
                     actions[agent] = action
                 return actions
     """
@@ -43,8 +44,13 @@ class BaseModel(ABC):
 
         Parameters
         ----------
-        obs : dict[agent_name, {"vector": float32[N], "graphic": float32[H, W, C]}]
-            Preprocessed observations for this model's agents only (5 agents).
+        obs : dict[agent_name, {"graphic": float32[H, W, C], "team_state": float32[4],
+                                 "agent_states": float32[10, 12]}]
+            Preprocessed observations for this model's agents only (5 agents). `graphic` is
+            this agent's team-perspective semantic map (H, W, C order — permute to (C, H, W)
+            before feeding a CNN). `team_state` is
+            [own_score, opp_score, episode_time_left, absorption_time_left]. `agent_states`
+            covers all 10 units (both teams), one row per unit.
 
         Returns
         -------

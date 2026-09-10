@@ -22,8 +22,10 @@ with open(SEMANTIC_CONFIG) as _f:
     cfg = json.load(_f)
 n_items   = cfg["n_items"]
 n_classes = cfg["n_classes"]
-EXPECTED_VECTOR_SIZE      = 10 * (2 + 1 + (n_items + 1)) + n_classes + 3
-EXPECTED_GRAPHIC_CHANNELS = cfg["item_id_offset"] + n_items
+# Matches MyObsPreprocessor: N_BASE_CHANNELS(8) + battery scalar(1) + non-battery items.
+EXPECTED_GRAPHIC_CHANNELS  = 8 + 1 + (n_items - 1)
+EXPECTED_AGENT_STATE_SIZE  = 2 + 1 + (n_items + 1) + n_classes  # pos + team + item one-hot + class one-hot
+EXPECTED_TEAM_STATE_SIZE   = 4  # own_score, opp_score, episode_time_left, absorption_time_left
 
 class _Results:
     passed: int = 0
@@ -86,15 +88,25 @@ def test_obs_shapes(obs: dict) -> None:
     print("\n--- obs shapes & dtypes ---")
     check(set(obs.keys()) == set(all_agents()), f"all 10 agents present")
     for agent in all_agents():
-        v = obs[agent]["vector"]
-        g = obs[agent]["graphic"]
-        check(v.shape == (EXPECTED_VECTOR_SIZE,),
-              f"{agent} vector {v.shape} == ({EXPECTED_VECTOR_SIZE},)")
-        check(v.dtype == np.float32, f"{agent} vector dtype float32")
+        g  = obs[agent]["graphic"]
+        ts = obs[agent]["team_state"]
+        ags = obs[agent]["agent_states"]
+
         check(g.ndim == 3 and g.shape[2] == EXPECTED_GRAPHIC_CHANNELS,
               f"{agent} graphic {g.shape}, ch={EXPECTED_GRAPHIC_CHANNELS}")
         check(g.dtype == np.float32, f"{agent} graphic dtype float32")
         check(g.min() >= 0.0 and g.max() <= 1.0, f"{agent} graphic in [0,1]")
+
+        check(ts.shape == (EXPECTED_TEAM_STATE_SIZE,),
+              f"{agent} team_state {ts.shape} == ({EXPECTED_TEAM_STATE_SIZE},)")
+        check(ts.dtype == np.float32, f"{agent} team_state dtype float32")
+
+        check(ags.shape == (N_AGENTS, EXPECTED_AGENT_STATE_SIZE),
+              f"{agent} agent_states {ags.shape} == ({N_AGENTS}, {EXPECTED_AGENT_STATE_SIZE})")
+        check(ags.dtype == np.float32, f"{agent} agent_states dtype float32")
+        check(ags.min() >= -1.0 and ags.max() <= 1.0, f"{agent} agent_states in [-1,1]")
+        # column 2 is the team sign: +1.0 for this agent's own team, -1.0 for the opponent
+        check(set(np.unique(ags[:, 2]).tolist()) <= {1.0, -1.0}, f"{agent} agent_states team column is +-1.0")
 
 
 def test_team_split(obs: dict) -> None:
@@ -174,7 +186,9 @@ def diagnose_graphic(env: BlackOutEnv, seed: int | None = None, n_steps: int = 2
     """Run n_steps and print graphic channel maxima each step."""
     print(f"\n--- graphic diagnostic ({n_steps} steps) ---")
     obs, _ = env.reset(seed=seed)
-    ch_names = ["empty", "wall", "ally_st", "enemy_st", "ally_u", "enemy_u", "item0"]
+    ch_names = ["void", "wall", "site_hunter", "site_carrier", "spawn_ally", "spawn_enemy",
+                "storage_ally", "storage_enemy", "battery",
+                "item_1", "item_2", "item_3", "item_4"]
     def fmt(g):
         per_ch = " ".join(f"{ch_names[c] if c < len(ch_names) else c}={g[:,:,c].max():.2f}"
                           for c in range(g.shape[2]))
@@ -215,10 +229,13 @@ def test_seed(env: BlackOutEnv) -> None:
     g2 = _sample_graphic_after_steps(env, seed=42)
     g3 = _sample_graphic_after_steps(env, seed=99)
 
-    # Compare only static map channels (WALL=1, ALLY_STORAGE=2, ENEMY_STORAGE=3).
-    # Dynamic channels (ALLY_UNIT=4, ENEMY_UNIT=5, items=6+) vary between runs because
-    # test actions are sampled from unseeded numpy — only map layout is seeded via Unity.
-    STATIC = [1, 2, 3]
+    # Compare only static tile-category channels: wall(1), site_hunter(2), site_carrier(3),
+    # storage_ally(6), storage_enemy(7) — rendered once per episode by RenderBackground()
+    # and never touched again. Units aren't in the graphic at all anymore (they're carried
+    # by agent_states); the dynamic channels here are battery count(8) and item one-hot(9+),
+    # which vary between runs because test actions are sampled from unseeded numpy — only
+    # map layout is seeded via Unity.
+    STATIC = [1, 2, 3, 6, 7]
 
     check(g1.max() > 0.0, "graphic is non-zero (MapObsAgent data received)")
     check(np.allclose(g1[:, :, STATIC], g2[:, :, STATIC]),
@@ -238,7 +255,8 @@ def main() -> None:
     args = parser.parse_args()
 
     print(f"Config: n_items={n_items}, n_classes={n_classes}")
-    print(f"Expected vector_size={EXPECTED_VECTOR_SIZE}, graphic_channels={EXPECTED_GRAPHIC_CHANNELS}")
+    print(f"Expected graphic_channels={EXPECTED_GRAPHIC_CHANNELS}, "
+          f"agent_state_size={EXPECTED_AGENT_STATE_SIZE}, team_state_size={EXPECTED_TEAM_STATE_SIZE}")
     print("\nConnecting to Unity Editor...")
 
     env = BlackOutEnv(

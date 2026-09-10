@@ -3,8 +3,8 @@
 ## 목차
 
 - [BlackOutEnv](#blackoutenv)
-- [ObsPreprocessor](#obspreprocessor)
-- [SemanticId](#semanticid)
+- [ObsPreprocessor (레거시)](#obspreprocessor-레거시)
+- [SemanticId (레거시)](#semanticid-레거시)
 - [에이전트 유틸리티](#에이전트-유틸리티)
 - [Competition — run_match / run_series](#competition)
 - [Competition — BaseModel / load_checkpoint](#basemodel--load_checkpoint)
@@ -88,11 +88,12 @@ Unity 프로세스 종료. 훈련 루프 종료 후 반드시 호출.
 
 | 키 | 형태 | 범위 | 설명 |
 |---|---|---|---|
-| `"vector"` | `float32[N]` | `[-1, 1]` | 전처리된 vector obs |
-| `"graphic"` | `float32[H, W, C]` | `[0, 1]` | binary channel masks |
+| `"graphic"` | `float32[H, W, C]` | `[0, 1]` | 팀 시점 semantic map (타일 종류 one-hot + 배터리 개수 + 아이템 one-hot) |
+| `"team_state"` | `float32[4]` | 대체로 `[0, 1]` | `[own_score, opp_score, episode_time_left, absorption_time_left]` |
+| `"agent_states"` | `float32[10, 12]` | `[-1, 1]` | 유닛 10개(양팀 전체) 상태 테이블, unit_0~9 순 |
 
-`N = 10×(2+1+(n_items+1)) + n_classes + 3`  
-`C = item_id_offset + n_items`
+`C = 8 + 1 + (n_items - 1)` (item 0은 항상 스택형 배터리로 채널 8의 스칼라에 인코딩됨)  
+유닛 위치는 `graphic`에 없고 `agent_states`에만 있습니다.
 
 **Action space** (`spaces.Box`):
 
@@ -100,39 +101,55 @@ Unity 프로세스 종료. 훈련 루프 종료 후 반드시 호출.
 |---|---|---|
 | `float32[2]` | `[-1, 1]` | `[dx, dy]` 이동 벡터 |
 
-### Observation 상세 — vector
-
-`N = 10×(2+1+(n_items+1)) + n_classes + 3`
-
-| 세그먼트 | 길이 | 설명 |
-|---|---|---|
-| pos × 10 유닛 | 20 | `pos_x`, `pos_y` 정규화 좌표 |
-| team_sign × 10 | 10 | 아군 `+1.0`, 적군 `-1.0` |
-| holding_item one-hot × 10 | `10 × (n_items+1)` | index 0 = 없음, index i = 아이템 i 소지 |
-| class one-hot | `n_classes` | 이 에이전트의 유닛 클래스 |
-| scalars | 3 | `own_score`, `opp_score`, `time_left` |
-
-유닛 순서: unit_0~9 전체 (agent_id 순). `team_sign`으로 아군/적군 구분.
-
 ### Observation 상세 — graphic
 
-`float32[H, W, C]` — 각 채널은 `0.0` / `1.0` binary mask.
+채널 0-7은 타일 종류 one-hot(`0.0`/`1.0`), 채널 8은 배터리 개수 스칼라(one-hot 아님), 나머지는 아이템 one-hot입니다:
 
-| 채널 | 의미 | `SemanticId` 상수 |
+| 채널 | 의미 | 값 |
 |---|---|---|
-| 0 | 빈 공간 | `SemanticId.EMPTY` |
-| 1 | 벽 | `SemanticId.WALL` |
-| 2 | 아군 창고 | `SemanticId.ALLY_STORAGE` |
-| 3 | 적군 창고 | `SemanticId.ENEMY_STORAGE` |
-| 4 | 아군 유닛 | `SemanticId.ALLY_UNIT` |
-| 5 | 적군 유닛 | `SemanticId.ENEMY_UNIT` |
-| 6+i | 아이템 타입 i | `SemanticId.item_channel(i)` |
+| 0 | void | `0.0`/`1.0` |
+| 1 | wall | `0.0`/`1.0` |
+| 2 | site_hunter | `0.0`/`1.0` |
+| 3 | site_carrier | `0.0`/`1.0` |
+| 4 | spawn_ally | `0.0`/`1.0` |
+| 5 | spawn_enemy | `0.0`/`1.0` |
+| 6 | storage_ally | `0.0`/`1.0` |
+| 7 | storage_enemy | `0.0`/`1.0` |
+| 8 | 배터리 개수 | `count / 15` (스칼라) |
+| 9 | item_1 (BuffSpeed) | `0.0`/`1.0` |
+| 10 | item_2 (DebuffSpeed) | `0.0`/`1.0` |
+| 11 | item_3 (BuffSize) | `0.0`/`1.0` |
+| 12 | item_4 (DebuffSize) | `0.0`/`1.0` |
 
-`ally/enemy` 기준은 관찰 주체 팀의 시점. 팀별 flip은 `BlackOutEnv` 내부에서 자동 처리.
+`ally`/`enemy` 채널(4↔5, 6↔7)은 이미 관찰 주체 팀 시점으로 뒤집혀 있습니다(`BlackOutEnv` 내부 `flip_team_perspective()`에서 처리). 유닛은 `graphic`에 전혀 등장하지 않습니다.
+
+### Observation 상세 — agent_states
+
+`float32[10, 12]` — 유닛 10개(고정: 인덱스 0-4=팀A, 5-9=팀B) × 12개 필드. 관찰 주체 팀 시점으로 `team` 컬럼만 부호가 다릅니다.
+
+| Offset | 길이 | 필드 | 비고 |
+|---|---|---|---|
+| 0-1 | 2 | `pos_x`, `pos_y` | `[-1, 1]` 정규화 좌표 |
+| 2 | 1 | `team` | 아군 `+1.0`, 적군 `-1.0` |
+| 3-8 | 6 (`n_items+1`) | `holding_item` one-hot | index 0=없음, index 1=배터리(값=`count/15`, flat 1.0 아님), index 2+=기타 아이템 |
+| 9-11 | 3 (`n_classes`) | `class` one-hot | 이 유닛의 클래스 |
+
+`agent_state_size = 2 + 1 + (n_items+1) + n_classes`
+
+### Observation 상세 — team_state
+
+`float32[4]` = `[own_score, opp_score, episode_time_left, absorption_time_left]`. 두 점수는 팀별로 재정렬되어 index 0이 항상 "내 점수"입니다. 시간 값 두 개는 양 팀에 공통이며 `[0, 1]` 범위입니다.
 
 ---
 
-## ObsPreprocessor
+## ObsPreprocessor (레거시)
+
+> **⚠️** 이 클래스는 `BlackOutEnv`가 더 이상 내부적으로 사용하지 않습니다. `BlackOutEnv`는
+> 실제로 `MyObsPreprocessor`(공개 API로 export되지 않음, `blackout_env.env.my_obs_preprocessor`)를
+> 써서 위의 `graphic`/`team_state`/`agent_states` 형식을 만듭니다. 여기 문서화된
+> `ObsPreprocessor.preprocess_vector()`/`preprocess_graphic()`은 옛 단일 `vector`+`graphic`
+> 딕셔너리 방식(6~11채널 `SemanticId` 스킴)을 위한 것으로, 그 방식으로 raw obs를 직접
+> 다루고 싶을 때만 쓸모가 있고 `BlackOutEnv`가 실제로 반환하는 값과는 무관합니다.
 
 ```python
 from blackout_env import ObsPreprocessor, load_semantic_config
@@ -188,7 +205,13 @@ ally/enemy 채널 스왑 (ch2↔ch3, ch4↔ch5). 팀 B 관점 graphic 생성.
 
 ---
 
-## SemanticId
+## SemanticId (레거시)
+
+> **⚠️** `EMPTY`/`ALLY_STORAGE`/`ALLY_UNIT`/... 상수는 위 레거시 `ObsPreprocessor`의 6~11채널
+> 스킴에 대응합니다. 지금 `BlackOutEnv`가 반환하는 `graphic`(void/wall/site_hunter/.../battery/item_1~4,
+> 13채널)과는 채널 의미도 개수도 다르므로 **현재 `graphic` obs를 인덱싱하는 데 쓰면 안 됩니다.**
+> 현재 채널 상수를 공개 API로 export하는 클래스는 아직 없습니다 — 위 "Observation 상세 — graphic"
+> 표의 채널 번호를 직접 참조하세요.
 
 ```python
 from blackout_env import SemanticId
@@ -257,9 +280,12 @@ b_obs = {k: v for k, v in obs.items() if team_of(k) == 1}
 | 상수 | 값 | 설명 |
 |---|---|---|
 | `BEHAVIOR_NAME` | `"BlackOutUnit"` | Unity behavior 이름 |
-| `MAP_BEHAVIOR_NAME` | `"BlackOutMap"` | MapObsAgent behavior 이름 |
+| `MAP_BEHAVIOR_NAME`\* | `"BlackOutMap"` | MapObsAgent behavior 이름 |
 | `N_AGENTS` | `10` | 전체 에이전트 수 |
 | `N_TEAM_A` | `5` | 팀당 에이전트 수 |
+
+\* `MAP_BEHAVIOR_NAME`은 패키지 최상위(`from blackout_env import ...`)로는 export되지 않습니다.
+`from blackout_env.env.constants import MAP_BEHAVIOR_NAME`으로 직접 가져와야 합니다.
 
 ---
 
@@ -312,7 +338,8 @@ class MyModel(BaseModel):
         obs: dict[str, dict[str, np.ndarray]],
     ) -> dict[str, np.ndarray]:
         """
-        obs   : {agent_name: {"vector": float32[N], "graphic": float32[H, W, C]}}
+        obs   : {agent_name: {"graphic": float32[H, W, C], "team_state": float32[4],
+                               "agent_states": float32[10, 12]}}
         return: {agent_name: float32[2]}  — (dx, dy) in [-1, 1]
         """
         ...
@@ -329,8 +356,9 @@ model = load_checkpoint(
     state_dict_key="policy_state", # None이면 raw state dict
     device="cuda",
     # model_class 생성자 kwargs
-    vector_size=56,
-    n_channels=7,
+    n_graphic_channels=13,
+    agent_state_size=12,
+    team_state_size=4,
 )
 ```
 
@@ -352,10 +380,12 @@ torch.save({"policy_state": model.state_dict(), "step": 1000}, "checkpoint.pt")
 class MyPolicy(nn.Module):
     def forward(
         self,
-        vector: torch.Tensor,   # (B, N)      float32
-        graphic: torch.Tensor,  # (B, C, H, W) float32  ← CHW 순서
-    ) -> torch.Tensor:          # (B, 2)      float32
+        graphic: torch.Tensor,       # (B, C, H, W)   float32  ← CHW 순서
+        team_state: torch.Tensor,    # (B, 4)         float32
+        agent_states: torch.Tensor,  # (B, 10, 12)    float32
+    ) -> torch.Tensor:               # (B, 2)         float32
         ...
 ```
 
-`load_checkpoint`가 반환하는 `CheckpointModel`은 `graphic`을 `(B, H, W, C) → (B, C, H, W)`로 자동 변환합니다.
+`load_checkpoint`가 반환하는 `CheckpointModel`은 `graphic`을 `(B, H, W, C) → (B, C, H, W)`로
+자동 변환하고, `team_state`/`agent_states`는 배치 차원만 붙여 그대로 전달합니다.

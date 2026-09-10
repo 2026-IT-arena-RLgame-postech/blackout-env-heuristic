@@ -43,7 +43,7 @@ Vector data is now minimized on the wire too, mirroring the graphic optimization
 of all 10 BlackOutUnit agents each redundantly sending a full state vector, MapObsAgent
 broadcasts ONE shared float32[44] raw state per step (see MapObsAgent.cs):
 
-    [0~39] : 10 unit blocks x 4 floats (pos_x, pos_y, holdingItemId, classId)
+    [0~39] : 10 unit blocks x 4 floats (pos_x, pos_y normalized to [-1, 1]; holdingItemId, classId)
     [40]   : score_A   (absolute — MapObsAgent isn't owned by either team)
     [41]   : score_B
     [42]   : episode_time_left
@@ -169,6 +169,9 @@ class MyObsPreprocessor(ObsPreprocessor):
         -------
         (agent_states_a, agent_states_b) : float32[N_UNITS, agent_state_size] each
           per row: [pos_x, pos_y, team, *item_onehot(n_items+1), *class_onehot(n_classes)]
+          pos_x, pos_y (indices 0-1): normalized to [-1, 1], zero-centered on the map's
+            bottom-left-to-top-right diagonal (see MapObsAgent.cs). Passed through unchanged
+            from the raw broadcast — this docstring is the only place the range is asserted.
           team (index 2): +1.0 if this unit is on "my" team from that perspective, else -1.0
             (block index < N_TEAM_A is Team A; agent_states_a keeps that sign as-is,
             agent_states_b flips it)

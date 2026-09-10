@@ -193,30 +193,61 @@ obs, infos = env.reset()          # unseeded — random layout
 
 ## Observation Space
 
-Each agent receives a dict observation:
+Each agent receives a dict observation with three keys — a semantic map, this agent's
+team-level game state, and a table covering all 10 units. Unit **positions live only in
+`agent_states`**, not in `graphic`.
 
 | Key | Shape | Description |
 |---|---|---|
-| `"vector"` | `float32[N]` | Preprocessed vector obs (positions, scores, one-hot items/classes) |
-| `"graphic"` | `float32[H × W × C]` | Binary channel masks from semantic ID map |
+| `"graphic"` | `float32[H × W × C]` | Per-team semantic map: tile-category one-hot + battery count + item one-hot |
+| `"team_state"` | `float32[4]` | `[own_score, opp_score, episode_time_left, absorption_time_left]` |
+| `"agent_states"` | `float32[10, 12]` | One row per unit (all 10, both teams), ordered unit_0~9 |
+
+`C = 8 + 1 + (n_items - 1)` (item 0 is always the stackable battery, encoded as the scalar
+channel 8; the remaining `n_items - 1` item types each get a one-hot channel).
 
 ### Graphic channels (`float32[H, W, C]`)
 
-Each channel is a binary 0.0 / 1.0 mask:
+Channels 0-7 are a tile-category one-hot (binary 0.0/1.0), channel 8 is a battery-count
+scalar (not one-hot), and the rest are per-item one-hot masks:
 
-| Channel | Name | `SemanticId` constant |
+| Channel | Name | Value |
 |---|---|---|
-| 0 | empty space | `SemanticId.EMPTY` |
-| 1 | wall | `SemanticId.WALL` |
-| 2 | ally storage | `SemanticId.ALLY_STORAGE` |
-| 3 | enemy storage | `SemanticId.ENEMY_STORAGE` |
-| 4 | ally unit | `SemanticId.ALLY_UNIT` |
-| 5 | enemy unit | `SemanticId.ENEMY_UNIT` |
-| 6 | Battery | `SemanticId.BATTERY` |
-| 7 | BuffSpeed | `SemanticId.BUFF_SPEED` |
-| 8 | DebuffSpeed | `SemanticId.DEBUFF_SPEED` |
-| 9 | BuffSize | `SemanticId.BUFF_SIZE` |
-| 10 | DebuffSize | `SemanticId.DEBUFF_SIZE` |
+| 0 | void | 0.0 / 1.0 |
+| 1 | wall | 0.0 / 1.0 |
+| 2 | site_hunter | 0.0 / 1.0 |
+| 3 | site_carrier | 0.0 / 1.0 |
+| 4 | spawn_ally | 0.0 / 1.0 |
+| 5 | spawn_enemy | 0.0 / 1.0 |
+| 6 | storage_ally | 0.0 / 1.0 |
+| 7 | storage_enemy | 0.0 / 1.0 |
+| 8 | battery count | `count / 15` (scalar) |
+| 9 | item_1 (BuffSpeed) | 0.0 / 1.0 |
+| 10 | item_2 (DebuffSpeed) | 0.0 / 1.0 |
+| 11 | item_3 (BuffSize) | 0.0 / 1.0 |
+| 12 | item_4 (DebuffSize) | 0.0 / 1.0 |
+
+`ally`/`enemy` channels (4↔5, 6↔7) are already flipped to the observing agent's own team
+perspective — no extra work needed on the consumer side. Unit positions are **not** part of
+`graphic` — see `agent_states` below.
+
+### `agent_states` row layout (`float32[10, 12]`)
+
+Each row describes one of the 10 units (indices fixed: 0-4 = Team A, 5-9 = Team B), from
+the observing agent's own team perspective:
+
+| Offset | Length | Field | Notes |
+|---|---|---|---|
+| 0-1 | 2 | `pos_x`, `pos_y` | normalized to `[-1, 1]` |
+| 2 | 1 | `team` | `+1.0` = ally, `-1.0` = enemy |
+| 3-8 | 6 (`n_items+1`) | `holding_item` one-hot | index 0 = nothing, index 1 = battery (value = `count / 15`, not a flat 1.0), index 2+ = other item types |
+| 9-11 | 3 (`n_classes`) | `class` one-hot | this unit's class |
+
+### `team_state` (`float32[4]`)
+
+`[own_score, opp_score, episode_time_left, absorption_time_left]` — the two scores are
+reordered per team so index 0 is always "my score"; the two time values (both in `[0, 1]`)
+are global and identical for both teams' observations.
 
 ### Items
 
@@ -245,47 +276,22 @@ Each agent receives:
 
 ```python
 obs[agent] = {
-    "vector": np.ndarray,  # float32[N] — positions, scores, one-hot items/classes
-    "graphic": np.ndarray,  # float32[H, W, C] — semantic channel masks
+    "graphic": np.ndarray,       # float32[H, W, C] — semantic map, this agent's team perspective
+    "team_state": np.ndarray,    # float32[4] — [own_score, opp_score, episode_time_left, absorption_time_left]
+    "agent_states": np.ndarray,  # float32[10, 12] — one row per unit, all 10 units (both teams)
 }
 ```
 
-#### vector layout (`float32[N]`)
+See [Observation Space](#observation-space) above for the full `graphic` channel table and
+`agent_states` row layout — the schema is identical here, just scoped to what a policy
+author needs to size their network's inputs:
 
-`N = 10*(2+1+(n_items+1)) + n_classes + 3`
+```python
+n_graphic_channels = 8 + 1 + (n_items - 1)          # e.g. 13 for n_items=5
+agent_state_size    = 2 + 1 + (n_items + 1) + n_classes  # e.g. 12 for n_items=5, n_classes=3
+team_state_size      = 4
+```
 
-Units are ordered unit_0~9 (all agents, sorted by agent_id), interleaved:
-
-| Offset within each unit block | Length | Description |
-|---|---|---|
-| unit_i: pos | 2 | pos_x, pos_y (normalized) |
-| unit_i: team_sign | 1 | ally +1.0, enemy −1.0 |
-| unit_i: holding_item one-hot | `n_items+1` | index 0 = no item, index i = holding item i |
-
-Followed by:
-
-| Segment | Length | Description |
-|---|---|---|
-| class one-hot | `n_classes` | this agent's unit class |
-| scalars | 3 | own_score, opp_score, time_left (all in 0~1) |
-
-#### graphic layout (`float32[H, W, C]`)
-
-Each channel is a binary 0.0 / 1.0 mask:
-
-| Channel | Semantic | `SemanticId` constant |
-|---|---|---|
-| 0 | empty space | `SemanticId.EMPTY` |
-| 1 | wall | `SemanticId.WALL` |
-| 2 | ally storage | `SemanticId.ALLY_STORAGE` |
-| 3 | enemy storage | `SemanticId.ENEMY_STORAGE` |
-| 4 | ally unit | `SemanticId.ALLY_UNIT` |
-| 5 | enemy unit | `SemanticId.ENEMY_UNIT` |
-| 6 | Battery | `SemanticId.BATTERY` |
-| 7 | BuffSpeed | `SemanticId.BUFF_SPEED` |
-| 8 | DebuffSpeed | `SemanticId.DEBUFF_SPEED` |
-| 9 | BuffSize | `SemanticId.BUFF_SIZE` |
-| 10 | DebuffSize | `SemanticId.DEBUFF_SIZE` |
 
 ### Action
 
@@ -293,7 +299,7 @@ Each channel is a binary 0.0 / 1.0 mask:
 
 ### Step 1: Define your policy (`policy.py`)
 
-Subclass `nn.Module` with `forward(vector, graphic) → action`:
+Subclass `nn.Module` with `forward(graphic, team_state, agent_states) → action`:
 
 ```python
 # policy.py
@@ -303,31 +309,39 @@ import torch.nn as nn
 class MyPolicy(nn.Module):
     """
     Input:
-        vector : (B, N)         float32
-        graphic : (B, C, H, W)   float32  — CHW order (blackout-env converts automatically)
+        graphic      : (B, C, H, W)  float32  — CHW order (convert from env's (B,H,W,C) yourself)
+        team_state   : (B, 4)        float32
+        agent_states : (B, 10, 12)   float32  — flattened below
     Output:
         action : (B, 2)         float32  — (dx, dy) in [-1, 1]
     """
-    def __init__(self, vector_size: int, n_channels: int):
+    def __init__(self, n_graphic_channels: int, agent_state_size: int, team_state_size: int = 4):
         super().__init__()
         self.cnn = nn.Sequential(
-            nn.Conv2d(n_channels, 16, 3, padding=1), nn.ReLU(),
+            nn.Conv2d(n_graphic_channels, 16, 3, padding=1), nn.ReLU(),
             nn.Conv2d(16, 32, 3, padding=1), nn.ReLU(),
             nn.AdaptiveAvgPool2d((4, 4)),
         )
+        vector_size = team_state_size + 10 * agent_state_size
         self.mlp = nn.Sequential(
             nn.Linear(32 * 4 * 4 + vector_size, 256), nn.ReLU(),
             nn.Linear(256, 2),
             nn.Tanh(),
         )
 
-    def forward(self, vector: torch.Tensor, graphic: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor
+    ) -> torch.Tensor:
         cnn_out = self.cnn(graphic).flatten(1)
-        return self.mlp(torch.cat([vector, cnn_out], dim=1))
+        vec = torch.cat([team_state, agent_states.flatten(1)], dim=1)
+        return self.mlp(torch.cat([vec, cnn_out], dim=1))
 ```
 
-> **Note:** `graphic` is expected in `(B, C, H, W)` format.  
-> blackout-env automatically converts the environment output from `(B, H, W, C)`.
+> **Note:** `graphic` arrives from the env as `(B, H, W, C)` — convert to `(B, C, H, W)`
+> with `.permute(0, 3, 1, 2)` before feeding your CNN (see the `BaseModel` example below).
+> `team_state` and `agent_states` need no reshaping beyond batching; the flatten above is
+> just one way to fold `agent_states` into an MLP input — the concatenation scheme itself
+> isn't fixed by the env, use whatever architecture suits your policy.
 
 ### Step 2: Save a checkpoint
 
@@ -349,8 +363,9 @@ from policy import MyPolicy  # each participant's policy file
 cfg = json.load(open("semantic_map_config.json"))
 n_items = cfg["n_items"]
 n_classes = cfg["n_classes"]
-vector_size = 10 * (2 + 1 + (n_items + 1)) + n_classes + 3
-n_channels = 6 + n_items
+n_graphic_channels = 8 + 1 + (n_items - 1)
+agent_state_size = 2 + 1 + (n_items + 1) + n_classes
+team_state_size = 4
 
 # load models
 model_a = load_checkpoint(
@@ -358,16 +373,18 @@ model_a = load_checkpoint(
     "team_a/checkpoint.pt",
     state_dict_key="policy_state",   # None if raw state dict
     device="cuda",
-    vector_size=vector_size,
-    n_channels=n_channels,
+    n_graphic_channels=n_graphic_channels,
+    agent_state_size=agent_state_size,
+    team_state_size=team_state_size,
 )
 model_b = load_checkpoint(
     MyPolicy,
     "team_b/checkpoint.pt",
     state_dict_key="policy_state",
     device="cuda",
-    vector_size=vector_size,
-    n_channels=n_channels,
+    n_graphic_channels=n_graphic_channels,
+    agent_state_size=agent_state_size,
+    team_state_size=team_state_size,
 )
 
 # create environment
@@ -402,8 +419,8 @@ def load_policy_class(policy_path: str, class_name: str = "MyPolicy"):
 PolicyA = load_policy_class("team_a/policy.py")
 PolicyB = load_policy_class("team_b/policy.py")
 
-model_a = load_checkpoint(PolicyA, "team_a/checkpoint.pt", vector_size=..., n_channels=...)
-model_b = load_checkpoint(PolicyB, "team_b/checkpoint.pt", vector_size=..., n_channels=...)
+model_a = load_checkpoint(PolicyA, "team_a/checkpoint.pt", n_graphic_channels=..., agent_state_size=..., team_state_size=...)
+model_b = load_checkpoint(PolicyB, "team_b/checkpoint.pt", n_graphic_channels=..., agent_state_size=..., team_state_size=...)
 ```
 
 ### Implementing BaseModel directly (optional)
@@ -418,7 +435,7 @@ import torch
 class MyModel(BaseModel):
     def __init__(self, checkpoint_path: str):
         from policy import MyPolicy
-        net = MyPolicy(vector_size=96, n_channels=11)
+        net = MyPolicy(n_graphic_channels=13, agent_state_size=12, team_state_size=4)
         ckpt = torch.load(checkpoint_path, weights_only=True)
         net.load_state_dict(ckpt["policy_state"])
         net.eval()
@@ -426,33 +443,46 @@ class MyModel(BaseModel):
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         agents = list(obs.keys())
-        vectors = torch.tensor(
-            np.stack([obs[a]["vector"] for a in agents]), dtype=torch.float32
-        )
         graphics = torch.tensor(
             np.stack([obs[a]["graphic"] for a in agents]), dtype=torch.float32
         ).permute(0, 3, 1, 2)  # (B,H,W,C) → (B,C,H,W)
+        team_states = torch.tensor(
+            np.stack([obs[a]["team_state"] for a in agents]), dtype=torch.float32
+        )
+        agent_states = torch.tensor(
+            np.stack([obs[a]["agent_states"] for a in agents]), dtype=torch.float32
+        )
 
         with torch.no_grad():
-            actions = self._net(vectors, graphics).clamp(-1, 1).numpy()
+            actions = self._net(graphics, team_states, agent_states).clamp(-1, 1).numpy()
         return {agent: actions[i] for i, agent in enumerate(agents)}
 ```
 
-> `load_checkpoint` implements this pattern internally via `CheckpointModel`.  
-> Only subclass `BaseModel` directly if you need custom preprocessing or ensembling.
+> `load_checkpoint`/`CheckpointModel` (`model/loader.py`) implements this exact pattern
+> internally. Only subclass `BaseModel` directly if you need custom preprocessing or
+> ensembling.
 
 ---
 
 ## Utilities
 
 ```python
-from blackout_env import SemanticId, team_of, team_a_agents, team_b_agents
+from blackout_env import team_of, team_a_agents, team_b_agents
 
 # Split obs by team
 a_obs = {k: v for k, v in obs.items() if team_of(k) == 0}
 
-# Index into graphic obs by semantic channel
-wall_mask  = graphic[:, :, SemanticId.WALL]
-ally_units = graphic[:, :, SemanticId.ALLY_UNIT]
-item0      = graphic[:, :, SemanticId.item_channel(0)]
+# Index into graphic by channel (see the channel table under Observation Space —
+# there's currently no public constants class for these; MyObsPreprocessor's
+# channel constants are internal to blackout_env.env.my_obs_preprocessor)
+wall_mask     = graphic[:, :, 1]                  # wall
+storage_ally  = graphic[:, :, 6]                  # storage_ally
+battery_count = graphic[:, :, 8]                  # scalar, count / 15
+
+# Unit info (position, team, held item, class) comes from agent_states, not graphic
+ally_positions = agent_states[agent_states[:, 2] > 0, 0:2]
 ```
+
+> `SemanticId` (still exported) is tied to the old, unused `ObsPreprocessor` channel scheme
+> (`EMPTY`/`ALLY_UNIT`/`ENEMY_UNIT`/...) and does **not** match the channel layout `graphic`
+> actually uses now — don't use it to index into the current `graphic` obs.
