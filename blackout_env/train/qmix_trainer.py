@@ -1,10 +1,17 @@
 """
 BBF-style DQN + QMIX self-play trainer.
 
-Both teams are controlled by the SAME online network (MyModel already normalizes
+Both teams are controlled by the SAME shared network (MyModel already normalizes
 graphic/team_state/agent_states to "my team's own perspective" — see MyObsPreprocessor — so
 one set of weights naturally plays both sides). Every env.step() yields one transition from
 each team's perspective, pushed into that team's own SequentialReplayBuffer stream.
+
+Self-play stability: each episode, one physical team (randomized) is the "online" side and
+acts through the live `net`, while the other is the "opponent" side and acts through the slow
+EMA copy `ema_net` instead — so the opponent doesn't chase the online net's every gradient
+step (classic self-play non-stationarity/oscillation). Both sides' transitions are still
+pushed to their own replay buffer and trained on; QMIX/DQN are off-policy, so training on
+EMA-chosen actions is standard off-policy replay, not a correctness issue.
 
 BBF components combined with QMIX (per project's explicit choices — see conversation):
   - IQN distributional Q-head (MyModel.q_head) instead of scalar Q, mixed team-wide via
@@ -26,7 +33,8 @@ different staleness properties):
   - `net`        : online, trained by gradient descent every train_step().
   - `target_net` : hard-synced from `net` every `target_update_interval` train steps — the
                    Double-DQN bootstrap target for the Q-learning loss.
-  - `ema_net`     : soft/EMA-updated from `net` every train_step() — the SPR target encoder.
+  - `ema_net`     : soft/EMA-updated from `net` every train_step() — doubles as the SPR target
+                    encoder AND the self-play opponent's action-selection network (see above).
 """
 
 from __future__ import annotations
@@ -195,6 +203,7 @@ class QMIXTrainer:
         self.env_step_count = 0
         self.train_step_count = 0
         self._total_env_steps_hint = 1  # set properly in run(); avoids div-by-zero if train_step() is called standalone
+        self._online_is_team_a = True  # re-randomized every episode in _reset_env()
 
     # ------------------------------------------------------------------
     # Schedules
@@ -239,11 +248,20 @@ class QMIXTrainer:
         Returns (env_actions, full_direction_idx) where env_actions is the dict[agent,(dx,dy)]
         BlackOutEnv.step() expects, and full_direction_idx is [10] (physical unit order, both
         teams) for the replay buffer.
+
+        This episode's "opponent" side (see `self._online_is_team_a`, module docstring) acts
+        through `ema_net` instead of `net` for self-play stability.
         """
         obs_a, obs_b = obs[self.team_a_agents[0]], obs[self.team_b_agents[0]]
         graphic, team_state, agent_states = self._to_batch(obs_a, obs_b)
 
-        q_values, *_ = self.net(graphic, team_state, agent_states, n_quantiles=self.cfg.n_quantiles)  # [2,10,8]
+        q_online, *_ = self.net(graphic, team_state, agent_states, n_quantiles=self.cfg.n_quantiles)  # [2,10,8]
+        q_ema, *_ = self.ema_net(graphic, team_state, agent_states, n_quantiles=self.cfg.n_quantiles)
+
+        opponent_idx = 1 if self._online_is_team_a else 0
+        q_values = q_online.clone()
+        q_values[opponent_idx] = q_ema[opponent_idx]
+
         own_q = _own_team_rows(q_values, agent_states)  # [2, N_TEAM, 8]
         greedy = own_q.argmax(dim=-1).cpu().numpy()  # [2, N_TEAM]
 
@@ -263,6 +281,15 @@ class QMIXTrainer:
 
         return env_actions, full_direction_idx
 
+    def _reset_env(self):
+        """
+        Resets the env and re-randomizes which physical team is this episode's "online" (live
+        `net`) side vs the EMA-controlled "opponent" side (see module docstring).
+        """
+        obs, info = self.env.reset()
+        self._online_is_team_a = bool(np.random.rand() < 0.5)
+        return obs, info
+
     def collect_step(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, dict[str, np.ndarray]]:
         epsilon = self.epsilon()
         env_actions, full_direction_idx = self.select_actions(obs, epsilon)
@@ -280,7 +307,7 @@ class QMIXTrainer:
         self.env_step_count += 1
 
         if done:
-            next_obs, _ = self.env.reset()
+            next_obs, _ = self._reset_env()
         return next_obs
 
     # ------------------------------------------------------------------
@@ -472,7 +499,7 @@ class QMIXTrainer:
 
     def run(self, total_env_steps: int) -> None:
         self._total_env_steps_hint = total_env_steps
-        obs, _ = self.env.reset()
+        obs, _ = self._reset_env()
         ckpt_dir = Path(self.cfg.checkpoint_dir)
         ckpt_dir.mkdir(parents=True, exist_ok=True)
 
