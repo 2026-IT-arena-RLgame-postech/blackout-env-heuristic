@@ -1,6 +1,7 @@
 from torch import nn
 
-from blackout_env.model.modules import BottleNeckBlock, SwiGLUBlock
+from .bottleneck_block import BottleNeckBlock
+from .ffn_block import SwiGLUBlock
 
 
 class GraphicEncoder(nn.Module):

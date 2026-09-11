@@ -28,6 +28,6 @@ class SwiGLUBlock(nn.Module):
         x_gate = self.Wu(norm_input)
         x, gate = x_gate.chunk(chunks=2, dim=-1)
 
-        x_gated = F.silu(self.Wd(gate)) * x
+        x_gated = F.silu(gate) * x
 
         return self.Wd(x_gated)

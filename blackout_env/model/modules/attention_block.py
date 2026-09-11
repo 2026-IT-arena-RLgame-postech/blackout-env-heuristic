@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.attention import SDPBackend, sdpa_kernel
 
-from blackout_env.model.modules import SwiGLUBlock
+from .ffn_block import SwiGLUBlock
 
 
 class GroupedQueryAttention(nn.Module):
