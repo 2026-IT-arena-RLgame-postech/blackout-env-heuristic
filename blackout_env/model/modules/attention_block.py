@@ -1,11 +1,25 @@
 """
 Grouped Query Attention (GQA) — PyTorch F.scaled_dot_product_attention 기반,
-Flash Attention 백엔드로 디스패치.
+Flash Attention 백엔드로 디스패치. Exclusive Self Attention (XSA, Zhai 2026,
+arXiv:2603.09078)도 옵션으로 지원.
 
 요구사항:
 - torch >= 2.5  (enable_gqa 네이티브 지원. 이전 버전은 자동 fallback)
 - Flash Attention 커널이 실제로 켜지려면 CUDA + fp16/bf16 필요
   (CPU나 fp32에서는 자동으로 다른 SDPA 백엔드로 fallback됨)
+
+XSA
+---
+표준 SA의 출력 y_i = sum_j a_ij * v_j 는 자기 자신의 value 벡터 v_i와 코사인 유사도가
+높아지는 경향이 있다(attention similarity bias) — attention이 문맥 정보뿐 아니라
+포인트와이즈 변환(FFN의 역할)까지 일부 떠맡는다는 뜻. XSA는 y_i에서 v_i 방향 성분을
+제거해서(y_i가 이미 residual로 v_i에 접근 가능하므로) attention이 순수하게 "문맥"만
+담당하도록 강제한다:
+
+    z_i = y_i - (y_i · v̂_i) v̂_i,   v̂_i = v_i / ||v_i||
+
+GQA에서는 Q가 KV보다 head 수가 많아 "자기 자신의 v_i"가 head별로 유일하지 않으므로,
+V를 Q의 head 수만큼 repeat_interleave 해서 각 쿼리 head가 자기 그룹의 v_i를 쓰도록 한다.
 """
 
 import torch
@@ -14,6 +28,7 @@ import torch.nn.functional as F
 from torch.nn.attention import SDPBackend, sdpa_kernel
 
 from .ffn_block import SwiGLUBlock
+from .rotary import apply_rope
 
 
 class GroupedQueryAttention(nn.Module):
@@ -24,6 +39,7 @@ class GroupedQueryAttention(nn.Module):
         num_kv_heads: int,
         dropout: float = 0.0,
         bias: bool = False,
+        exclusive: bool = True,
     ):
         super(GroupedQueryAttention, self).__init__()
         assert d_model % num_heads == 0, "d_model must be divisible by num_heads"
@@ -34,6 +50,7 @@ class GroupedQueryAttention(nn.Module):
         self.num_groups = num_heads // num_kv_heads  # 하나의 KV head를 공유하는 Q head 수
         self.head_dim = d_model // num_heads
         self.dropout = dropout
+        self.exclusive = exclusive
 
         self.norm = nn.RMSNorm(d_model)
 
@@ -47,6 +64,7 @@ class GroupedQueryAttention(nn.Module):
         x: torch.Tensor,
         attn_mask: torch.Tensor | None = None,
         is_causal: bool = False,
+        rope: tuple[torch.Tensor, torch.Tensor] | None = None,
     ) -> torch.Tensor:
         B, T, _ = x.shape
 
@@ -57,10 +75,30 @@ class GroupedQueryAttention(nn.Module):
         v = self.v_proj(x).view(B, T, self.num_kv_heads, self.head_dim).transpose(1, 2)
         # q: (B, num_heads, T, head_dim) / k, v: (B, num_kv_heads, T, head_dim)
 
-        out = self._flash_gqa(q, k, v, attn_mask, is_causal)
+        if rope is not None:
+            # rotate q/k only (standard RoPE) — cos/sin: [T, head_dim], broadcasts over (B, heads)
+            cos, sin = rope
+            q = apply_rope(q, cos, sin)
+            k = apply_rope(k, cos, sin)
+
+        out = self._flash_gqa(q, k, v, attn_mask, is_causal)  # (B, num_heads, T, head_dim)
+
+        if self.exclusive:
+            out = self._exclude_self(out, v)
 
         out = out.transpose(1, 2).contiguous().view(B, T, self.num_heads * self.head_dim)
         return self.o_proj(out)
+
+    def _exclude_self(self, out: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
+        """
+        XSA: subtract each position's projection onto its own (unit-normalized) value vector.
+        v has num_kv_heads heads (fewer than out's num_heads under GQA) — repeat it to match
+        out's query-head count first, so "self value vector" means the same v_i every query
+        head in that KV group actually attended with.
+        """
+        v_full = v.repeat_interleave(self.num_groups, dim=1)  # (B, num_heads, T, head_dim)
+        v_hat = F.normalize(v_full, dim=-1)
+        return out - (out * v_hat).sum(dim=-1, keepdim=True) * v_hat
 
     def _flash_gqa(self, q, k, v, attn_mask, is_causal):
         try:
@@ -88,25 +126,31 @@ class GroupedQueryAttention(nn.Module):
 
 
 class AttentionBlock(nn.Module):
-    def __init__(self, d_model: int, num_heads: int) -> None:
+    def __init__(self, d_model: int, num_heads: int, exclusive: bool = True) -> None:
         super(AttentionBlock, self).__init__()
 
         self.d_model = d_model
         self.num_heads = num_heads
 
-        self.gqa = GroupedQueryAttention(d_model, num_heads, num_kv_heads=num_heads//4)
+        self.gqa = GroupedQueryAttention(d_model, num_heads, num_kv_heads=num_heads//4, exclusive=exclusive)
         self.ffn = SwiGLUBlock(d_model, d_model*3, d_model)
 
 
-    def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None, is_causal: bool = False) -> torch.Tensor:
-        x = x + self.gqa(x, attn_mask, is_causal)
+    def forward(
+        self,
+        x: torch.Tensor,
+        attn_mask: torch.Tensor | None = None,
+        is_causal: bool = False,
+        rope: tuple[torch.Tensor, torch.Tensor] | None = None,
+    ) -> torch.Tensor:
+        x = x + self.gqa(x, attn_mask, is_causal, rope)
         x = x + self.ffn(x)
 
         return x
 
 
 class AttentionLayers(nn.Module):
-    def __init__(self, d_model: int, num_heads: int, depth: int) -> None:
+    def __init__(self, d_model: int, num_heads: int, depth: int, exclusive: bool = True) -> None:
         super(AttentionLayers, self).__init__()
 
         self.d_model = d_model
@@ -114,12 +158,18 @@ class AttentionLayers(nn.Module):
         self.depth = depth
 
         self.layers = nn.ModuleList(
-            [AttentionBlock(d_model, num_heads)
+            [AttentionBlock(d_model, num_heads, exclusive=exclusive)
             for _ in range(depth)]
         )
 
-    def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None, is_causal: bool = False) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        attn_mask: torch.Tensor | None = None,
+        is_causal: bool = False,
+        rope: tuple[torch.Tensor, torch.Tensor] | None = None,
+    ) -> torch.Tensor:
         for layer in self.layers:
-            x = layer(x, attn_mask, is_causal)
+            x = layer(x, attn_mask, is_causal, rope)
 
         return x
