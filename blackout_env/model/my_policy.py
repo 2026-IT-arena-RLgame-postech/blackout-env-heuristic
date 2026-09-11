@@ -46,7 +46,7 @@ class MyPolicy(BaseModel):
         ).unsqueeze(0)
 
         with torch.no_grad():
-            q_values, _ = self._net(graphic, team_state, agent_states)  # [1, N_UNITS, 8]
+            q_values, *_ = self._net(graphic, team_state, agent_states)  # [1, N_UNITS, 8]
 
         best_direction = q_values.squeeze(0).argmax(dim=-1).cpu().numpy()  # [N_UNITS]
 

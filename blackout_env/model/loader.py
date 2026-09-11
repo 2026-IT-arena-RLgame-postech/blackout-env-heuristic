@@ -126,3 +126,46 @@ def load_checkpoint(
     net.eval()
 
     return CheckpointModel(net, device)
+
+
+def load_my_policy_checkpoint(
+    checkpoint_path: str,
+    device: str | torch.device = "cpu",
+    **model_kwargs: Any,
+) -> Any:
+    """
+    Loads a QMIXTrainer checkpoint (train/qmix_trainer.py's `save()` format) into a fresh
+    MyModel + MyPolicy, ready for run_match()/run_series() via the BaseModel.act() interface.
+
+    load_checkpoint()/CheckpointModel above assume the wrapped net's forward() output IS the
+    action tensor directly (`torch.clamp(net(...), -1, 1)`) — the right contract for a model
+    that regresses continuous actions directly. MyModel is architecturally different: it
+    returns a 5-tuple (q_values, quantile_values, tau, vision_latent, global_latent) of
+    discrete per-unit IQN Q-values, not an action tensor, so CheckpointModel can't wrap it.
+    MyPolicy already does the right conversion (per-unit Q-row selection by unit index ->
+    argmax -> direction vector, see my_policy.py) but its constructor takes an already-built
+    MyModel rather than a checkpoint path, so it doesn't fit load_checkpoint()'s generic
+    "instantiate model_class, load state dict" flow either — this is the missing bridge
+    between a trained checkpoint and the repo's standard deployment/competition path.
+
+    Trainer checkpoints also carry mixer/optimizer/SPR state used only for training; none of
+    that is relevant for inference, so only `policy_state` is read here.
+    """
+    from .my_model import MyModel
+    from .my_policy import MyPolicy
+
+    device = torch.device(device)
+    net = MyModel(**model_kwargs)
+
+    raw = torch.load(checkpoint_path, map_location=device, weights_only=True)
+    if not isinstance(raw, dict) or "policy_state" not in raw:
+        raise KeyError(
+            "Expected a QMIXTrainer checkpoint with a 'policy_state' key. "
+            f"Available keys: {list(raw.keys()) if isinstance(raw, dict) else 'N/A'}."
+        )
+
+    net.load_state_dict(raw["policy_state"])
+    net.to(device)
+    net.eval()
+
+    return MyPolicy(net, device=device)

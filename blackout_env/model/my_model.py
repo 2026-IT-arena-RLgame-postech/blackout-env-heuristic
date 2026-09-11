@@ -4,11 +4,14 @@ from torch import nn
 from blackout_env.model.modules import (
     AttentionLayers,
     GraphicEncoder,
+    IQNHead,
     RotaryEmbedding2D,
     SwiGLUBlock,
     VectorEncoder,
     build_grid_position_ids,
 )
+
+N_QUANTILES_DEFAULT = 32  # quantile samples used when the caller doesn't ask for a specific count
 
 GRID_H = GRID_W = 6  # GraphicEncoder's final spatial size (24x24 input, two stride-2 convs)
 N_VISION_TOKENS = GRID_H * GRID_W  # 36
@@ -99,26 +102,40 @@ class MyModel(nn.Module):
         # auxiliary vision representation head (e.g. for a self-predictive/SPR-style aux loss)
         self.spr_head = SwiGLUBlock(hidden_size, hidden_size * 3, hidden_size)
 
-        self.q_head = nn.Sequential(
-            SwiGLUBlock(hidden_size, hidden_size * 3, hidden_size),
-            nn.Linear(hidden_size, n_actions),
-        )
+        # IQN (arXiv:1806.06923) distributional Q-head, chosen over C51 so the value range
+        # doesn't need a hand-tuned [Vmin, Vmax] that would need re-tuning whenever the
+        # reward balance changes (see reward_config.json) — see modules/iqn_head.py.
+        self.q_head = IQNHead(hidden_size, n_actions, n_cos=64)
 
     def forward(
         self,
         graphic: torch.Tensor,
         team_state: torch.Tensor,
         agent_states: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+        n_quantiles: int = N_QUANTILES_DEFAULT,
+        tau: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         graphic      : [B, C, H, W]
         team_state   : [B, team_state_size]
         agent_states : [B, N_UNITS, agent_state_size]
+        n_quantiles  : number of IQN quantile samples to draw (ignored if `tau` is given)
+        tau          : [B, n_quantiles] fixed quantile fractions to use instead of sampling
+                       (e.g. so an online/target pair can share draws where that matters)
 
         Returns
         -------
-        q_values      : [B, N_UNITS, n_actions]           per-unit Q-value over the 8 directions
-        vision_latent : [B, N_VISION_TOKENS, hidden_size]  auxiliary vision representation
+        q_values        : [B, N_UNITS, n_actions]                  mean-over-quantiles Q value
+                           per unit/action — what action selection (argmax) and QMIX's chosen-
+                           action gather use.
+        quantile_values : [B, N_UNITS, n_quantiles, n_actions]      raw IQN quantile values,
+                           for the distributional (quantile Huber) training loss.
+        tau             : [B, n_quantiles]                          the quantile fractions
+                           quantile_values was evaluated at (needed for the loss's asymmetric
+                           weighting).
+        vision_latent   : [B, N_VISION_TOKENS, hidden_size]         auxiliary vision representation
+        global_latent   : [B, hidden_size]                          attention-refined team_state
+                           token, used as QMixer's hypernetwork input.
         """
         vis_tokens = self.graphic_encoder(graphic)                   # [B, 36, hidden]
         vec_tokens = self.vector_encoder(agent_states, team_state)   # [B, 11, hidden]
@@ -130,8 +147,10 @@ class MyModel(nn.Module):
 
         vis_out = tokens_out[:, :N_VISION_TOKENS, :]
         unit_out = tokens_out[:, N_VISION_TOKENS : N_VISION_TOKENS + N_UNITS, :]
+        global_out = tokens_out[:, -1, :]  # the single TYPE_GLOBAL (team_state) token
 
         vision_latent = self.spr_head(vis_out)
-        q_values = self.q_head(unit_out)
+        quantile_values, tau = self.q_head(unit_out, n_quantiles=n_quantiles, tau=tau)
+        q_values = quantile_values.mean(dim=2)  # [B, N_UNITS, n_actions]
 
-        return q_values, vision_latent
+        return q_values, quantile_values, tau, vision_latent, global_out
