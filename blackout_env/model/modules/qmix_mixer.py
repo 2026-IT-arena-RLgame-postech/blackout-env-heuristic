@@ -19,6 +19,27 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+def clamp_pressure_stats(raw: torch.Tensor) -> tuple[float, float]:
+    """
+    Monotonicity "clamp pressure" diagnostic for a QMIX-style non-negative mixing weight:
+    given the hypernetwork's raw output BEFORE `.abs()`, how much does gradient descent want
+    to push it negative (which the abs() clamp then forbids)?
+
+    Returns (frac_negative, neg_magnitude):
+      - frac_negative: fraction of entries currently < 0 (clamp actively engaged there)
+      - neg_magnitude: mean |value| over just the negative entries (0 for none) -- how hard
+        it's pushing, not just how often
+
+    A near-zero, non-growing value throughout training means the monotonicity constraint
+    is roughly free (the network wouldn't want negative weights there anyway). A large and/or
+    growing value late in training is evidence the constraint is actively binding -- the
+    network keeps trying to express a non-monotonic contribution it isn't allowed to.
+    """
+    frac_negative = (raw < 0).float().mean().item()
+    neg_magnitude = raw.clamp(max=0).abs().mean().item()
+    return frac_negative, neg_magnitude
+
+
 class QMixer(nn.Module):
     def __init__(
         self,
@@ -60,13 +81,20 @@ class QMixer(nn.Module):
         """
         B = agent_qs.shape[0]
 
-        w1 = self.hyper_w1(state).abs().view(B, self.n_agents, self.embed_dim)
+        raw_w1 = self.hyper_w1(state)
+        w1 = raw_w1.abs().view(B, self.n_agents, self.embed_dim)
         b1 = self.hyper_b1(state).view(B, 1, self.embed_dim)
         hidden = F.elu(torch.bmm(agent_qs.view(B, 1, self.n_agents), w1) + b1)  # [B, 1, embed_dim]
 
-        w2 = self.hyper_w2(state).abs().view(B, self.embed_dim, 1)
+        raw_w2 = self.hyper_w2(state)
+        w2 = raw_w2.abs().view(B, self.embed_dim, 1)
         b2 = self.hyper_b2(state).view(B, 1, 1)
         q_tot = torch.bmm(hidden, w2) + b2  # [B, 1, 1]
+
+        # Cached for the monotonicity clamp-pressure diagnostic (see clamp_pressure_stats
+        # above) -- read back by the trainer's TB logging, not used in the math above.
+        self.last_raw_w1 = raw_w1.detach()
+        self.last_raw_w2 = raw_w2.detach()
 
         return q_tot.view(B, 1)
 
@@ -120,7 +148,11 @@ class DistributionalQMixer(nn.Module):
         deviation = chosen_quantiles - mean_q.unsqueeze(2)  # [B, n_agents, Q], zero-mean per agent
 
         q_tot_mean = self.mixer(mean_q, state)  # [B, 1] -- ordinary scalar QMIX, IGM intact
-        w = self.shape_weight(state).abs()  # [B, n_agents], non-negative -> linear, mean-preserving
+        raw_shape_w = self.shape_weight(state)
+        w = raw_shape_w.abs()  # [B, n_agents], non-negative -> linear, mean-preserving
         shape_tot = torch.einsum("baq,ba->bq", deviation, w)  # [B, Q]
+
+        # See QMixer.forward's matching comment -- same diagnostic, for the shape-mixing weight.
+        self.last_raw_shape_w = raw_shape_w.detach()
 
         return q_tot_mean + shape_tot  # [B, Q], q_tot_mean broadcasts over the quantile axis

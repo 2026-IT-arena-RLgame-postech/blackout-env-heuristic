@@ -13,6 +13,16 @@ step (classic self-play non-stationarity/oscillation). Both sides' transitions a
 pushed to their own replay buffer and trained on; QMIX/DQN are off-policy, so training on
 EMA-chosen actions is standard off-policy replay, not a correctness issue.
 
+Heuristic bootstrap (offline -> online handoff, see QMIXConfig.heuristic_fill_frac):
+phase 1 fills both replay streams purely from HeuristicPolicyMixture rollouts (no net/ema_net
+forward pass at all), with train_step() already running once each stream passes
+bootstrap_train_start_frac. Phase 2 (permanent, one-way switch — see `_bootstrapping`) then
+epsilon-mixes each unit's action between this episode's heuristic policy and the model's own
+greedy Q, annealing epsilon from scratch starting at the transition. Because
+SequentialReplayBuffer is a plain FIFO ring, the buffer's composition drifts from
+all-heuristic toward increasingly model-influenced transitions for free as phase 2 collection
+overwrites the oldest entries — no explicit offline/online reweighting needed.
+
 BBF components combined with QMIX (per project's explicit choices — see conversation):
   - IQN distributional Q-head (MyModel.q_head) instead of scalar Q, mixed team-wide via
     DistributionalQMixer (DFAC-style, Sun et al. 2021 — see modules/qmix_mixer.py), which
@@ -55,9 +65,17 @@ import torch.nn.functional as F
 
 from blackout_env.env.blackout_env import BlackOutEnv
 from blackout_env.env.constants import N_AGENTS, N_TEAM_A, team_a_agents, team_b_agents
-from blackout_env.model.modules import DistributionalQMixer, GraphicEncoder, QMixer, SPRPredictor, quantile_huber_loss
+from blackout_env.heuristics import HeuristicPolicyMixture
+from blackout_env.model.modules import (
+    DistributionalQMixer,
+    GraphicEncoder,
+    QMixer,
+    SPRPredictor,
+    clamp_pressure_stats,
+    quantile_huber_loss,
+)
 from blackout_env.model.my_model import N_DISCRETE_ACTIONS, MyModel
-from blackout_env.model.my_policy import DIRECTION_VECTORS
+from blackout_env.model.my_policy import DIRECTION_VECTORS, direction_vector_to_idx
 from blackout_env.train.ema import ema_update
 from blackout_env.train.replay_buffer import SequentialReplayBuffer
 from blackout_env.train.reset_utils import shrink_and_perturb
@@ -82,7 +100,27 @@ class QMIXConfig:
 
     buffer_capacity: int = 10_000  # per stream (team A / team B each get their own buffer)
     batch_size: int = 64           # split evenly across the two streams
-    min_buffer_size: int = 1_000   # per stream, before training starts
+
+    # ---- Heuristic bootstrap (offline -> online handoff) ----
+    # Phase 1 ("heuristic fill"): both teams act purely via HeuristicPolicyMixture -- no
+    # net/ema_net forward pass for action selection at all. Once EACH stream (buffer_a AND
+    # buffer_b) reaches heuristic_fill_frac * capacity, the trainer permanently switches to
+    # phase 2: per-unit epsilon-greedy between this episode's heuristic action (exploration)
+    # and the model's own greedy Q argmax (exploitation) -- see select_actions(). Because the
+    # replay buffer is a plain FIFO ring (SequentialReplayBuffer), once phase 2 starts pushing
+    # increasingly model-influenced transitions, the oldest pure-heuristic ones are naturally
+    # evicted over the next `capacity` steps with no extra bookkeeping -- the offline (heuristic)
+    # -> online (model) handoff falls out of the ring buffer's own eviction order for free.
+    heuristic_fill_frac: float = 1.0
+    # Training starts once EACH stream has this fraction of capacity, even while still in
+    # phase 1 -- replaces the old fixed min_buffer_size (which was really this same fraction,
+    # 1_000/10_000 = 10%; expressing it as a fraction survives a buffer_capacity change without
+    # silently changing what fraction of the buffer training waits for).
+    bootstrap_train_start_frac: float = 0.2
+    # Separate seeds so team A's and team B's HeuristicPolicyMixture don't always sample the
+    # identical policy_id/parameters each episode -- more matchup diversity during bootstrap.
+    heuristic_seed_a: int = 0
+    heuristic_seed_b: int = 1
 
     lr: float = 3e-4
     weight_decay: float = 1e-2
@@ -221,6 +259,19 @@ class QMIXTrainer:
         self.buffer_a = SequentialReplayBuffer(**buffer_kwargs)
         self.buffer_b = SequentialReplayBuffer(**buffer_kwargs)
 
+        # ---- Heuristic bootstrap (see QMIXConfig.heuristic_fill_frac docstring) ----
+        # Sizes computed off buffer_a.capacity (not config.buffer_capacity) because
+        # SequentialReplayBuffer rounds capacity up to the next power of 2 internally.
+        self._heuristic_fill_size = max(1, round(config.heuristic_fill_frac * self.buffer_a.capacity))
+        self._train_start_size = max(1, round(config.bootstrap_train_start_frac * self.buffer_a.capacity))
+        self.heuristic_a = HeuristicPolicyMixture(seed=config.heuristic_seed_a)
+        self.heuristic_b = HeuristicPolicyMixture(seed=config.heuristic_seed_b)
+        self._was_bootstrapping = True  # collect_step() flips this and logs the phase-1->2 transition once
+        # env_step_count offset for epsilon() -- reset to the transition step so phase 2 always
+        # starts exploring at eps_start instead of inheriting however far env_step_count already
+        # decayed it during phase 1 (see epsilon()).
+        self._phase2_epsilon_anchor_step = 0
+
         self.team_a_agents = team_a_agents()
         self.team_b_agents = team_b_agents()
 
@@ -292,8 +343,23 @@ class QMIXTrainer:
     # Schedules
     # ------------------------------------------------------------------
 
+    @property
+    def _bootstrapping(self) -> bool:
+        """
+        True while still in phase 1 (pure-heuristic buffer fill, see QMIXConfig.heuristic_fill_frac).
+        Buffer size only ever grows (SequentialReplayBuffer._size is a monotonic high-water mark,
+        even once it starts wrapping), so this is a one-way gate: True -> False exactly once
+        per run, never back.
+        """
+        return len(self.buffer_a) < self._heuristic_fill_size or len(self.buffer_b) < self._heuristic_fill_size
+
     def epsilon(self) -> float:
-        frac = min(1.0, self.env_step_count / self.cfg.eps_decay_steps)
+        # Offset by _phase2_epsilon_anchor_step (set once, when phase 1 ends -- see collect_step)
+        # so the schedule always starts at eps_start right as phase 2 begins, instead of
+        # inheriting however far raw env_step_count already decayed it during phase 1's
+        # heuristic-only collection (during which epsilon() isn't even used for action
+        # selection, but would otherwise have been silently ticking down anyway).
+        frac = min(1.0, max(0.0, self.env_step_count - self._phase2_epsilon_anchor_step) / self.cfg.eps_decay_steps)
         return self.cfg.eps_start + frac * (self.cfg.eps_end - self.cfg.eps_start)
 
     def _anneal_frac(self) -> float:
@@ -325,12 +391,46 @@ class QMIXTrainer:
             torch.tensor(agent_states, dtype=torch.float32, device=self.device),
         )
 
+    def _heuristic_direction_idx(self, obs: dict[str, dict[str, np.ndarray]], agents: list[str], heuristic) -> np.ndarray:
+        """
+        Runs one heuristic policy for one team's 5 agents and snaps its continuous (dx,dy)
+        output to the nearest of the 8 compass DIRECTION_VECTORS (see direction_vector_to_idx).
+        Returns [N_TEAM] int array, in `agents` slot order.
+        """
+        team_obs = {a: obs[a] for a in agents}
+        heuristic_actions = heuristic.act(team_obs)
+        vectors = np.stack([heuristic_actions[a] for a in agents])  # [N_TEAM, 2]
+        return direction_vector_to_idx(vectors)
+
+    def _pack_direction_idx(self, direction_idx: np.ndarray) -> tuple[dict[str, np.ndarray], np.ndarray]:
+        """direction_idx: [2, N_TEAM] (team A row, team B row) -> (env_actions dict, full_direction_idx [10])."""
+        env_actions = {}
+        full_direction_idx = np.zeros(N_AGENTS, dtype=np.int64)
+        for team_idx, agents in enumerate((self.team_a_agents, self.team_b_agents)):
+            for slot, agent in enumerate(agents):
+                d = int(direction_idx[team_idx, slot])
+                env_actions[agent] = DIRECTION_VECTORS[d]
+                full_direction_idx[team_idx * N_TEAM + slot] = d
+        return env_actions, full_direction_idx
+
+    def select_actions_heuristic(self, obs: dict[str, dict[str, np.ndarray]]):
+        """
+        Phase 1 (see `_bootstrapping`): BOTH teams act purely via HeuristicPolicyMixture -- no
+        net/ema_net forward pass at all, since Q isn't driving any decision yet. The SNAPPED
+        direction (not the heuristic's raw continuous vector) is what actually gets sent to
+        env.step(), so the action stored in the replay buffer always matches what was physically
+        executed -- required for off-policy Q-learning to train against the right transition.
+        """
+        dir_a = self._heuristic_direction_idx(obs, self.team_a_agents, self.heuristic_a)
+        dir_b = self._heuristic_direction_idx(obs, self.team_b_agents, self.heuristic_b)
+        return self._pack_direction_idx(np.stack([dir_a, dir_b]))
+
     @torch.no_grad()
     def select_actions(self, obs: dict[str, dict[str, np.ndarray]], epsilon: float):
         """
-        Returns (env_actions, full_direction_idx) where env_actions is the dict[agent,(dx,dy)]
-        BlackOutEnv.step() expects, and full_direction_idx is [10] (physical unit order, both
-        teams) for the replay buffer.
+        Phase 2 only (see `_bootstrapping`). Returns (env_actions, full_direction_idx) where
+        env_actions is the dict[agent,(dx,dy)] BlackOutEnv.step() expects, and
+        full_direction_idx is [10] (physical unit order, both teams) for the replay buffer.
 
         This episode's "opponent" side (see `self._online_is_team_a`, module docstring) acts
         through `ema_net` instead of `net` for self-play stability.
@@ -348,24 +448,22 @@ class QMIXTrainer:
         own_q = _own_team_rows(q_values, agent_states)  # [2, N_TEAM, 8]
         greedy = own_q.argmax(dim=-1).cpu().numpy()  # [2, N_TEAM]
 
-        # Explore branch: uniformly random compass direction.
-        random_dirs = np.random.randint(0, N_DISCRETE_ACTIONS, size=(2, N_TEAM))
+        # Explore branch: this episode's heuristic-mixture action (guided toward objectives,
+        # not a uniform-random compass walk -- see conversation), snapped to the discrete
+        # compass space. Still costs one heuristic .act() per team per step regardless of how
+        # small epsilon has annealed to; cheap relative to the net/ema_net forward passes
+        # above, so not worth conditioning on the epsilon draw first.
+        dir_a = self._heuristic_direction_idx(obs, self.team_a_agents, self.heuristic_a)
+        dir_b = self._heuristic_direction_idx(obs, self.team_b_agents, self.heuristic_b)
+        heuristic_dirs = np.stack([dir_a, dir_b])  # [2, N_TEAM]
 
         direction_idx = np.where(
             np.random.rand(2, N_TEAM) < epsilon,
-            random_dirs,
+            heuristic_dirs,
             greedy,
         )
 
-        env_actions = {}
-        full_direction_idx = np.zeros(N_AGENTS, dtype=np.int64)
-        for team_idx, agents in enumerate((self.team_a_agents, self.team_b_agents)):
-            for slot, agent in enumerate(agents):
-                d = direction_idx[team_idx, slot]
-                env_actions[agent] = DIRECTION_VECTORS[d]
-                full_direction_idx[team_idx * N_TEAM + slot] = d
-
-        return env_actions, full_direction_idx
+        return self._pack_direction_idx(direction_idx)
 
     def _reset_env(self):
         """
@@ -375,12 +473,30 @@ class QMIXTrainer:
         obs, info = self.env.reset()
         self._online_is_team_a = bool(np.random.rand() < 0.5)
         self._prev_absorption_time_left = float(obs[self.team_a_agents[0]]["team_state"][ABSORPTION_IDX])
+        # Explicit re-sample each episode (HeuristicPolicyMixture also self-detects a new
+        # episode via a time_left jump in .act(), but resetting here keeps it in lockstep with
+        # the rest of this method's per-episode bookkeeping instead of relying on that sniff).
+        self.heuristic_a.reset()
+        self.heuristic_b.reset()
         return obs, info
 
     def collect_step(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, dict[str, np.ndarray]]:
-        epsilon = self.epsilon()
+        bootstrapping = self._bootstrapping
+        if self._was_bootstrapping and not bootstrapping:
+            # One-way transition (see _bootstrapping) -- anchor epsilon() here so phase 2
+            # starts exploring at eps_start instead of wherever raw env_step_count left it.
+            self._phase2_epsilon_anchor_step = self.env_step_count
+            print(
+                f"[bootstrap] buffers reached heuristic_fill_frac at env step {self.env_step_count} "
+                "-- switching from pure-heuristic to epsilon-mixed (model + heuristic) action selection"
+            )
+        self._was_bootstrapping = bootstrapping
+
         t0 = time.perf_counter()
-        env_actions, full_direction_idx = self.select_actions(obs, epsilon)
+        if bootstrapping:
+            env_actions, full_direction_idx = self.select_actions_heuristic(obs)
+        else:
+            env_actions, full_direction_idx = self.select_actions(obs, self.epsilon())
         t1 = time.perf_counter()
 
         obs_a, obs_b = obs[self.team_a_agents[0]], obs[self.team_b_agents[0]]
@@ -421,6 +537,7 @@ class QMIXTrainer:
         self.env_step_count += 1
         if self.env_step_count % self.cfg.tb_log_interval == 0:
             self.tb.scalars("reward/step", {"team_a": reward_a, "team_b": reward_b}, self.env_step_count)
+            self.tb.scalar("bootstrap/is_heuristic_fill_phase", float(bootstrapping), self.env_step_count)
 
         if done:
             # Terminal-step reward already carries the ±1 win/loss/draw event from
@@ -649,7 +766,7 @@ class QMIXTrainer:
         return total_loss, td_error.cpu().numpy()
 
     def train_step(self) -> float | None:
-        if len(self.buffer_a) < self.cfg.min_buffer_size or len(self.buffer_b) < self.cfg.min_buffer_size:
+        if len(self.buffer_a) < self._train_start_size or len(self.buffer_b) < self._train_start_size:
             return None
 
         n_step = self.current_n_step()
@@ -704,6 +821,25 @@ class QMIXTrainer:
                 self.tb.scalar("td_error/mean", self._last_td_error_mean, self.train_step_count)
                 self.tb.scalars(
                     "q_value", {"mean": self._last_q_mean, "std": self._last_q_std}, self.train_step_count
+                )
+                # Monotonicity "clamp pressure" (see clamp_pressure_stats docstring): how hard
+                # each mixer hypernetwork's raw (pre-abs) output is being pushed negative by
+                # gradient descent, i.e. how much the QMIX non-negative-weight constraint is
+                # actively fighting the loss -- the diagnostic for "is monotonicity a real
+                # bottleneck here, or would an unconstrained mixer (QPLEX/QTRAN) not actually
+                # help" (see qplex_migration_criteria.md for how to read this over training).
+                w1_frac_neg, w1_neg_mag = clamp_pressure_stats(self.mixer.last_raw_w1)
+                w2_frac_neg, w2_neg_mag = clamp_pressure_stats(self.mixer.last_raw_w2)
+                shape_frac_neg, shape_neg_mag = clamp_pressure_stats(self.dist_mixer.last_raw_shape_w)
+                self.tb.scalars(
+                    "mixer_clamp_pressure/frac_negative",
+                    {"hyper_w1": w1_frac_neg, "hyper_w2": w2_frac_neg, "shape_weight": shape_frac_neg},
+                    self.train_step_count,
+                )
+                self.tb.scalars(
+                    "mixer_clamp_pressure/neg_magnitude",
+                    {"hyper_w1": w1_neg_mag, "hyper_w2": w2_neg_mag, "shape_weight": shape_neg_mag},
+                    self.train_step_count,
                 )
                 self.tb.scalars(
                     "schedule",

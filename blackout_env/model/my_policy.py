@@ -16,6 +16,24 @@ DIRECTION_VECTORS = np.array(
 )
 
 
+def direction_vector_to_idx(vectors: np.ndarray) -> np.ndarray:
+    """
+    Snaps arbitrary-angle (dx, dy) vectors to the index of the nearest DIRECTION_VECTORS
+    compass direction, by max dot product (= cosine similarity, since every DIRECTION_VECTORS
+    row is unit-length). Used to convert a heuristic policy's continuous action into the same
+    discrete action space MyModel's Q-head uses, so heuristic-generated transitions can be
+    stored in and trained on by the replay buffer (see QMIXTrainer's heuristic bootstrap).
+
+    vectors: [..., 2], any leading shape (e.g. [N_TEAM, 2] -> [N_TEAM]).
+
+    A zero vector ties every dot product at 0.0 and argmax deterministically picks index 0 --
+    not a new issue this introduces: N_DISCRETE_ACTIONS has no dedicated "stay" action for the
+    trained policy either, so both sides of the bootstrap already share this same constraint.
+    """
+    dots = vectors @ DIRECTION_VECTORS.T  # [..., 8]
+    return dots.argmax(axis=-1)
+
+
 class MyPolicy(BaseModel):
     """
     Wraps MyModel's per-unit Q-values as a BaseModel. graphic/team_state/agent_states are
