@@ -42,6 +42,7 @@ class StrategicHeuristicV8(StrategicHeuristicV7):
         self._hunter_cooldown = 0
         self.respec_attempts = 0
         self.respec_completions = 0
+        self.respec_diagnostics: dict[str, int] = self._new_diagnostics()
 
     def reset(self) -> None:
         super().reset()
@@ -50,6 +51,16 @@ class StrategicHeuristicV8(StrategicHeuristicV7):
         self._hunter_cooldown = 0
         self.respec_attempts = 0
         self.respec_completions = 0
+        self.respec_diagnostics = self._new_diagnostics()
+
+    @staticmethod
+    def _new_diagnostics() -> dict[str, int]:
+        return {
+            "max_inactive_ticks": 0,
+            "trailing_ticks": 0,
+            "both_hunters_ticks": 0,
+            "all_gates_ticks": 0,
+        }
 
     def _update_roles(self, obs, sample) -> None:
         super()._update_roles(obs, sample)
@@ -115,14 +126,29 @@ class StrategicHeuristicV8(StrategicHeuristicV7):
             ) > 3.5)
             for enemy in enemies
         )
-        if (
-            self._respec_local is None
-            and self._hunter_cooldown == 0
-            and self._transport_inactive_ticks >= self.respec_inactivity_ticks
+        own_hunter_exists = any(
+            self._class_id(states[row_for[name]]) == HUNTER for name in controlled
+        )
+        self.respec_diagnostics["max_inactive_ticks"] = max(
+            self.respec_diagnostics["max_inactive_ticks"], self._transport_inactive_ticks
+        )
+        self.respec_diagnostics["trailing_ticks"] += int(trailing)
+        self.respec_diagnostics["both_hunters_ticks"] += int(
+            own_hunter_exists and enemy_hunter_exists
+        )
+        gates_ready = (
+            self._transport_inactive_ticks >= self.respec_inactivity_ticks
             and trailing
             and float(team_state[2]) >= self.respec_min_time_left
             and field_battery >= self.respec_min_field_battery
             and enemy_hunter_exists
+            and own_hunter_exists
+        )
+        self.respec_diagnostics["all_gates_ticks"] += int(gates_ready)
+        if (
+            self._respec_local is None
+            and self._hunter_cooldown == 0
+            and gates_ready
         ):
             for local, name in enumerate(controlled):
                 if self._class_id(states[row_for[name]]) == HUNTER:

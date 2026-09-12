@@ -9,6 +9,7 @@ from blackout_env.heuristics import (
     V4PolicyFamily,
     StrategicHeuristicV7,
     StrategicHeuristicV8,
+    StrategicHeuristicV9,
 )
 
 
@@ -216,6 +217,7 @@ def test_policy_mixture_is_reproducible_and_exposes_dataset_metadata():
         "strategic_v4_near",
         "strategic_v7",
         "strategic_v8",
+        "strategic_v9",
     }
     assert 8 <= first.current_sample.parameters["replan_interval"] <= 13
     next_first = first.reset()

@@ -6,6 +6,7 @@ from .model import (
     StrategicHeuristicV6,
     StrategicHeuristicV7,
     StrategicHeuristicV8,
+    StrategicHeuristicV9,
     load_my_policy_checkpoint, V4PolicyFamily,
 )
 from .competition import MatchResult, SeriesResult, run_match, run_series
@@ -40,6 +41,7 @@ __all__ = [
     "StrategicHeuristicV6",
     "StrategicHeuristicV7",
     "StrategicHeuristicV8",
+    "StrategicHeuristicV9",
     "RecommendedStrategicHeuristic",
     "HeuristicPolicyMixture",
     "V4PolicyFamily",

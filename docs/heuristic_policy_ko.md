@@ -56,6 +56,7 @@
 | `strategic_v4_near` | `V4PolicyFamily` | V4와 거의 같은 exact/balanced/responsive/cautious 근접 변형군 |
 | `strategic_v7` | `StrategicHeuristicV7` | V4 + 클래스 제한·운반 능력·경기 국면을 반영한 동적 역할 배분 |
 | `strategic_v8` | `StrategicHeuristicV8` | V7 + 엄격한 조건에서 Hunter 상호 사망을 이용한 역할 리셋 실험판 |
+| `strategic_v9` | `StrategicHeuristicV9` | V8의 대기·점수·회수 조건을 완화한 적극적 역할 리셋 변주 |
 
 `HeuristicPolicyMixture(seed=...)`는 에피소드마다 위 버전을 샘플링하고 `replan_interval`,
 `threat_radius`, specialist 구성에 제한된 변주를 준다. 데이터 수집기는 매 trajectory에
@@ -79,6 +80,19 @@ V8의 전략적 사망은 적 운반 활동이 장기간 없고, 팀이 열세�
 보호 구역 밖 적 Hunter와 상호 사망할 수 있을 때만 시작한다. 부활 뒤에는 쿨다운 동안 Collector로
 유지해 즉시 Hunter로 되돌아가는 루프를 막는다. 수집 데이터에는 `role_assignments`와 V8의
 `respec_attempts`, `respec_completions`도 함께 기록하는 것이 좋다.
+V8은 5시드 양 진영 평가에서 실제 리셋이 0회였으므로 기본 mixture 비중을 1%로 낮췄다. V9는
+의도적인 역할 리셋 trajectory를 얻기 위한 3% 탐색 분기이며 권장 승격판이 아니다. V9 대 V7의
+5시드 양 진영 10경기는 5승 5패, 평균 점수차 +1.6이었다. 리셋은 4회 시도해 4회 모두 완료됐고,
+6초 정지는 양쪽 모두 0건, 짧은 막힘은 1,000 유닛틱당 V9 0.350 대 V7 0.356이었다. 즉 경쟁력은
+동률이지만 역할 리셋 성공 trajectory와 약간 다른 상태 분포를 만드는 데이터 다양화 정책으로 유효하다.
+
+## 실행 성능
+
+200배속에서는 정책의 Python 비용도 병목이 되므로 결과를 바꾸지 않는 에피소드 캐시를 사용한다.
+고정 보호 창고/연결 영역, 시작 픽셀별 거리 맵, `(시작, 목표)`별 A* 경로를 재사용하고, 동적 배터리와
+특수 아이템 좌표는 한 팀 decision tick에 한 번만 스캔한다. 거리/A* 캐시는 메모리 상한이 있으며
+에피소드 리셋 때 폐기되므로 다른 절차 생성 맵으로 새지 않는다. 3,000틱 고정 관측열에서 최적화 전후
+action SHA-256이 일치했고, 합성 V8 측정은 warm 5,000틱 기준 팀당 약 186µs/tick이었다.
 
 - 매 transition에 team perspective 관측, 5개 행동, physical unit index, 역할, 목표 종류, episode seed,
   흡수 구간 index를 저장한다.
@@ -108,7 +122,7 @@ Unity terminal winner를 사용하며, 선택적으로 seed를 받아 재현 가
 
 ```bash
 ./.venv/bin/python examples/benchmark_heuristics.py \
-  --candidate v4 --baseline v1 --n-seeds 15 --seed-rng 20260912 --time-scale 100
+  --candidate v4 --baseline v1 --n-seeds 15 --seed-rng 20260912 --time-scale 200
 ```
 
 화면에서 V4 플레이를 보려면 `--graphics --time-scale 1`을 추가한다.

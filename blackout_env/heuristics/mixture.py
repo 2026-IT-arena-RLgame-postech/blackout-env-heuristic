@@ -17,6 +17,7 @@ from .risk_path import StrategicHeuristicV6
 from .v4_family import V4PolicyFamily
 from .dynamic_roles import StrategicHeuristicV7
 from .lifecycle_roles import StrategicHeuristicV8
+from .opportunistic_respec import StrategicHeuristicV9
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,7 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
     "strategic_v4_near": V4PolicyFamily,
     "strategic_v7": StrategicHeuristicV7,
     "strategic_v8": StrategicHeuristicV8,
+    "strategic_v9": StrategicHeuristicV9,
 }
 
 
@@ -68,7 +70,7 @@ class HeuristicPolicyMixture(BaseModel):
     ):
         self._rng = np.random.default_rng(seed)
         default_weights = {
-            "strategic_v1": 0.12,
+            "strategic_v1": 0.11,
             "strategic_v2": 0.10,
             "strategic_v3": 0.13,
             "strategic_v4": 0.25,
@@ -76,7 +78,8 @@ class HeuristicPolicyMixture(BaseModel):
             "strategic_v5": 0.03,  # intentionally aggressive, but weak in direct evaluation
             "strategic_v6": 0.08,
             "strategic_v7": 0.06,
-            "strategic_v8": 0.03,  # lifecycle/respec exploration remains deliberately sparse
+            "strategic_v8": 0.01,  # conservative lifecycle control
+            "strategic_v9": 0.03,  # active respec trajectories remain deliberately sparse
         }
         self.weights = dict(default_weights if weights is None else weights)
         unknown = set(self.weights) - set(POLICY_REGISTRY)

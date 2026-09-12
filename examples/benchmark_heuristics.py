@@ -18,6 +18,7 @@ from blackout_env.heuristics import (
     V4PolicyFamily,
     StrategicHeuristicV7,
     StrategicHeuristicV8,
+    StrategicHeuristicV9,
 )
 
 VERSIONS = {
@@ -29,6 +30,7 @@ VERSIONS = {
     "v4-near": V4PolicyFamily,
     "v7": StrategicHeuristicV7,
     "v8": StrategicHeuristicV8,
+    "v9": StrategicHeuristicV9,
 }
 BASELINES = {"v1": StrategicHeuristicV1, **VERSIONS}
 
@@ -106,6 +108,7 @@ class Game:
     candidate_variant: str = ""
     respec_attempts: int = 0
     respec_completions: int = 0
+    respec_diagnostics: dict[str, int] = field(default_factory=dict)
 
 
 def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
@@ -120,6 +123,7 @@ def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
     steps, final_info = 0, {}
     last_scores = (0.0, 0.0)
     empty_obs_steps = 0
+    pending_transition = None
 
     while env.agents:
         if not obs:
@@ -127,6 +131,12 @@ def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
             # observations (especially when multiple workers are starting/stopping nearby).
             # Advance with zero actions instead of indexing an empty observation dictionary.
             obs, _, _, _, infos = env.step({})
+            if obs and pending_transition is not None:
+                before, candidate_actions, baseline_actions = pending_transition
+                after = next(iter(obs.values()))["agent_states"]
+                candidate_monitor.observe(candidate_names, before, after, candidate_actions)
+                baseline_monitor.observe(baseline_names, before, after, baseline_actions)
+                pending_transition = None
             empty_obs_steps += 1
             steps += 1
             if infos:
@@ -159,6 +169,8 @@ def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
             after = next(iter(next_obs.values()))["agent_states"]
             candidate_monitor.observe(candidate_names, before, after, candidate_actions)
             baseline_monitor.observe(baseline_names, before, after, baseline_actions)
+        else:
+            pending_transition = (before, candidate_actions, baseline_actions)
         obs = next_obs
         steps += 1
 
@@ -179,6 +191,7 @@ def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
         candidate_monitor.result, baseline_monitor.result, variant,
         int(getattr(candidate, "respec_attempts", 0)),
         int(getattr(candidate, "respec_completions", 0)),
+        dict(getattr(candidate, "respec_diagnostics", {})),
     )
 
 
@@ -227,7 +240,8 @@ def main() -> int:
                 print(f"seed={seed} swapped={swapped} {args.candidate.upper()}={label} "
                       f"score={game.candidate_score*100:.0f}-{game.baseline_score*100:.0f} "
                       f"steps={game.steps} variant={game.candidate_variant or '-'} "
-                      f"respec={game.respec_completions}/{game.respec_attempts}", flush=True)
+                      f"respec={game.respec_completions}/{game.respec_attempts} "
+                      f"gates={game.respec_diagnostics.get('all_gates_ticks', 0)}", flush=True)
     finally:
         env.close()
 
@@ -245,6 +259,13 @@ def main() -> int:
     if attempts:
         print(f"respec lifecycle attempts={attempts} completions={completions} "
               f"rate={completions / attempts:.3f}")
+    diagnostics = [game.respec_diagnostics for game in games if game.respec_diagnostics]
+    if diagnostics:
+        print("respec diagnostics "
+              f"max_inactive={max(d['max_inactive_ticks'] for d in diagnostics)} "
+              f"trailing_ticks={sum(d['trailing_ticks'] for d in diagnostics)} "
+              f"both_hunters_ticks={sum(d['both_hunters_ticks'] for d in diagnostics)} "
+              f"all_gates_ticks={sum(d['all_gates_ticks'] for d in diagnostics)}")
     return 0 if wins > losses and margins.mean() > 0 else 1
 
 
