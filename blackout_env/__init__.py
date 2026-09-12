@@ -2,7 +2,8 @@ from .model import (
     BaseModel, CheckpointModel, HeuristicPolicyMixture, RecommendedStrategicHeuristic,
     StrategicHeuristic,
     StrategicHeuristicV1, StrategicHeuristicV2, load_checkpoint,
-    StrategicHeuristicV3, StrategicHeuristicV4,
+    StrategicHeuristicV3, StrategicHeuristicV4, StrategicHeuristicV5,
+    StrategicHeuristicV6,
     load_my_policy_checkpoint,
 )
 from .competition import MatchResult, SeriesResult, run_match, run_series
@@ -33,6 +34,8 @@ __all__ = [
     "StrategicHeuristicV2",
     "StrategicHeuristicV3",
     "StrategicHeuristicV4",
+    "StrategicHeuristicV5",
+    "StrategicHeuristicV6",
     "RecommendedStrategicHeuristic",
     "HeuristicPolicyMixture",
     "load_checkpoint",

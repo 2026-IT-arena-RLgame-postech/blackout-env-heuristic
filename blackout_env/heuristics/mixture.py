@@ -12,6 +12,8 @@ from .strategic import StrategicHeuristic
 from .advanced import StrategicHeuristicV2
 from .safe_storage import StrategicHeuristicV3
 from .spread_deposit import StrategicHeuristicV4
+from .intercept import StrategicHeuristicV5
+from .risk_path import StrategicHeuristicV6
 
 
 @dataclass(frozen=True)
@@ -28,6 +30,8 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
     "strategic_v2": StrategicHeuristicV2,
     "strategic_v3": StrategicHeuristicV3,
     "strategic_v4": StrategicHeuristicV4,
+    "strategic_v5": StrategicHeuristicV5,
+    "strategic_v6": StrategicHeuristicV6,
 }
 
 
@@ -57,7 +61,15 @@ class HeuristicPolicyMixture(BaseModel):
         perturb: bool = True,
     ):
         self._rng = np.random.default_rng(seed)
-        self.weights = dict(weights or {name: 1.0 for name in POLICY_REGISTRY})
+        default_weights = {
+            "strategic_v1": 0.15,
+            "strategic_v2": 0.12,
+            "strategic_v3": 0.18,
+            "strategic_v4": 0.42,
+            "strategic_v5": 0.03,  # intentionally aggressive, but weak in direct evaluation
+            "strategic_v6": 0.10,
+        }
+        self.weights = dict(default_weights if weights is None else weights)
         unknown = set(self.weights) - set(POLICY_REGISTRY)
         if unknown:
             raise ValueError(f"Unknown mixture policies: {sorted(unknown)}")
@@ -85,6 +97,17 @@ class HeuristicPolicyMixture(BaseModel):
                 "replan_interval": int(episode_rng.integers(8, 14)),
                 "threat_radius": float(episode_rng.uniform(0.135, 0.185)),
             }
+            if policy_id == "strategic_v5":
+                parameters.update({
+                    "intercept_margin_seconds": float(episode_rng.uniform(0.20, 0.40)),
+                    "intent_temperature": float(episode_rng.uniform(2.5, 6.0)),
+                    "velocity_ema": float(episode_rng.uniform(0.35, 0.75)),
+                })
+            elif policy_id == "strategic_v6":
+                parameters.update({
+                    "risk_radius_tiles": float(episode_rng.uniform(2.0, 3.5)),
+                    "risk_weight": float(episode_rng.uniform(2.0, 4.2)),
+                })
         else:
             parameters = {
                 "use_specialists": True,

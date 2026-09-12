@@ -51,12 +51,19 @@
 | `strategic_v2` | `StrategicHeuristicV2` | 경로 거리 기반 전역 수집 작업 배정 |
 | `strategic_v3` | `StrategicHeuristicV3` | V2 + 흡수 시각·매복 위험·보호 여부 기반 창고 선택 |
 | `strategic_v4` | `StrategicHeuristicV4` | V3 + 동시 운반자의 창고 진입 타일 분산; 현재 권장판 |
+| `strategic_v5` | `StrategicHeuristicV5` | V4 + 적 운반 경로 예측 요격; 공격적 저가중치 변주 |
+| `strategic_v6` | `StrategicHeuristicV6` | V4 + 위협장 비용 A*; 저정체·보수적 변주 |
 
 `HeuristicPolicyMixture(seed=...)`는 에피소드마다 위 버전을 샘플링하고 `replan_interval`,
 `threat_radius`, specialist 구성에 제한된 변주를 준다. 데이터 수집기는 매 trajectory에
 `mixture.current_sample`의 `policy_id`, `policy_seed`, `parameters`를 저장해야 한다. 같은 seed의
 mixture는 동일한 정책열을 재현하므로 offline RL의 behavior-policy provenance와 중요도 가중에도
 사용할 수 있다. 변주가 필요 없는 평가에서는 `perturb=False`를 사용한다.
+
+기본 mixture는 직접 대결 성능에 따라 V4를 가장 많이 샘플링하고 V5를 3%로 제한한다. V5에서는
+요격 margin/의도 온도/속도 EMA, V6에서는 위험 반경/가중치도 에피소드 단위로 변주된다. 특정
+ablation 데이터가 필요하면 `weights={"strategic_v6": 1.0}`처럼 명시한다. 매 tick action noise는
+추가하지 않으므로 한 trajectory 안의 행동 의도는 일관된다.
 
 - 매 transition에 team perspective 관측, 5개 행동, physical unit index, 역할, 목표 종류, episode seed,
   흡수 구간 index를 저장한다.
@@ -86,7 +93,7 @@ Unity terminal winner를 사용하며, 선택적으로 seed를 받아 재현 가
 
 ```bash
 ./.venv/bin/python examples/benchmark_heuristics.py \
-  --candidate v4 --n-seeds 15 --seed-rng 20260912 --time-scale 100
+  --candidate v4 --baseline v1 --n-seeds 15 --seed-rng 20260912 --time-scale 100
 ```
 
 화면에서 V4 플레이를 보려면 `--graphics --time-scale 1`을 추가한다.

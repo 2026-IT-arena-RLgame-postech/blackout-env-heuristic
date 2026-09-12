@@ -4,6 +4,8 @@ from blackout_env.heuristics import (
     HeuristicPolicyMixture, StrategicHeuristic, StrategicHeuristicV2,
     StrategicHeuristicV3,
     StrategicHeuristicV4,
+    StrategicHeuristicV5,
+    StrategicHeuristicV6,
 )
 
 
@@ -199,7 +201,9 @@ def test_policy_mixture_is_reproducible_and_exposes_dataset_metadata():
     second = HeuristicPolicyMixture(seed=123)
     assert first.current_sample == second.current_sample
     assert first.current_sample.policy_id in {
-        "strategic_v1", "strategic_v2", "strategic_v3", "strategic_v4"
+        "strategic_v1", "strategic_v2", "strategic_v3", "strategic_v4",
+        "strategic_v5",
+        "strategic_v6",
     }
     assert 8 <= first.current_sample.parameters["replan_interval"] <= 13
     next_first = first.reset()
@@ -259,3 +263,66 @@ def test_v4_reserves_distinct_storage_entry_tiles_for_simultaneous_deposits():
     )[0]
     assert first != second
     assert first in reservations and second in reservations
+
+
+def test_v5_hunter_targets_feasible_point_ahead_of_cargo():
+    def world(row, col, size=16):
+        return np.array([(col + 0.5) * 2 / size - 1,
+                         1 - (row + 0.5) * 2 / size], np.float32)
+
+    policy = StrategicHeuristicV5(use_specialists=False)
+    graphic = np.zeros((16, 16, 13), dtype=np.float32)
+    graphic[..., 0] = 1
+    graphic[8, 14, 7] = 1
+    states = np.zeros((10, 12), dtype=np.float32)
+    states[:, 3] = 1
+    states[:, 9] = 1
+    states[0, :2] = world(6, 10)
+    states[0, 2] = 1
+    states[0, 9] = 0
+    states[0, 10] = 1  # Hunter
+    states[5, :2] = world(8, 8)
+    states[5, 2] = -1
+    states[5, 3] = 0
+    states[5, 4] = 6 / 15  # cargo
+    states[1:5, 2] = 1
+    states[6:, 2] = -1
+    target = policy._best_cargo_intercept(states[0], states, graphic)
+    assert target is not None
+    assert target[1] > 8
+    assert target != (8, 8)
+
+
+def test_v5_enemy_velocity_memory_clears_on_reset():
+    policy = StrategicHeuristicV5()
+    states = np.zeros((10, 12), dtype=np.float32)
+    states[5:, 2] = -1
+    policy._update_enemy_motion(states)
+    states[5, 0] = 0.01
+    policy._update_enemy_motion(states)
+    assert policy._enemy_velocities[5][0] > 0
+    policy.reset()
+    assert policy._enemy_velocities == {}
+
+
+def test_v6_cargo_path_detours_around_hunter_risk():
+    def world(row, col, size=11):
+        return np.array([(col + 0.5) * 2 / size - 1,
+                         1 - (row + 0.5) * 2 / size], np.float32)
+
+    policy = StrategicHeuristicV6(use_specialists=False, risk_weight=8.0)
+    walkable = np.ones((11, 11), dtype=bool)
+    state = np.zeros(12, dtype=np.float32)
+    state[:2] = world(5, 1)
+    state[2] = 1
+    state[4] = 5 / 15
+    state[9] = 1
+    states = np.stack([state] + [np.zeros(12, dtype=np.float32) for _ in range(9)])
+    states[1:5, 2] = 1
+    states[5:, 2] = -1
+    states[5, :2] = world(5, 5)
+    states[5, 10] = 1  # enemy Hunter
+    action = policy._navigate(
+        "unit_0", state, states, (5, 9), "deposit", walkable, (11, 11)
+    )
+    assert abs(float(action[1])) > 0.2  # leaves the direct horizontal collision corridor

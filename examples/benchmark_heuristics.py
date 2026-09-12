@@ -13,13 +13,18 @@ from blackout_env.env.constants import team_a_agents, team_b_agents
 from blackout_env.heuristics import (
     StrategicHeuristicV1, StrategicHeuristicV2, StrategicHeuristicV3,
     StrategicHeuristicV4,
+    StrategicHeuristicV5,
+    StrategicHeuristicV6,
 )
 
 VERSIONS = {
     "v2": StrategicHeuristicV2,
     "v3": StrategicHeuristicV3,
     "v4": StrategicHeuristicV4,
+    "v5": StrategicHeuristicV5,
+    "v6": StrategicHeuristicV6,
 }
+BASELINES = {"v1": StrategicHeuristicV1, **VERSIONS}
 
 
 @dataclass
@@ -94,8 +99,8 @@ class Game:
     baseline_failures: FailureRuns
 
 
-def play(env, seed: int, swapped: bool, candidate_type) -> Game:
-    candidate, baseline = candidate_type(), StrategicHeuristicV1()
+def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
+    candidate, baseline = candidate_type(), baseline_type()
     physical_a, physical_b = set(team_a_agents()), set(team_b_agents())
     candidate_names = physical_b if swapped else physical_a
     baseline_names = physical_a if swapped else physical_b
@@ -158,6 +163,7 @@ def main() -> int:
     parser.add_argument("--time-scale", type=float, default=100.0)
     parser.add_argument("--graphics", action="store_true")
     parser.add_argument("--candidate", choices=tuple(VERSIONS), default="v4")
+    parser.add_argument("--baseline", choices=tuple(BASELINES), default="v1")
     args = parser.parse_args()
     if args.n_seeds < 5 and not args.seeds:
         parser.error("--n-seeds must be at least 5 for a promotion benchmark")
@@ -174,7 +180,9 @@ def main() -> int:
     try:
         for seed in seeds:
             for swapped in (False, True):
-                game = play(env, int(seed), swapped, VERSIONS[args.candidate])
+                game = play(
+                    env, int(seed), swapped, VERSIONS[args.candidate], BASELINES[args.baseline]
+                )
                 games.append(game)
                 label = "W" if game.winner == 0 else "L" if game.winner == 1 else "D"
                 print(f"seed={seed} swapped={swapped} {args.candidate.upper()}={label} "
@@ -191,7 +199,7 @@ def main() -> int:
     print(f"outcome {args.candidate.upper()} W-L-D={wins}-{losses}-{draws} mean_margin={margins.mean():.2f} "
           f"paired_margins={[round(x, 2) for x in paired]}")
     print(f"{args.candidate.upper()} reliability={aggregate(games, 'candidate_failures')}")
-    print(f"V1 reliability={aggregate(games, 'baseline_failures')}")
+    print(f"{args.baseline.upper()} reliability={aggregate(games, 'baseline_failures')}")
     return 0 if wins > losses and margins.mean() > 0 else 1
 
 
