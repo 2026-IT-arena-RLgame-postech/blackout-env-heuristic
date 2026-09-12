@@ -2,7 +2,7 @@
 
 ## 목적과 인터페이스
 
-`StrategicHeuristic`은 대회용 공개 관측만 사용하는 상태 보유형 팀 정책이다. Unity 내부 상태를
+`StrategicHeuristicV1`은 대회용 공개 관측만 사용하는 상태 보유형 팀 정책이다. Unity 내부 상태를
 직접 읽지 않으므로 이 정책의 `(observation, action)`을 그대로 BC 데이터로 사용할 수 있다.
 출력은 각 유닛의 연속 2D 이동 방향이며, 수집·적재·변신·전투는 게임의 접촉 규칙으로 자동 실행된다.
 
@@ -43,6 +43,21 @@
 
 ## BC 데이터 권장 방식
 
+정책은 교체하지 않고 누적 보존한다.
+
+| policy_id | 클래스 | 주요 차이 |
+|---|---|---|
+| `strategic_v1` | `StrategicHeuristicV1` | 안정적인 역할·A*·정체 복구 기준선 |
+| `strategic_v2` | `StrategicHeuristicV2` | 경로 거리 기반 전역 수집 작업 배정 |
+| `strategic_v3` | `StrategicHeuristicV3` | V2 + 흡수 시각·매복 위험·보호 여부 기반 창고 선택 |
+| `strategic_v4` | `StrategicHeuristicV4` | V3 + 동시 운반자의 창고 진입 타일 분산; 현재 권장판 |
+
+`HeuristicPolicyMixture(seed=...)`는 에피소드마다 위 버전을 샘플링하고 `replan_interval`,
+`threat_radius`, specialist 구성에 제한된 변주를 준다. 데이터 수집기는 매 trajectory에
+`mixture.current_sample`의 `policy_id`, `policy_seed`, `parameters`를 저장해야 한다. 같은 seed의
+mixture는 동일한 정책열을 재현하므로 offline RL의 behavior-policy provenance와 중요도 가중에도
+사용할 수 있다. 변주가 필요 없는 평가에서는 `perturb=False`를 사용한다.
+
 - 매 transition에 team perspective 관측, 5개 행동, physical unit index, 역할, 목표 종류, episode seed,
   흡수 구간 index를 저장한다.
 - terminal winner와 실제 점수차를 최우선 필터로 사용한다. shaping return만으로 expert episode를
@@ -65,3 +80,13 @@ cd /Users/mac/project/26rl/blackout-env
 
 각 seed에서 진영을 교대하므로 총 경기 수는 seed 수의 두 배다. `run_match`와 `run_series`는 실제
 Unity terminal winner를 사용하며, 선택적으로 seed를 받아 재현 가능한 평가를 수행한다.
+
+버전 간 승격 평가는 다음처럼 실행한다. 기본값은 무작위 5시드, 양 진영 10경기이며 6초 이상
+완전 정지와 이동 명령 중 막힘 구간을 함께 출력한다.
+
+```bash
+./.venv/bin/python examples/benchmark_heuristics.py \
+  --candidate v4 --n-seeds 15 --seed-rng 20260912 --time-scale 100
+```
+
+화면에서 V4 플레이를 보려면 `--graphics --time-scale 1`을 추가한다.
