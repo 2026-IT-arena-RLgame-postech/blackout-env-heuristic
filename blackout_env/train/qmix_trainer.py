@@ -20,8 +20,10 @@ BBF components combined with QMIX (per project's explicit choices — see conver
     exactly) and their zero-mean "shape" through a separate non-negative linear combination.
   - SPR auxiliary loss on the pooled vision latent only, via an EMA target encoder (`ema_net`)
     and SPRPredictor's open-loop K-step latent rollout (see modules/spr_predictor.py).
-  - n-step returns + gamma annealing (BBF's main efficiency lever), truncated at episode
-    boundaries by SequentialReplayBuffer's sequential layout (see train/returns.py).
+  - n-step returns + gamma annealing (BBF's main efficiency lever), truncated at "episode"
+    boundaries by SequentialReplayBuffer's sequential layout (see train/returns.py) -- "episode"
+    here means each absorption interval (~120s), not the full ~600s match: see collect_step's
+    absorption_fired handling for why a full match is too long a horizon to bootstrap over.
   - Prioritized Experience Replay (train/replay_buffer.py, train/segment_tree.py).
   - Periodic shrink-and-perturb reset, scoped ONLY to graphic_encoder for now (conservative,
     per project decision — the attention trunk's FFN blocks are a separate future step).
@@ -65,6 +67,7 @@ from blackout_env.train.tb_logger import TBLogger, default_run_dir
 
 TEAM_SIGN_COL = 2  # agent_state row: [pos_x, pos_y, team, *item_onehot, *class_onehot]
 N_TEAM = N_TEAM_A  # 5 — both teams are the same size
+ABSORPTION_IDX = 3  # team_state row: [own_score, opp_score, episode_time_left, absorption_time_left]
 
 
 @dataclass
@@ -88,7 +91,16 @@ class QMIXConfig:
     n_quantiles: int = 8  # IQN quantile samples per forward pass during training
 
     # n-step / gamma annealing (BBF): n_step counts DOWN, gamma counts UP, over the same
-    # fraction of total training.
+    # fraction of total training. n_step_start=10 (back to BBF's original value): Unit.prefab's
+    # DecisionRequester now runs at DecisionPeriod=2 (25Hz decisions over a 50Hz/0.02s physics
+    # tick, TakeActionsBetweenDecisions=1 repeats the last action on the skipped tick -- see
+    # DecisionRequester.cs/RpcCommunicator.DecideBatch, which never even calls back to Python on
+    # that skipped tick, so every env_step_count here already IS one real forward-pass decision
+    # point spanning 0.04s of game time, not 0.02s). That doubles each step's temporal reach, so
+    # n_step=10 here now covers the same ~0.4s local "spot an item 2-3 tiles away, approach, pick
+    # it up" sequence (unit speeds 4-6 units/s on a 24x24 grid) that n_step=20 covered at the old
+    # 50Hz rate -- same reach, back to BBF's lower-variance/less-stale value instead of paying
+    # 2x the n-step-return variance and off-policy staleness for no extra reach.
     n_step_start: int = 10
     n_step_end: int = 3
     gamma_start: float = 0.97
@@ -126,7 +138,10 @@ class QMIXConfig:
     tb_log_dir: str | None = field(default_factory=default_run_dir)
     tb_log_interval: int = 1000  # train steps between loss/grad/weight-norm scalars (matches the env-step print cadence in run())
 
-    checkpoint_dir: str = "checkpoints"
+    # Defaults to a fresh timestamped subdirectory per process (default_run_dir, same scheme as
+    # tb_log_dir above) rather than a fixed "checkpoints" -- otherwise two runs launched around
+    # the same time (or a resumed run) would silently overwrite each other's step_*.pt files.
+    checkpoint_dir: str = field(default_factory=lambda: default_run_dir(base="checkpoints"))
     checkpoint_interval: int = 5_000  # env steps
     device: str = "cpu"
 
@@ -213,6 +228,7 @@ class QMIXTrainer:
         self.train_step_count = 0
         self._total_env_steps_hint = 1  # set properly in run(); avoids div-by-zero if train_step() is called standalone
         self._online_is_team_a = True  # re-randomized every episode in _reset_env()
+        self._prev_absorption_time_left: float | None = None  # set in _reset_env(); see collect_step
 
         # ---- TensorBoard logging (train/tb_logger.py) ----
         self.tb = TBLogger(self.cfg.tb_log_dir)
@@ -358,6 +374,7 @@ class QMIXTrainer:
         """
         obs, info = self.env.reset()
         self._online_is_team_a = bool(np.random.rand() < 0.5)
+        self._prev_absorption_time_left = float(obs[self.team_a_agents[0]]["team_state"][ABSORPTION_IDX])
         return obs, info
 
     def collect_step(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, dict[str, np.ndarray]]:
@@ -373,13 +390,33 @@ class QMIXTrainer:
         self._time_env_step += t2 - t1
         done = any(terminations.values())
 
+        # AbsorptionTimer loops in Unity (see GameScenario/TimerManager): the observed
+        # absorption_time_left counts down 1.0->0.0 each step and snaps back up near 1.0 on the
+        # exact tick an absorption fires, so an increase between consecutive steps IS that event
+        # -- there's no separate boolean for it anywhere in obs/info (see reward_proposal.md /
+        # ml_agent_design.md for why absorption, not the ~600s full match, is this game's natural
+        # reward/credit-assignment horizon). A full match is far too long to bootstrap a single
+        # n-step/SPR window over, so each absorption interval is treated as its own training
+        # episode boundary here -- same "life lost = episode end" trick classic DQN Atari agents
+        # use -- WITHOUT touching the real Unity match/reset (self._online_is_team_a, score,
+        # win/loss bookkeeping below all still track the real ~600s match untouched). This does
+        # mean the Q-target treats "just after an absorption" as if no further reward exists,
+        # which is a deliberate bias traded for a much shorter, more learnable horizon.
+        absorption_time_left = float(next_obs[self.team_a_agents[0]]["team_state"][ABSORPTION_IDX])
+        absorption_fired = (
+            self._prev_absorption_time_left is not None
+            and absorption_time_left > self._prev_absorption_time_left + 1e-6
+        )
+        self._prev_absorption_time_left = absorption_time_left
+        buffer_done = done or absorption_fired
+
         reward_a = sum(rewards[a] for a in self.team_a_agents)
         reward_b = sum(rewards[a] for a in self.team_b_agents)
         self._episode_return_a += reward_a
         self._episode_return_b += reward_b
 
-        self.buffer_a.push(obs_a["graphic"], obs_a["team_state"], obs_a["agent_states"], full_direction_idx, reward_a, done)
-        self.buffer_b.push(obs_b["graphic"], obs_b["team_state"], obs_b["agent_states"], full_direction_idx, reward_b, done)
+        self.buffer_a.push(obs_a["graphic"], obs_a["team_state"], obs_a["agent_states"], full_direction_idx, reward_a, buffer_done)
+        self.buffer_b.push(obs_b["graphic"], obs_b["team_state"], obs_b["agent_states"], full_direction_idx, reward_b, buffer_done)
 
         self.env_step_count += 1
         if self.env_step_count % self.cfg.tb_log_interval == 0:
@@ -745,6 +782,28 @@ class QMIXTrainer:
         t0 = time.time()
         window_t0 = time.time()
         recent_losses: list[float] = []
+        try:
+            self._run_loop(obs, total_env_steps, ckpt_dir, t0, window_t0, recent_losses)
+        except KeyboardInterrupt:
+            # Ctrl+C during a long run would otherwise lose everything since the last periodic
+            # checkpoint_interval save -- catch it here (not in main()) since ckpt_dir/env_step_count
+            # only live on self, then re-raise so the process still exits with interrupt semantics
+            # and main()'s `finally: env.close()` still runs.
+            print(f"\n[checkpoint] KeyboardInterrupt at step {self.env_step_count} -- saving before exit")
+            self.save(ckpt_dir / f"interrupted_step_{self.env_step_count}.pt")
+            raise
+        finally:
+            self.tb.close()
+
+    def _run_loop(
+        self,
+        obs: dict[str, dict[str, np.ndarray]],
+        total_env_steps: int,
+        ckpt_dir: Path,
+        t0: float,
+        window_t0: float,
+        recent_losses: list[float],
+    ) -> None:
         while self.env_step_count < total_env_steps:
             obs = self.collect_step(obs)
             self.maybe_reset()
@@ -817,7 +876,6 @@ class QMIXTrainer:
                 self.save(ckpt_dir / f"step_{self.env_step_count}.pt")
 
         self.save(ckpt_dir / "final.pt")
-        self.tb.close()
 
     def save(self, path: Path) -> None:
         torch.save(
@@ -855,7 +913,11 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=1_000_000, help="Total env steps to train for")
     parser.add_argument("--time-scale", type=float, default=20.0, help="Unity Time.timeScale")
     parser.add_argument("--graphics", action="store_true", help="Show the Unity window instead of headless")
-    parser.add_argument("--checkpoint-dir", default="checkpoints")
+    parser.add_argument(
+        "--checkpoint-dir",
+        default=None,
+        help="Checkpoint dir; default is a fresh timestamped folder under checkpoints/ (see default_run_dir) so separate runs never overwrite each other's step_*.pt files",
+    )
     parser.add_argument("--resume", default=None, help="Checkpoint path to resume from")
     parser.add_argument("--device", default="cpu")
     parser.add_argument(
@@ -874,7 +936,9 @@ def main() -> None:
         time_scale=args.time_scale,
         no_graphics=not args.graphics,
     )
-    config_kwargs = dict(checkpoint_dir=args.checkpoint_dir, device=args.device)
+    config_kwargs = dict(device=args.device)
+    if args.checkpoint_dir is not None:
+        config_kwargs["checkpoint_dir"] = args.checkpoint_dir
     if args.tb_log_dir is not None:
         config_kwargs["tb_log_dir"] = args.tb_log_dir or None  # '' -> disable
     config = QMIXConfig(**config_kwargs)
