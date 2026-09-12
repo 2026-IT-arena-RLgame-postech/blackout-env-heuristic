@@ -1061,7 +1061,28 @@ def main() -> None:
         default=None,
         help="TensorBoard log dir; default is a fresh timestamped folder under runs/ (see default_run_dir), pass '' to disable",
     )
+    parser.add_argument(
+        "--unity-log-file",
+        default=None,
+        help="Where Unity's own player log (Debug.Log output -- 'Unit dead', 'Absorption', etc.) "
+        "goes, via -logFile. Default is a fresh timestamped path under unity_logs/ (same scheme "
+        "as --checkpoint-dir/--tb-log-dir) so it doesn't interleave with this script's own "
+        "[step N]/[checkpoint] console output. Pass '' to fall back to Unity's own default "
+        "(platform log location, or stdout in some configurations).",
+    )
     args = parser.parse_args()
+
+    unity_log_file = args.unity_log_file
+    if unity_log_file is None:
+        unity_log_file = f"{default_run_dir(base='unity_logs')}.log"
+    additional_args = None
+    if unity_log_file:
+        # Absolute, since Unity resolves a relative -logFile path against its own working
+        # directory (e.g. inside the .app bundle), not the cwd this script was launched from.
+        unity_log_file = str(Path(unity_log_file).resolve())
+        Path(unity_log_file).parent.mkdir(parents=True, exist_ok=True)
+        additional_args = ["-logFile", unity_log_file]
+        print(f"[unity] player log -> {unity_log_file}")
 
     env = BlackOutEnv(
         env_path=args.build,
@@ -1071,6 +1092,7 @@ def main() -> None:
         map_h=24,
         time_scale=args.time_scale,
         no_graphics=not args.graphics,
+        additional_args=additional_args,
     )
     config_kwargs = dict(device=args.device)
     if args.checkpoint_dir is not None:
