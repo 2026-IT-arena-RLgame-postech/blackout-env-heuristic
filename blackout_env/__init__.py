@@ -1,4 +1,4 @@
-from .model import BaseModel, CheckpointModel, load_checkpoint, load_my_policy_checkpoint
+from .model import BaseModel, CheckpointModel, StrategicHeuristic, load_checkpoint, load_my_policy_checkpoint
 from .competition import MatchResult, SeriesResult, run_match, run_series
 from .env import (
     BlackOutEnv,
@@ -22,6 +22,7 @@ from .env import (
 __all__ = [
     "BaseModel",
     "CheckpointModel",
+    "StrategicHeuristic",
     "load_checkpoint",
     "load_my_policy_checkpoint",
     "MatchResult",

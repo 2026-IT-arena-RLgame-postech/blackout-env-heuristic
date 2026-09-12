@@ -104,8 +104,8 @@ class BlackOutEnv(ParallelEnv):
         self,
         env_path: str | None,
         semantic_config_path: str | Path | None = None,
-        map_w: int = 96,
-        map_h: int = 96,
+        map_w: int = 24,
+        map_h: int = 24,
         worker_id: int = 0,
         base_port: int | None = None,
         no_graphics: bool = True,
@@ -284,6 +284,11 @@ class BlackOutEnv(ParallelEnv):
         rewards: dict[str, float] = {a: 0.0 for a in self.agents}
         terminations: dict[str, bool] = {a: False for a in self.agents}
 
+        # Unit agents call EndEpisode immediately on game end.  Depending on ML-Agents
+        # scheduling, MapObsAgent can already expose the freshly reset episode (scores=0,
+        # time_left=1) in the same Python poll.  Retain the last playing-state scalars so
+        # terminal infos report the match that just ended rather than the next reset.
+        previous_scalars = dict(self._latest_scalars)
         self._collect_map_obs()
 
         for behavior_name in self._resolve_behavior_names():
@@ -320,6 +325,11 @@ class BlackOutEnv(ParallelEnv):
 
         self._latest_rewards = rewards
         self._latest_terminations = terminations
+        if any(terminations.values()) and previous_scalars:
+            previous_time = previous_scalars.get("time_left", 0.0)
+            current_time = self._latest_scalars.get("time_left", 0.0)
+            if current_time > previous_time + 0.25:
+                self._latest_scalars = previous_scalars
         return obs
 
     def _collect_map_obs(self) -> None:
