@@ -14,6 +14,7 @@ For full game rules see [docs/gameplay_en.md](docs/gameplay_en.md) / [docs/gamep
   - [Local Installation](#local-installation)
   - [Docker (GPU Training)](#docker-gpu-training)
 - [Usage](#usage)
+- [Training](#training)
 - [Observation Space](#observation-space)
 - [Competition](#competition)
   - [Observation](#observation)
@@ -83,6 +84,24 @@ PyTorch is required for training and competition. Install it separately accordin
 pip install torch --index-url https://download.pytorch.org/whl/cu124      # replace cu124 with your CUDA version
 uv pip install torch --index-url https://download.pytorch.org/whl/cu124   # replace cu124 with your CUDA version
 ```
+
+#### TensorBoard (training logs)
+
+Plain `pip install tensorboard` (or `uv add tensorboard`) pulls in a newer `protobuf`/`grpcio`
+than `mlagents-envs` allows and will silently break the Unity gRPC connection. Install it
+pinned to the same ranges used above instead:
+
+```bash
+pip install tensorboard "protobuf>=3.6,<3.21" "grpcio>=1.11.0,<=1.48.2"
+uv pip install tensorboard "protobuf>=3.6,<3.21" "grpcio>=1.11.0,<=1.48.2"
+```
+
+Do **not** add `tensorboard` to `pyproject.toml`'s `dependencies` — `mlagents-envs` and `torch`
+are intentionally kept outside uv's tracked dependency graph (installed via `uv pip install`
+above, not `uv add`), so running `uv add`/`uv sync` afterwards re-resolves the whole project
+without knowing about those pins and will bump `protobuf`/`grpcio` right back and uninstall
+`torch`/`mlagents-envs`/`gym`/`matplotlib` entirely (they get treated as untracked and removed
+on sync). Always use `uv pip install <pkg>` for anything added after the initial setup above.
 
 ### Docker (GPU Training)
 
@@ -188,6 +207,69 @@ obs, infos = env.reset(seed=42)   # identical map/item layout
 obs, infos = env.reset(seed=99)   # different layout
 obs, infos = env.reset()          # unseeded — random layout
 ```
+
+---
+
+## Training
+
+`blackout_env/train/qmix_trainer.py` trains a QMIX agent via self-play against an
+EMA-averaged copy of the current network (the EMA side stabilizes the opponent so it
+doesn't chase every gradient step; which physical team is "online" vs. EMA-controlled is
+re-randomized every episode, and training data is collected from both sides regardless).
+
+```bash
+python -m blackout_env.train.qmix_trainer --build path/to/BlackOut.app --steps 1000000
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--build` | *(required)* | Path to the Unity standalone build executable (`.app` on macOS, `.x86_64` on Linux, `.exe` on Windows) |
+| `--steps` | `1000000` | Total env steps to train for |
+| `--time-scale` | `20.0` | Unity `Time.timeScale` — higher speeds up headless training; use `1` when watching with `--graphics` |
+| `--graphics` | off (headless) | Show the Unity window instead of running `--no-graphics` |
+| `--checkpoint-dir` | `checkpoints` | Directory to save `.pt` checkpoints to |
+| `--resume` | none | Checkpoint path to resume training from |
+| `--device` | `cpu` | `cpu` or `cuda` |
+
+Quick smoke test with the Unity window visible at real-time speed:
+
+```bash
+python -m blackout_env.train.qmix_trainer --build build/mac/BlackOut.app --steps 3000 --time-scale 1 --graphics
+```
+
+### TensorBoard
+
+Training logs to `runs/` by default (see `--tb-log-dir`, or pass `--tb-log-dir ''` to disable).
+Requires `tensorboard` — see [TensorBoard install](#tensorboard-training-logs) above if you
+haven't installed it yet. While or after training, from the repo root:
+
+```bash
+tensorboard --logdir runs
+```
+
+Then open the printed URL (usually `http://localhost:6006`). Point `--logdir` at
+`--checkpoint-dir`'s sibling `runs` folder if you passed a custom `--tb-log-dir`, or at the
+parent of several runs (e.g. `--logdir runs`) to compare multiple training runs side by side —
+TensorBoard treats each subdirectory under `--logdir` as a separate run.
+
+What gets logged (tag prefix → contents, see `blackout_env/train/tb_logger.py`):
+
+| Tag prefix | Contents | X-axis |
+|---|---|---|
+| `loss/*` | `total`, `iqn`, `spr` | train step |
+| `grad_norm/*` | Pre-clip gradient L2 norm per network part (`graphic_encoder`, `vector_encoder`, `attention`, `token_type_emb`, `spr_head`, `q_head`, `dist_mixer`, `spr_predictor`) + `total_preclip` | train step |
+| `weight_norm/*` | Weight L2 norm, same per-part breakdown | train step |
+| `td_error/mean` | Mean absolute TD error over the batch | train step |
+| `schedule/*` | `epsilon`, `n_step`, `gamma`, `per_beta`, `lr` | train step |
+| `reward/step/*` | Per-team summed reward, this env step | env step |
+| `episode/return/*`, `episode/win_rate/*` | Per-team episode return and running win rate | env step |
+| `perf/steps_per_sec`, `perf/wall_time_s/*` | Throughput and the same env-step/select/train timing breakdown printed to console | env step |
+| `replay_buffer/*` | `size_a/b`, `max_priority_a/b` | env step |
+
+Note: `reward/*` is the total per-team reward already summed on the Unity side (kill/death/item/
+potential-shaping/nav-shaping all folded together before it reaches Python) — there's no
+per-component reward breakdown here. Getting that would need a Unity-side change to transmit
+`RewardEventLog`-style itemized rewards to Python separately.
 
 ---
 

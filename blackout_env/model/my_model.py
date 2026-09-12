@@ -19,7 +19,7 @@ N_UNITS = 10
 N_TEAM_STATE_TOKENS = 1
 N_DISCRETE_ACTIONS = 8  # 8 compass directions, see my_policy.py:DIRECTION_VECTORS
 N_ATTENTION_HEADS = 8
-ATTENTION_DEPTH = 12
+ATTENTION_DEPTH = 4
 
 # Token-type ids for the trunk sequence: which tokens are "graphic", "unit", or "global"
 # (team_state) — see MyModel's token_type_emb.

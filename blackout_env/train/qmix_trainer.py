@@ -43,7 +43,7 @@ import argparse
 import copy
 import itertools
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -61,6 +61,7 @@ from blackout_env.train.replay_buffer import SequentialReplayBuffer
 from blackout_env.train.reset_utils import shrink_and_perturb
 from blackout_env.train.returns import compute_n_step_return, compute_spr_valid_mask
 from blackout_env.train.schedules import linear_anneal, log_linear_anneal
+from blackout_env.train.tb_logger import TBLogger, default_run_dir
 
 TEAM_SIGN_COL = 2  # agent_state row: [pos_x, pos_y, team, *item_onehot, *class_onehot]
 N_TEAM = N_TEAM_A  # 5 — both teams are the same size
@@ -68,7 +69,7 @@ N_TEAM = N_TEAM_A  # 5 — both teams are the same size
 
 @dataclass
 class QMIXConfig:
-    hidden_size: int = 256
+    hidden_size: int = 128
     n_items: int = 5
     n_classes: int = 3
     team_state_size: int = 4
@@ -116,6 +117,14 @@ class QMIXConfig:
     eps_start: float = 1.0
     eps_end: float = 0.05
     eps_decay_steps: int = 100_000
+
+    # TensorBoard logging (see train/tb_logger.py). None disables it entirely. Defaults to a
+    # fresh timestamped subdirectory per process (default_run_dir) rather than a fixed "runs" --
+    # two concurrent runs writing into the exact same log_dir let one run's startup/cleanup
+    # delete the directory out from under the other's already-open SummaryWriter, which
+    # previously crashed training outright (TBLogger now also survives that if it still happens).
+    tb_log_dir: str | None = field(default_factory=default_run_dir)
+    tb_log_interval: int = 1000  # train steps between loss/grad/weight-norm scalars (matches the env-step print cadence in run())
 
     checkpoint_dir: str = "checkpoints"
     checkpoint_interval: int = 5_000  # env steps
@@ -205,6 +214,64 @@ class QMIXTrainer:
         self._total_env_steps_hint = 1  # set properly in run(); avoids div-by-zero if train_step() is called standalone
         self._online_is_team_a = True  # re-randomized every episode in _reset_env()
 
+        # ---- TensorBoard logging (train/tb_logger.py) ----
+        self.tb = TBLogger(self.cfg.tb_log_dir)
+
+        # Named submodules for per-part weight/gradient-norm logging. MyModel's own
+        # sub-encoders/heads plus the two auxiliary networks trained alongside it
+        # (dist_mixer, spr_predictor) -- see MyModel's docstring for what each part does.
+        self._tb_net_parts: dict[str, nn.Module] = {
+            "graphic_encoder": self.net.graphic_encoder,
+            "vector_encoder": self.net.vector_encoder,
+            "attention": self.net.attention,
+            "token_type_emb": self.net.token_type_emb,
+            "spr_head": self.net.spr_head,
+            "q_head": self.net.q_head,
+            "dist_mixer": self.dist_mixer,
+            "spr_predictor": self.spr_predictor,
+        }
+
+        # Populated by _forward_and_loss() each call -- purely additive bookkeeping read back
+        # by train_step()/run() for TB logging; does not affect the loss/training math.
+        self._last_iqn_loss: float | None = None
+        self._last_spr_loss: float | None = None
+        self._last_td_error_mean: float | None = None
+        self._last_q_mean: float | None = None
+        self._last_q_std: float | None = None
+
+        # Episode-outcome bookkeeping for TB (return/win-rate), independent of training.
+        self._episode_return_a = 0.0
+        self._episode_return_b = 0.0
+        self._episode_count = 0
+        self._episode_wins_a = 0
+        self._episode_wins_b = 0
+        # Same win tally, but by self-play ROLE (online net vs its slow EMA opponent, see
+        # _online_is_team_a / module docstring) rather than by physical team -- team_a/b win
+        # rate is confounded because which physical team plays "online" is re-randomized every
+        # episode, so it can't tell you whether the online policy is actually improving.
+        self._episode_wins_online = 0
+        self._episode_wins_opponent = 0
+
+        # Wall-clock breakdown accumulators (reset every print window in run()) — lets you see
+        # whether wall-clock is spent waiting on Unity (env.step, gRPC round-trip) vs on-policy
+        # forward pass (select_actions) vs gradient updates (train_step), instead of guessing
+        # from CPU/GPU utilization alone.
+        self._time_select = 0.0
+        self._time_env_step = 0.0
+        self._time_train = 0.0
+        self._time_prep = 0.0
+        self._time_forward = 0.0
+        self._time_backward = 0.0
+        self._time_priority = 0.0
+
+    def _sync(self) -> None:
+        """Blocks until queued device work finishes -- MPS/CUDA dispatch is async, so without
+        this, perf_counter() boundaries around device ops would time queuing, not execution."""
+        if self.device.type == "mps":
+            torch.mps.synchronize()
+        elif self.device.type == "cuda":
+            torch.cuda.synchronize()
+
     # ------------------------------------------------------------------
     # Schedules
     # ------------------------------------------------------------------
@@ -265,9 +332,12 @@ class QMIXTrainer:
         own_q = _own_team_rows(q_values, agent_states)  # [2, N_TEAM, 8]
         greedy = own_q.argmax(dim=-1).cpu().numpy()  # [2, N_TEAM]
 
+        # Explore branch: uniformly random compass direction.
+        random_dirs = np.random.randint(0, N_DISCRETE_ACTIONS, size=(2, N_TEAM))
+
         direction_idx = np.where(
             np.random.rand(2, N_TEAM) < epsilon,
-            np.random.randint(0, N_DISCRETE_ACTIONS, size=(2, N_TEAM)),
+            random_dirs,
             greedy,
         )
 
@@ -292,21 +362,68 @@ class QMIXTrainer:
 
     def collect_step(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, dict[str, np.ndarray]]:
         epsilon = self.epsilon()
+        t0 = time.perf_counter()
         env_actions, full_direction_idx = self.select_actions(obs, epsilon)
+        t1 = time.perf_counter()
 
         obs_a, obs_b = obs[self.team_a_agents[0]], obs[self.team_b_agents[0]]
         next_obs, rewards, terminations, _, _ = self.env.step(env_actions)
+        t2 = time.perf_counter()
+        self._time_select += t1 - t0
+        self._time_env_step += t2 - t1
         done = any(terminations.values())
 
         reward_a = sum(rewards[a] for a in self.team_a_agents)
         reward_b = sum(rewards[a] for a in self.team_b_agents)
+        self._episode_return_a += reward_a
+        self._episode_return_b += reward_b
 
         self.buffer_a.push(obs_a["graphic"], obs_a["team_state"], obs_a["agent_states"], full_direction_idx, reward_a, done)
         self.buffer_b.push(obs_b["graphic"], obs_b["team_state"], obs_b["agent_states"], full_direction_idx, reward_b, done)
 
         self.env_step_count += 1
+        if self.env_step_count % self.cfg.tb_log_interval == 0:
+            self.tb.scalars("reward/step", {"team_a": reward_a, "team_b": reward_b}, self.env_step_count)
 
         if done:
+            # Terminal-step reward already carries the ±1 win/loss/draw event from
+            # BlackOutEpisodeCoordinator.OnGameEnded on top of that step's ordinary shaping --
+            # its sign dominates episode return, so this is a reasonable win/loss proxy without
+            # needing a dedicated "winner" field piped through from Unity.
+            self._episode_count += 1
+            team_a_won = self._episode_return_a > self._episode_return_b
+            team_b_won = self._episode_return_b > self._episode_return_a
+            if team_a_won:
+                self._episode_wins_a += 1
+            elif team_b_won:
+                self._episode_wins_b += 1
+            # self._online_is_team_a still reflects the episode that just ended -- _reset_env()
+            # (which re-randomizes it for the NEXT episode) hasn't run yet at this point.
+            online_won = (team_a_won and self._online_is_team_a) or (team_b_won and not self._online_is_team_a)
+            opponent_won = (team_a_won and not self._online_is_team_a) or (team_b_won and self._online_is_team_a)
+            if online_won:
+                self._episode_wins_online += 1
+            elif opponent_won:
+                self._episode_wins_opponent += 1
+            self.tb.scalars(
+                "episode/return",
+                {"team_a": self._episode_return_a, "team_b": self._episode_return_b},
+                self.env_step_count,
+            )
+            self.tb.scalars(
+                "episode/win_rate",
+                {"team_a": self._episode_wins_a / self._episode_count, "team_b": self._episode_wins_b / self._episode_count},
+                self.env_step_count,
+            )
+            self.tb.scalars(
+                "episode/win_rate_selfplay",
+                {
+                    "online": self._episode_wins_online / self._episode_count,
+                    "opponent": self._episode_wins_opponent / self._episode_count,
+                },
+                self.env_step_count,
+            )
+            self._episode_return_a = self._episode_return_b = 0.0
             next_obs, _ = self._reset_env()
         return next_obs
 
@@ -324,32 +441,99 @@ class QMIXTrainer:
         """
         return torch.tensor(graphic_np, dtype=torch.float32, device=self.device).permute(0, 3, 1, 2)
 
-    def _compute_loss(
+    # Fields that live on the anchor-sampled batch and are safe to concatenate along dim 0
+    # across streams (buffer_a, buffer_b) before a single shared forward pass. "indices" is
+    # deliberately excluded -- each stream's indices stay meaningful only against that
+    # stream's own buffer, so they're kept separate for update_priorities.
+    _MERGE_FIELDS = (
+        "is_weights", "graphic", "team_state", "agent_states", "actions",
+        "n_step_return", "not_done", "gamma_eff",
+        "boot_graphic", "boot_team_state", "boot_agent_states",
+        "future_graphic", "future_team_state", "future_agent_states",
+        "action_window", "valid_mask",
+    )
+
+    def _sample_batch(
         self, buffer: SequentialReplayBuffer, batch_size: int, n_step: int, gamma: float, beta: float
-    ):
-        """Returns (total_loss_per_sample [B], td_error [B], indices [B]) for one stream's batch."""
+    ) -> dict[str, np.ndarray]:
+        """
+        Pure-numpy anchor sampling + n-step/SPR window bookkeeping for ONE stream. Deliberately
+        does no tensor/device work and no network calls, so buffer_a's and buffer_b's batches
+        can be concatenated into a single forward pass per network (see _forward_and_loss)
+        instead of two separate ones -- MPS/CUDA pay a largely fixed per-launch dispatch cost,
+        so halving the number of forward invocations matters more here than the FLOPs saved
+        (measured: forward was ~60% of train_step wall time, dominated by launch count, not
+        compute, at this batch size).
+        """
         window = max(n_step, self.cfg.spr_k)
         batch = buffer.sample(batch_size, window=window, beta=beta)
         indices = batch["indices"]
 
-        graphic = self._to_graphic_tensor(batch["graphic"])
-        team_state = torch.tensor(batch["team_state"], dtype=torch.float32, device=self.device)
-        agent_states = torch.tensor(batch["agent_states"], dtype=torch.float32, device=self.device)
-        actions_full = torch.tensor(batch["actions"], dtype=torch.long, device=self.device)  # [B, 10]
-        own_actions = _own_team_rows(actions_full.unsqueeze(-1), agent_states).squeeze(-1)  # [B, N_TEAM]
-        is_weights = torch.tensor(batch["is_weights"], dtype=torch.float32, device=self.device)
-
-        # ---- n-step return + bootstrap state (Double DQN target, distributional) ----
         n_step_return, bootstrap_idx, not_done, gamma_eff = compute_n_step_return(
             buffer.reward, buffer.done, indices, buffer.capacity, n_step, gamma
         )
-        n_step_return_t = torch.tensor(n_step_return, dtype=torch.float32, device=self.device)
-        not_done_t = torch.tensor(not_done, dtype=torch.float32, device=self.device)
-        gamma_eff_t = torch.tensor(gamma_eff, dtype=torch.float32, device=self.device)
 
-        boot_graphic = self._to_graphic_tensor(buffer.graphic[bootstrap_idx])
-        boot_team_state = torch.tensor(buffer.team_state[bootstrap_idx], dtype=torch.float32, device=self.device)
-        boot_agent_states = torch.tensor(buffer.agent_states[bootstrap_idx], dtype=torch.float32, device=self.device)
+        offsets_future = np.arange(1, self.cfg.spr_k + 1)
+        offsets_action = np.arange(0, self.cfg.spr_k)
+        valid_mask = compute_spr_valid_mask(buffer.done, indices, buffer.capacity, self.cfg.spr_k)
+
+        return {
+            "indices": indices,
+            "is_weights": batch["is_weights"],
+            "graphic": batch["graphic"],
+            "team_state": batch["team_state"],
+            "agent_states": batch["agent_states"],
+            "actions": batch["actions"],
+            "n_step_return": n_step_return,
+            "not_done": not_done,
+            "gamma_eff": gamma_eff,
+            "boot_graphic": buffer.graphic[bootstrap_idx],
+            "boot_team_state": buffer.team_state[bootstrap_idx],
+            "boot_agent_states": buffer.agent_states[bootstrap_idx],
+            "future_graphic": buffer.read_window(indices, offsets_future, "graphic"),  # [b, K, H, W, C]
+            "future_team_state": buffer.read_window(indices, offsets_future, "team_state"),
+            "future_agent_states": buffer.read_window(indices, offsets_future, "agent_states"),
+            "action_window": buffer.read_window(indices, offsets_action, "actions"),  # [b, K, 10]
+            "valid_mask": valid_mask,  # [b, K] bool
+        }
+
+    def _merge_stream_batches(self, batch_a: dict[str, np.ndarray], batch_b: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+        """Concatenates two streams' sampled batches along dim 0 for one shared forward pass."""
+        return {field: np.concatenate([batch_a[field], batch_b[field]], axis=0) for field in self._MERGE_FIELDS}
+
+    def _to_tensors(self, batch: dict[str, np.ndarray]) -> dict[str, torch.Tensor]:
+        """Numpy -> device tensors for every _MERGE_FIELDS entry except the SPR future_* window
+        fields, which stay numpy here and are reshaped+converted in _forward_and_loss right
+        before the (B*K)-flattened ema_net call -- unchanged from the original single-stream
+        code's ordering, just relocated."""
+        return {
+            "graphic": self._to_graphic_tensor(batch["graphic"]),
+            "team_state": torch.tensor(batch["team_state"], dtype=torch.float32, device=self.device),
+            "agent_states": torch.tensor(batch["agent_states"], dtype=torch.float32, device=self.device),
+            "actions_full": torch.tensor(batch["actions"], dtype=torch.long, device=self.device),  # [B, 10]
+            "is_weights": torch.tensor(batch["is_weights"], dtype=torch.float32, device=self.device),
+            "n_step_return": torch.tensor(batch["n_step_return"], dtype=torch.float32, device=self.device),
+            "not_done": torch.tensor(batch["not_done"], dtype=torch.float32, device=self.device),
+            "gamma_eff": torch.tensor(batch["gamma_eff"], dtype=torch.float32, device=self.device),
+            "boot_graphic": self._to_graphic_tensor(batch["boot_graphic"]),
+            "boot_team_state": torch.tensor(batch["boot_team_state"], dtype=torch.float32, device=self.device),
+            "boot_agent_states": torch.tensor(batch["boot_agent_states"], dtype=torch.float32, device=self.device),
+            "future_graphic": batch["future_graphic"],
+            "future_team_state": batch["future_team_state"],
+            "future_agent_states": batch["future_agent_states"],
+            "action_window": torch.tensor(batch["action_window"], dtype=torch.long, device=self.device),  # [B, K, 10]
+            "valid_mask": torch.tensor(batch["valid_mask"], dtype=torch.float32, device=self.device),  # [B, K]
+        }
+
+    def _forward_and_loss(self, t: dict[str, torch.Tensor]) -> tuple[torch.Tensor, np.ndarray]:
+        """Runs net/target_net/ema_net/mixers ONCE on the (already-merged) batch `t` and
+        returns (total_loss_per_sample [B], td_error [B]). Same math as before the A/B merge --
+        every op here is per-sample (self-attention within a sample's own tokens, no
+        cross-sample mixing), so batching two streams together is equivalent to running them
+        separately and concatenating the results, just fewer/larger kernel launches."""
+        graphic, team_state, agent_states = t["graphic"], t["team_state"], t["agent_states"]
+        actions_full, is_weights = t["actions_full"], t["is_weights"]
+        own_actions = _own_team_rows(actions_full.unsqueeze(-1), agent_states).squeeze(-1)  # [B, N_TEAM]
 
         # ---- online forward (current state): Q-learning prediction + SPR rollout start ----
         q_values, quantile_values, tau, vision_latent, global_latent = self.net(
@@ -363,36 +547,40 @@ class QMIXTrainer:
 
         # ---- Double DQN target: online net picks the bootstrap action, target net evaluates it ----
         with torch.no_grad():
-            boot_q_online, *_ = self.net(boot_graphic, boot_team_state, boot_agent_states, n_quantiles=self.cfg.n_quantiles)
-            boot_greedy = _own_team_rows(boot_q_online, boot_agent_states).argmax(dim=-1)  # [B, N_TEAM]
+            boot_q_online, *_ = self.net(
+                t["boot_graphic"], t["boot_team_state"], t["boot_agent_states"], n_quantiles=self.cfg.n_quantiles
+            )
+            boot_greedy = _own_team_rows(boot_q_online, t["boot_agent_states"]).argmax(dim=-1)  # [B, N_TEAM]
 
             _, boot_quantiles_target, _, _, boot_global_target = self.target_net(
-                boot_graphic, boot_team_state, boot_agent_states, n_quantiles=self.cfg.n_quantiles
+                t["boot_graphic"], t["boot_team_state"], t["boot_agent_states"], n_quantiles=self.cfg.n_quantiles
             )
-            boot_own_quantiles_target = _own_team_rows(boot_quantiles_target, boot_agent_states)  # [B, N_TEAM, Q', A]
+            boot_own_quantiles_target = _own_team_rows(boot_quantiles_target, t["boot_agent_states"])  # [B, N_TEAM, Q', A]
             boot_chosen_target = torch.gather(
                 boot_own_quantiles_target, 3, boot_greedy.view(*boot_greedy.shape, 1, 1).expand(-1, -1, self.cfg.n_quantiles, 1)
             ).squeeze(-1)  # [B, N_TEAM, Q']
             q_tot_target = self.target_dist_mixer(boot_chosen_target, boot_global_target)  # [B, Q']
 
-            target = n_step_return_t.unsqueeze(1) + gamma_eff_t.unsqueeze(1) * not_done_t.unsqueeze(1) * q_tot_target
+            target = (
+                t["n_step_return"].unsqueeze(1)
+                + t["gamma_eff"].unsqueeze(1) * t["not_done"].unsqueeze(1) * q_tot_target
+            )
 
         iqn_loss = quantile_huber_loss(q_tot_online, tau, target)  # [B]
         with torch.no_grad():
             td_error = (q_tot_online.mean(dim=1) - target.mean(dim=1)).abs()
+            # Q-magnitude bookkeeping for TB: DQN-family divergence typically shows up here
+            # (mean/std creeping up) well before it shows up in the loss curve.
+            self._last_q_mean = q_tot_online.mean().item()
+            self._last_q_std = q_tot_online.std().item()
 
         # ---- SPR: open-loop K-step latent rollout vs EMA target encoder ----
         pooled_vision = vision_latent.mean(dim=1)  # [B, hidden]
-        offsets_future = np.arange(1, self.cfg.spr_k + 1)
-        offsets_action = np.arange(0, self.cfg.spr_k)
-        future_graphic = buffer.read_window(indices, offsets_future, "graphic")  # [B, K, H, W, C]
-        future_team_state = buffer.read_window(indices, offsets_future, "team_state")
-        future_agent_states = buffer.read_window(indices, offsets_future, "agent_states")
-        action_window = buffer.read_window(indices, offsets_action, "actions")  # [B, K, 10]
-        valid_mask = compute_spr_valid_mask(buffer.done, indices, buffer.capacity, self.cfg.spr_k)  # [B, K] bool
-
         Bsz = graphic.shape[0]
         K = self.cfg.spr_k
+        future_graphic, future_team_state, future_agent_states = (
+            t["future_graphic"], t["future_team_state"], t["future_agent_states"]
+        )
         with torch.no_grad():
             flat_graphic = self._to_graphic_tensor(future_graphic.reshape(Bsz * K, *future_graphic.shape[2:]))
             flat_team_state = torch.tensor(
@@ -406,19 +594,22 @@ class QMIXTrainer:
             )
             target_pooled = ema_vision_latent.mean(dim=1).view(Bsz, K, -1)  # [B, K, hidden]
 
-        action_window_t = torch.tensor(action_window, dtype=torch.long, device=self.device)  # [B, K, 10]
-        valid_mask_t = torch.tensor(valid_mask, dtype=torch.float32, device=self.device)  # [B, K]
-
         z = pooled_vision
         spr_losses = []
         for k in range(K):
-            z = self.spr_predictor.step(z, action_window_t[:, k, :])
+            z = self.spr_predictor.step(z, t["action_window"][:, k, :])
             spr_losses.append(self.spr_predictor.loss(z, target_pooled[:, k, :]))
         spr_losses = torch.stack(spr_losses, dim=1)  # [B, K]
-        spr_loss = (spr_losses * valid_mask_t).sum(dim=1) / (valid_mask_t.sum(dim=1) + 1e-6)  # [B]
+        spr_loss = (spr_losses * t["valid_mask"]).sum(dim=1) / (t["valid_mask"].sum(dim=1) + 1e-6)  # [B]
 
         total_loss = is_weights * iqn_loss + self.cfg.spr_loss_weight * spr_loss  # [B]
-        return total_loss, td_error.cpu().numpy(), indices
+
+        # Pure bookkeeping for TB logging (train_step reads these back) -- does not feed into
+        # the returned loss/td_error at all.
+        self._last_iqn_loss = iqn_loss.mean().item()
+        self._last_spr_loss = spr_loss.mean().item()
+
+        return total_loss, td_error.cpu().numpy()
 
     def train_step(self) -> float | None:
         if len(self.buffer_a) < self.cfg.min_buffer_size or len(self.buffer_b) < self.cfg.min_buffer_size:
@@ -431,20 +622,67 @@ class QMIXTrainer:
 
         losses = []
         for _ in range(self.cfg.grad_steps_per_call):
-            loss_a, td_a, idx_a = self._compute_loss(self.buffer_a, half, n_step, gamma, beta)
-            loss_b, td_b, idx_b = self._compute_loss(self.buffer_b, half, n_step, gamma, beta)
-            loss = torch.cat([loss_a, loss_b]).mean()
+            t_prep0 = time.perf_counter()
+            batch_a = self._sample_batch(self.buffer_a, half, n_step, gamma, beta)
+            batch_b = self._sample_batch(self.buffer_b, half, n_step, gamma, beta)
+            tensors = self._to_tensors(self._merge_stream_batches(batch_a, batch_b))
+            self._sync()
+            t_prep1 = time.perf_counter()
+            self._time_prep += t_prep1 - t_prep0
 
+            total_loss, td_error_np = self._forward_and_loss(tensors)
+            loss = total_loss.mean()
+            self._last_td_error_mean = float(td_error_np.mean())
+            self._sync()
+            t_fwd1 = time.perf_counter()
+            self._time_forward += t_fwd1 - t_prep1
+
+            t_bwd0 = time.perf_counter()
             self.optimizer.zero_grad()
             loss.backward()
-            nn.utils.clip_grad_norm_(
+
+            log_tb_this_step = self.tb.enabled and self.train_step_count % self.cfg.tb_log_interval == 0
+            if log_tb_this_step:
+                # Pre-clip grad norms -- clip_grad_norm_ below mutates grads in place, so this
+                # has to run first to see the raw (un-clipped) per-part magnitude.
+                self.tb.grad_norms("grad_norm", self._tb_net_parts, self.train_step_count)
+
+            total_grad_norm = nn.utils.clip_grad_norm_(
                 itertools.chain(self.net.parameters(), self.dist_mixer.parameters(), self.spr_predictor.parameters()),
                 self.cfg.grad_clip,
             )
             self.optimizer.step()
+            self._sync()
+            t_bwd1 = time.perf_counter()
+            self._time_backward += t_bwd1 - t_bwd0
 
-            self.buffer_a.update_priorities(idx_a, td_a)
-            self.buffer_b.update_priorities(idx_b, td_b)
+            if log_tb_this_step:
+                self.tb.scalar("grad_norm/total_preclip", float(total_grad_norm), self.train_step_count)
+                self.tb.weight_norms("weight_norm", self._tb_net_parts, self.train_step_count)
+                self.tb.scalars(
+                    "loss",
+                    {"total": loss.item(), "iqn": self._last_iqn_loss, "spr": self._last_spr_loss},
+                    self.train_step_count,
+                )
+                self.tb.scalar("td_error/mean", self._last_td_error_mean, self.train_step_count)
+                self.tb.scalars(
+                    "q_value", {"mean": self._last_q_mean, "std": self._last_q_std}, self.train_step_count
+                )
+                self.tb.scalars(
+                    "schedule",
+                    {
+                        "epsilon": self.epsilon(),
+                        "n_step": n_step,
+                        "gamma": gamma,
+                        "per_beta": beta,
+                        "lr": self.optimizer.param_groups[0]["lr"],
+                    },
+                    self.train_step_count,
+                )
+
+            n_a = len(batch_a["indices"])
+            self.buffer_a.update_priorities(batch_a["indices"], td_error_np[:n_a])
+            self.buffer_b.update_priorities(batch_b["indices"], td_error_np[n_a:])
 
             ema_update(self.ema_net, self.net, self.cfg.ema_tau)
             ema_update(self.spr_predictor.target_projector, self.spr_predictor.projector, self.cfg.ema_tau)
@@ -455,6 +693,7 @@ class QMIXTrainer:
                 self.target_dist_mixer.load_state_dict(self.dist_mixer.state_dict())
 
             losses.append(loss.item())
+            self._time_priority += time.perf_counter() - t_bwd1
 
         return sum(losses) / len(losses)
 
@@ -504,30 +743,81 @@ class QMIXTrainer:
         ckpt_dir.mkdir(parents=True, exist_ok=True)
 
         t0 = time.time()
+        window_t0 = time.time()
         recent_losses: list[float] = []
         while self.env_step_count < total_env_steps:
             obs = self.collect_step(obs)
             self.maybe_reset()
 
             if self.env_step_count % self.cfg.train_every == 0:
+                t_train0 = time.perf_counter()
                 loss = self.train_step()
+                self._time_train += time.perf_counter() - t_train0
                 if loss is not None:
                     recent_losses.append(loss)
 
             if self.env_step_count % 1000 == 0:
                 elapsed = time.time() - t0
                 avg_loss = sum(recent_losses) / len(recent_losses) if recent_losses else float("nan")
+                window_wall = time.time() - window_t0
+                window = self._time_select + self._time_env_step + self._time_train
+                other = max(window_wall - window, 0.0)
                 print(
                     f"[step {self.env_step_count}] eps={self.epsilon():.3f} n_step={self.current_n_step()} "
                     f"gamma={self.current_gamma():.4f} avg_loss={avg_loss:.4f} "
-                    f"({self.env_step_count / max(elapsed, 1e-9):.1f} steps/s)"
+                    f"({self.env_step_count / max(elapsed, 1e-9):.1f} steps/s) | "
+                    f"breakdown over last {window_wall:.1f}s: "
+                    f"env.step={self._time_env_step:.1f}s ({100 * self._time_env_step / window_wall:.0f}%) "
+                    f"select_actions={self._time_select:.1f}s ({100 * self._time_select / window_wall:.0f}%) "
+                    f"train_step={self._time_train:.1f}s ({100 * self._time_train / window_wall:.0f}%) "
+                    f"other={other:.1f}s ({100 * other / window_wall:.0f}%)"
                 )
+                print(
+                    f"  train_step internals: prep(sample+to_device)={self._time_prep:.1f}s "
+                    f"({100 * self._time_prep / max(self._time_train, 1e-9):.0f}% of train_step) "
+                    f"forward(net/target/ema+SPR)={self._time_forward:.1f}s "
+                    f"({100 * self._time_forward / max(self._time_train, 1e-9):.0f}%) "
+                    f"backward+optim={self._time_backward:.1f}s "
+                    f"({100 * self._time_backward / max(self._time_train, 1e-9):.0f}%) "
+                    f"priority+ema={self._time_priority:.1f}s "
+                    f"({100 * self._time_priority / max(self._time_train, 1e-9):.0f}%)"
+                )
+                self.tb.scalar("perf/steps_per_sec", self.env_step_count / max(elapsed, 1e-9), self.env_step_count)
+                self.tb.scalars(
+                    "perf/wall_time_s",
+                    {
+                        "env_step": self._time_env_step,
+                        "select_actions": self._time_select,
+                        "train_step": self._time_train,
+                        "other": other,
+                        "train_prep": self._time_prep,
+                        "train_forward": self._time_forward,
+                        "train_backward": self._time_backward,
+                        "train_priority_ema": self._time_priority,
+                    },
+                    self.env_step_count,
+                )
+                self.tb.scalars(
+                    "replay_buffer",
+                    {
+                        "size_a": len(self.buffer_a),
+                        "size_b": len(self.buffer_b),
+                        "max_priority_a": self.buffer_a._max_priority,
+                        "max_priority_b": self.buffer_b._max_priority,
+                    },
+                    self.env_step_count,
+                )
+
                 recent_losses.clear()
+                self._time_select = self._time_env_step = self._time_train = 0.0
+                self._time_prep = self._time_forward = self._time_backward = self._time_priority = 0.0
+                window_t0 = time.time()
 
             if self.env_step_count % self.cfg.checkpoint_interval == 0:
                 self.save(ckpt_dir / f"step_{self.env_step_count}.pt")
 
         self.save(ckpt_dir / "final.pt")
+        self.tb.close()
 
     def save(self, path: Path) -> None:
         torch.save(
@@ -568,6 +858,11 @@ def main() -> None:
     parser.add_argument("--checkpoint-dir", default="checkpoints")
     parser.add_argument("--resume", default=None, help="Checkpoint path to resume from")
     parser.add_argument("--device", default="cpu")
+    parser.add_argument(
+        "--tb-log-dir",
+        default=None,
+        help="TensorBoard log dir; default is a fresh timestamped folder under runs/ (see default_run_dir), pass '' to disable",
+    )
     args = parser.parse_args()
 
     env = BlackOutEnv(
@@ -579,7 +874,10 @@ def main() -> None:
         time_scale=args.time_scale,
         no_graphics=not args.graphics,
     )
-    config = QMIXConfig(checkpoint_dir=args.checkpoint_dir, device=args.device)
+    config_kwargs = dict(checkpoint_dir=args.checkpoint_dir, device=args.device)
+    if args.tb_log_dir is not None:
+        config_kwargs["tb_log_dir"] = args.tb_log_dir or None  # '' -> disable
+    config = QMIXConfig(**config_kwargs)
     trainer = QMIXTrainer(env, config)
 
     if args.resume:
