@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import heapq
 import math
+from collections import OrderedDict
 
 import numpy as np
 
@@ -31,7 +32,7 @@ class StrategicHeuristicV2(StrategicHeuristic):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._distance_cache: dict[tuple[int, int], np.ndarray] = {}
+        self._distance_cache: OrderedDict[tuple[int, int], np.ndarray] = OrderedDict()
 
     def reset(self) -> None:
         super().reset()
@@ -104,25 +105,21 @@ class StrategicHeuristicV2(StrategicHeuristic):
         if not names:
             return {}
 
-        protected_enemy = self._protected_enemy_storage_mask(graphic)
+        protected_enemy = self._cached_protected_enemy_storage_mask(graphic)
         tasks: list[tuple[tuple[int, int], str, float]] = []
-        ys, xs = np.nonzero(graphic[..., BATTERY] > 1e-5)
-        for y, x in zip(ys.tolist(), xs.tolist()):
+        for y, x, amount in self._battery_pixels(graphic):
             if graphic[y, x, STORAGE_ALLY] > 0.5 or protected_enemy[y, x]:
                 continue
-            amount = float(graphic[y, x, BATTERY]) * 15.0
             kind = "steal" if graphic[y, x, STORAGE_ENEMY] > 0.5 else "battery"
             tasks.append(((y, x), kind, amount))
 
         # Unlike V1, specials in the protected enemy store are filtered too.
         special_value = {9: 11.0, 10: 10.0, 11: 4.5, 12: 4.5}
         if float(team_state[0]) < 0.92:
-            for channel in range(FIRST_SPECIAL, graphic.shape[-1]):
-                ys, xs = np.nonzero(graphic[..., channel] > 0.5)
-                for y, x in zip(ys.tolist(), xs.tolist()):
-                    if graphic[y, x, STORAGE_ALLY] > 0.5 or protected_enemy[y, x]:
-                        continue
-                    tasks.append(((y, x), "special", special_value.get(channel, 3.0)))
+            for channel, y, x in self._special_pixels(graphic):
+                if graphic[y, x, STORAGE_ALLY] > 0.5 or protected_enemy[y, x]:
+                    continue
+                tasks.append(((y, x), "special", special_value.get(channel, 3.0)))
         if not tasks:
             return {}
 
@@ -194,6 +191,12 @@ class StrategicHeuristicV2(StrategicHeuristic):
         if cached is None:
             cached = self._distance_map(walkable, start)
             self._distance_cache[start] = cached
+            bytes_per_map = max(1, walkable.size * np.dtype(np.float32).itemsize)
+            max_entries = max(32, min(walkable.size, (16 * 1024 * 1024) // bytes_per_map))
+            if len(self._distance_cache) > max_entries:
+                self._distance_cache.popitem(last=False)
+        else:
+            self._distance_cache.move_to_end(start)
         return cached
 
     @staticmethod

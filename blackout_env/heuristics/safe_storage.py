@@ -48,7 +48,7 @@ class StrategicHeuristicV3(StrategicHeuristicV2):
         origin: tuple[int, int],
         team_state: np.ndarray,
     ) -> tuple[tuple[int, int] | None, bool]:
-        components = self._components(graphic[..., STORAGE_ALLY] > 0.5)
+        components = self._cached_components(graphic[..., STORAGE_ALLY] > 0.5)
         if not components:
             return None, False
 

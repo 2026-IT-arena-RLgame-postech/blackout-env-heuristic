@@ -8,6 +8,7 @@ the learner privileged Unity state.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from collections import OrderedDict
 import heapq
 import math
 
@@ -59,12 +60,28 @@ class StrategicHeuristic(BaseModel):
         self.replan_interval = max(1, int(replan_interval))
         self.threat_radius = float(threat_radius)
         self._memory: dict[str, _UnitMemory] = {}
+        self._static_masks: dict[str, np.ndarray] = {}
+        self._component_cache: dict[tuple[tuple[int, int], bytes], list[list[tuple[int, int]]]] = {}
+        self._path_cache: OrderedDict[
+            tuple[tuple[int, int], tuple[int, int]], tuple[tuple[int, int], ...]
+        ] = OrderedDict()
+        self._battery_scan_tick = -1
+        self._battery_scan: list[tuple[int, int, float]] = []
+        self._special_scan_tick = -1
+        self._special_scan: list[tuple[int, int, int]] = []
         self._tick = 0
         self._last_time_left: float | None = None
 
     def reset(self) -> None:
         """Clear episode-local paths and target reservations."""
         self._memory.clear()
+        self._static_masks.clear()
+        self._component_cache.clear()
+        self._path_cache.clear()
+        self._battery_scan_tick = -1
+        self._battery_scan.clear()
+        self._special_scan_tick = -1
+        self._special_scan.clear()
         self._tick = 0
         self._last_time_left = None
 
@@ -120,12 +137,14 @@ class StrategicHeuristic(BaseModel):
 
     @staticmethod
     def _class_id(state: np.ndarray) -> int:
-        return int(np.argmax(state[-3:]))
+        # np.argmax setup dominates the comparison for a fixed three-element one-hot.
+        a, b, c = float(state[-3]), float(state[-2]), float(state[-1])
+        return 0 if a >= b and a >= c else 1 if b >= c else 2
 
     @staticmethod
     def _is_holding(state: np.ndarray) -> bool:
         # item encoding begins at 3: slot 0=none, slot 1=battery, 2+=specials.
-        return bool(np.max(state[4:9]) > 1e-5)
+        return any(float(state[i]) > 1e-5 for i in range(4, 9))
 
     def _choose_target(
         self,
@@ -177,11 +196,9 @@ class StrategicHeuristic(BaseModel):
             ), "patrol_defend"
 
         candidates: list[tuple[float, tuple[int, int], str]] = []
-        battery = graphic[..., BATTERY]
-        protected_enemy = self._protected_enemy_storage_mask(graphic)
-        ys, xs = np.nonzero(battery > 1e-5)
+        protected_enemy = self._cached_protected_enemy_storage_mask(graphic)
         absorption_urgency = 1.0 - float(team_state[3])
-        for y, x in zip(ys.tolist(), xs.tolist()):
+        for y, x, amount in self._battery_pixels(graphic):
             p = (y, x)
             if p in reservations:
                 continue
@@ -194,7 +211,6 @@ class StrategicHeuristic(BaseModel):
             # look traversable in the public map, but MapManager rejects our team's movement.
             if protected_enemy[y, x]:
                 continue
-            amount = float(battery[y, x]) * 15.0
             is_enemy_storage = graphic[y, x, STORAGE_ENEMY] > 0.5
             kind = "steal" if is_enemy_storage else "battery"
             distance = math.hypot(y - pos[0], x - pos[1])
@@ -208,15 +224,13 @@ class StrategicHeuristic(BaseModel):
         # over-commitment to the lone special.
         score_gap_to_win = max(0.0, 1.0 - float(team_state[0]))
         if score_gap_to_win > 0.08:
-            for channel in range(FIRST_SPECIAL, graphic.shape[-1]):
-                ys, xs = np.nonzero(graphic[..., channel] > 0.5)
-                for y, x in zip(ys.tolist(), xs.tolist()):
-                    p = (y, x)
-                    if p in reservations or graphic[y, x, STORAGE_ALLY] > 0.5:
-                        continue
-                    distance = math.hypot(y - pos[0], x - pos[1])
-                    priority = 5.8 if channel in (9, 10) else 3.8
-                    candidates.append((priority - 0.12 * distance - 0.3 * local_index, p, "special"))
+            for channel, y, x in self._special_pixels(graphic):
+                p = (y, x)
+                if p in reservations or graphic[y, x, STORAGE_ALLY] > 0.5:
+                    continue
+                distance = math.hypot(y - pos[0], x - pos[1])
+                priority = 5.8 if channel in (9, 10) else 3.8
+                candidates.append((priority - 0.12 * distance - 0.3 * local_index, p, "special"))
 
         if candidates:
             _, target, kind = max(candidates, key=lambda x: x[0])
@@ -297,7 +311,9 @@ class StrategicHeuristic(BaseModel):
         mem.arrival_key = None
         mem.arrival_ticks = 0
 
-        if mem.last_pos is not None and np.linalg.norm(state[:2] - mem.last_pos) < 2e-4:
+        if mem.last_pos is not None and math.hypot(
+            float(state[0] - mem.last_pos[0]), float(state[1] - mem.last_pos[1])
+        ) < 2e-4:
             mem.stuck_ticks += 1
         else:
             mem.stuck_ticks = 0
@@ -311,9 +327,10 @@ class StrategicHeuristic(BaseModel):
         # the same boundary does move every tick, so the old last-position test never fired.
         oscillating = False
         if len(mem.recent_positions) >= 16:
-            net = float(np.linalg.norm(mem.recent_positions[-1] - mem.recent_positions[-16]))
+            delta_net = mem.recent_positions[-1] - mem.recent_positions[-16]
+            net = math.hypot(float(delta_net[0]), float(delta_net[1]))
             travelled = sum(
-                float(np.linalg.norm(b - a))
+                math.hypot(float(b[0] - a[0]), float(b[1] - a[1]))
                 for a, b in zip(mem.recent_positions[-16:-1], mem.recent_positions[-15:])
             )
             oscillating = net < 0.012 and travelled > 0.045
@@ -324,7 +341,7 @@ class StrategicHeuristic(BaseModel):
         stuck = mem.stuck_ticks >= 12 or oscillating
         if changed or path_exhausted or stuck or mem.replan_in <= 0 or (moving_target and self._tick % 4 == 0):
             mem.target, mem.target_kind = target, kind
-            mem.path = self._astar(walkable, pos, target)
+            mem.path = self._cached_astar(walkable, pos, target)
             mem.replan_in = 4 if moving_target else self.replan_interval
 
         # Follow cell centers closely.  Skipping two or three A* nodes made the continuous
@@ -392,8 +409,68 @@ class StrategicHeuristic(BaseModel):
     @classmethod
     def _to_pixel(cls, position: np.ndarray, shape: tuple[int, int]) -> tuple[int, int]:
         p = cls._to_pixel_float(position, shape)
-        return (int(np.clip(round(float(p[0])), 0, shape[0] - 1)),
-                int(np.clip(round(float(p[1])), 0, shape[1] - 1)))
+        return (min(shape[0] - 1, max(0, int(round(float(p[0]))))),
+                min(shape[1] - 1, max(0, int(round(float(p[1]))))))
+
+    def _cached_protected_enemy_storage_mask(self, graphic: np.ndarray) -> np.ndarray:
+        """Cache topology-only protected storage inference for one episode."""
+        cached = self._static_masks.get("protected_enemy_storage")
+        if cached is None:
+            cached = self._protected_enemy_storage_mask(graphic)
+            self._static_masks["protected_enemy_storage"] = cached
+        return cached
+
+    def _cached_components(self, mask: np.ndarray) -> list[list[tuple[int, int]]]:
+        """Cache connected components of immutable semantic-region masks."""
+        key = (mask.shape, mask.tobytes())
+        cached = self._component_cache.get(key)
+        if cached is None:
+            cached = self._components(mask)
+            self._component_cache[key] = cached
+        return cached
+
+    def _battery_pixels(self, graphic: np.ndarray) -> list[tuple[int, int, float]]:
+        """Scan dynamic battery pixels once per team decision tick."""
+        if self._battery_scan_tick != self._tick:
+            ys, xs = np.nonzero(graphic[..., BATTERY] > 1e-5)
+            self._battery_scan = [
+                (int(y), int(x), float(graphic[y, x, BATTERY]) * 15.0)
+                for y, x in zip(ys.tolist(), xs.tolist())
+            ]
+            self._battery_scan_tick = self._tick
+        return self._battery_scan
+
+    def _special_pixels(self, graphic: np.ndarray) -> list[tuple[int, int, int]]:
+        """Scan dynamic special-item pixels once per team decision tick."""
+        if self._special_scan_tick != self._tick:
+            found: list[tuple[int, int, int]] = []
+            for channel in range(FIRST_SPECIAL, graphic.shape[-1]):
+                ys, xs = np.nonzero(graphic[..., channel] > 0.5)
+                found.extend(
+                    (channel, int(y), int(x))
+                    for y, x in zip(ys.tolist(), xs.tolist())
+                )
+            self._special_scan = found
+            self._special_scan_tick = self._tick
+        return self._special_scan
+
+    def _cached_astar(
+        self,
+        walkable: np.ndarray,
+        start: tuple[int, int],
+        goal: tuple[int, int],
+    ) -> list[tuple[int, int]]:
+        """Return a mutable copy of a deterministic path from a bounded episode LRU."""
+        key = (start, goal)
+        cached = self._path_cache.get(key)
+        if cached is None:
+            cached = tuple(self._astar(walkable, start, goal))
+            self._path_cache[key] = cached
+            if len(self._path_cache) > 4096:
+                self._path_cache.popitem(last=False)
+        else:
+            self._path_cache.move_to_end(key)
+        return list(cached)
 
     @staticmethod
     def _nearest_pixel(mask: np.ndarray, origin: tuple[int, int]) -> tuple[int, int] | None:
@@ -423,7 +500,7 @@ class StrategicHeuristic(BaseModel):
         period: int,
     ) -> tuple[int, int] | None:
         """Deterministically rotate team members through region components."""
-        components = self._components(mask)
+        components = self._cached_components(mask)
         if not components:
             return None
         # Stable spatial ordering makes the patrol reproducible and spreads teammates out.

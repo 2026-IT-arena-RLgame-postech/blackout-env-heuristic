@@ -30,7 +30,7 @@ class StrategicHeuristicV4(StrategicHeuristicV3):
             return target, kind
 
         component = next(
-            (c for c in self._components(graphic[..., STORAGE_ALLY] > 0.5) if target in c),
+            (c for c in self._cached_components(graphic[..., STORAGE_ALLY] > 0.5) if target in c),
             None,
         )
         if component:
@@ -42,4 +42,3 @@ class StrategicHeuristicV4(StrategicHeuristicV3):
             target = min(choices, key=lambda point: math.dist(point, origin))
         reservations.add(target)
         return target, kind
-
