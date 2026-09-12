@@ -232,10 +232,40 @@ class BlackOutEnv(ParallelEnv):
         self._latest_winner = None
         self._latest_scalars = {}
 
-        self._latest_obs = self._collect_obs()
+        self._latest_obs = self._advance_until_ready()
 
         infos: dict[str, Any] = {a: {} for a in self.agents}
         return dict(self._latest_obs), infos
+
+    def _advance_until_ready(self) -> dict[str, dict]:
+        """
+        BlackOutAgent requests a fresh decision only every `decisionPeriod` FixedUpdate ticks
+        (Unity repeats the last action via RequestAction() on the ticks in between -- see
+        BlackOutAgent.cs), and additionally suppresses its very first post-reset decision for
+        one tick (to avoid a new episode's decision overwriting the previous episode's terminal
+        info before Python sees it). On any of these skip ticks, BlackOutUnit's decision/
+        terminal steps are BOTH empty this exchange, so _collect_obs() legitimately returns {}
+        even though the match/episode is still very much running (or, for reset(), has only
+        just begun). Keep advancing the sim tick-by-tick -- no new actions to send, Unity
+        ignores whatever's queued on a skip tick anyway, and UnityEnvironment.step() auto-fills
+        an empty action for any behavior not re-sent -- until a real decision or terminal round
+        comes back, so callers (step() and reset()) never observe a skip tick as a distinct
+        result. A match-ending EndEpisode() call sends its terminal AgentInfo synchronously
+        regardless of decision-tick parity, so this never has to distinguish "still skipping"
+        from "episode over" -- both end the loop via non-empty obs.
+        """
+        obs = self._collect_obs()
+        skip_ticks = 0
+        while not obs:
+            skip_ticks += 1
+            if skip_ticks > 16:
+                raise RuntimeError(
+                    "BlackOutEnv: 16 consecutive FixedUpdate ticks with no BlackOutUnit "
+                    "decision or terminal step -- decisionPeriod misconfigured, or Unity stalled."
+                )
+            self._unity_env.step()
+            obs = self._collect_obs()
+        return obs
 
     def step(
         self,
@@ -249,30 +279,7 @@ class BlackOutEnv(ParallelEnv):
     ]:
         self._send_actions(actions)
         self._unity_env.step()
-        obs = self._collect_obs()
-
-        # BlackOutAgent requests a fresh decision only every `decisionPeriod` FixedUpdate
-        # ticks (Unity repeats the last action via RequestAction() on the ticks in between --
-        # see BlackOutAgent.cs); on those in-between ticks, BlackOutUnit's decision/terminal
-        # steps are BOTH empty this exchange, so `obs` comes back {} even though the match is
-        # still very much running. Keep advancing the sim tick-by-tick (no new actions to
-        # send -- Unity ignores whatever's queued on a skip tick anyway, and
-        # UnityEnvironment.step() auto-fills an empty action for any behavior not re-sent) until
-        # a real decision or terminal round comes back, so callers never observe a skip tick as
-        # a distinct env.step() result. A match-ending EndEpisode() call sends its terminal
-        # AgentInfo synchronously regardless of decision-tick parity (that's the whole reason
-        # BlackOutAgent suppresses its next decision post-reset), so this never has to
-        # distinguish "still skipping" from "episode over" -- both end the loop via non-empty obs.
-        skip_ticks = 0
-        while not obs:
-            skip_ticks += 1
-            if skip_ticks > 16:
-                raise RuntimeError(
-                    "BlackOutEnv.step(): 16 consecutive FixedUpdate ticks with no BlackOutUnit "
-                    "decision or terminal step -- decisionPeriod misconfigured, or Unity stalled."
-                )
-            self._unity_env.step()
-            obs = self._collect_obs()
+        obs = self._advance_until_ready()
 
         rewards = dict(self._latest_rewards)
         terminations = dict(self._latest_terminations)
