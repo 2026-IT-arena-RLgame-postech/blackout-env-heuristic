@@ -14,6 +14,9 @@ from .safe_storage import StrategicHeuristicV3
 from .spread_deposit import StrategicHeuristicV4
 from .intercept import StrategicHeuristicV5
 from .risk_path import StrategicHeuristicV6
+from .v4_family import V4PolicyFamily
+from .dynamic_roles import StrategicHeuristicV7
+from .lifecycle_roles import StrategicHeuristicV8
 
 
 @dataclass(frozen=True)
@@ -22,7 +25,7 @@ class PolicySample:
 
     policy_id: str
     policy_seed: int
-    parameters: dict[str, float | bool]
+    parameters: dict[str, float | bool | str]
 
 
 POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
@@ -32,6 +35,9 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
     "strategic_v4": StrategicHeuristicV4,
     "strategic_v5": StrategicHeuristicV5,
     "strategic_v6": StrategicHeuristicV6,
+    "strategic_v4_near": V4PolicyFamily,
+    "strategic_v7": StrategicHeuristicV7,
+    "strategic_v8": StrategicHeuristicV8,
 }
 
 
@@ -62,12 +68,15 @@ class HeuristicPolicyMixture(BaseModel):
     ):
         self._rng = np.random.default_rng(seed)
         default_weights = {
-            "strategic_v1": 0.15,
-            "strategic_v2": 0.12,
-            "strategic_v3": 0.18,
-            "strategic_v4": 0.42,
+            "strategic_v1": 0.12,
+            "strategic_v2": 0.10,
+            "strategic_v3": 0.13,
+            "strategic_v4": 0.25,
+            "strategic_v4_near": 0.20,
             "strategic_v5": 0.03,  # intentionally aggressive, but weak in direct evaluation
-            "strategic_v6": 0.10,
+            "strategic_v6": 0.08,
+            "strategic_v7": 0.06,
+            "strategic_v8": 0.03,  # lifecycle/respec exploration remains deliberately sparse
         }
         self.weights = dict(default_weights if weights is None else weights)
         unknown = set(self.weights) - set(POLICY_REGISTRY)
@@ -91,8 +100,19 @@ class HeuristicPolicyMixture(BaseModel):
         policy_seed = int(self._rng.integers(0, np.iinfo(np.int32).max))
         episode_rng = np.random.default_rng(policy_seed)
 
-        if self.perturb:
-            parameters: dict[str, float | bool] = {
+        if policy_id == "strategic_v4_near":
+            family = V4PolicyFamily(
+                seed=policy_seed,
+                profile_weights=None if self.perturb else {"exact": 1.0},
+            )
+            assert family.current_sample is not None
+            parameters: dict[str, float | bool | str] = {
+                "profile": family.current_sample.profile,
+                **family.current_sample.parameters,
+            }
+            self._policy = family
+        elif self.perturb:
+            parameters = {
                 "use_specialists": bool(episode_rng.random() >= 0.08),
                 "replan_interval": int(episode_rng.integers(8, 14)),
                 "threat_radius": float(episode_rng.uniform(0.135, 0.185)),
@@ -114,7 +134,8 @@ class HeuristicPolicyMixture(BaseModel):
                 "replan_interval": 10,
                 "threat_radius": 0.16,
             }
-        self._policy = make_heuristic(policy_id, **parameters)
+        if policy_id != "strategic_v4_near":
+            self._policy = make_heuristic(policy_id, **parameters)
         self.current_sample = PolicySample(policy_id, policy_seed, parameters)
         self._last_time_left = None
         return self.current_sample

@@ -53,6 +53,9 @@
 | `strategic_v4` | `StrategicHeuristicV4` | V3 + 동시 운반자의 창고 진입 타일 분산; 현재 권장판 |
 | `strategic_v5` | `StrategicHeuristicV5` | V4 + 적 운반 경로 예측 요격; 공격적 저가중치 변주 |
 | `strategic_v6` | `StrategicHeuristicV6` | V4 + 위협장 비용 A*; 저정체·보수적 변주 |
+| `strategic_v4_near` | `V4PolicyFamily` | V4와 거의 같은 exact/balanced/responsive/cautious 근접 변형군 |
+| `strategic_v7` | `StrategicHeuristicV7` | V4 + 클래스 제한·운반 능력·경기 국면을 반영한 동적 역할 배분 |
+| `strategic_v8` | `StrategicHeuristicV8` | V7 + 엄격한 조건에서 Hunter 상호 사망을 이용한 역할 리셋 실험판 |
 
 `HeuristicPolicyMixture(seed=...)`는 에피소드마다 위 버전을 샘플링하고 `replan_interval`,
 `threat_radius`, specialist 구성에 제한된 변주를 준다. 데이터 수집기는 매 trajectory에
@@ -64,6 +67,18 @@ mixture는 동일한 정책열을 재현하므로 offline RL의 behavior-policy 
 요격 margin/의도 온도/속도 EMA, V6에서는 위험 반경/가중치도 에피소드 단위로 변주된다. 특정
 ablation 데이터가 필요하면 `weights={"strategic_v6": 1.0}`처럼 명시한다. 매 tick action noise는
 추가하지 않으므로 한 trajectory 안의 행동 의도는 일관된다.
+
+V4 주변만 조밀하게 샘플링하려면 `V4PolicyFamily(seed=...)`를 직접 사용한다. 일반 mixture 안에서도
+`strategic_v4_near`가 하나의 정책으로 샘플링되므로 버전 혼합과 근접 변형을 동시에 쓸 수 있다.
+예를 들어 `weights={"strategic_v4": 0.4, "strategic_v4_near": 0.5,
+"strategic_v7": 0.1}`은 검증된 V4 중심 분포에 역할 배분 변주를 소량 섞는다.
+
+V7은 Carrier를 게임의 생존 최대치인 1기로 제한하고, 빈 Collector 중 성소까지의 실제 경로가 가장
+짧은 유닛을 배정한다. Hunter는 적 운반 활동, 경기 국면, 남은 필드 배터리를 보고 뒤늦게 투입한다.
+V8의 전략적 사망은 적 운반 활동이 장기간 없고, 팀이 열세이며, 수집할 배터리와 회수 시간이 남고,
+보호 구역 밖 적 Hunter와 상호 사망할 수 있을 때만 시작한다. 부활 뒤에는 쿨다운 동안 Collector로
+유지해 즉시 Hunter로 되돌아가는 루프를 막는다. 수집 데이터에는 `role_assignments`와 V8의
+`respec_attempts`, `respec_completions`도 함께 기록하는 것이 좋다.
 
 - 매 transition에 team perspective 관측, 5개 행동, physical unit index, 역할, 목표 종류, episode seed,
   흡수 구간 index를 저장한다.

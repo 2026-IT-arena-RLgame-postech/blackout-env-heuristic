@@ -15,6 +15,9 @@ from blackout_env.heuristics import (
     StrategicHeuristicV4,
     StrategicHeuristicV5,
     StrategicHeuristicV6,
+    V4PolicyFamily,
+    StrategicHeuristicV7,
+    StrategicHeuristicV8,
 )
 
 VERSIONS = {
@@ -23,6 +26,9 @@ VERSIONS = {
     "v4": StrategicHeuristicV4,
     "v5": StrategicHeuristicV5,
     "v6": StrategicHeuristicV6,
+    "v4-near": V4PolicyFamily,
+    "v7": StrategicHeuristicV7,
+    "v8": StrategicHeuristicV8,
 }
 BASELINES = {"v1": StrategicHeuristicV1, **VERSIONS}
 
@@ -97,10 +103,14 @@ class Game:
     steps: int
     candidate_failures: FailureRuns
     baseline_failures: FailureRuns
+    candidate_variant: str = ""
+    respec_attempts: int = 0
+    respec_completions: int = 0
 
 
 def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
-    candidate, baseline = candidate_type(), baseline_type()
+    candidate = candidate_type(seed=seed) if candidate_type is V4PolicyFamily else candidate_type()
+    baseline = baseline_type()
     physical_a, physical_b = set(team_a_agents()), set(team_b_agents())
     candidate_names = physical_b if swapped else physical_a
     baseline_names = physical_a if swapped else physical_b
@@ -109,8 +119,22 @@ def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
     candidate_monitor, baseline_monitor = MovementMonitor(), MovementMonitor()
     steps, final_info = 0, {}
     last_scores = (0.0, 0.0)
+    empty_obs_steps = 0
 
     while env.agents:
+        if not obs:
+            # Unity can expose one transition boundary with live agent names but no decision
+            # observations (especially when multiple workers are starting/stopping nearby).
+            # Advance with zero actions instead of indexing an empty observation dictionary.
+            obs, _, _, _, infos = env.step({})
+            empty_obs_steps += 1
+            steps += 1
+            if infos:
+                final_info = next(iter(infos.values()))
+            if empty_obs_steps > 200:
+                raise RuntimeError("Unity returned empty observations for over 200 steps")
+            continue
+        empty_obs_steps = 0
         candidate_obs = {n: obs[n] for n in env.agents if n in candidate_names and n in obs}
         baseline_obs = {n: obs[n] for n in env.agents if n in baseline_names and n in obs}
         actions = {}
@@ -119,6 +143,13 @@ def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
         actions.update(candidate_actions)
         actions.update(baseline_actions)
         before = next(iter(obs.values()))["agent_states"].copy()
+        # Preserve the last public score even when Unity's terminal info omits score keys.
+        public_team_state = obs[next(iter(obs))]["team_state"]
+        first_name = next(iter(obs))
+        if int(first_name.split("_")[1]) < 5:
+            last_scores = (float(public_team_state[0]), float(public_team_state[1]))
+        else:
+            last_scores = (float(public_team_state[1]), float(public_team_state[0]))
         next_obs, _, _, _, infos = env.step(actions)
         if infos:
             final_info = next(iter(infos.values()))
@@ -140,8 +171,15 @@ def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
         winner = 0 if int(physical_winner) == candidate_team else 1
     candidate_score = last_scores[candidate_team]
     baseline_score = last_scores[1 - candidate_team]
-    return Game(seed, swapped, winner, candidate_score, baseline_score, steps,
-                candidate_monitor.result, baseline_monitor.result)
+    variant = ""
+    if isinstance(candidate, V4PolicyFamily) and candidate.current_sample is not None:
+        variant = candidate.current_sample.profile
+    return Game(
+        seed, swapped, winner, candidate_score, baseline_score, steps,
+        candidate_monitor.result, baseline_monitor.result, variant,
+        int(getattr(candidate, "respec_attempts", 0)),
+        int(getattr(candidate, "respec_completions", 0)),
+    )
 
 
 def aggregate(games: list[Game], attr: str) -> dict[str, dict[str, float | int]]:
@@ -175,7 +213,8 @@ def main() -> int:
     print(f"seeds={seeds}", flush=True)
 
     env = BlackOutEnv(str(args.build), time_scale=args.time_scale,
-                      no_graphics=not args.graphics)
+                      no_graphics=not args.graphics,
+                      additional_args=["-logFile", "/dev/null"])
     games = []
     try:
         for seed in seeds:
@@ -187,7 +226,8 @@ def main() -> int:
                 label = "W" if game.winner == 0 else "L" if game.winner == 1 else "D"
                 print(f"seed={seed} swapped={swapped} {args.candidate.upper()}={label} "
                       f"score={game.candidate_score*100:.0f}-{game.baseline_score*100:.0f} "
-                      f"steps={game.steps}", flush=True)
+                      f"steps={game.steps} variant={game.candidate_variant or '-'} "
+                      f"respec={game.respec_completions}/{game.respec_attempts}", flush=True)
     finally:
         env.close()
 
@@ -200,6 +240,11 @@ def main() -> int:
           f"paired_margins={[round(x, 2) for x in paired]}")
     print(f"{args.candidate.upper()} reliability={aggregate(games, 'candidate_failures')}")
     print(f"{args.baseline.upper()} reliability={aggregate(games, 'baseline_failures')}")
+    attempts = sum(game.respec_attempts for game in games)
+    completions = sum(game.respec_completions for game in games)
+    if attempts:
+        print(f"respec lifecycle attempts={attempts} completions={completions} "
+              f"rate={completions / attempts:.3f}")
     return 0 if wins > losses and margins.mean() > 0 else 1
 
 

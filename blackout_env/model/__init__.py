@@ -4,7 +4,9 @@ from ..heuristics import (
     HeuristicPolicyMixture, RecommendedStrategicHeuristic, StrategicHeuristic, StrategicHeuristicV1,
     StrategicHeuristicV2, StrategicHeuristicV3, StrategicHeuristicV4,
     StrategicHeuristicV5,
-    StrategicHeuristicV6,
+    StrategicHeuristicV6, V4PolicyFamily,
+    StrategicHeuristicV7,
+    StrategicHeuristicV8,
 )
 
 __all__ = [
@@ -12,6 +14,9 @@ __all__ = [
     "StrategicHeuristicV2", "StrategicHeuristicV3", "StrategicHeuristicV4",
     "StrategicHeuristicV5",
     "StrategicHeuristicV6",
+    "StrategicHeuristicV7",
+    "StrategicHeuristicV8",
     "RecommendedStrategicHeuristic", "HeuristicPolicyMixture", "load_checkpoint",
+    "V4PolicyFamily",
     "load_my_policy_checkpoint",
 ]

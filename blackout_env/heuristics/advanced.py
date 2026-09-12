@@ -29,6 +29,14 @@ from ..env.constants import unit_index
 class StrategicHeuristicV2(StrategicHeuristic):
     """V1 plus global path-aware assignment and absorption-feasible stealing."""
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._distance_cache: dict[tuple[int, int], np.ndarray] = {}
+
+    def reset(self) -> None:
+        super().reset()
+        self._distance_cache.clear()
+
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         if not obs:
             return {}
@@ -130,7 +138,7 @@ class StrategicHeuristicV2(StrategicHeuristic):
         for name in names:
             state = states[row_for[name]]
             start = self._to_pixel(state[:2], graphic.shape[:2])
-            distances = self._distance_map(walkable, start)
+            distances = self._cached_distance_map(walkable, start)
             cls = self._class_id(state)
             speed = 6.0 if cls == CARRIER else 4.0
             old_target = self._memory.get(name).target if name in self._memory else None
@@ -178,6 +186,16 @@ class StrategicHeuristicV2(StrategicHeuristic):
                 break
         return result
 
+    def _cached_distance_map(
+        self, walkable: np.ndarray, start: tuple[int, int]
+    ) -> np.ndarray:
+        """Reuse maps for pixel positions revisited within one static-map episode."""
+        cached = self._distance_cache.get(start)
+        if cached is None:
+            cached = self._distance_map(walkable, start)
+            self._distance_cache[start] = cached
+        return cached
+
     @staticmethod
     def _distance_map(walkable: np.ndarray, start: tuple[int, int]) -> np.ndarray:
         """All-cell 8-neighbour shortest path lengths from one unit position."""
@@ -191,7 +209,10 @@ class StrategicHeuristicV2(StrategicHeuristic):
                       (-1, -1, 1.4142), (-1, 1, 1.4142), (1, -1, 1.4142), (1, 1, 1.4142))
         while queue:
             cost, y, x = heapq.heappop(queue)
-            if cost != float(distances[y, x]):
+            # Heap costs are Python float while the dense map is float32. Exact equality
+            # discarded almost every node reached through a diagonal (e.g. 1.4142 after
+            # float32 rounding), truncating the search to a tiny diamond around the start.
+            if cost > float(distances[y, x]) + 1e-5:
                 continue
             for dy, dx, step in neighbours:
                 ny, nx = y + dy, x + dx

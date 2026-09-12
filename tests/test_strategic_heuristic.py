@@ -6,6 +6,9 @@ from blackout_env.heuristics import (
     StrategicHeuristicV4,
     StrategicHeuristicV5,
     StrategicHeuristicV6,
+    V4PolicyFamily,
+    StrategicHeuristicV7,
+    StrategicHeuristicV8,
 )
 
 
@@ -177,6 +180,12 @@ def test_v2_global_assignment_uses_path_distance_not_agent_order():
     assert assigned["unit_1"][0] == (2, 2)
 
 
+def test_v2_distance_map_continues_after_diagonal_float_rounding():
+    walkable = np.ones((20, 20), dtype=bool)
+    distances = StrategicHeuristicV2._distance_map(walkable, (18, 1))
+    assert np.isfinite(distances[1, 18])
+
+
 def test_v2_skips_steal_that_will_be_absorbed_before_arrival():
     policy = StrategicHeuristicV2(use_specialists=False)
     graphic = np.zeros((24, 24, 13), dtype=np.float32)
@@ -204,6 +213,9 @@ def test_policy_mixture_is_reproducible_and_exposes_dataset_metadata():
         "strategic_v1", "strategic_v2", "strategic_v3", "strategic_v4",
         "strategic_v5",
         "strategic_v6",
+        "strategic_v4_near",
+        "strategic_v7",
+        "strategic_v8",
     }
     assert 8 <= first.current_sample.parameters["replan_interval"] <= 13
     next_first = first.reset()
@@ -222,6 +234,29 @@ def test_policy_mixture_resamples_when_unity_episode_time_resets():
     assert mixture.current_sample != initial
 
 
+def test_v4_family_exact_profile_matches_v4_and_is_reproducible():
+    first = V4PolicyFamily(seed=99, profile_weights={"exact": 1.0})
+    second = V4PolicyFamily(seed=99, profile_weights={"exact": 1.0})
+    assert first.current_sample == second.current_sample
+    assert first.current_sample.profile == "exact"
+    o = _observation()
+    family_actions = first.act({f"unit_{i}": o for i in range(5)})
+    v4_actions = StrategicHeuristicV4().act({f"unit_{i}": o for i in range(5)})
+    for name in family_actions:
+        np.testing.assert_allclose(family_actions[name], v4_actions[name])
+
+
+def test_general_mixture_can_force_nested_near_v4_family():
+    mixture = HeuristicPolicyMixture(
+        seed=5, weights={"strategic_v4_near": 1.0}, perturb=True
+    )
+    assert mixture.current_sample.policy_id == "strategic_v4_near"
+    assert mixture.current_sample.parameters["profile"] in {
+        "exact", "balanced", "responsive", "cautious"
+    }
+    assert 8 <= mixture.current_sample.parameters["replan_interval"] <= 12
+
+
 def test_v3_prefers_safe_home_storage_when_absorption_is_not_imminent():
     graphic = np.zeros((16, 16, 13), dtype=np.float32)
     graphic[..., 0] = 1
@@ -234,7 +269,7 @@ def test_v3_prefers_safe_home_storage_when_absorption_is_not_imminent():
     state[9] = 1
     states = np.stack([state] + [np.zeros(12, dtype=np.float32) for _ in range(9)])
     states[1:, 2] = -1
-    target, can_deposit = StrategicHeuristicV3._risk_aware_storage_target(
+    target, can_deposit = StrategicHeuristicV3()._risk_aware_storage_target(
         graphic, state, states, (7, 7), np.array([0, 0, 1, 1], np.float32)
     )
     assert can_deposit
@@ -326,3 +361,47 @@ def test_v6_cargo_path_detours_around_hunter_risk():
         "unit_0", state, states, (5, 9), "deposit", walkable, (11, 11)
     )
     assert abs(float(action[1])) > 0.2  # leaves the direct horizontal collision corridor
+
+
+def test_v7_delays_hunter_and_respects_distinct_specialist_quotas():
+    policy = StrategicHeuristicV7(
+        hunter_activation_time=0.4, hunter_activation_field_battery=0.0
+    )
+    o = _observation()
+    policy.act({f"unit_{i}": o for i in range(5)})
+    roles = list(policy.role_assignments.values())
+    assert roles.count("carrier") == 1
+    assert roles.count("hunter") == 0
+
+    o["agent_states"][5, 3] = 0
+    o["agent_states"][5, 4] = 5 / 15
+    policy.act({f"unit_{i}": o for i in range(5)})
+    roles = list(policy.role_assignments.values())
+    assert roles.count("carrier") == 1
+    assert roles.count("hunter") == 1
+
+
+def test_v8_respec_requires_mutual_kill_target_and_enforces_cooldown():
+    policy = StrategicHeuristicV8(
+        hunter_activation_time=0.0,
+        hunter_activation_field_battery=0.0,
+        respec_inactivity_ticks=2,
+        respec_score_gap=0.05,
+        respec_min_field_battery=1.0,
+        respec_cooldown_ticks=20,
+    )
+    o = _observation()
+    o["team_state"][:2] = [0.2, 0.4]
+    o["agent_states"][1, 9:12] = [0, 1, 0]
+    o["agent_states"][5, 9:12] = [0, 1, 0]
+    obs = {f"unit_{i}": o for i in range(5)}
+    policy.act(obs)
+    policy.act(obs)
+    assert policy.respec_attempts == 1
+    assert "respec" in policy.role_assignments.values()
+
+    o["agent_states"][1, 9:12] = [1, 0, 0]
+    policy.act(obs)
+    assert policy.respec_completions == 1
+    assert "hunter" not in policy.role_assignments.values()
+    assert policy._hunter_cooldown > 0
