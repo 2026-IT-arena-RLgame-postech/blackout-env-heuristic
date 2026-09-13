@@ -68,6 +68,7 @@ from blackout_env.env.constants import N_AGENTS, N_TEAM_A, team_a_agents, team_b
 from blackout_env.env.my_obs_preprocessor import MyObsPreprocessor
 from blackout_env.env.obs_preprocessor import load_semantic_config
 from blackout_env.heuristics import HeuristicPolicyMixture
+from blackout_env.train.offline_dataset import load_dataset_into
 from blackout_env.model.modules import (
     AttentionLayers,
     DistributionalQMixer,
@@ -1261,6 +1262,22 @@ def main() -> None:
         "delay handing control to the (already pretrained) net for no benefit.",
     )
     parser.add_argument(
+        "--seed-dataset-dir",
+        default=None,
+        help="Dir with buffer_a.npz/buffer_b.npz (from collect_heuristic_dataset.py) to preload "
+        "buffer_a/buffer_b with before this run starts collecting online -- otherwise a "
+        "--resume'd run starts with empty buffers (only net/optimizer state is checkpointed, "
+        "never replay data) and train_step() has nothing but slowly-arriving fresh online "
+        "transitions to sample until bootstrap_train_start_frac*capacity of them accumulate. "
+        "The preloaded data isn't permanent: SequentialReplayBuffer is a plain FIFO ring, so as "
+        "fresh online transitions get pushed they naturally evict the oldest (offline) ones "
+        "first, phasing this dataset out on its own once the buffer has cycled through one "
+        "capacity's worth of new steps -- same mechanism the phase-1 heuristic bootstrap's "
+        "offline->online handoff already relies on (see QMIXConfig.heuristic_fill_frac). "
+        "Typically the same dataset --resume's checkpoint was offline-pretrained on, paired "
+        "with --skip-bootstrap.",
+    )
+    parser.add_argument(
         "--device",
         default=None,
         help="torch device (e.g. cpu/cuda/mps). Default (unset) auto-picks the best available: "
@@ -1360,6 +1377,16 @@ def main() -> None:
         config_kwargs["tb_log_dir"] = args.tb_log_dir or None  # '' -> disable
     config = QMIXConfig(**config_kwargs)
     trainer = QMIXTrainer(env, config)
+
+    if args.seed_dataset_dir is not None:
+        seed_dir = Path(args.seed_dataset_dir)
+        n_a = load_dataset_into(trainer.buffer_a, seed_dir / "buffer_a.npz")
+        n_b = load_dataset_into(trainer.buffer_b, seed_dir / "buffer_b.npz")
+        print(
+            f"[seed] preloaded {n_a}/{n_b} transitions from {seed_dir} into buffer_a/buffer_b "
+            f"(buffer_a now holds {len(trainer.buffer_a)}, buffer_b {len(trainer.buffer_b)} "
+            f"of capacity {trainer.buffer_a.capacity})"
+        )
 
     if args.resume:
         trainer.load(Path(args.resume))
