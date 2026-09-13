@@ -159,25 +159,34 @@ teacher = V4PolicyFamily(
 `HeuristicPolicyMixture`의 기본 분포는 다음과 같다. 입력 가중치는 합이 1일 필요가 없으며 내부에서
 정규화된다. 0은 허용되지만 음수와 전체 합 0은 허용되지 않는다.
 
-| policy_id | 기본 가중치 | 데이터 내 역할 |
-|---|---:|---|
-| `strategic_v1` | 8% | 단순 기준 행동 |
-| `strategic_v2` | 7% | 전역 경제 배정 |
-| `strategic_v3` | 9% | 안전 적재 |
-| `strategic_v4` | 18% | 주 교사 정책 |
-| `strategic_v4_near` | 14% | V4 주변 조밀한 변형 |
-| `strategic_v5` | 3% | 공격적 예측 요격 |
-| `strategic_v6` | 6% | 위험 회피·저정체 경로 |
-| `strategic_v7` | 5% | 동적 역할 배분 |
-| `strategic_v8` | 1% | 보수적 역할 리셋 대조군 |
-| `strategic_v9` | 4% | 실제 역할 리셋 trajectory |
-| `strategic_v10` | 5% | 국면별 역할/목표 전환 |
-| `strategic_v11` | 4% | 흡수 직전 다중-unit 약탈 |
-| `strategic_v12` | 3% | 리드 보존·창고 방어 |
-| `strategic_v13` | 3% | 지속 공성 약탈 |
-| `strategic_v14` | 3% | 약탈 대응 홈 수비 |
-| `strategic_v15` | 3% | Carrier 처리량 러시 |
-| `strategic_v16` | 4% | V10 기반 조건부 공성·수비·수송 전환 |
+2026-09-15에 `reports/heuristic_tournament_all17_targeted_replication_round2_20260915/`의
+leave-one-pair-out Bradley-Terry Elo 적합(정책당 200게임 이상, Elo 표준오차 약 19-24)을 근거로
+재조정했다. 예전 가중치는 토너먼트가 없던 시절 행동 카테고리 추정만으로 정한 것이었는데, 실측
+Elo와 크게 어긋나는 경우가 몇 있었다 — 특히 `v1`/`v2`가 실제로는 가장 약한 두 정책이었고,
+`v7`/`v8`/`v9`/`v12`는 반대로 v4 기준선보다 훨씬 강했다. `v8`은 v7과 Elo가 거의 같지만 respec
+트리거가 거의 발동하지 않아 대부분 게임이 v7과 구분되지 않으므로 비중을 크게 올리지 않았고,
+`v16`은 기반인 v10보다도 Elo가 낮아 오히려 비중을 낮췄다. `v4`/`v4_near`는 순위와 무관하게 실전
+기준/평가 정책이라는 이유로 여전히 가장 높은 비중을 유지한다.
+
+| policy_id | 기본 가중치 | Elo (round2) | 데이터 내 역할 |
+|---|---:|---:|---|
+| `strategic_v1` | 2% | -123 | 단순 기준 행동 (가장 약함, 대조군으로만 유지) |
+| `strategic_v2` | 3% | -66 | 전역 경제 배정 (2번째로 약함) |
+| `strategic_v3` | 8% | +22 | 안전 적재 |
+| `strategic_v4` | 16% | +5 | 주 교사 정책 (순위와 무관하게 유지) |
+| `strategic_v4_near` | 13% | +11 | V4 주변 조밀한 변형 |
+| `strategic_v5` | 2% | -16 | 공격적 예측 요격 (의도적으로 약함) |
+| `strategic_v6` | 7% | +21 | 위험 회피·저정체 경로 |
+| `strategic_v7` | 9% | +54 | 동적 역할 배분 (전체 1위) |
+| `strategic_v8` | 3% | +52 | 보수적 역할 리셋 대조군 (respec 희귀해 v7과 대부분 중복) |
+| `strategic_v9` | 6% | +33 | 실제 역할 리셋 trajectory |
+| `strategic_v10` | 7% | +20 | 국면별 역할/목표 전환 |
+| `strategic_v11` | 4% | -2 | 흡수 직전 다중-unit 약탈 |
+| `strategic_v12` | 6% | +42 | 리드 보존·창고 방어 (전체 3위) |
+| `strategic_v13` | 3% | -1 | 지속 공성 약탈 |
+| `strategic_v14` | 4% | +8 | 약탈 대응 홈 수비 (v4보다 강함) |
+| `strategic_v15` | 2% | -44 | Carrier 처리량 러시 (실제로 약함) |
+| `strategic_v16` | 3% | -17 | V10 기반 조건부 공성·수비·수송 전환 (기반 V10보다 약함) |
 
 ```python
 from blackout_env import HeuristicPolicyMixture
