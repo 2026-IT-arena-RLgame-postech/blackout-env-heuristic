@@ -335,6 +335,15 @@ def test_v16_director_enters_counterplay_siege_mode_from_public_storage_value():
     policy.act(team)
     assert policy.current_mode == "storage_siege"
     assert all(role.startswith("storage_siege:") for role in policy.role_assignments.values())
+    # The mode must also pass through its specialised multi-unit task assignment, not merely
+    # label the roles.  This is the path exercised in the real Unity tournament.
+    assignments = policy._assign_economic_tasks(
+        ["unit_1", "unit_2", "unit_3", "unit_4"],
+        {f"unit_{i}": i for i in range(1, 5)},
+        o["agent_states"], o["graphic"], o["team_state"], o["graphic"][..., 0] > 0.5,
+    )
+    assert assignments
+    assert all(kind == "steal" for _, kind in assignments.values())
 
 
 def test_fortress_mode_defends_home_instead_of_chasing_empty_enemy():

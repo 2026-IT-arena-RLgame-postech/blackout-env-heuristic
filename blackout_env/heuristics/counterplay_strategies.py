@@ -264,15 +264,42 @@ class StrategicHeuristicV16(StrategicHeuristicV10):
         self, names, row_for, states, graphic, team_state, walkable,
     ):
         if self.current_mode == "storage_siege":
-            # Reuse the proven V11 raid matcher under this broader director's mode name.
-            prior_mode = self.current_mode
-            self.current_mode = "raid_window"
-            try:
-                return StrategicHeuristicV11._assign_economic_tasks(
-                    self, names, row_for, states, graphic, team_state, walkable
+            # This mirrors V11's bounded raid matcher, but lives here instead of calling its
+            # method directly: V16 is a V10 subclass, so V11's zero-argument ``super()``
+            # cannot safely be borrowed across the unrelated inheritance branch.
+            protected = self._cached_protected_enemy_storage_mask(graphic)
+            steals = [
+                ((y, x), amount)
+                for y, x, amount in self._battery_pixels(graphic)
+                if graphic[y, x, STORAGE_ENEMY] > 0.5 and not protected[y, x]
+            ]
+            if not steals:
+                return super()._assign_economic_tasks(
+                    names, row_for, states, graphic, team_state, walkable
                 )
-            finally:
-                self.current_mode = prior_mode
+            absorption_seconds = max(0.0, float(team_state[3]) * 20.0)
+            pairs: list[tuple[float, str, int]] = []
+            for name in names:
+                state = states[row_for[name]]
+                start = self._to_pixel(state[:2], graphic.shape[:2])
+                distances = self._cached_distance_map(walkable, start)
+                speed = 6.0 if self._class_id(state) == CARRIER else 4.0
+                for task_index, (target, amount) in enumerate(steals):
+                    distance = float(distances[target])
+                    if not np.isfinite(distance) or distance / speed + 0.35 >= absorption_seconds:
+                        continue
+                    pairs.append((amount * 8.0 - distance * 0.22, name, task_index))
+            pairs.sort(reverse=True, key=lambda pair: pair[0])
+            assigned, used, result = set(), set(), {}
+            for _, name, task_index in pairs:
+                if name in assigned or task_index in used:
+                    continue
+                result[name] = (steals[task_index][0], "steal")
+                assigned.add(name)
+                used.add(task_index)
+                if len(result) >= self.raid_slots:
+                    break
+            return result
 
         result = super()._assign_economic_tasks(
             names, row_for, states, graphic, team_state, walkable
