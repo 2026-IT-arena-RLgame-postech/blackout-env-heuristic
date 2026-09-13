@@ -65,6 +65,8 @@ import torch.nn.functional as F
 
 from blackout_env.env.blackout_env import BlackOutEnv
 from blackout_env.env.constants import N_AGENTS, N_TEAM_A, team_a_agents, team_b_agents
+from blackout_env.env.my_obs_preprocessor import MyObsPreprocessor
+from blackout_env.env.obs_preprocessor import load_semantic_config
 from blackout_env.heuristics import HeuristicPolicyMixture
 from blackout_env.model.modules import (
     DistributionalQMixer,
@@ -121,6 +123,25 @@ class QMIXConfig:
     # identical policy_id/parameters each episode -- more matchup diversity during bootstrap.
     heuristic_seed_a: int = 0
     heuristic_seed_b: int = 1
+    # Per-unit probability of a uniformly random compass direction instead of the heuristic's
+    # own choice during phase 1 (see select_actions_heuristic). 0 reproduces the old pure
+    # heuristic-vs-heuristic bootstrap exactly. Also used verbatim by the standalone
+    # collect_heuristic_dataset.py script, which drives this same method to build an offline
+    # dataset outside of any online run.
+    heuristic_bootstrap_noise_frac: float = 0.0
+
+    # ---- Heuristic-opponent mixing (phase 2 only, on top of the bootstrap above) ----
+    # Phase 2's self-play opponent is otherwise always ema_net (see module docstring) -- two
+    # nets that only ever adapt to each other can converge to a mutually low-risk equilibrium
+    # (e.g. neither side ever completes a risky deposit) that looks converged in every training
+    # metric (return, win-rate, loss, weight norms) yet loses to a real heuristic that actually
+    # executes the scoring loop. With probability heuristic_opponent_frac, each episode's
+    # opponent side plays through its full HeuristicPolicyMixture (heuristic_a/heuristic_b, same
+    # instances used for epsilon-exploration) for the WHOLE episode instead of ema_net -- see
+    # select_actions(). The online side is unaffected (still net greedy + epsilon-heuristic
+    # exploration); only which policy controls the opponent's row changes. 0 reproduces the old
+    # pure-self-play behavior exactly.
+    heuristic_opponent_frac: float = 0.3
 
     lr: float = 3e-4
     weight_decay: float = 1e-2
@@ -207,7 +228,13 @@ def _own_team_rows(tensor: torch.Tensor, agent_states: torch.Tensor) -> torch.Te
 
 
 class QMIXTrainer:
-    def __init__(self, env: BlackOutEnv, config: QMIXConfig) -> None:
+    def __init__(self, env: BlackOutEnv | None, config: QMIXConfig) -> None:
+        """
+        env=None builds the network/buffers/optimizer with no live Unity process at all --
+        everything collect_step()/_reset_env()/run() touch on self.env, so those simply can't
+        be called this way. Used by offline_pretrain.py, which only ever calls train_step()
+        against a dataset loaded straight into buffer_a/buffer_b (see that script).
+        """
         self.env = env
         self.cfg = config
         self.device = torch.device(config.device)
@@ -258,7 +285,20 @@ class QMIXTrainer:
             weight_decay=config.weight_decay,
         )
 
-        graphic_shape = env.observation_space(team_a_agents()[0])["graphic"].shape
+        if env is not None:
+            graphic_shape = env.observation_space(team_a_agents()[0])["graphic"].shape
+        else:
+            # Mirrors BlackOutEnv's own default semantic-config resolution and preprocessor
+            # construction (see BlackOutEnv._DEFAULT_CONFIG / __init__) so the channel count
+            # matches exactly without needing a live Unity process just to ask it. Map size is
+            # fixed at 24x24 everywhere else in this file (see main()'s BlackOutEnv(map_w=24,
+            # map_h=24, ...) and GraphicEncoder's hardcoded assumption), so it's safe to inline
+            # here too.
+            default_config = Path(__file__).resolve().parent.parent / "semantic_map_config.json"
+            preprocessor = MyObsPreprocessor(
+                load_semantic_config(default_config), n_items=config.n_items, n_classes=config.n_classes
+            )
+            graphic_shape = (24, 24, preprocessor.n_graphic_channels)
         agent_state_size = 2 + 1 + (config.n_items + 1) + config.n_classes
         buffer_kwargs = dict(
             capacity=config.buffer_capacity,
@@ -292,6 +332,7 @@ class QMIXTrainer:
         self.train_step_count = 0
         self._total_env_steps_hint = 1  # set properly in run(); avoids div-by-zero if train_step() is called standalone
         self._online_is_team_a = True  # re-randomized every episode in _reset_env()
+        self._opponent_is_heuristic = False  # re-randomized every episode in _reset_env()
         self._prev_absorption_time_left: float | None = None  # set in _reset_env(); see collect_step
 
         # ---- TensorBoard logging (train/tb_logger.py) ----
@@ -332,6 +373,14 @@ class QMIXTrainer:
         self._episode_wins_online = 0
         self._episode_wins_opponent = 0
         self._episode_draws = 0
+        # Same online win tally, split by what kind of opponent this episode had (see
+        # heuristic_opponent_frac) -- lets win_rate_selfplay's "online" figure be checked
+        # against a real, fully-executing heuristic instead of only ever ema_net (a slow copy
+        # of itself, which can't reveal a mutually-collapsed self-play equilibrium).
+        self._episode_count_vs_heuristic = 0
+        self._episode_wins_vs_heuristic = 0
+        self._episode_count_vs_selfplay = 0
+        self._episode_wins_vs_selfplay = 0
 
         # Wall-clock breakdown accumulators (reset every print window in run()) — lets you see
         # whether wall-clock is spent waiting on Unity (env.step, gRPC round-trip) vs on-policy
@@ -429,15 +478,29 @@ class QMIXTrainer:
 
     def select_actions_heuristic(self, obs: dict[str, dict[str, np.ndarray]]):
         """
-        Phase 1 (see `_bootstrapping`): BOTH teams act purely via HeuristicPolicyMixture -- no
+        Phase 1 (see `_bootstrapping`): BOTH teams act via HeuristicPolicyMixture -- no
         net/ema_net forward pass at all, since Q isn't driving any decision yet. The SNAPPED
         direction (not the heuristic's raw continuous vector) is what actually gets sent to
         env.step(), so the action stored in the replay buffer always matches what was physically
         executed -- required for off-policy Q-learning to train against the right transition.
+
+        With probability `heuristic_bootstrap_noise_frac` (0 by default -- exactly the old,
+        pure-heuristic behavior), each unit's action is instead a uniformly random compass
+        direction. Pure heuristic-vs-heuristic data only ever visits the narrow slice of
+        (state, action) space the heuristics themselves choose to visit, which starves offline
+        Q-learning of the off-heuristic-action coverage it needs to evaluate alternatives the
+        model might pick later -- a little uniform-random noise widens that coverage without
+        giving up "the trajectories still mostly look like competent play" the way pure random
+        rollouts would.
         """
         dir_a = self._heuristic_direction_idx(obs, self.team_a_agents, self.heuristic_a)
         dir_b = self._heuristic_direction_idx(obs, self.team_b_agents, self.heuristic_b)
-        return self._pack_direction_idx(np.stack([dir_a, dir_b]))
+        direction_idx = np.stack([dir_a, dir_b])
+        noise_frac = self.cfg.heuristic_bootstrap_noise_frac
+        if noise_frac > 0:
+            random_dirs = np.random.randint(0, 8, size=direction_idx.shape)
+            direction_idx = np.where(np.random.rand(*direction_idx.shape) < noise_frac, random_dirs, direction_idx)
+        return self._pack_direction_idx(direction_idx)
 
     @torch.no_grad()
     def select_actions(self, obs: dict[str, dict[str, np.ndarray]], epsilon: float):
@@ -447,7 +510,10 @@ class QMIXTrainer:
         full_direction_idx is [10] (physical unit order, both teams) for the replay buffer.
 
         This episode's "opponent" side (see `self._online_is_team_a`, module docstring) acts
-        through `ema_net` instead of `net` for self-play stability.
+        through `ema_net` instead of `net` for self-play stability -- except when this episode
+        was sampled (see `heuristic_opponent_frac`) to have a full-heuristic opponent instead,
+        in which case the opponent's row is entirely overridden by its HeuristicPolicyMixture
+        action below rather than ema_net's greedy Q.
         """
         obs_a, obs_b = obs[self.team_a_agents[0]], obs[self.team_b_agents[0]]
         graphic, team_state, agent_states = self._to_batch(obs_a, obs_b)
@@ -477,6 +543,12 @@ class QMIXTrainer:
             greedy,
         )
 
+        if self._opponent_is_heuristic:
+            # Full-episode heuristic opponent: override its row entirely (ignore ema_net's
+            # greedy Q and the epsilon draw above -- every step this team acts purely through
+            # its HeuristicPolicyMixture, not just epsilon's usual exploration fraction of them).
+            direction_idx[opponent_idx] = heuristic_dirs[opponent_idx]
+
         return self._pack_direction_idx(direction_idx)
 
     def _reset_env(self):
@@ -486,6 +558,7 @@ class QMIXTrainer:
         """
         obs, info = self.env.reset()
         self._online_is_team_a = bool(np.random.rand() < 0.5)
+        self._opponent_is_heuristic = bool(np.random.rand() < self.cfg.heuristic_opponent_frac)
         self._prev_absorption_time_left = float(obs[self.team_a_agents[0]]["team_state"][ABSORPTION_IDX])
         # Explicit re-sample each episode (HeuristicPolicyMixture also self-detects a new
         # episode via a time_left jump in .act(), but resetting here keeps it in lockstep with
@@ -552,6 +625,7 @@ class QMIXTrainer:
         if self.env_step_count % self.cfg.tb_log_interval == 0:
             self.tb.scalars("reward/step", {"team_a": reward_a, "team_b": reward_b}, self.env_step_count)
             self.tb.scalar("bootstrap/is_heuristic_fill_phase", float(bootstrapping), self.env_step_count)
+            self.tb.scalar("bootstrap/is_heuristic_opponent_episode", float(self._opponent_is_heuristic), self.env_step_count)
 
         if done:
             # Physical winner straight from Unity's own score comparison (see
@@ -576,6 +650,15 @@ class QMIXTrainer:
                 self._episode_wins_online += 1
             elif opponent_won:
                 self._episode_wins_opponent += 1
+            # self._opponent_is_heuristic likewise still reflects the episode that just ended.
+            if self._opponent_is_heuristic:
+                self._episode_count_vs_heuristic += 1
+                if online_won:
+                    self._episode_wins_vs_heuristic += 1
+            else:
+                self._episode_count_vs_selfplay += 1
+                if online_won:
+                    self._episode_wins_vs_selfplay += 1
             self.tb.scalars(
                 "episode/return",
                 {"team_a": self._episode_return_a, "team_b": self._episode_return_b},
@@ -595,6 +678,18 @@ class QMIXTrainer:
                 },
                 self.env_step_count,
             )
+            if self._episode_count_vs_heuristic > 0:
+                self.tb.scalar(
+                    "episode/win_rate_online_vs_heuristic",
+                    self._episode_wins_vs_heuristic / self._episode_count_vs_heuristic,
+                    self.env_step_count,
+                )
+            if self._episode_count_vs_selfplay > 0:
+                self.tb.scalar(
+                    "episode/win_rate_online_vs_selfplay",
+                    self._episode_wins_vs_selfplay / self._episode_count_vs_selfplay,
+                    self.env_step_count,
+                )
             self._episode_return_a = self._episode_return_b = 0.0
             next_obs, _ = self._reset_env()
         return next_obs
@@ -1073,7 +1168,24 @@ def main() -> None:
         help="Checkpoint dir; default is a fresh timestamped folder under checkpoints/ (see default_run_dir) so separate runs never overwrite each other's step_*.pt files",
     )
     parser.add_argument("--resume", default=None, help="Checkpoint path to resume from")
+    parser.add_argument(
+        "--skip-bootstrap",
+        action="store_true",
+        help="Force heuristic_fill_frac=0 (phase 1 ends almost immediately). Use this when "
+        "--resume points at an offline_pretrain.py checkpoint -- the loaded weights already "
+        "saw heuristic-vs-heuristic (+ exploration noise) data offline, so re-running phase "
+        "1's pure-heuristic collection into this run's now-empty buffer_a/buffer_b would just "
+        "delay handing control to the (already pretrained) net for no benefit.",
+    )
     parser.add_argument("--device", default="cpu")
+    parser.add_argument(
+        "--heuristic-opponent-frac",
+        type=float,
+        default=None,
+        help="Fraction of phase-2 episodes whose opponent plays a full HeuristicPolicyMixture "
+        "match instead of ema_net (see QMIXConfig.heuristic_opponent_frac). Default (None) "
+        "keeps the dataclass default.",
+    )
     parser.add_argument(
         "--compile",
         action="store_true",
@@ -1119,6 +1231,10 @@ def main() -> None:
         additional_args=additional_args,
     )
     config_kwargs = dict(device=args.device, compile=args.compile)
+    if args.heuristic_opponent_frac is not None:
+        config_kwargs["heuristic_opponent_frac"] = args.heuristic_opponent_frac
+    if args.skip_bootstrap:
+        config_kwargs["heuristic_fill_frac"] = 0.0
     if args.checkpoint_dir is not None:
         config_kwargs["checkpoint_dir"] = args.checkpoint_dir
     if args.tb_log_dir is not None:
