@@ -15,6 +15,7 @@ For full game rules see [docs/gameplay_en.md](docs/gameplay_en.md) / [docs/gamep
   - [Docker (GPU Training)](#docker-gpu-training)
 - [Usage](#usage)
 - [Training](#training)
+  - [Multi-GPU / many-core training (experimental, unverified)](#multi-gpu--many-core-training-experimental-unverified)
 - [Observation Space](#observation-space)
 - [Competition](#competition)
   - [Observation](#observation)
@@ -270,6 +271,56 @@ Note: `reward/*` is the total per-team reward already summed on the Unity side (
 potential-shaping/nav-shaping all folded together before it reaches Python) — there's no
 per-component reward breakdown here. Getting that would need a Unity-side change to transmit
 `RewardEventLog`-style itemized rewards to Python separately.
+
+### Multi-GPU / many-core training (experimental, unverified)
+
+> **⚠️ Status: implemented but not yet run on real hardware.** This was built and its
+> multiprocessing wiring was smoke-tested (`--smoke-test`, a fake in-process env, no Unity/GPU)
+> on a machine with no CUDA GPU and no Unity build available. It has **never been run against a
+> real Unity build or a real GPU**, let alone the target 4-GPU box. Treat it as a starting point
+> to validate, not a proven pipeline — start with a small `--num-actors` (3-4) and watch closely
+> before trusting a long run to it. `qmix_trainer.py` above is unaffected and remains the
+> verified, single-process pipeline.
+
+`blackout_env/train/parallel/` is a separate training pipeline aimed at a multi-GPU, many-core
+box (designed against: 4x RTX 2080Ti 12GB + 28-core CPU + 64GB RAM), instead of the single
+GPU/single Unity instance `qmix_trainer.py` above assumes. It splits each of that trainer's roles
+across processes instead of running them serially in one loop:
+
+- **actor** (many processes, CPU/Unity-bound): each owns one headless Unity instance and runs
+  the same self-play/heuristic-bootstrap/epsilon-mixing rollout logic as
+  `QMIXTrainer.collect_step()`, minus the network forward pass.
+- **inference server** (1 process per group, 1 GPU): batches every actor's pending action-
+  selection request into a single forward pass instead of many tiny ones.
+- **learner** (1 process per group, 1 GPU): the real `QMIXTrainer` (built with `env=None`, same
+  mode `offline_pretrain.py` uses), fed by the actors' transitions instead of driving `env.step()`
+  itself.
+
+A "group" (1 inference GPU + 1 learner GPU + N actors) is one experiment; `launch_all.py` runs 2
+groups side by side across all 4 GPUs as 2 independent experiments. See
+`blackout_env/train/parallel/__init__.py` for the full design rationale (why this split instead
+of DDP or N independent single-process runs).
+
+```bash
+# One group (2 GPUs: one for inference, one for learning)
+python -m blackout_env.train.parallel.launch_group \
+    --build build/linux/BlackOut.x86_64 --steps 2000000 --num-actors 10 \
+    --infer-device cuda:0 --learn-device cuda:1
+
+# Both groups at once, across all 4 GPUs (group 0 -> GPUs 0-1, group 1 -> GPUs 2-3)
+python -m blackout_env.train.parallel.launch_all \
+    --build build/linux/BlackOut.x86_64 --steps 2000000
+
+# Smoke test: validates the multiprocessing wiring only (fake env, no Unity/GPU needed)
+python -m blackout_env.train.parallel.launch_group --smoke-test --steps 2000 --num-actors 2 \
+    --infer-device cpu --learn-device cpu
+```
+
+Known gaps: `--resume` is not yet wired into `launch_group.py` (it exits with an error telling
+you so — resume with `qmix_trainer.py` instead, for now). Weight sync from learner to inference
+server is file-based and polled (`--weight-sync-interval`, default every 50 gradient steps), so
+actors act on a slightly stale net — bounded staleness, same order as the self-play EMA opponent
+already tolerates, not a new correctness issue, but untested at scale.
 
 ---
 
