@@ -104,8 +104,17 @@ def _fit_elo(policy_ids: list[str], results: list[dict[str, Any]]) -> tuple[np.n
         + information_full[-1, -1]
     )
     covariance_free = np.linalg.inv(information)
-    transform = np.vstack((np.eye(free_count), -np.ones(free_count)))
-    return ratings, transform @ covariance_free @ transform.T
+    # The final rating is constrained to the negative sum of the free ratings.
+    # Expand the covariance explicitly rather than multiplying by the constraint
+    # transform.  Besides making the relationship clearer, this avoids an
+    # intermittent BLAS overflow warning observed for otherwise finite matrices.
+    covariance = np.empty((count, count), dtype=np.float64)
+    covariance[:-1, :-1] = covariance_free
+    final_cross_covariance = -covariance_free.sum(axis=0)
+    covariance[-1, :-1] = final_cross_covariance
+    covariance[:-1, -1] = final_cross_covariance
+    covariance[-1, -1] = covariance_free.sum()
+    return ratings, covariance
 
 
 def _observed_standard_error(result: dict[str, Any]) -> float:
