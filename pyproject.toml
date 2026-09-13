@@ -18,6 +18,10 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["tqdm"]
+# Speeds up the heuristic policies (blackout_env.heuristics): JIT-compiles the
+# Dijkstra distance map shared by V2+ (advanced.py:_distance_map) to native code.
+# Falls back to the pure-Python implementation automatically when absent.
+fast = ["numba>=0.59"]
 
 [tool.setuptools.packages.find]
 where = ["."]

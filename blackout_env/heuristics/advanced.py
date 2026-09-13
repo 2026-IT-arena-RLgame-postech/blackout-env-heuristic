@@ -13,6 +13,7 @@ from collections import OrderedDict
 
 import numpy as np
 
+from . import _native
 from .strategic import (
     BATTERY,
     CARRIER,
@@ -202,6 +203,8 @@ class StrategicHeuristicV2(StrategicHeuristic):
     @staticmethod
     def _distance_map(walkable: np.ndarray, start: tuple[int, int]) -> np.ndarray:
         """All-cell 8-neighbour shortest path lengths from one unit position."""
+        if _native.NUMBA_AVAILABLE:
+            return _native.distance_map_numba(walkable, start[0], start[1])
         h, w = walkable.shape
         distances = np.full((h, w), np.inf, dtype=np.float32)
         if not (0 <= start[0] < h and 0 <= start[1] < w):
