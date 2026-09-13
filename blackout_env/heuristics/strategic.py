@@ -14,6 +14,7 @@ import math
 
 import numpy as np
 
+from . import _native
 from ..env.constants import unit_index
 from ..model.base import BaseModel
 
@@ -626,6 +627,9 @@ class StrategicHeuristic(BaseModel):
             return []
         if start == goal:
             return [goal]
+        if _native.NUMBA_AVAILABLE:
+            path_y, path_x = _native.astar_numba(walkable, start[0], start[1], goal[0], goal[1])
+            return list(zip(path_y.tolist(), path_x.tolist()))
         neighbours = ((-1, 0, 1.0), (1, 0, 1.0), (0, -1, 1.0), (0, 1, 1.0),
                       (-1, -1, 1.4142), (-1, 1, 1.4142), (1, -1, 1.4142), (1, 1, 1.4142))
         queue: list[tuple[float, float, tuple[int, int]]] = [(0.0, 0.0, start)]

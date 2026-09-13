@@ -13,6 +13,8 @@ back to the pure-Python implementation.
 """
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 try:
@@ -101,9 +103,161 @@ try:
 
         return distances
 
+    @njit(cache=True, inline="always")
+    def _less_fgyx(f1, g1, y1, x1, f2, g2, y2, x2) -> bool:
+        """Match Python's ``heapq`` ordering on ``(f, g, (y, x))`` tuples exactly.
+
+        Needed so ties (equal f *and* g) resolve the same way as the pure-Python
+        version — otherwise A* still finds an optimal path, but a differently-tied
+        one, which would silently change which route a unit walks in ambiguous cases.
+        """
+        if f1 != f2:
+            return f1 < f2
+        if g1 != g2:
+            return g1 < g2
+        if y1 != y2:
+            return y1 < y2
+        return x1 < x2
+
+    @njit(cache=True, fastmath=True)
+    def astar_numba(walkable: np.ndarray, start_y: int, start_x: int, goal_y: int, goal_x: int):
+        """8-neighbour A* with diagonal corner-cut prevention.
+
+        Caller guarantees ``goal`` is in bounds and ``start != goal`` (see
+        ``strategic.StrategicHeuristic._astar``), so this only handles the search itself.
+        Returns parallel (path_y, path_x) int32 arrays, empty when no path exists.
+        """
+        h, w = walkable.shape
+        max_nodes = h * w
+        cost = np.full((h, w), np.inf, dtype=np.float64)
+        came_y = np.full((h, w), -1, dtype=np.int32)
+        came_x = np.full((h, w), -1, dtype=np.int32)
+        cost[start_y, start_x] = 0.0
+
+        capacity = max_nodes * 8 + 1
+        heap_f = np.empty(capacity, dtype=np.float64)
+        heap_g = np.empty(capacity, dtype=np.float64)
+        heap_y = np.empty(capacity, dtype=np.int32)
+        heap_x = np.empty(capacity, dtype=np.int32)
+        size = 1
+        heap_f[0] = 0.0
+        heap_g[0] = 0.0
+        heap_y[0] = start_y
+        heap_x[0] = start_x
+
+        dys = np.array([-1, 1, 0, 0, -1, -1, 1, 1], dtype=np.int32)
+        dxs = np.array([0, 0, -1, 1, -1, 1, -1, 1], dtype=np.int32)
+        steps = np.array([1.0, 1.0, 1.0, 1.0, 1.4142, 1.4142, 1.4142, 1.4142], dtype=np.float64)
+
+        found = False
+        while size > 0:
+            g = heap_g[0]
+            y = heap_y[0]
+            x = heap_x[0]
+            size -= 1
+            heap_f[0] = heap_f[size]
+            heap_g[0] = heap_g[size]
+            heap_y[0] = heap_y[size]
+            heap_x[0] = heap_x[size]
+            i = 0
+            while True:
+                left = 2 * i + 1
+                right = 2 * i + 2
+                smallest = i
+                if left < size and _less_fgyx(
+                    heap_f[left], heap_g[left], heap_y[left], heap_x[left],
+                    heap_f[smallest], heap_g[smallest], heap_y[smallest], heap_x[smallest],
+                ):
+                    smallest = left
+                if right < size and _less_fgyx(
+                    heap_f[right], heap_g[right], heap_y[right], heap_x[right],
+                    heap_f[smallest], heap_g[smallest], heap_y[smallest], heap_x[smallest],
+                ):
+                    smallest = right
+                if smallest == i:
+                    break
+                heap_f[i], heap_f[smallest] = heap_f[smallest], heap_f[i]
+                heap_g[i], heap_g[smallest] = heap_g[smallest], heap_g[i]
+                heap_y[i], heap_y[smallest] = heap_y[smallest], heap_y[i]
+                heap_x[i], heap_x[smallest] = heap_x[smallest], heap_x[i]
+                i = smallest
+
+            # Lazy deletion: skip a heap entry superseded by a later, cheaper push instead
+            # of removing it. g/cost are both float64 here (unlike distance_map_numba)
+            # so exact equality is safe.
+            if g != cost[y, x]:
+                continue
+            if y == goal_y and x == goal_x:
+                found = True
+                break
+
+            for k in range(8):
+                ny = y + dys[k]
+                nx = x + dxs[k]
+                if ny < 0 or ny >= h or nx < 0 or nx >= w or not walkable[ny, nx]:
+                    continue
+                if dys[k] != 0 and dxs[k] != 0 and (not walkable[y, nx] or not walkable[ny, x]):
+                    continue
+                ng = g + steps[k]
+                if ng >= cost[ny, nx]:
+                    continue
+                cost[ny, nx] = ng
+                came_y[ny, nx] = y
+                came_x[ny, nx] = x
+                dy_goal = float(goal_y - ny)
+                dx_goal = float(goal_x - nx)
+                heuristic = math.hypot(dy_goal, dx_goal)
+                nf = ng + heuristic
+                j = size
+                heap_f[j] = nf
+                heap_g[j] = ng
+                heap_y[j] = ny
+                heap_x[j] = nx
+                size += 1
+                while j > 0:
+                    parent = (j - 1) // 2
+                    if not _less_fgyx(
+                        heap_f[j], heap_g[j], heap_y[j], heap_x[j],
+                        heap_f[parent], heap_g[parent], heap_y[parent], heap_x[parent],
+                    ):
+                        break
+                    heap_f[parent], heap_f[j] = heap_f[j], heap_f[parent]
+                    heap_g[parent], heap_g[j] = heap_g[j], heap_g[parent]
+                    heap_y[parent], heap_y[j] = heap_y[j], heap_y[parent]
+                    heap_x[parent], heap_x[j] = heap_x[j], heap_x[parent]
+                    j = parent
+
+        if not found:
+            return np.empty(0, dtype=np.int32), np.empty(0, dtype=np.int32)
+
+        path_y_buf = np.empty(max_nodes, dtype=np.int32)
+        path_x_buf = np.empty(max_nodes, dtype=np.int32)
+        cy, cx = goal_y, goal_x
+        n = 0
+        while not (cy == start_y and cx == start_x):
+            path_y_buf[n] = cy
+            path_x_buf[n] = cx
+            n += 1
+            py = came_y[cy, cx]
+            px = came_x[cy, cx]
+            cy, cx = py, px
+        path_y_buf[n] = start_y
+        path_x_buf[n] = start_x
+        n += 1
+
+        out_y = np.empty(n, dtype=np.int32)
+        out_x = np.empty(n, dtype=np.int32)
+        for idx in range(n):
+            out_y[idx] = path_y_buf[n - 1 - idx]
+            out_x[idx] = path_x_buf[n - 1 - idx]
+        return out_y, out_x
+
     NUMBA_AVAILABLE = True
 except ImportError:
     NUMBA_AVAILABLE = False
 
     def distance_map_numba(walkable: np.ndarray, start_y: int, start_x: int) -> np.ndarray:  # noqa: D401
+        raise RuntimeError("numba is not installed")
+
+    def astar_numba(walkable: np.ndarray, start_y: int, start_x: int, goal_y: int, goal_x: int):  # noqa: D401
         raise RuntimeError("numba is not installed")
