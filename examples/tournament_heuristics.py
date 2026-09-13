@@ -183,18 +183,40 @@ def main() -> int:
     print(f"seeds={seeds} pairs={len(tasks)} games={len(tasks) * len(seeds) * 2} workers={args.workers}", flush=True)
 
     results: list[dict[str, Any]] = []
+    # A full 13-policy tournament is intentionally long-running.  Persist each completed
+    # pair immediately so an interrupted desktop session never gets mistaken for a complete
+    # heatmap and the completed evidence remains usable for a later resume/export.
+    partial_path = output_dir / "completed_pair_results.jsonl"
+    manifest_path = output_dir / "progress.json"
+    manifest = {
+        "policy_ids": policy_ids,
+        "seeds": seeds,
+        "n_seeds": args.n_seeds,
+        "side_swapped": True,
+        "time_scale": args.time_scale,
+        "workers": args.workers,
+        "total_pairs": len(tasks),
+        "completed_pairs": 0,
+        "complete": False,
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     context = mp.get_context("spawn")
-    with ProcessPoolExecutor(max_workers=args.workers, mp_context=context) as executor:
-        futures = [executor.submit(_run_pair, task) for task in tasks]
-        for future in as_completed(futures):
-            result = future.result()
-            results.append(result)
-            print(
-                f"{result['row']} vs {result['column']}: "
-                f"{result['wins']}-{result['losses']}-{result['draws']} "
-                f"win={result['win_rate']:.1%} margin={result['mean_margin']:+.2f}",
-                flush=True,
-            )
+    with partial_path.open("w", encoding="utf-8") as partial_handle:
+        with ProcessPoolExecutor(max_workers=args.workers, mp_context=context) as executor:
+            futures = [executor.submit(_run_pair, task) for task in tasks]
+            for future in as_completed(futures):
+                result = future.result()
+                results.append(result)
+                partial_handle.write(json.dumps(result) + "\n")
+                partial_handle.flush()
+                manifest["completed_pairs"] = len(results)
+                manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+                print(
+                    f"[{len(results)}/{len(tasks)}] {result['row']} vs {result['column']}: "
+                    f"{result['wins']}-{result['losses']}-{result['draws']} "
+                    f"win={result['win_rate']:.1%} margin={result['mean_margin']:+.2f}",
+                    flush=True,
+                )
 
     results.sort(key=lambda result: (policy_ids.index(result["row"]), policy_ids.index(result["column"])))
     metadata = {
@@ -209,6 +231,8 @@ def main() -> int:
     (output_dir / "tournament.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     _write_csv(results, output_dir / "pair_results.csv")
     _plot_heatmap(policy_ids, results, output_dir / "win_rate_heatmap.png")
+    manifest["complete"] = True
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"output_dir={output_dir.resolve()}", flush=True)
     return 0
 
