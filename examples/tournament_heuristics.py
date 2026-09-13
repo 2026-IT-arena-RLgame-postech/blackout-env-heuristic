@@ -164,6 +164,12 @@ def main() -> int:
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--time-scale", type=float, default=200.0)
     parser.add_argument("--policies", nargs="+", choices=tuple(POLICIES), default=list(POLICIES))
+    parser.add_argument(
+        "--pairs",
+        nargs="+",
+        metavar="ROW:OPPONENT",
+        help="run only these unordered policy pairs; useful for targeted replications",
+    )
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--resume", action="store_true", help="continue an interrupted output directory")
     args = parser.parse_args()
@@ -179,11 +185,31 @@ def main() -> int:
         np.arange(1, 2**30, dtype=np.int64), size=args.n_seeds, replace=False
     ).astype(int).tolist()
     output_dir = args.output_dir or Path("reports") / f"heuristic_tournament_{datetime.now():%Y%m%d_%H%M%S}"
-    all_tasks = [
-        (policy_ids[left], policy_ids[right], seeds, str(args.build), args.time_scale)
-        for left in range(len(policy_ids))
-        for right in range(left + 1, len(policy_ids))
-    ]
+    if args.pairs:
+        requested_pairs: set[tuple[str, str]] = set()
+        policy_order = {policy: position for position, policy in enumerate(policy_ids)}
+        for specification in args.pairs:
+            try:
+                row_id, column_id = specification.split(":", maxsplit=1)
+            except ValueError:
+                parser.error(f"invalid --pairs value {specification!r}; use ROW:OPPONENT")
+            if row_id not in policy_order or column_id not in policy_order:
+                parser.error(f"unknown policy in --pairs value {specification!r}")
+            if row_id == column_id:
+                parser.error(f"a policy cannot play itself: {specification!r}")
+            requested_pairs.add(
+                (row_id, column_id) if policy_order[row_id] < policy_order[column_id] else (column_id, row_id)
+            )
+        all_tasks = [
+            (row_id, column_id, seeds, str(args.build), args.time_scale)
+            for row_id, column_id in sorted(requested_pairs, key=lambda pair: (policy_order[pair[0]], policy_order[pair[1]]))
+        ]
+    else:
+        all_tasks = [
+            (policy_ids[left], policy_ids[right], seeds, str(args.build), args.time_scale)
+            for left in range(len(policy_ids))
+            for right in range(left + 1, len(policy_ids))
+        ]
     partial_path = output_dir / "completed_pair_results.jsonl"
     manifest_path = output_dir / "progress.json"
     results: list[dict[str, Any]] = []
