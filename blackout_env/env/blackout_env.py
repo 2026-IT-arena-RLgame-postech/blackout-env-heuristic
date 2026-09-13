@@ -346,17 +346,6 @@ class BlackOutEnv(ParallelEnv):
                 rewards[aname] = r
                 terminations[aname] = True
 
-                # Derive winner from the first terminal agent's reward.
-                # unit 0~4 = Team A, 5~9 = Team B. Winner gets +1, loser -1, draw 0.
-                if self._latest_winner is None:
-                    is_team_a = unit_index(aname) < N_TEAM_A
-                    if r > 0:
-                        self._latest_winner = 0 if is_team_a else 1
-                    elif r < 0:
-                        self._latest_winner = 1 if is_team_a else 0
-                    else:
-                        self._latest_winner = -1
-
         self._latest_rewards = rewards
         self._latest_terminations = terminations
         if any(terminations.values()) and previous_scalars:
@@ -364,6 +353,22 @@ class BlackOutEnv(ParallelEnv):
             current_time = self._latest_scalars.get("time_left", 0.0)
             if current_time > previous_time + 0.25:
                 self._latest_scalars = previous_scalars
+        if any(terminations.values()) and self._latest_winner is None:
+            # Winner is decided purely by final score, mirroring MatchManager.cs's own
+            # tie-break (ScoreA>ScoreB -> TeamA, ScoreB>ScoreA -> TeamB, equal -> draw).
+            # The terminal AgentInfo reward is NOT a valid stand-in for this: it's that
+            # tick's ordinary per-step shaping with the ±1/0 win/loss/draw bonus from
+            # BlackOutEpisodeCoordinator.OnGameEnded added on top, so its sign is only
+            # zero in a draw by coincidence -- any nonzero shaping residue on the terminal
+            # tick previously got misread as a decisive win/loss.
+            score_a = self._latest_scalars.get("score_0", 0.0)
+            score_b = self._latest_scalars.get("score_1", 0.0)
+            if score_a > score_b:
+                self._latest_winner = 0
+            elif score_b > score_a:
+                self._latest_winner = 1
+            else:
+                self._latest_winner = -1
         return obs
 
     def _collect_map_obs(self) -> None:

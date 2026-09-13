@@ -182,6 +182,7 @@ class QMIXConfig:
     checkpoint_dir: str = field(default_factory=lambda: default_run_dir(base="checkpoints"))
     checkpoint_interval: int = 5_000  # env steps
     device: str = "cpu"
+    compile: bool = False  # torch.compile net/target_net/ema_net to cut kernel-launch overhead
 
 
 def _own_team_rows(tensor: torch.Tensor, agent_states: torch.Tensor) -> torch.Tensor:
@@ -222,6 +223,18 @@ class QMIXTrainer:
         self.target_net.eval()
         self.ema_net = copy.deepcopy(self.net).to(self.device)
         self.ema_net.eval()
+
+        if config.compile:
+            # Deep-copy above happens on the eager modules first -- compiling, then deepcopy-ing
+            # the OptimizedModule wrapper is the fragile order. select_actions() calls these nets
+            # at a small batch with n_quantiles=cfg.n_quantiles (net/ema_net) while train_step
+            # calls them at batch_size/batch_size*spr_k with n_quantiles in {cfg.n_quantiles, 1}
+            # (net+target_net, ema_net) -- expect one recompile per distinct (batch, n_quantiles)
+            # shape encountered, not a recompile every call, since each shape repeats every step.
+            self.net = torch.compile(self.net)
+            self.target_net = torch.compile(self.target_net)
+            self.ema_net = torch.compile(self.ema_net)
+            print("[compile] net/target_net/ema_net wrapped with torch.compile")
 
         self.mixer = QMixer(
             n_agents=N_TEAM,
@@ -318,6 +331,7 @@ class QMIXTrainer:
         # episode, so it can't tell you whether the online policy is actually improving.
         self._episode_wins_online = 0
         self._episode_wins_opponent = 0
+        self._episode_draws = 0
 
         # Wall-clock breakdown accumulators (reset every print window in run()) — lets you see
         # whether wall-clock is spent waiting on Unity (env.step, gRPC round-trip) vs on-policy
@@ -500,7 +514,7 @@ class QMIXTrainer:
         t1 = time.perf_counter()
 
         obs_a, obs_b = obs[self.team_a_agents[0]], obs[self.team_b_agents[0]]
-        next_obs, rewards, terminations, _, _ = self.env.step(env_actions)
+        next_obs, rewards, terminations, _, infos = self.env.step(env_actions)
         t2 = time.perf_counter()
         self._time_select += t1 - t0
         self._time_env_step += t2 - t1
@@ -540,17 +554,20 @@ class QMIXTrainer:
             self.tb.scalar("bootstrap/is_heuristic_fill_phase", float(bootstrapping), self.env_step_count)
 
         if done:
-            # Terminal-step reward already carries the ±1 win/loss/draw event from
-            # BlackOutEpisodeCoordinator.OnGameEnded on top of that step's ordinary shaping --
-            # its sign dominates episode return, so this is a reasonable win/loss proxy without
-            # needing a dedicated "winner" field piped through from Unity.
+            # Physical winner straight from Unity's own score comparison (see
+            # BlackOutEnv._collect_obs / MatchManager.cs) -- NOT episode-return comparison.
+            # Per-step shaping is not zero-sum (see match.py), so summed team returns can
+            # disagree with who actually won the match; this reads the real outcome instead.
+            physical_winner = next(iter(infos.values())).get("winner") if infos else None
             self._episode_count += 1
-            team_a_won = self._episode_return_a > self._episode_return_b
-            team_b_won = self._episode_return_b > self._episode_return_a
+            team_a_won = physical_winner == 0
+            team_b_won = physical_winner == 1
             if team_a_won:
                 self._episode_wins_a += 1
             elif team_b_won:
                 self._episode_wins_b += 1
+            else:
+                self._episode_draws += 1
             # self._online_is_team_a still reflects the episode that just ended -- _reset_env()
             # (which re-randomizes it for the NEXT episode) hasn't run yet at this point.
             online_won = (team_a_won and self._online_is_team_a) or (team_b_won and not self._online_is_team_a)
@@ -569,6 +586,7 @@ class QMIXTrainer:
                 {"team_a": self._episode_wins_a / self._episode_count, "team_b": self._episode_wins_b / self._episode_count},
                 self.env_step_count,
             )
+            self.tb.scalar("episode/draw_rate", self._episode_draws / self._episode_count, self.env_step_count)
             self.tb.scalars(
                 "episode/win_rate_selfplay",
                 {
@@ -1057,6 +1075,12 @@ def main() -> None:
     parser.add_argument("--resume", default=None, help="Checkpoint path to resume from")
     parser.add_argument("--device", default="cpu")
     parser.add_argument(
+        "--compile",
+        action="store_true",
+        help="torch.compile net/target_net/ema_net (cuts kernel-launch overhead; first calls at "
+        "each distinct batch/n_quantiles shape pay a one-time recompile)",
+    )
+    parser.add_argument(
         "--tb-log-dir",
         default=None,
         help="TensorBoard log dir; default is a fresh timestamped folder under runs/ (see default_run_dir), pass '' to disable",
@@ -1094,7 +1118,7 @@ def main() -> None:
         no_graphics=not args.graphics,
         additional_args=additional_args,
     )
-    config_kwargs = dict(device=args.device)
+    config_kwargs = dict(device=args.device, compile=args.compile)
     if args.checkpoint_dir is not None:
         config_kwargs["checkpoint_dir"] = args.checkpoint_dir
     if args.tb_log_dir is not None:
