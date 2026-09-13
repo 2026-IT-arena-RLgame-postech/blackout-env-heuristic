@@ -31,6 +31,10 @@ StrategicHeuristicV1
 StrategicHeuristicV10  ── 국면 전환: opening economy / pressure raid / closeout defend
 StrategicHeuristicV11  ── 흡수 직전 외부 창고 약탈 창(raid-window) 전담
 StrategicHeuristicV12  ── 점수 리드 시 fortress, 열세/초반에는 catch-up
+StrategicHeuristicV13  ── 외부 창고가 보이면 지속하는 3기 공성 약탈
+StrategicHeuristicV14  ── 초반 Hunter 1기로 아군 창고 주변만 방어하는 counter-raid sentinel
+StrategicHeuristicV15  ── Hunter를 포기하고 Carrier 1기의 고가 필드 배터리 운송에 올인
+StrategicHeuristicV16  ── V10 director + storage siege / home guard / convoy rush 선택
 
 V4PolicyFamily  ── V4의 작은 에피소드 단위 파라미터 변형
 HeuristicPolicyMixture ── 위 policy_id와 V4PolicyFamily를 함께 샘플링
@@ -67,6 +71,10 @@ HeuristicPolicyMixture ── 위 policy_id와 V4PolicyFamily를 함께 샘플�
 | `strategic_v10` | `StrategicHeuristicV10` | 공개 점수·시간·흡수·상대 외부창고 가치로 `opening_economy`→`pressure_raid`→`closeout_defend` 전환; Hunter의 목표도 국면별로 변경 | 같은 지도에서도 경제 확장, 약탈 압박, 리드 보호 궤적을 모두 제공 | 새 다양성 정책; V4와의 대전·신뢰성 평가는 별도 기록 후 비중 조정 |
 | `strategic_v11` | `StrategicHeuristicV11` | 흡수 직전 또는 열세일 때 최대 2기 Collector를 상대 외부 창고의 고가 배터리에 배정 | 약탈 타이밍과 다중-unit 협공 상태를 의도적으로 많이 생성 | 정상 수집보다 약탈에 치우친 policy support; 교사 주력으로는 사용하지 않음 |
 | `strategic_v12` | `StrategicHeuristicV12` | 리드 후반에는 새 Hunter 변신을 늦추고, 기존 Hunter가 빈 적을 추격하지 않고 아군 창고 방어 | 수비/호위와 공격 포기라는 명확한 counterfactual 상태를 제공 | 상대가 적극적으로 역전할 때 기회비용이 생길 수 있음 |
+| `strategic_v13` | `StrategicHeuristicV13` | 흡수 임박 여부와 무관하게 노출된 상대 외부 창고에 최대 3기 약탈조를 유지 | 수비형·창고 보존형 상대로 반복 약탈과 다중-unit 압박 trajectory를 생성 | Hunter 수비나 빠른 필드 경제에 취약하도록 의도된 고위험 정책 |
+| `strategic_v14` | `StrategicHeuristicV14` | 초반부터 Hunter 1기를 만들고, 적 화물이 아군 창고 반경 안에 들어올 때만 요격; 그 외에는 홈 순찰 | V13/V11 같은 약탈형을 상대로 한 home-defense와 반격 관측을 제공 | 공격·운반 인력 하나를 고정 소비하므로 수동적 경제형에게 점수 손해 가능 |
+| `strategic_v15` | `StrategicHeuristicV15` | Carrier 1기와 Hunter 0기를 고정하고 Carrier가 고가 필드 배터리를 우선 운반 | 약탈 대신 처리량을 택하는 장거리 convoy trajectory를 제공 | 적 Hunter·약탈을 막지 못하므로 전투형 정책과 뚜렷한 상성 차이를 만들 수 있음 |
+| `strategic_v16` | `StrategicHeuristicV16` | V10의 `opening_economy`·`pressure_raid`·`closeout_defend`에, 공개 창고 가치/위협/필드 자원으로 `storage_siege`·`home_guard`·`convoy_rush`를 추가 | 하나의 에피소드 안에서 조건부 대전략 전환을 관측할 수 있어 장기 horizon BC와 offline RL에 유용 | 각 모드의 조건이 드문 지도에서는 V10과 유사하게 보일 수 있으므로 모드 provenance를 반드시 저장 |
 | `strategic_v4_near` | `V4PolicyFamily` | V4 exact와 세 종류의 좁은 파라미터 변형을 에피소드 단위 샘플링 | V4 주변 decision boundary를 조밀하게 커버 | 완전히 다른 전략 상태는 거의 만들지 않음 |
 
 ## 주요 평가 결과
@@ -129,19 +137,23 @@ teacher = V4PolicyFamily(
 
 | policy_id | 기본 가중치 | 데이터 내 역할 |
 |---|---:|---|
-| `strategic_v1` | 10% | 단순 기준 행동 |
-| `strategic_v2` | 9% | 전역 경제 배정 |
-| `strategic_v3` | 12% | 안전 적재 |
-| `strategic_v4` | 23% | 주 교사 정책 |
-| `strategic_v4_near` | 18% | V4 주변 조밀한 변형 |
+| `strategic_v1` | 8% | 단순 기준 행동 |
+| `strategic_v2` | 7% | 전역 경제 배정 |
+| `strategic_v3` | 9% | 안전 적재 |
+| `strategic_v4` | 18% | 주 교사 정책 |
+| `strategic_v4_near` | 14% | V4 주변 조밀한 변형 |
 | `strategic_v5` | 3% | 공격적 예측 요격 |
-| `strategic_v6` | 7% | 위험 회피·저정체 경로 |
+| `strategic_v6` | 6% | 위험 회피·저정체 경로 |
 | `strategic_v7` | 5% | 동적 역할 배분 |
 | `strategic_v8` | 1% | 보수적 역할 리셋 대조군 |
-| `strategic_v9` | 3% | 실제 역할 리셋 trajectory |
-| `strategic_v10` | 4% | 국면별 역할/목표 전환 |
-| `strategic_v11` | 3% | 흡수 직전 다중-unit 약탈 |
-| `strategic_v12` | 2% | 리드 보존·창고 방어 |
+| `strategic_v9` | 4% | 실제 역할 리셋 trajectory |
+| `strategic_v10` | 5% | 국면별 역할/목표 전환 |
+| `strategic_v11` | 4% | 흡수 직전 다중-unit 약탈 |
+| `strategic_v12` | 3% | 리드 보존·창고 방어 |
+| `strategic_v13` | 3% | 지속 공성 약탈 |
+| `strategic_v14` | 3% | 약탈 대응 홈 수비 |
+| `strategic_v15` | 3% | Carrier 처리량 러시 |
+| `strategic_v16` | 4% | V10 기반 조건부 공성·수비·수송 전환 |
 
 ```python
 from blackout_env import HeuristicPolicyMixture
@@ -257,17 +269,22 @@ teacher = make_heuristic("strategic_v9")
   리드 보존 점수차 0.07–0.12
 - V11 추가: 모드 확인 지연 8–16틱, 동시 약탈조 1–2기, 약탈 흡수 임계 0.42–0.66
 - V12 추가: 모드 확인 지연 15–24틱, fortress 진입 리드 0.05–0.11
+- V13 추가: 모드 확인 지연 6–14틱, 약탈조 2–3기, 공성 최소 가치 0.5–2.5
+- V14 추가: 홈 수비 반경 5.5–8.5 타일
+- V15 추가: Carrier가 고가 필드 배터리를 얼마나 강하게 우선할지 15.0–26.0
+- V16 추가: 모드 확인 지연 8–17틱, 공성 전환 상대 창고 가치 5.0–11.0,
+  홈 수비 반경 5.5–8.5, convoy 전환 필드 배터리 가치 40.0–70.0
 - `strategic_v4_near`: 일반 변형 대신 V4 profile을 중첩 샘플링
 
 `perturb=False`이면 정책 버전은 계속 가중치에 따라 샘플링하지만 공통 파라미터는
 `use_specialists=True`, `replan_interval=10`, `threat_radius=0.16`으로 고정되고 V4-near는 exact만
 사용한다.
 
-주의: V7–V10/V12는 `_role()`을 동적 역할 배분으로 재정의하므로 일반 혼합의 `use_specialists=False`가
+주의: V7–V10/V12/V14–V16는 `_role()`을 동적 역할 배분으로 재정의하므로 일반 혼합의 `use_specialists=False`가
 동적 역할을 끄는 스위치로 동작하지 않는다. 이 정책들의 역할을 끄거나 수량을 조절하려면 직접 생성해
 `carrier_quota`, `hunter_quota`를 설정하거나 해당 정책을 혼합에서 제외한다.
 
-## 상태 전환 정책(V10–V12)의 사용법
+## 상태 전환 정책(V10–V12, V16)의 사용법
 
 세 정책은 매 tick 무작위로 역할을 바꾸지 않는다. 관측된 조건이 연속 `mode_confirm_ticks`번 유지될
 때만 새 모드로 전이하는 hysteresis를 사용한다. 조건은 모두 공개 `team_state`와 semantic map에서만
@@ -278,6 +295,9 @@ teacher = make_heuristic("strategic_v9")
 | V10 | `opening_economy` | 기본 초반 | 새 Hunter 변신을 늦추고 경제/Carrier를 우선 |
 | V10 | `pressure_raid` | 상대 외부 창고에 가치가 있고 흡수 임박, 또는 크게 열세 | Hunter가 고가 화물/Carrier를 우선 추격하고 화물이 없으면 외부 창고를 순찰 |
 | V10 | `closeout_defend` | 리드 상태 + 후반 | Hunter가 빈 Collector를 추격하지 않고 아군 창고를 순찰; 적 화물이 보일 때만 요격 |
+| V16 | `storage_siege` | 보호되지 않은 적 외부 창고 가치가 `siege_value` 이상 | V13처럼 최대 3기 약탈조를 쓰되, 수비 위협이나 초반 field-rush 조건이 오면 다음 모드로 전환 |
+| V16 | `home_guard` | 적 화물이 아군 창고 `guard_radius` 안으로 진입 | V14처럼 Hunter가 그 화물만 요격하고, 화물이 없으면 아군 창고를 순찰 |
+| V16 | `convoy_rush` | 초반 + 필드 배터리 가치가 `convoy_field_battery` 이상 | V15처럼 Hunter 변신을 미루고 Carrier가 고가 필드 배터리를 우선 운반 |
 | V11 | `harvest` | 기본 | V4의 전역 경제 배정 |
 | V11 | `raid_window` | 상대 외부 창고 가치 + 흡수 임박 또는 열세 | 최대 `raid_slots` Collector가 서로 다른 고가 적 창고 배터리를 노림 |
 | V12 | `catch_up` | 기본/열세 | V7의 동적 역할 배분과 공격적 회복 |

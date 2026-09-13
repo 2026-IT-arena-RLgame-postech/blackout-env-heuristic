@@ -37,6 +37,7 @@ from blackout_env.heuristics import (
     StrategicHeuristicV4, StrategicHeuristicV5, StrategicHeuristicV6,
     StrategicHeuristicV7, StrategicHeuristicV8, StrategicHeuristicV9,
     StrategicHeuristicV10, StrategicHeuristicV11, StrategicHeuristicV12,
+    StrategicHeuristicV13, StrategicHeuristicV14, StrategicHeuristicV15, StrategicHeuristicV16,
     V4PolicyFamily,
 )
 try:  # direct ``python examples/...`` execution
@@ -59,6 +60,10 @@ POLICIES = {
     "v10": StrategicHeuristicV10,
     "v11": StrategicHeuristicV11,
     "v12": StrategicHeuristicV12,
+    "v13": StrategicHeuristicV13,
+    "v14": StrategicHeuristicV14,
+    "v15": StrategicHeuristicV15,
+    "v16": StrategicHeuristicV16,
 }
 
 

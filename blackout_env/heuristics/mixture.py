@@ -19,6 +19,9 @@ from .dynamic_roles import StrategicHeuristicV7
 from .lifecycle_roles import StrategicHeuristicV8
 from .opportunistic_respec import StrategicHeuristicV9
 from .phase_strategies import StrategicHeuristicV10, StrategicHeuristicV11, StrategicHeuristicV12
+from .counterplay_strategies import (
+    StrategicHeuristicV13, StrategicHeuristicV14, StrategicHeuristicV15, StrategicHeuristicV16,
+)
 
 
 @dataclass(frozen=True)
@@ -44,6 +47,10 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
     "strategic_v10": StrategicHeuristicV10,
     "strategic_v11": StrategicHeuristicV11,
     "strategic_v12": StrategicHeuristicV12,
+    "strategic_v13": StrategicHeuristicV13,
+    "strategic_v14": StrategicHeuristicV14,
+    "strategic_v15": StrategicHeuristicV15,
+    "strategic_v16": StrategicHeuristicV16,
 }
 
 
@@ -74,19 +81,23 @@ class HeuristicPolicyMixture(BaseModel):
     ):
         self._rng = np.random.default_rng(seed)
         default_weights = {
-            "strategic_v1": 0.10,
-            "strategic_v2": 0.09,
-            "strategic_v3": 0.12,
-            "strategic_v4": 0.23,
-            "strategic_v4_near": 0.18,
+            "strategic_v1": 0.08,
+            "strategic_v2": 0.07,
+            "strategic_v3": 0.09,
+            "strategic_v4": 0.18,
+            "strategic_v4_near": 0.14,
             "strategic_v5": 0.03,  # intentionally aggressive, but weak in direct evaluation
-            "strategic_v6": 0.07,
+            "strategic_v6": 0.06,
             "strategic_v7": 0.05,
             "strategic_v8": 0.01,  # conservative lifecycle control
-            "strategic_v9": 0.03,  # active respec trajectories remain deliberately sparse
-            "strategic_v10": 0.04,  # phase switching: economy / pressure / closeout
-            "strategic_v11": 0.03,  # bounded absorption-window raids
-            "strategic_v12": 0.02,  # lead-preserving fortress trajectories
+            "strategic_v9": 0.04,  # active respec trajectories remain deliberately sparse
+            "strategic_v10": 0.05,  # phase switching: economy / pressure / closeout
+            "strategic_v11": 0.04,  # bounded absorption-window raids
+            "strategic_v12": 0.03,  # lead-preserving fortress trajectories
+            "strategic_v13": 0.03,  # persistent storage siege; deliberately polarised
+            "strategic_v14": 0.03,  # early Hunter home sentinel; anti-raid evidence
+            "strategic_v15": 0.03,  # Carrier throughput race, no Hunter
+            "strategic_v16": 0.04,  # V10 director with siege / guard / convoy counterplay modes
         }
         self.weights = dict(default_weights if weights is None else weights)
         unknown = set(self.weights) - set(POLICY_REGISTRY)
@@ -154,6 +165,27 @@ class HeuristicPolicyMixture(BaseModel):
                 parameters.update({
                     "mode_confirm_ticks": int(episode_rng.integers(15, 25)),
                     "fortress_lead": float(episode_rng.uniform(0.05, 0.11)),
+                })
+            elif policy_id == "strategic_v13":
+                parameters.update({
+                    "mode_confirm_ticks": int(episode_rng.integers(6, 15)),
+                    "raid_slots": int(episode_rng.integers(2, 4)),
+                    "siege_min_value": float(episode_rng.uniform(0.5, 2.5)),
+                })
+            elif policy_id == "strategic_v14":
+                parameters.update({
+                    "guard_radius": float(episode_rng.uniform(5.5, 8.5)),
+                })
+            elif policy_id == "strategic_v15":
+                parameters.update({
+                    "cargo_amount_weight": float(episode_rng.uniform(15.0, 26.0)),
+                })
+            elif policy_id == "strategic_v16":
+                parameters.update({
+                    "mode_confirm_ticks": int(episode_rng.integers(8, 18)),
+                    "siege_value": float(episode_rng.uniform(5.0, 11.0)),
+                    "guard_radius": float(episode_rng.uniform(5.5, 8.5)),
+                    "convoy_field_battery": float(episode_rng.uniform(40.0, 70.0)),
                 })
         else:
             parameters = {

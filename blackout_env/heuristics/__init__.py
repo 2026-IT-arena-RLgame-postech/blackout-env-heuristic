@@ -11,6 +11,9 @@ from .dynamic_roles import StrategicHeuristicV7
 from .lifecycle_roles import StrategicHeuristicV8
 from .opportunistic_respec import StrategicHeuristicV9
 from .phase_strategies import StrategicHeuristicV10, StrategicHeuristicV11, StrategicHeuristicV12
+from .counterplay_strategies import (
+    StrategicHeuristicV13, StrategicHeuristicV14, StrategicHeuristicV15, StrategicHeuristicV16,
+)
 from .mixture import HeuristicPolicyMixture, POLICY_REGISTRY, PolicySample, make_heuristic
 
 StrategicHeuristicV1 = StrategicHeuristic
@@ -26,6 +29,7 @@ __all__ = [
     "StrategicHeuristicV8",
     "StrategicHeuristicV9",
     "StrategicHeuristicV10", "StrategicHeuristicV11", "StrategicHeuristicV12",
+    "StrategicHeuristicV13", "StrategicHeuristicV14", "StrategicHeuristicV15", "StrategicHeuristicV16",
     "RecommendedStrategicHeuristic",
     "V4FamilySample", "V4PolicyFamily",
     "HeuristicPolicyMixture", "POLICY_REGISTRY", "PolicySample", "make_heuristic",

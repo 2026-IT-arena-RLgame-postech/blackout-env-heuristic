@@ -13,6 +13,10 @@ from blackout_env.heuristics import (
     StrategicHeuristicV10,
     StrategicHeuristicV11,
     StrategicHeuristicV12,
+    StrategicHeuristicV13,
+    StrategicHeuristicV14,
+    StrategicHeuristicV15,
+    StrategicHeuristicV16,
 )
 
 
@@ -222,6 +226,8 @@ def test_policy_mixture_is_reproducible_and_exposes_dataset_metadata():
         "strategic_v8",
         "strategic_v9",
         "strategic_v10", "strategic_v11", "strategic_v12",
+        "strategic_v13", "strategic_v14", "strategic_v15",
+        "strategic_v16",
     }
     assert 8 <= first.current_sample.parameters["replan_interval"] <= 13
     next_first = first.reset()
@@ -288,6 +294,47 @@ def test_raid_window_switches_only_when_visible_external_storage_has_value():
     policy.act(team)
     assert policy.current_mode == "raid_window"
     assert policy.strategy_transitions
+
+
+def test_storage_siege_stays_on_exposed_enemy_storage_without_absorption_window():
+    policy = StrategicHeuristicV13(mode_confirm_ticks=1, siege_min_value=1.0)
+    o = _observation()
+    o["graphic"][16:18, 16:18, 7] = 1  # external enemy storage
+    o["graphic"][16, 16, 8] = 4 / 15
+    # This is outside V11's ordinary raid window; V13 should still commit.
+    o["team_state"][:] = [0.10, 0.10, 0.80, 0.99]
+    team = {f"unit_{i}": o for i in range(5)}
+    policy.act(team)
+    policy.act(team)
+    assert policy.current_mode == "raid_window"
+    assert policy.style_label == "storage_siege"
+
+
+def test_counter_raid_and_convoy_policies_keep_distinct_irreversible_roles():
+    sentinel = StrategicHeuristicV14()
+    convoy = StrategicHeuristicV15()
+    o = _observation()
+    team = {f"unit_{i}": o for i in range(5)}
+    sentinel.act(team)
+    convoy.act(team)
+    assert sentinel.hunter_quota == 1 and sentinel.carrier_quota == 0
+    assert convoy.hunter_quota == 0 and convoy.carrier_quota == 1
+    assert sentinel.current_mode == "home_guard"
+    assert convoy.current_mode == "convoy_rush"
+    assert all(role.startswith("home_guard:") for role in sentinel.role_assignments.values())
+    assert all(role.startswith("convoy_rush:") for role in convoy.role_assignments.values())
+
+
+def test_v16_director_enters_counterplay_siege_mode_from_public_storage_value():
+    policy = StrategicHeuristicV16(mode_confirm_ticks=1, siege_value=1.0)
+    o = _observation()
+    o["graphic"][16:18, 16:18, 7] = 1  # exposed enemy storage
+    o["graphic"][16, 16, 8] = 4 / 15
+    team = {f"unit_{i}": o for i in range(5)}
+    policy.act(team)
+    policy.act(team)
+    assert policy.current_mode == "storage_siege"
+    assert all(role.startswith("storage_siege:") for role in policy.role_assignments.values())
 
 
 def test_fortress_mode_defends_home_instead_of_chasing_empty_enemy():
