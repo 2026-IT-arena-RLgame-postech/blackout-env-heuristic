@@ -28,6 +28,10 @@ StrategicHeuristicV1
                 └── StrategicHeuristicV8  (보수적 사망 리셋)
                     └── StrategicHeuristicV9  (적극적 사망 리셋)
 
+StrategicHeuristicV10  ── 국면 전환: opening economy / pressure raid / closeout defend
+StrategicHeuristicV11  ── 흡수 직전 외부 창고 약탈 창(raid-window) 전담
+StrategicHeuristicV12  ── 점수 리드 시 fortress, 열세/초반에는 catch-up
+
 V4PolicyFamily  ── V4의 작은 에피소드 단위 파라미터 변형
 HeuristicPolicyMixture ── 위 policy_id와 V4PolicyFamily를 함께 샘플링
 ```
@@ -60,6 +64,9 @@ HeuristicPolicyMixture ── 위 policy_id와 V4PolicyFamily를 함께 샘플�
 | `strategic_v7` | `StrategicHeuristicV7` | Carrier 최대 1기; 성소까지 실제 경로가 가까운 빈 Collector 배정; Hunter 투입 지연 | 역할과 운반 능력을 명시적으로 고려 | V4보다 짧은 막힘이 많아 기준판 대신 역할 변주용 |
 | `strategic_v8` | `StrategicHeuristicV8` | 열세·수송 부재·필드 자원·시간·적 Hunter 조건을 모두 만족할 때 상호사망으로 역할 리셋 | 불필요한 자살을 강하게 억제 | 10경기에서 리셋 0회; 보수적 대조군, 기본 1% |
 | `strategic_v9` | `StrategicHeuristicV9` | V8 조건을 완화해 실제 Hunter→사망→Collector trajectory 생성 | 리셋 4/4 성공, V7과 동률 성능 및 비슷한 신뢰성 | 승격판은 아니며 희귀 전략 데이터용 기본 3% |
+| `strategic_v10` | `StrategicHeuristicV10` | 공개 점수·시간·흡수·상대 외부창고 가치로 `opening_economy`→`pressure_raid`→`closeout_defend` 전환; Hunter의 목표도 국면별로 변경 | 같은 지도에서도 경제 확장, 약탈 압박, 리드 보호 궤적을 모두 제공 | 새 다양성 정책; V4와의 대전·신뢰성 평가는 별도 기록 후 비중 조정 |
+| `strategic_v11` | `StrategicHeuristicV11` | 흡수 직전 또는 열세일 때 최대 2기 Collector를 상대 외부 창고의 고가 배터리에 배정 | 약탈 타이밍과 다중-unit 협공 상태를 의도적으로 많이 생성 | 정상 수집보다 약탈에 치우친 policy support; 교사 주력으로는 사용하지 않음 |
+| `strategic_v12` | `StrategicHeuristicV12` | 리드 후반에는 새 Hunter 변신을 늦추고, 기존 Hunter가 빈 적을 추격하지 않고 아군 창고 방어 | 수비/호위와 공격 포기라는 명확한 counterfactual 상태를 제공 | 상대가 적극적으로 역전할 때 기회비용이 생길 수 있음 |
 | `strategic_v4_near` | `V4PolicyFamily` | V4 exact와 세 종류의 좁은 파라미터 변형을 에피소드 단위 샘플링 | V4 주변 decision boundary를 조밀하게 커버 | 완전히 다른 전략 상태는 거의 만들지 않음 |
 
 ## 주요 평가 결과
@@ -122,16 +129,19 @@ teacher = V4PolicyFamily(
 
 | policy_id | 기본 가중치 | 데이터 내 역할 |
 |---|---:|---|
-| `strategic_v1` | 11% | 단순 기준 행동 |
-| `strategic_v2` | 10% | 전역 경제 배정 |
-| `strategic_v3` | 13% | 안전 적재 |
-| `strategic_v4` | 25% | 주 교사 정책 |
-| `strategic_v4_near` | 20% | V4 주변 조밀한 변형 |
+| `strategic_v1` | 10% | 단순 기준 행동 |
+| `strategic_v2` | 9% | 전역 경제 배정 |
+| `strategic_v3` | 12% | 안전 적재 |
+| `strategic_v4` | 23% | 주 교사 정책 |
+| `strategic_v4_near` | 18% | V4 주변 조밀한 변형 |
 | `strategic_v5` | 3% | 공격적 예측 요격 |
-| `strategic_v6` | 8% | 위험 회피·저정체 경로 |
-| `strategic_v7` | 6% | 동적 역할 배분 |
+| `strategic_v6` | 7% | 위험 회피·저정체 경로 |
+| `strategic_v7` | 5% | 동적 역할 배분 |
 | `strategic_v8` | 1% | 보수적 역할 리셋 대조군 |
 | `strategic_v9` | 3% | 실제 역할 리셋 trajectory |
+| `strategic_v10` | 4% | 국면별 역할/목표 전환 |
+| `strategic_v11` | 3% | 흡수 직전 다중-unit 약탈 |
+| `strategic_v12` | 2% | 리드 보존·창고 방어 |
 
 ```python
 from blackout_env import HeuristicPolicyMixture
@@ -187,16 +197,19 @@ teacher = HeuristicPolicyMixture(
 teacher = HeuristicPolicyMixture(
     seed=7,
     weights={
-        "strategic_v1": 0.08,
-        "strategic_v2": 0.08,
-        "strategic_v3": 0.10,
-        "strategic_v4": 0.24,
-        "strategic_v4_near": 0.20,
+        "strategic_v1": 0.07,
+        "strategic_v2": 0.07,
+        "strategic_v3": 0.09,
+        "strategic_v4": 0.20,
+        "strategic_v4_near": 0.17,
         "strategic_v5": 0.07,
-        "strategic_v6": 0.10,
+        "strategic_v6": 0.08,
         "strategic_v7": 0.07,
         "strategic_v8": 0.02,
         "strategic_v9": 0.04,
+        "strategic_v10": 0.05,
+        "strategic_v11": 0.04,
+        "strategic_v12": 0.03,
     },
 )
 ```
@@ -240,15 +253,48 @@ teacher = make_heuristic("strategic_v9")
 - V5 추가: `intercept_margin_seconds` 0.20–0.40,
   `intent_temperature` 2.5–6.0, `velocity_ema` 0.35–0.75
 - V6 추가: `risk_radius_tiles` 2.0–3.5, `risk_weight` 2.0–4.2
+- V10 추가: 모드 확인 지연 14–22틱, 약탈 압박 흡수 임계 0.32–0.48,
+  리드 보존 점수차 0.07–0.12
+- V11 추가: 모드 확인 지연 8–16틱, 동시 약탈조 1–2기, 약탈 흡수 임계 0.42–0.66
+- V12 추가: 모드 확인 지연 15–24틱, fortress 진입 리드 0.05–0.11
 - `strategic_v4_near`: 일반 변형 대신 V4 profile을 중첩 샘플링
 
 `perturb=False`이면 정책 버전은 계속 가중치에 따라 샘플링하지만 공통 파라미터는
 `use_specialists=True`, `replan_interval=10`, `threat_radius=0.16`으로 고정되고 V4-near는 exact만
 사용한다.
 
-주의: V7–V9는 `_role()`을 동적 역할 배분으로 재정의하므로 일반 혼합의 `use_specialists=False`가
-동적 역할을 끄는 스위치로 동작하지 않는다. V7–V9의 역할을 끄거나 수량을 조절하려면 직접 생성해
+주의: V7–V10/V12는 `_role()`을 동적 역할 배분으로 재정의하므로 일반 혼합의 `use_specialists=False`가
+동적 역할을 끄는 스위치로 동작하지 않는다. 이 정책들의 역할을 끄거나 수량을 조절하려면 직접 생성해
 `carrier_quota`, `hunter_quota`를 설정하거나 해당 정책을 혼합에서 제외한다.
+
+## 상태 전환 정책(V10–V12)의 사용법
+
+세 정책은 매 tick 무작위로 역할을 바꾸지 않는다. 관측된 조건이 연속 `mode_confirm_ticks`번 유지될
+때만 새 모드로 전이하는 hysteresis를 사용한다. 조건은 모두 공개 `team_state`와 semantic map에서만
+계산한다. 즉 BC 교사나 대회 정책으로 써도 특권 정보 누출이 없다.
+
+| 정책 | 모드 | 공개 전이 신호 | unit별 결과 |
+|---|---|---|---|
+| V10 | `opening_economy` | 기본 초반 | 새 Hunter 변신을 늦추고 경제/Carrier를 우선 |
+| V10 | `pressure_raid` | 상대 외부 창고에 가치가 있고 흡수 임박, 또는 크게 열세 | Hunter가 고가 화물/Carrier를 우선 추격하고 화물이 없으면 외부 창고를 순찰 |
+| V10 | `closeout_defend` | 리드 상태 + 후반 | Hunter가 빈 Collector를 추격하지 않고 아군 창고를 순찰; 적 화물이 보일 때만 요격 |
+| V11 | `harvest` | 기본 | V4의 전역 경제 배정 |
+| V11 | `raid_window` | 상대 외부 창고 가치 + 흡수 임박 또는 열세 | 최대 `raid_slots` Collector가 서로 다른 고가 적 창고 배터리를 노림 |
+| V12 | `catch_up` | 기본/열세 | V7의 동적 역할 배분과 공격적 회복 |
+| V12 | `fortress` | 리드 상태 + 경기 중후반 | 새 Hunter를 만들지 않고, 기존 Hunter는 아군 창고 7타일 안의 적 화물만 요격 |
+
+각 인스턴스에는 현재 전략을 나타내는 `current_mode`, 변경 시점 목록 `strategy_transitions`, 그리고
+`"pressure_raid:hunter"`처럼 모드가 접두사로 붙은 `role_assignments`가 있다. 데이터 수집기는 이를
+에피소드 메타데이터뿐 아니라 모드 전환 transition에 함께 기록하는 편이 좋다.
+
+```python
+from blackout_env.heuristics import make_heuristic
+
+teacher = make_heuristic("strategic_v10", mode_confirm_ticks=18)
+actions = teacher.act(observations)
+episode_metadata["strategy_mode"] = teacher.current_mode
+episode_metadata["strategy_transitions"] = list(teacher.strategy_transitions)
+```
 
 ## 전략적 사망과 역할 리셋
 
@@ -333,6 +379,7 @@ cd /Users/mac/project/26rl/blackout-env
 - `idle_6s`
 - `blocked_0.24s`
 - V8/V9의 `respec=완료/시도`, `gates=조건 충족 tick`
+- V10–V12의 `modes`, `switches`, 마지막 `strategy diversity` 요약(모드 점유율과 전환 횟수)
 
 화면에서 보려면 배속을 1로 낮춘다.
 

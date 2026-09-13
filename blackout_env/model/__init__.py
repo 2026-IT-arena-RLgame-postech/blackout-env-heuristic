@@ -8,6 +8,7 @@ from ..heuristics import (
     StrategicHeuristicV7,
     StrategicHeuristicV8,
     StrategicHeuristicV9,
+    StrategicHeuristicV10, StrategicHeuristicV11, StrategicHeuristicV12,
 )
 
 __all__ = [
@@ -18,6 +19,7 @@ __all__ = [
     "StrategicHeuristicV7",
     "StrategicHeuristicV8",
     "StrategicHeuristicV9",
+    "StrategicHeuristicV10", "StrategicHeuristicV11", "StrategicHeuristicV12",
     "RecommendedStrategicHeuristic", "HeuristicPolicyMixture", "load_checkpoint",
     "V4PolicyFamily",
     "load_my_policy_checkpoint",

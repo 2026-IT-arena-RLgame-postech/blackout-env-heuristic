@@ -18,6 +18,7 @@ from .v4_family import V4PolicyFamily
 from .dynamic_roles import StrategicHeuristicV7
 from .lifecycle_roles import StrategicHeuristicV8
 from .opportunistic_respec import StrategicHeuristicV9
+from .phase_strategies import StrategicHeuristicV10, StrategicHeuristicV11, StrategicHeuristicV12
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,9 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
     "strategic_v7": StrategicHeuristicV7,
     "strategic_v8": StrategicHeuristicV8,
     "strategic_v9": StrategicHeuristicV9,
+    "strategic_v10": StrategicHeuristicV10,
+    "strategic_v11": StrategicHeuristicV11,
+    "strategic_v12": StrategicHeuristicV12,
 }
 
 
@@ -70,16 +74,19 @@ class HeuristicPolicyMixture(BaseModel):
     ):
         self._rng = np.random.default_rng(seed)
         default_weights = {
-            "strategic_v1": 0.11,
-            "strategic_v2": 0.10,
-            "strategic_v3": 0.13,
-            "strategic_v4": 0.25,
-            "strategic_v4_near": 0.20,
+            "strategic_v1": 0.10,
+            "strategic_v2": 0.09,
+            "strategic_v3": 0.12,
+            "strategic_v4": 0.23,
+            "strategic_v4_near": 0.18,
             "strategic_v5": 0.03,  # intentionally aggressive, but weak in direct evaluation
-            "strategic_v6": 0.08,
-            "strategic_v7": 0.06,
+            "strategic_v6": 0.07,
+            "strategic_v7": 0.05,
             "strategic_v8": 0.01,  # conservative lifecycle control
             "strategic_v9": 0.03,  # active respec trajectories remain deliberately sparse
+            "strategic_v10": 0.04,  # phase switching: economy / pressure / closeout
+            "strategic_v11": 0.03,  # bounded absorption-window raids
+            "strategic_v12": 0.02,  # lead-preserving fortress trajectories
         }
         self.weights = dict(default_weights if weights is None else weights)
         unknown = set(self.weights) - set(POLICY_REGISTRY)
@@ -130,6 +137,23 @@ class HeuristicPolicyMixture(BaseModel):
                 parameters.update({
                     "risk_radius_tiles": float(episode_rng.uniform(2.0, 3.5)),
                     "risk_weight": float(episode_rng.uniform(2.0, 4.2)),
+                })
+            elif policy_id == "strategic_v10":
+                parameters.update({
+                    "mode_confirm_ticks": int(episode_rng.integers(14, 23)),
+                    "pressure_absorption": float(episode_rng.uniform(0.32, 0.48)),
+                    "closeout_lead": float(episode_rng.uniform(0.07, 0.12)),
+                })
+            elif policy_id == "strategic_v11":
+                parameters.update({
+                    "mode_confirm_ticks": int(episode_rng.integers(8, 17)),
+                    "raid_slots": int(episode_rng.integers(1, 3)),
+                    "raid_absorption": float(episode_rng.uniform(0.42, 0.66)),
+                })
+            elif policy_id == "strategic_v12":
+                parameters.update({
+                    "mode_confirm_ticks": int(episode_rng.integers(15, 25)),
+                    "fortress_lead": float(episode_rng.uniform(0.05, 0.11)),
                 })
         else:
             parameters = {

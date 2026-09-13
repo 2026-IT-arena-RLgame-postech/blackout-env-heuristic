@@ -10,6 +10,9 @@ from blackout_env.heuristics import (
     StrategicHeuristicV7,
     StrategicHeuristicV8,
     StrategicHeuristicV9,
+    StrategicHeuristicV10,
+    StrategicHeuristicV11,
+    StrategicHeuristicV12,
 )
 
 
@@ -218,6 +221,7 @@ def test_policy_mixture_is_reproducible_and_exposes_dataset_metadata():
         "strategic_v7",
         "strategic_v8",
         "strategic_v9",
+        "strategic_v10", "strategic_v11", "strategic_v12",
     }
     assert 8 <= first.current_sample.parameters["replan_interval"] <= 13
     next_first = first.reset()
@@ -257,6 +261,51 @@ def test_general_mixture_can_force_nested_near_v4_family():
         "exact", "balanced", "responsive", "cautious"
     }
     assert 8 <= mixture.current_sample.parameters["replan_interval"] <= 12
+
+
+def test_phase_director_switches_to_closeout_and_labels_roles():
+    policy = StrategicHeuristicV10(mode_confirm_ticks=1)
+    o = _observation()
+    # A durable late lead turns the policy into a lead-preserving defender.  The first
+    # observation starts hysteresis and the second confirms it.
+    o["team_state"][:] = [0.40, 0.20, 0.40, 0.8]
+    team = {f"unit_{i}": o for i in range(5)}
+    policy.act(team)
+    policy.act(team)
+    assert policy.current_mode == "closeout_defend"
+    assert policy.strategy_transitions
+    assert all(role.startswith("closeout_defend:") for role in policy.role_assignments.values())
+
+
+def test_raid_window_switches_only_when_visible_external_storage_has_value():
+    policy = StrategicHeuristicV11(mode_confirm_ticks=1)
+    o = _observation()
+    o["graphic"][16:18, 16:18, 7] = 1  # external enemy storage, distant from enemy spawn
+    o["graphic"][16, 16, 8] = 6 / 15
+    o["team_state"][:] = [0.10, 0.30, 0.70, 0.20]
+    team = {f"unit_{i}": o for i in range(5)}
+    policy.act(team)
+    policy.act(team)
+    assert policy.current_mode == "raid_window"
+    assert policy.strategy_transitions
+
+
+def test_fortress_mode_defends_home_instead_of_chasing_empty_enemy():
+    policy = StrategicHeuristicV12(mode_confirm_ticks=1)
+    o = _observation()
+    o["team_state"][:] = [0.40, 0.20, 0.50, 0.8]
+    team = {f"unit_{i}": o for i in range(5)}
+    policy.act(team)
+    policy.act(team)
+    assert policy.current_mode == "fortress"
+    # A Hunter with no cargo threat returns a home-storage patrol target.
+    hunter = o["agent_states"][1].copy()
+    hunter[9:12] = [0, 1, 0]
+    target, kind = policy._choose_target(
+        "hunter", hunter, o["agent_states"], o["graphic"], set(), 1, o["team_state"]
+    )
+    assert kind == "patrol_defend"
+    assert target is not None
 
 
 def test_v3_prefers_safe_home_storage_when_absorption_is_not_imminent():

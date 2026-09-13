@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -19,6 +20,9 @@ from blackout_env.heuristics import (
     StrategicHeuristicV7,
     StrategicHeuristicV8,
     StrategicHeuristicV9,
+    StrategicHeuristicV10,
+    StrategicHeuristicV11,
+    StrategicHeuristicV12,
 )
 
 VERSIONS = {
@@ -31,6 +35,9 @@ VERSIONS = {
     "v7": StrategicHeuristicV7,
     "v8": StrategicHeuristicV8,
     "v9": StrategicHeuristicV9,
+    "v10": StrategicHeuristicV10,
+    "v11": StrategicHeuristicV11,
+    "v12": StrategicHeuristicV12,
 }
 BASELINES = {"v1": StrategicHeuristicV1, **VERSIONS}
 
@@ -109,6 +116,8 @@ class Game:
     respec_attempts: int = 0
     respec_completions: int = 0
     respec_diagnostics: dict[str, int] = field(default_factory=dict)
+    candidate_mode_ticks: dict[str, int] = field(default_factory=dict)
+    strategy_transitions: list[tuple[int, str]] = field(default_factory=list)
 
 
 def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
@@ -124,6 +133,7 @@ def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
     last_scores = (0.0, 0.0)
     empty_obs_steps = 0
     pending_transition = None
+    candidate_mode_ticks: Counter[str] = Counter()
 
     while env.agents:
         if not obs:
@@ -149,6 +159,9 @@ def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
         baseline_obs = {n: obs[n] for n in env.agents if n in baseline_names and n in obs}
         actions = {}
         candidate_actions = candidate.act(candidate_obs) if candidate_obs else {}
+        mode = getattr(candidate, "current_mode", None)
+        if mode is not None and candidate_obs:
+            candidate_mode_ticks[str(mode)] += 1
         baseline_actions = baseline.act(baseline_obs) if baseline_obs else {}
         actions.update(candidate_actions)
         actions.update(baseline_actions)
@@ -192,6 +205,8 @@ def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
         int(getattr(candidate, "respec_attempts", 0)),
         int(getattr(candidate, "respec_completions", 0)),
         dict(getattr(candidate, "respec_diagnostics", {})),
+        dict(candidate_mode_ticks),
+        list(getattr(candidate, "strategy_transitions", [])),
     )
 
 
@@ -241,7 +256,9 @@ def main() -> int:
                       f"score={game.candidate_score*100:.0f}-{game.baseline_score*100:.0f} "
                       f"steps={game.steps} variant={game.candidate_variant or '-'} "
                       f"respec={game.respec_completions}/{game.respec_attempts} "
-                      f"gates={game.respec_diagnostics.get('all_gates_ticks', 0)}", flush=True)
+                      f"gates={game.respec_diagnostics.get('all_gates_ticks', 0)} "
+                      f"modes={game.candidate_mode_ticks or '-'} "
+                      f"switches={len(game.strategy_transitions)}", flush=True)
     finally:
         env.close()
 
@@ -266,6 +283,21 @@ def main() -> int:
               f"trailing_ticks={sum(d['trailing_ticks'] for d in diagnostics)} "
               f"both_hunters_ticks={sum(d['both_hunters_ticks'] for d in diagnostics)} "
               f"all_gates_ticks={sum(d['all_gates_ticks'] for d in diagnostics)}")
+    mode_ticks: Counter[str] = Counter()
+    transitions: Counter[str] = Counter()
+    for game in games:
+        mode_ticks.update(game.candidate_mode_ticks)
+        transitions.update(mode for _, mode in game.strategy_transitions)
+    if mode_ticks:
+        total_mode_ticks = sum(mode_ticks.values())
+        mode_share = {
+            mode: round(ticks / total_mode_ticks, 3)
+            for mode, ticks in sorted(mode_ticks.items())
+        }
+        print("strategy diversity "
+              f"mode_ticks={dict(sorted(mode_ticks.items()))} "
+              f"mode_share={mode_share} "
+              f"transitions={dict(sorted(transitions.items()))}")
     return 0 if wins > losses and margins.mean() > 0 else 1
 
 
