@@ -160,6 +160,7 @@ def main() -> int:
     parser.add_argument("--time-scale", type=float, default=200.0)
     parser.add_argument("--policies", nargs="+", choices=tuple(POLICIES), default=list(POLICIES))
     parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--resume", action="store_true", help="continue an interrupted output directory")
     args = parser.parse_args()
     if args.n_seeds < 5:
         parser.error("--n-seeds must be at least 5")
@@ -173,35 +174,45 @@ def main() -> int:
         np.arange(1, 2**30, dtype=np.int64), size=args.n_seeds, replace=False
     ).astype(int).tolist()
     output_dir = args.output_dir or Path("reports") / f"heuristic_tournament_{datetime.now():%Y%m%d_%H%M%S}"
-    output_dir.mkdir(parents=True, exist_ok=False)
-    tasks = [
+    all_tasks = [
         (policy_ids[left], policy_ids[right], seeds, str(args.build), args.time_scale)
         for left in range(len(policy_ids))
         for right in range(left + 1, len(policy_ids))
     ]
-    print(f"policies={policy_ids}", flush=True)
-    print(f"seeds={seeds} pairs={len(tasks)} games={len(tasks) * len(seeds) * 2} workers={args.workers}", flush=True)
-
+    partial_path = output_dir / "completed_pair_results.jsonl"
+    manifest_path = output_dir / "progress.json"
     results: list[dict[str, Any]] = []
+    if args.resume:
+        if not output_dir.is_dir() or not partial_path.is_file() or not manifest_path.is_file():
+            parser.error("--resume requires an existing tournament output directory")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if manifest.get("policy_ids") != policy_ids or manifest.get("seeds") != seeds:
+            parser.error("--resume policy IDs or generated seeds do not match the existing run")
+        results = [json.loads(line) for line in partial_path.read_text(encoding="utf-8").splitlines() if line]
+        completed = {(result["row"], result["column"]) for result in results}
+        tasks = [task for task in all_tasks if (task[0], task[1]) not in completed]
+    else:
+        output_dir.mkdir(parents=True, exist_ok=False)
+        tasks = all_tasks
+        manifest = {
+            "policy_ids": policy_ids,
+            "seeds": seeds,
+            "n_seeds": args.n_seeds,
+            "side_swapped": True,
+            "time_scale": args.time_scale,
+            "workers": args.workers,
+            "total_pairs": len(all_tasks),
+            "completed_pairs": 0,
+            "complete": False,
+        }
+        manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    print(f"policies={policy_ids}", flush=True)
+    print(f"seeds={seeds} remaining_pairs={len(tasks)} games={len(tasks) * len(seeds) * 2} workers={args.workers}", flush=True)
     # A full 13-policy tournament is intentionally long-running.  Persist each completed
     # pair immediately so an interrupted desktop session never gets mistaken for a complete
     # heatmap and the completed evidence remains usable for a later resume/export.
-    partial_path = output_dir / "completed_pair_results.jsonl"
-    manifest_path = output_dir / "progress.json"
-    manifest = {
-        "policy_ids": policy_ids,
-        "seeds": seeds,
-        "n_seeds": args.n_seeds,
-        "side_swapped": True,
-        "time_scale": args.time_scale,
-        "workers": args.workers,
-        "total_pairs": len(tasks),
-        "completed_pairs": 0,
-        "complete": False,
-    }
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     context = mp.get_context("spawn")
-    with partial_path.open("w", encoding="utf-8") as partial_handle:
+    with partial_path.open("a" if args.resume else "w", encoding="utf-8") as partial_handle:
         with ProcessPoolExecutor(max_workers=args.workers, mp_context=context) as executor:
             futures = [executor.submit(_run_pair, task) for task in tasks]
             for future in as_completed(futures):
@@ -212,7 +223,7 @@ def main() -> int:
                 manifest["completed_pairs"] = len(results)
                 manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
                 print(
-                    f"[{len(results)}/{len(tasks)}] {result['row']} vs {result['column']}: "
+                    f"[{len(results)}/{len(all_tasks)}] {result['row']} vs {result['column']}: "
                     f"{result['wins']}-{result['losses']}-{result['draws']} "
                     f"win={result['win_rate']:.1%} margin={result['mean_margin']:+.2f}",
                     flush=True,
