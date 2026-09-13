@@ -121,8 +121,10 @@ class Game:
 
 
 def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
+    # V4PolicyFamily samples an episode-coherent near-V4 profile from its seed.  Both sides
+    # need the same construction rule so round-robin tournaments can place it in either axis.
     candidate = candidate_type(seed=seed) if candidate_type is V4PolicyFamily else candidate_type()
-    baseline = baseline_type()
+    baseline = baseline_type(seed=seed + 1_000_003) if baseline_type is V4PolicyFamily else baseline_type()
     physical_a, physical_b = set(team_a_agents()), set(team_b_agents())
     candidate_names = physical_b if swapped else physical_a
     baseline_names = physical_a if swapped else physical_b

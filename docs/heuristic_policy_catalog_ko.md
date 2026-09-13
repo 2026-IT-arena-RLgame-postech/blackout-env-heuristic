@@ -396,6 +396,25 @@ cd /Users/mac/project/26rl/blackout-env
 평가 전 `benchmark_heuristics.py`, `evaluate_reward_*`, Unity player 프로세스가 이미 실행 중인지 확인하고
 가능하면 한 Unity 평가만 단독 실행한다.
 
+### 정책 상성 히트맵
+
+모든 등록 정책의 행(row) 대 열(column) 승률을 PNG로 저장하려면 다음 명령을 사용한다. 각 비대각
+셀은 같은 map seed에서 양쪽 진영을 한 번씩 교대하므로, 색은 행 정책의 side-swapped 승률이다.
+
+```bash
+./.venv/bin/python examples/tournament_heuristics.py \
+  --n-seeds 5 \
+  --seed-rng 20260913 \
+  --workers 4 \
+  --time-scale 200 \
+  --output-dir reports/heuristic_tournament_20260913
+```
+
+완료 시 `reports/heuristic_tournament_20260913/win_rate_heatmap.png`에 히트맵을 저장하고,
+동일 폴더에 재분석 가능한 `pair_results.csv`, `tournament.json`도 함께 저장한다. 기본 전체 정책군은
+13개이므로 78개 비대각 쌍 × 5 seed × 양 진영 = 780경기다. `--policies v4 v7 v10 v11 v12`처럼
+부분군을 먼저 확인한 뒤 전체를 돌릴 수도 있다.
+
 ## 재현성과 성능 주의사항
 
 - 동일 mixture seed는 동일한 정책/파라미터 샘플열을 만든다.
