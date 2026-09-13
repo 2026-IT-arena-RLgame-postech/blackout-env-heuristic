@@ -25,7 +25,10 @@ from typing import Any
 # The desktop sandbox does not expose the regular per-user matplotlib cache.
 _MPL_CACHE = Path("/private/tmp/blackout_elo_matplotlib")
 _MPL_CACHE.mkdir(parents=True, exist_ok=True)
+_XDG_CACHE = Path("/private/tmp/blackout_elo_cache")
+_XDG_CACHE.mkdir(parents=True, exist_ok=True)
 os.environ.setdefault("MPLCONFIGDIR", str(_MPL_CACHE))
+os.environ.setdefault("XDG_CACHE_HOME", str(_XDG_CACHE))
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -45,7 +48,7 @@ def _fit_elo(policy_ids: list[str], results: list[dict[str, Any]]) -> tuple[np.n
     index = {policy: i for i, policy in enumerate(policy_ids)}
     free_ratings = np.zeros(free_count, dtype=np.float64)
 
-    for _ in range(50):
+    for _ in range(100):
         ratings = np.concatenate((free_ratings, [-float(free_ratings.sum())]))
         gradient_full = np.zeros(count, dtype=np.float64)
         information_full = np.zeros((count, count), dtype=np.float64)
@@ -72,6 +75,13 @@ def _fit_elo(policy_ids: list[str], results: list[dict[str, Any]]) -> tuple[np.n
             + information_full[-1, -1]
         )
         update = np.linalg.solve(information, gradient)
+        # A leave-one-pair-out fit can start from a flat rating vector while its held-out
+        # result was the only strong bridge between two styles.  Damping avoids a transient
+        # Newton overshoot into near-perfect separation, where curvature collapses and the
+        # covariance would become numerically meaningless.
+        max_update = float(np.max(np.abs(update)))
+        if max_update > 0.5:
+            update *= 0.5 / max_update
         free_ratings += update
         if float(np.max(np.abs(update))) < 1e-11:
             break
