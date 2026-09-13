@@ -52,6 +52,14 @@ class GroupedQueryAttention(nn.Module):
         self.dropout = dropout
         self.exclusive = exclusive
 
+        # Diagnostic-only: F.scaled_dot_product_attention is a fused kernel that never
+        # exposes the pre-softmax QK^T logits, so there's nothing to log by default. Setting
+        # log_attention_stats=True makes forward() pay for one extra (unfused, no_grad) QK^T
+        # matmul to populate last_logit_norm -- left off the hot path and toggled on only for
+        # TB-logging steps by the trainer (see QMIXTrainer._forward_and_loss).
+        self.log_attention_stats = False
+        self.last_logit_norm: float | None = None
+
         self.norm = nn.RMSNorm(d_model)
 
         self.q_proj = nn.Linear(d_model, num_heads * self.head_dim, bias=bias)
@@ -81,6 +89,9 @@ class GroupedQueryAttention(nn.Module):
             q = apply_rope(q, cos, sin)
             k = apply_rope(k, cos, sin)
 
+        if self.log_attention_stats:
+            self.last_logit_norm = self._compute_logit_rms(q, k)
+
         out = self._flash_gqa(q, k, v, attn_mask, is_causal)  # (B, num_heads, T, head_dim)
 
         if self.exclusive:
@@ -99,6 +110,17 @@ class GroupedQueryAttention(nn.Module):
         v_full = v.repeat_interleave(self.num_groups, dim=1)  # (B, num_heads, T, head_dim)
         v_hat = F.normalize(v_full, dim=-1)
         return out - (out * v_hat).sum(dim=-1, keepdim=True) * v_hat
+
+    @torch.no_grad()
+    def _compute_logit_rms(self, q: torch.Tensor, k: torch.Tensor) -> float:
+        """RMS (not raw Frobenius norm -- that would just grow with B*T*heads and tell you
+        nothing) of the pre-softmax QK^T/sqrt(head_dim) logits SDPA computes internally but
+        never exposes. The standard "is attention saturating/about to blow up" diagnostic:
+        RMS growing over training means softmax is sharpening toward near-one-hot (vanishing
+        attention gradient), independent of how many logits went into the average."""
+        k_full = k.repeat_interleave(self.num_groups, dim=1)  # (B, num_heads, T, head_dim), matches q
+        logits = torch.matmul(q, k_full.transpose(-2, -1)) * (self.head_dim ** -0.5)
+        return logits.pow(2).mean().sqrt().item()
 
     def _flash_gqa(self, q, k, v, attn_mask, is_causal):
         try:

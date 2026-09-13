@@ -69,6 +69,7 @@ from blackout_env.env.my_obs_preprocessor import MyObsPreprocessor
 from blackout_env.env.obs_preprocessor import load_semantic_config
 from blackout_env.heuristics import HeuristicPolicyMixture
 from blackout_env.model.modules import (
+    AttentionLayers,
     DistributionalQMixer,
     GraphicEncoder,
     QMixer,
@@ -76,7 +77,7 @@ from blackout_env.model.modules import (
     clamp_pressure_stats,
     quantile_huber_loss,
 )
-from blackout_env.model.my_model import N_DISCRETE_ACTIONS, MyModel
+from blackout_env.model.my_model import ATTENTION_DEPTH, N_ATTENTION_HEADS, N_DISCRETE_ACTIONS, MyModel
 from blackout_env.model.my_policy import DIRECTION_VECTORS, direction_vector_to_idx
 from blackout_env.train.ema import ema_update
 from blackout_env.train.replay_buffer import SequentialReplayBuffer
@@ -181,9 +182,15 @@ class QMIXConfig:
     grad_steps_per_call: int = 1  # gradient updates per train_step() call (replay-ratio knob)
     target_update_interval: int = 500  # train (gradient) steps between target hard-syncs
 
-    # Periodic CNN-only reset (shrink-and-perturb). reset_interval=0 disables it.
+    # Periodic shrink-and-perturb reset (Ash & Adams 2020 / BBF), applied to both
+    # graphic_encoder (CNN) and the attention trunk on the same schedule. reset_interval=0
+    # disables it entirely. alpha = how much of the OLD weights to KEEP (see
+    # reset_utils.shrink_and_perturb) -- kept deliberately gentle: the attention trunk carries
+    # more of the network's already-learned behavior than the CNN front-end, so it gets perturbed
+    # less (5-10% -> keep ~92.5%) than the CNN (20% -> keep 80%).
     reset_interval: int = 0
-    reset_alpha: float = 0.5
+    reset_alpha_cnn: float = 0.8
+    reset_alpha_attention: float = 0.925
 
     eps_start: float = 1.0
     eps_end: float = 0.05
@@ -324,6 +331,10 @@ class QMIXTrainer:
         # starts exploring at eps_start instead of inheriting however far env_step_count already
         # decayed it during phase 1 (see epsilon()).
         self._phase2_epsilon_anchor_step = 0
+        # env_step_count offset for _anneal_frac() -- bumped to the current step every time
+        # maybe_reset() actually fires, so n_step/gamma re-anneal from scratch each reset cycle
+        # (see _anneal_frac()) instead of only ever once across the whole run.
+        self._anneal_cycle_start_step = 0
 
         self.team_a_agents = team_a_agents()
         self.team_b_agents = team_b_agents()
@@ -341,10 +352,20 @@ class QMIXTrainer:
         # Named submodules for per-part weight/gradient-norm logging. MyModel's own
         # sub-encoders/heads plus the two auxiliary networks trained alongside it
         # (dist_mixer, spr_predictor) -- see MyModel's docstring for what each part does.
+        # attention_proj (GQA: q/k/v/o projections) and attention_ffn (SwiGLU) logged
+        # separately rather than as one combined "attention" norm -- they have very different
+        # weight/gradient scales, so lumping all 4 layers' worth of both together into one
+        # number masked whichever one was actually exploding/vanishing. nn.ModuleList is
+        # itself an nn.Module, so grouping existing submodules this way (no copies -- these
+        # are views over self.net.attention.layers[i]'s own gqa/ffn) works directly with
+        # TBLogger.weight_norms/grad_norms, which just calls .parameters() on whatever it's given.
+        attention_proj = nn.ModuleList(layer.gqa for layer in self.net.attention.layers)
+        attention_ffn = nn.ModuleList(layer.ffn for layer in self.net.attention.layers)
         self._tb_net_parts: dict[str, nn.Module] = {
             "graphic_encoder": self.net.graphic_encoder,
             "vector_encoder": self.net.vector_encoder,
-            "attention": self.net.attention,
+            "attention_proj": attention_proj,
+            "attention_ffn": attention_ffn,
             "token_type_emb": self.net.token_type_emb,
             "spr_head": self.net.spr_head,
             "q_head": self.net.q_head,
@@ -359,6 +380,9 @@ class QMIXTrainer:
         self._last_td_error_mean: float | None = None
         self._last_q_mean: float | None = None
         self._last_q_std: float | None = None
+        # Per-layer attention logit RMS, populated by _forward_and_loss() only when asked
+        # (see collect_attention_stats there) -- empty otherwise.
+        self._last_attention_logit_rms: list[float] = []
 
         # Episode-outcome bookkeeping for TB (return/win-rate), independent of training.
         self._episode_return_a = 0.0
@@ -426,8 +450,17 @@ class QMIXTrainer:
         return self.cfg.eps_start + frac * (self.cfg.eps_end - self.cfg.eps_start)
 
     def _anneal_frac(self) -> float:
-        anneal_steps = max(1, self.cfg.anneal_frac * self._total_env_steps_hint)
-        return self.env_step_count / anneal_steps
+        # BBF resets AND re-anneals n_step/gamma every cycle -- annealing once across the
+        # whole run would leave both frozen at their END values (n_step_end, gamma_end) for
+        # nearly all of training after the first cycle, defeating half the point of resetting:
+        # a freshly shrink-and-perturbed, less-converged net benefits from short-horizon,
+        # low-variance n-step returns again, same as at the very start (see maybe_reset()'s
+        # reset_alpha docstring / Ash & Adams 2020). With periodic reset disabled
+        # (reset_interval == 0, the default), cycle_len falls back to the whole run,
+        # reproducing the original one-shot anneal exactly.
+        cycle_len = self.cfg.reset_interval if self.cfg.reset_interval > 0 else self._total_env_steps_hint
+        anneal_steps = max(1, self.cfg.anneal_frac * cycle_len)
+        return (self.env_step_count - self._anneal_cycle_start_step) / anneal_steps
 
     def current_n_step(self) -> int:
         return max(1, round(linear_anneal(self.cfg.n_step_start, self.cfg.n_step_end, self._anneal_frac())))
@@ -792,20 +825,39 @@ class QMIXTrainer:
             "valid_mask": torch.tensor(batch["valid_mask"], dtype=torch.float32, device=self.device),  # [B, K]
         }
 
-    def _forward_and_loss(self, t: dict[str, torch.Tensor]) -> tuple[torch.Tensor, np.ndarray]:
+    def _forward_and_loss(
+        self, t: dict[str, torch.Tensor], collect_attention_stats: bool = False
+    ) -> tuple[torch.Tensor, np.ndarray]:
         """Runs net/target_net/ema_net/mixers ONCE on the (already-merged) batch `t` and
         returns (total_loss_per_sample [B], td_error [B]). Same math as before the A/B merge --
         every op here is per-sample (self-attention within a sample's own tokens, no
         cross-sample mixing), so batching two streams together is equivalent to running them
-        separately and concatenating the results, just fewer/larger kernel launches."""
+        separately and concatenating the results, just fewer/larger kernel launches.
+
+        collect_attention_stats: caller (train_step, only on TB-logging steps) wants
+        self._last_attention_logit_rms populated from THIS call specifically -- the online net
+        is also called again below for the bootstrap action (under no_grad), which would
+        otherwise silently overwrite each layer's GroupedQueryAttention.last_logit_norm with
+        the wrong call's numbers if we read it after both calls instead of right after this one.
+        """
         graphic, team_state, agent_states = t["graphic"], t["team_state"], t["agent_states"]
         actions_full, is_weights = t["actions_full"], t["is_weights"]
         own_actions = _own_team_rows(actions_full.unsqueeze(-1), agent_states).squeeze(-1)  # [B, N_TEAM]
+
+        if collect_attention_stats:
+            for layer in self.net.attention.layers:
+                layer.gqa.log_attention_stats = True
 
         # ---- online forward (current state): Q-learning prediction + SPR rollout start ----
         q_values, quantile_values, tau, vision_latent, global_latent = self.net(
             graphic, team_state, agent_states, n_quantiles=self.cfg.n_quantiles
         )
+
+        if collect_attention_stats:
+            self._last_attention_logit_rms = [layer.gqa.last_logit_norm for layer in self.net.attention.layers]
+            for layer in self.net.attention.layers:
+                layer.gqa.log_attention_stats = False
+
         own_quantiles = _own_team_rows(quantile_values, agent_states)  # [B, N_TEAM, Q, n_actions]
         chosen_quantiles = torch.gather(
             own_quantiles, 3, own_actions.view(*own_actions.shape, 1, 1).expand(-1, -1, self.cfg.n_quantiles, 1)
@@ -897,7 +949,9 @@ class QMIXTrainer:
             t_prep1 = time.perf_counter()
             self._time_prep += t_prep1 - t_prep0
 
-            total_loss, td_error_np = self._forward_and_loss(tensors)
+            log_tb_this_step = self.tb.enabled and self.train_step_count % self.cfg.tb_log_interval == 0
+
+            total_loss, td_error_np = self._forward_and_loss(tensors, collect_attention_stats=log_tb_this_step)
             loss = total_loss.mean()
             self._last_td_error_mean = float(td_error_np.mean())
             self._sync()
@@ -908,7 +962,6 @@ class QMIXTrainer:
             self.optimizer.zero_grad()
             loss.backward()
 
-            log_tb_this_step = self.tb.enabled and self.train_step_count % self.cfg.tb_log_interval == 0
             if log_tb_this_step:
                 # Pre-clip grad norms -- clip_grad_norm_ below mutates grads in place, so this
                 # has to run first to see the raw (un-clipped) per-part magnitude.
@@ -926,6 +979,11 @@ class QMIXTrainer:
             if log_tb_this_step:
                 self.tb.scalar("grad_norm/total_preclip", float(total_grad_norm), self.train_step_count)
                 self.tb.weight_norms("weight_norm", self._tb_net_parts, self.train_step_count)
+                self.tb.scalars(
+                    "attention_logit_rms",
+                    {f"layer_{i}": v for i, v in enumerate(self._last_attention_logit_rms)},
+                    self.train_step_count,
+                )
                 self.tb.scalars(
                     "loss",
                     {"total": loss.item(), "iqn": self._last_iqn_loss, "spr": self._last_spr_loss},
@@ -993,30 +1051,44 @@ class QMIXTrainer:
         if not (self.cfg.reset_interval > 0 and self.env_step_count % self.cfg.reset_interval == 0):
             return
 
+        self._reset_submodule("graphic_encoder", lambda: GraphicEncoder(hidden_size=self.cfg.hidden_size), self.cfg.reset_alpha_cnn)
+        self._reset_submodule(
+            "attention",
+            lambda: AttentionLayers(self.cfg.hidden_size, N_ATTENTION_HEADS, ATTENTION_DEPTH),
+            self.cfg.reset_alpha_attention,
+        )
+
+        # Re-anneal n_step/gamma from scratch for the new cycle -- see _anneal_frac().
+        self._anneal_cycle_start_step = self.env_step_count
+
+    def _reset_submodule(self, attr_name: str, reinit_fn, alpha: float) -> None:
+        """Shrink-and-perturb `getattr(self.net, attr_name)` in place, then propagate the
+        result everywhere else that submodule's weights are mirrored -- see maybe_reset()."""
+        submodule = getattr(self.net, attr_name)
         shrink_and_perturb(
-            self.net.graphic_encoder,
+            submodule,
             # .to(self.device): reinit_fn builds on CPU by default: mixing its plain params
             # into a CUDA-resident net's parameters in-place would otherwise fail with a
             # device-mismatch error the first time reset actually fires under CUDA training.
-            reinit_fn=lambda: GraphicEncoder(hidden_size=self.cfg.hidden_size).to(self.device),
-            alpha=self.cfg.reset_alpha,
+            reinit_fn=lambda: reinit_fn().to(self.device),
+            alpha=alpha,
         )
 
-        # A partial reinit changes what each CNN parameter's Adam momentum was computed
-        # against -- keeping stale momentum would actively fight the newly-perturbed weights,
-        # defeating half the point of resetting (Ash & Adams 2020 / BBF both reset optimizer
-        # state alongside parameters for exactly this reason).
-        for p in self.net.graphic_encoder.parameters():
+        # A partial reinit changes what each parameter's Adam momentum was computed against --
+        # keeping stale momentum would actively fight the newly-perturbed weights, defeating
+        # half the point of resetting (Ash & Adams 2020 / BBF both reset optimizer state
+        # alongside parameters for exactly this reason).
+        for p in submodule.parameters():
             self.optimizer.state.pop(p, None)
 
-        # target_net / ema_net would otherwise keep evaluating the OLD (pre-reset) CNN
+        # target_net / ema_net would otherwise keep evaluating the OLD (pre-reset)
         # representation for up to target_update_interval steps / at EMA's slow pace, while
-        # the online net has already jumped to a partly-random one -- bootstrapping a
+        # the online net has already jumped to a partly-perturbed one -- bootstrapping a
         # Q-learning target against such a mismatched representation right after a reset is
         # exactly the kind of thing that destabilizes training, so sync both immediately
         # instead of letting them lag.
-        self.target_net.graphic_encoder.load_state_dict(self.net.graphic_encoder.state_dict())
-        self.ema_net.graphic_encoder.load_state_dict(self.net.graphic_encoder.state_dict())
+        getattr(self.target_net, attr_name).load_state_dict(submodule.state_dict())
+        getattr(self.ema_net, attr_name).load_state_dict(submodule.state_dict())
 
     # ------------------------------------------------------------------
     # Main loop
@@ -1156,6 +1228,17 @@ class QMIXTrainer:
         self.train_step_count = ckpt["train_step_count"]
 
 
+def _auto_device() -> str:
+    """cuda > mps > cpu -- picks the fastest backend actually available on this machine
+    instead of defaulting to cpu (which silently trained without any GPU acceleration at all
+    unless --device was passed explicitly)."""
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--build", required=True, help="Path to the Unity build executable")
@@ -1177,7 +1260,12 @@ def main() -> None:
         "1's pure-heuristic collection into this run's now-empty buffer_a/buffer_b would just "
         "delay handing control to the (already pretrained) net for no benefit.",
     )
-    parser.add_argument("--device", default="cpu")
+    parser.add_argument(
+        "--device",
+        default=None,
+        help="torch device (e.g. cpu/cuda/mps). Default (unset) auto-picks the best available: "
+        "cuda > mps > cpu (see _auto_device()).",
+    )
     parser.add_argument(
         "--heuristic-opponent-frac",
         type=float,
@@ -1191,6 +1279,28 @@ def main() -> None:
         action="store_true",
         help="torch.compile net/target_net/ema_net (cuts kernel-launch overhead; first calls at "
         "each distinct batch/n_quantiles shape pay a one-time recompile)",
+    )
+    parser.add_argument(
+        "--reset-interval",
+        type=int,
+        default=None,
+        help="Env steps between periodic shrink-and-perturb resets of graphic_encoder + the "
+        "attention trunk (see QMIXConfig.reset_interval). 0/unset disables resetting entirely "
+        "(the default) -- e.g. 200_000 gives 5 resets over a 1,000,000-step run, matching BBF's "
+        "resets-per-training-budget ratio.",
+    )
+    parser.add_argument(
+        "--reset-alpha-cnn", type=float, default=None,
+        help="Fraction of graphic_encoder's OLD weights kept across a reset (see "
+        "QMIXConfig.reset_alpha_cnn; 1.0=no-op, 0.0=full reinit). Default (None) keeps the "
+        "dataclass default (0.8, i.e. a gentle 20%% perturbation).",
+    )
+    parser.add_argument(
+        "--reset-alpha-attention", type=float, default=None,
+        help="Same as --reset-alpha-cnn but for the attention trunk (see "
+        "QMIXConfig.reset_alpha_attention). Default (None) keeps the dataclass default (0.925, "
+        "i.e. a ~7.5%% perturbation -- gentler than the CNN's since the trunk carries more of "
+        "the network's already-learned behavior).",
     )
     parser.add_argument(
         "--tb-log-dir",
@@ -1220,6 +1330,9 @@ def main() -> None:
         additional_args = ["-logFile", unity_log_file]
         print(f"[unity] player log -> {unity_log_file}")
 
+    device = args.device or _auto_device()
+    print(f"[device] using {device}" + ("" if args.device else " (auto-selected: cuda > mps > cpu)"))
+
     env = BlackOutEnv(
         env_path=args.build,
         # GraphicEncoder assumes a 24x24 input (GRID_H=GRID_W=6 after two stride-2 convs,
@@ -1230,9 +1343,15 @@ def main() -> None:
         no_graphics=not args.graphics,
         additional_args=additional_args,
     )
-    config_kwargs = dict(device=args.device, compile=args.compile)
+    config_kwargs = dict(device=device, compile=args.compile)
     if args.heuristic_opponent_frac is not None:
         config_kwargs["heuristic_opponent_frac"] = args.heuristic_opponent_frac
+    if args.reset_interval is not None:
+        config_kwargs["reset_interval"] = args.reset_interval
+    if args.reset_alpha_cnn is not None:
+        config_kwargs["reset_alpha_cnn"] = args.reset_alpha_cnn
+    if args.reset_alpha_attention is not None:
+        config_kwargs["reset_alpha_attention"] = args.reset_alpha_attention
     if args.skip_bootstrap:
         config_kwargs["heuristic_fill_frac"] = 0.0
     if args.checkpoint_dir is not None:
