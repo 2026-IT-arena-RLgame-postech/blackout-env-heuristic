@@ -42,7 +42,10 @@ Parallel usage (Ray)
 
 from __future__ import annotations
 
+import os
+import signal
 import socket
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -65,6 +68,52 @@ def find_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("", 0))
         return s.getsockname()[1]
+
+
+def _kill_stray_unity_processes(port: int) -> None:
+    """
+    Safety net for close(): UnityEnvironment._close() (mlagents_envs) waits for its own
+    subprocess.Popen handle to exit and kills it on timeout, which normally suffices -- but on
+    macOS that handle is the .app bundle's *launcher* process, and the actual game binary can
+    end up a separate, un-tracked process that survives it (observed empirically: after
+    env.close() returned cleanly, `ps` still showed a live RLGame2026 process with this same
+    --mlagents-port value). launch_executable() also passes start_new_session=True, putting
+    Unity in its own session so it's immune to signals sent to this python process's process
+    group too -- so an abrupt parent-side kill (Ctrl+C, pkill on the training script) can't
+    reach it that way either.
+
+    Every BlackOutEnv instance is launched with a unique --mlagents-port (see find_free_port(),
+    used unless a caller passes an explicit base_port), so matching on that *exact* flag value
+    (not just a substring of the command line, which risks e.g. port 6525 matching 65253) can
+    only ever hit a process this exact instance launched -- never another concurrent
+    BlackOutEnv's. Best-effort only: pgrep/ps being unavailable or slow just means this no-ops,
+    never raises out of close().
+    """
+    try:
+        pgrep = subprocess.run(
+            ["pgrep", "-f", "--mlagents-port"], capture_output=True, text=True, timeout=5
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return
+    for pid_str in pgrep.stdout.split():
+        try:
+            # -ww: unlimited output width (ps otherwise truncates long command lines to the
+            # terminal width, which would silently cut off --mlagents-port <port> on a long
+            # enough --build path and defeat the exact-token match below).
+            cmd = subprocess.run(
+                ["ps", "-ww", "-p", pid_str, "-o", "command="], capture_output=True, text=True, timeout=5
+            ).stdout
+        except subprocess.TimeoutExpired:
+            continue
+        tokens = cmd.split()
+        if "--mlagents-port" not in tokens:
+            continue
+        idx = tokens.index("--mlagents-port")
+        if idx + 1 < len(tokens) and tokens[idx + 1] == str(port):
+            try:
+                os.kill(int(pid_str), signal.SIGKILL)
+            except (ValueError, ProcessLookupError, PermissionError):
+                pass
 
 
 class BlackOutEnv(ParallelEnv):
@@ -140,6 +189,7 @@ class BlackOutEnv(ParallelEnv):
         if base_port is None:
             base_port = find_free_port()
             worker_id = 0  # port is already unique; worker_id offset unnecessary
+        self._port = base_port + worker_id  # actual --mlagents-port value Unity is launched with; see close()
 
         if semantic_config_path is None:
             semantic_config_path = self._DEFAULT_CONFIG
@@ -302,6 +352,7 @@ class BlackOutEnv(ParallelEnv):
 
     def close(self) -> None:
         self._unity_env.close()
+        _kill_stray_unity_processes(self._port)
 
     # ------------------------------------------------------------------
     # Internal helpers
