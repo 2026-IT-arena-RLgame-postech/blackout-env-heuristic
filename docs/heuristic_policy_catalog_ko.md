@@ -11,8 +11,13 @@
 - 역할 배정 다양성은 `strategic_v7`, 의도적인 역할 리셋 궤적은 `strategic_v9`에서 얻는다.
 - `strategic_v5`, `strategic_v6`, `strategic_v8`은 성능 최적점이 아니라 각각 공격적 요격,
   저정체 위험 회피, 보수적 역할 리셋이라는 희귀 상태 분포를 제공한다.
-- 한 에피소드 안에서는 정책을 바꾸거나 action noise를 넣지 않는다. 정책과 파라미터는 에피소드
-  시작 시 한 번 샘플링해 trajectory의 의도를 일관되게 유지한다.
+- 한 매치(~600초) 안에서는 `policy_id`(어떤 버전인지)를 바꾸거나 action noise를 넣지 않는다.
+  `HeuristicPolicyMixture`는 매치 시작 시 `policy_id`를 한 번만 고른다.
+- 다만 세부 파라미터(작은 근접 변형)는 기본적으로(`resample_each_absorption=True`) 흡수
+  경계(absorption boundary, qmix_trainer가 말하는 이 게임의 실제 "에피소드" 경계, ~120초)마다
+  다시 샘플링한다 — 같은 `policy_id`를 유지한 채 V4-near 스타일의 좁은 구름 안에서만 값을 바꿔,
+  기준 정책은 그대로 두고 BC/offline RL 샘플 다양성을 매치당 여러 번 확보한다. 매치 시작 시
+  최초 1회 샘플링도 이 메커니즘의 특수 경우다.
 - 기존 버전은 삭제하거나 새 의미로 덮어쓰지 않는다. 새 전략은 새 `policy_id`로 추가한다.
 
 ## 정책 계보
@@ -36,7 +41,7 @@ StrategicHeuristicV14  ── 초반 Hunter 1기로 아군 창고 주변만 방�
 StrategicHeuristicV15  ── Hunter를 포기하고 Carrier 1기의 고가 필드 배터리 운송에 올인
 StrategicHeuristicV16  ── V10 director + storage siege / home guard / convoy rush 선택
 
-V4PolicyFamily  ── V4의 작은 에피소드 단위 파라미터 변형
+V4PolicyFamily  ── V4의 작은 근접 파라미터 변형 (기본은 매치 단위, `resample_each_absorption=True`면 흡수 단위)
 HeuristicPolicyMixture ── 위 policy_id와 V4PolicyFamily를 함께 샘플링
 ```
 
@@ -119,7 +124,8 @@ Bradley–Terry/Elo 값이며 전체 평균은 1,500으로 고정했다.
 
 ## V4 근접 변형군
 
-`V4PolicyFamily`는 매 에피소드마다 아래 profile 하나를 샘플링한다. 매 tick noise는 사용하지 않는다.
+`V4PolicyFamily`는 아래 profile 하나를 샘플링한다 (기본은 매치 시작 시 1회, `resample_each_absorption=True`로
+생성하면 흡수마다 다시 샘플링). 매 tick noise는 사용하지 않는다.
 
 | profile | 기본 확률 | `replan_interval` | `threat_radius` | `protected_storage_bonus` | 성격 |
 |---|---:|---:|---:|---:|---|
@@ -187,9 +193,14 @@ print(sample.parameters)
 actions = teacher.act(observations)
 ```
 
-`reset()`을 명시적으로 호출하면 다음 정책을 샘플링하고 새 `PolicySample`을 반환한다. 정책은 Unity의
-남은 시간이 크게 증가하는 것도 새 에피소드로 감지하지만, 데이터 수집기는 첫 transition 전에
-provenance를 기록할 수 있도록 명시적 `reset()`을 권장한다.
+`reset()`을 명시적으로 호출하면 새 `policy_id`를 샘플링하고 새 `PolicySample`을 반환한다. `act()`는 Unity의
+남은 매치 시간이 크게 증가하는 것도 새 매치로 자동 감지해 같은 방식으로 재샘플링하지만, 데이터 수집기는
+첫 transition 전에 provenance를 기록할 수 있도록 명시적 `reset()`을 권장한다.
+
+`resample_each_absorption=True`(기본값)이면 `act()`가 흡수 경계(`team_state[3]`가 증가하는 tick)도
+감지해 `policy_id`는 그대로 둔 채 파라미터만 다시 샘플링한다 — `current_sample.policy_seed`와
+`parameters`가 흡수마다 바뀔 수 있으므로, 흡수 단위로 provenance를 남기려면 매 흡수 경계 직후
+`current_sample`을 다시 읽어야 한다.
 
 ```python
 sample = teacher.reset()
@@ -275,7 +286,8 @@ teacher = make_heuristic("strategic_v9")
 
 ## `perturb`의 의미
 
-`perturb=True`이면 일반 정책에 다음 파라미터를 에피소드 단위로 샘플링한다.
+`perturb=True`이면 일반 정책에 다음 파라미터를 샘플링한다 (기본은 흡수 단위 재샘플링,
+`resample_each_absorption=False`면 매치 단위).
 
 - `use_specialists`: 92% 확률로 true
 - `replan_interval`: 8–13틱

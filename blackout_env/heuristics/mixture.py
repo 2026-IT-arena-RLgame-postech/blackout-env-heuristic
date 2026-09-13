@@ -65,11 +65,18 @@ def make_heuristic(policy_id: str, **parameters) -> BaseModel:
 
 
 class HeuristicPolicyMixture(BaseModel):
-    """Sample a policy version and bounded parameter perturbation once per episode.
+    """Sample a policy version once per match, plus a bounded parameter cloud around it.
 
-    Sampling at episode boundaries keeps each trajectory behaviourally coherent while the
-    complete dataset covers several strategies and navigation styles.  ``current_sample``
-    is deliberately public so collectors can persist provenance with every trajectory.
+    Which strategy (``policy_id``) generated a trajectory only changes at a real match
+    reset, keeping each match behaviourally coherent -- across matches, the complete
+    dataset still covers several strategies and navigation styles.  Within a match, by
+    default (``resample_each_absorption``) the small numeric perturbation around that same
+    strategy is redrawn at every absorption boundary (this game's natural episode boundary,
+    see qmix_trainer's module docstring) instead of staying fixed for the whole ~600s match,
+    the same way V4PolicyFamily stays a "near V4" policy while sampling a fresh nearby point
+    each time -- more local coverage per match for BC/offline-RL, without ever swapping to a
+    behaviourally different heuristic mid-match.  ``current_sample`` is deliberately public
+    so collectors can persist provenance with every trajectory.
     """
 
     def __init__(
@@ -78,6 +85,7 @@ class HeuristicPolicyMixture(BaseModel):
         seed: int = 0,
         weights: dict[str, float] | None = None,
         perturb: bool = True,
+        resample_each_absorption: bool = True,
     ):
         self._rng = np.random.default_rng(seed)
         default_weights = {
@@ -108,16 +116,33 @@ class HeuristicPolicyMixture(BaseModel):
         if sum(self.weights.values()) <= 0:
             raise ValueError("At least one mixture weight must be positive")
         self.perturb = bool(perturb)
+        self.resample_each_absorption = bool(resample_each_absorption)
         self.current_sample: PolicySample | None = None
         self._policy: BaseModel | None = None
+        self._policy_id: str | None = None
         self._last_time_left: float | None = None
+        self._last_absorption: float | None = None
         self.reset()
 
     def reset(self) -> PolicySample:
+        """Pick this match's baseline strategy, then sample its first parameter cloud."""
         names = tuple(self.weights)
         probabilities = np.asarray([self.weights[n] for n in names], dtype=np.float64)
         probabilities /= probabilities.sum()
-        policy_id = str(self._rng.choice(names, p=probabilities))
+        self._policy_id = str(self._rng.choice(names, p=probabilities))
+        self._last_time_left = None
+        self._last_absorption = None
+        return self._resample_variation()
+
+    def _resample_variation(self) -> PolicySample:
+        """Redraw the bounded parameter cloud around the match's already-chosen policy_id.
+
+        Called once from reset() and, while resample_each_absorption is set, again at every
+        absorption boundary -- policy_id itself never changes here, only its nearby numeric
+        knobs do.
+        """
+        policy_id = self._policy_id
+        assert policy_id is not None
         policy_seed = int(self._rng.integers(0, np.iinfo(np.int32).max))
         episode_rng = np.random.default_rng(policy_seed)
 
@@ -196,15 +221,22 @@ class HeuristicPolicyMixture(BaseModel):
         if policy_id != "strategic_v4_near":
             self._policy = make_heuristic(policy_id, **parameters)
         self.current_sample = PolicySample(policy_id, policy_seed, parameters)
-        self._last_time_left = None
         return self.current_sample
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         assert self._policy is not None
         if obs:
-            time_left = float(next(iter(obs.values()))["team_state"][2])
+            team_state = next(iter(obs.values()))["team_state"]
+            time_left = float(team_state[2])
             if self._last_time_left is not None and time_left > self._last_time_left + 0.25:
                 self.reset()
+            elif self.resample_each_absorption and self.perturb:
+                # absorption_time_left counts down each tick and snaps back up the tick it
+                # fires (see qmix_trainer.collect_step) -- a tiny epsilon catches exactly that.
+                absorption_left = float(team_state[3])
+                if self._last_absorption is not None and absorption_left > self._last_absorption + 1e-6:
+                    self._resample_variation()
+                self._last_absorption = absorption_left
             self._last_time_left = time_left
         # Explicit reset() is still preferred for collectors: metadata can be written before
         # the first transition, rather than discovered on its first action.

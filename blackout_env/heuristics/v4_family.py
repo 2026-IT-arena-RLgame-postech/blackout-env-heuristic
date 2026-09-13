@@ -35,7 +35,13 @@ class V4PolicyFamily(BaseModel):
         "cautious": 0.20,
     }
 
-    def __init__(self, *, seed: int = 0, profile_weights: dict[str, float] | None = None):
+    def __init__(
+        self,
+        *,
+        seed: int = 0,
+        profile_weights: dict[str, float] | None = None,
+        resample_each_absorption: bool = False,
+    ):
         self._rng = np.random.default_rng(seed)
         self.profile_weights = dict(
             self.DEFAULT_PROFILE_WEIGHTS if profile_weights is None else profile_weights
@@ -47,9 +53,15 @@ class V4PolicyFamily(BaseModel):
             raise ValueError("Profile weights must be non-negative and non-empty")
         if sum(self.profile_weights.values()) <= 0:
             raise ValueError("At least one profile weight must be positive")
+        # False reproduces the original once-per-match cadence (tournament/benchmark scripts
+        # rely on one stable profile per match for their per-match reporting). True resamples
+        # a fresh nearby profile at every absorption instead, for extra BC/offline-RL sample
+        # diversity within a single ~600s match -- see HeuristicPolicyMixture, which turns this
+        # on for its training-data role.
+        self.resample_each_absorption = bool(resample_each_absorption)
         self.current_sample: V4FamilySample | None = None
         self._policy: StrategicHeuristicV4 | None = None
-        self._last_time_left: float | None = None
+        self._last_boundary_value: float | None = None
         self.reset()
 
     def reset(self) -> V4FamilySample:
@@ -94,14 +106,21 @@ class V4PolicyFamily(BaseModel):
             policy_id="strategic_v4_near", profile=profile,
             policy_seed=policy_seed, parameters=parameters,
         )
-        self._last_time_left = None
+        self._last_boundary_value = None
         return self.current_sample
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         assert self._policy is not None
         if obs:
-            time_left = float(next(iter(obs.values()))["team_state"][2])
-            if self._last_time_left is not None and time_left > self._last_time_left + 0.25:
+            team_state = next(iter(obs.values()))["team_state"]
+            if self.resample_each_absorption:
+                # absorption_time_left counts down each tick and snaps back up the tick it
+                # fires (see qmix_trainer.collect_step) -- a tiny epsilon catches exactly that.
+                boundary_value, epsilon = float(team_state[3]), 1e-6
+            else:
+                # episode_time_left only jumps once per ~600s match reset.
+                boundary_value, epsilon = float(team_state[2]), 0.25
+            if self._last_boundary_value is not None and boundary_value > self._last_boundary_value + epsilon:
                 self.reset()
-            self._last_time_left = time_left
+            self._last_boundary_value = boundary_value
         return self._policy.act(obs)
