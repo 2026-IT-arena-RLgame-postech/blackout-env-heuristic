@@ -149,6 +149,19 @@ class QMIXConfig:
     weight_decay: float = 1e-2
     grad_clip: float = 10.0
 
+    # Separate AdamW param group for MyModel.graphic_encoder only -- None means "inherit lr/
+    # weight_decay above", so this is a no-op unless explicitly set. Added after observing
+    # grad_norm/graphic_encoder decay ~7 orders of magnitude over a 200k-step offline pretrain
+    # run (0.82 -> ~1e-7) while every other component's grad_norm stayed flat at 1e-2..1e-1 --
+    # graphic_encoder started with the weakest grad_norm among all components even at step 0,
+    # and a single global weight_decay applied via one AdamW over all params erodes a
+    # persistently-weaker branch faster than its own (also weak) gradient can rebuild it, a
+    # self-reinforcing collapse BBF-style periodic resets only interrupt for ~1000 steps at a
+    # time (see docs/offline_pretrain_runs.md). Kept as a targeted override, not a general
+    # per-module scheme, since graphic_encoder is the one branch actually observed to collapse.
+    encoder_lr: float | None = None
+    encoder_weight_decay: float | None = None
+
     n_quantiles: int = 8  # IQN quantile samples per forward pass during training
 
     # n-step / gamma annealing (BBF): n_step counts DOWN, gamma counts UP, over the same
@@ -171,6 +184,31 @@ class QMIXConfig:
     # SPR (vision-only self-predictive auxiliary loss)
     spr_k: int = 5
     spr_loss_weight: float = 1.0
+
+    # Behavior-cloning auxiliary loss (discrete-action cross-entropy variant, structurally like
+    # Discrete BCQ's imitation head -- Fujimoto et al. 2019, "Benchmarking Batch Deep RL",
+    # sfujim/BCQ's discrete_BCQ.py): cross_entropy(q_values, dataset_action) per own-team unit.
+    # Added for offline_pretrain.py specifically -- a purely offline TD/SPR objective can hit
+    # low loss without the net ever needing to parse graphic_encoder's output accurately, since
+    # a heuristic-only dataset's outcomes are already consistent/predictable from agent_states
+    # alone (no online self-play feedback loop to punish that shortcut, see
+    # docs/offline_pretrain_runs.md). Directly supervising "predict the exact direction the
+    # heuristic took" forces the net to actually explain wall-avoidance/item-seeking decisions
+    # that visibly depend on the vision channel.
+    #
+    # bc_loss_alpha (0.0 = off, matches all prior behavior exactly) is a TD3+BC-style (Fujimoto
+    # & Gu 2021, "A Minimalist Approach to Offline RL") *adaptive* multiplier, not a raw loss
+    # weight: the BC term is rescaled every step to iqn_loss's own current magnitude before
+    # bc_loss_alpha is applied (see _forward_and_loss), so alpha=1.0 means "BC and TD loss
+    # contribute equally regardless of their raw scales" -- deliberately not a fixed weight like
+    # discrete BCQ's literal 1.0, because that paper's TD loss and ours differ by ~2 orders of
+    # magnitude in this environment (their Atari Huber TD loss vs. our IQN quantile loss, which
+    # stays ~0.01-0.05 across an entire run -- a literal weight=1.0 here would let a fresh
+    # cross-entropy term starting at ln(8)=2.08 dominate the total loss throughout training).
+    # Not intended for online training (self-play data isn't a reference policy worth imitating
+    # once the net starts outperforming it), so this stays 0.0 unless offline_pretrain.py's
+    # --bc-loss-alpha sets it.
+    bc_loss_alpha: float = 0.0
     ema_tau: float = 0.99
 
     # Prioritized Experience Replay
@@ -287,10 +325,28 @@ class QMIXTrainer:
             config.hidden_size, N_DISCRETE_ACTIONS, n_units=N_AGENTS
         ).to(self.device)
 
+        # graphic_encoder gets its own AdamW param group (see QMIXConfig.encoder_lr/
+        # encoder_weight_decay) so its lr/weight_decay can be tuned independently of the rest
+        # of the net -- defaults to the exact same lr/weight_decay as everything else, so this
+        # is a no-op until those fields are explicitly overridden.
+        encoder_params = list(self.net.graphic_encoder.parameters())
+        encoder_param_ids = {id(p) for p in encoder_params}
+        other_params = [p for p in self.net.parameters() if id(p) not in encoder_param_ids]
+        other_params += list(self.dist_mixer.parameters()) + list(self.spr_predictor.parameters())
+
         self.optimizer = torch.optim.AdamW(
-            itertools.chain(self.net.parameters(), self.dist_mixer.parameters(), self.spr_predictor.parameters()),
-            lr=config.lr,
-            weight_decay=config.weight_decay,
+            [
+                {"params": other_params, "lr": config.lr, "weight_decay": config.weight_decay},
+                {
+                    "params": encoder_params,
+                    "lr": config.encoder_lr if config.encoder_lr is not None else config.lr,
+                    "weight_decay": (
+                        config.encoder_weight_decay
+                        if config.encoder_weight_decay is not None
+                        else config.weight_decay
+                    ),
+                },
+            ]
         )
 
         if env is not None:
@@ -378,6 +434,7 @@ class QMIXTrainer:
         # by train_step()/run() for TB logging; does not affect the loss/training math.
         self._last_iqn_loss: float | None = None
         self._last_spr_loss: float | None = None
+        self._last_bc_loss: float | None = None
         self._last_td_error_mean: float | None = None
         self._last_q_mean: float | None = None
         self._last_q_std: float | None = None
@@ -895,7 +952,9 @@ class QMIXTrainer:
             self._last_q_std = q_tot_online.std().item()
 
         # ---- SPR: open-loop K-step latent rollout vs EMA target encoder ----
-        pooled_vision = vision_latent.mean(dim=1)  # [B, hidden]
+        # vision_latent is already [B, hidden] -- MyModel's dedicated SPR CLS token (see its
+        # class docstring "SPR CLS token"), not a mean-pool over the 36 vision tokens anymore.
+        pooled_vision = vision_latent  # [B, hidden]
         Bsz = graphic.shape[0]
         K = self.cfg.spr_k
         future_graphic, future_team_state, future_agent_states = (
@@ -912,7 +971,7 @@ class QMIXTrainer:
             _, _, _, ema_vision_latent, _ = self.ema_net(
                 flat_graphic, flat_team_state, flat_agent_states, n_quantiles=1
             )
-            target_pooled = ema_vision_latent.mean(dim=1).view(Bsz, K, -1)  # [B, K, hidden]
+            target_pooled = ema_vision_latent.view(Bsz, K, -1)  # [B, K, hidden] -- already pooled by ema_net's SPR CLS token
 
         z = pooled_vision
         spr_losses = []
@@ -922,12 +981,33 @@ class QMIXTrainer:
         spr_losses = torch.stack(spr_losses, dim=1)  # [B, K]
         spr_loss = (spr_losses * t["valid_mask"]).sum(dim=1) / (t["valid_mask"].sum(dim=1) + 1e-6)  # [B]
 
-        total_loss = is_weights * iqn_loss + self.cfg.spr_loss_weight * spr_loss  # [B]
+        # ---- Behavior cloning (see QMIXConfig.bc_loss_alpha): cross-entropy between the
+        # online net's own-team Q-values (as classification logits) and the actual action the
+        # dataset's behavior policy took in this state.
+        own_q_values = _own_team_rows(q_values, agent_states)  # [B, N_TEAM, n_actions]
+        bc_loss_raw = F.cross_entropy(
+            own_q_values.reshape(-1, own_q_values.shape[-1]), own_actions.reshape(-1), reduction="none"
+        ).view(own_actions.shape).mean(dim=1)  # [B]
+        # TD3+BC-style adaptive rescale (Fujimoto & Gu 2021): match bc_loss's current magnitude
+        # to iqn_loss's, THEN apply bc_loss_alpha -- so alpha is a dimensionless "how much BC
+        # relative to TD" knob that stays meaningful throughout training even though the two
+        # losses' raw scales don't (see QMIXConfig.bc_loss_alpha for why a literal fixed weight
+        # doesn't transfer well here). detached on both sides: this is a scale correction, not a
+        # gradient path, and no_grad avoids paying autograd bookkeeping on a ratio of scalars
+        # that's immediately used only to rescale (not backprop through) bc_loss_raw.
+        with torch.no_grad():
+            bc_scale = self.cfg.bc_loss_alpha * (
+                iqn_loss.detach().mean().clamp_min(1e-6) / bc_loss_raw.detach().mean().clamp_min(1e-6)
+            )
+        bc_loss = bc_scale * bc_loss_raw
+
+        total_loss = is_weights * iqn_loss + self.cfg.spr_loss_weight * spr_loss + bc_loss  # [B]
 
         # Pure bookkeeping for TB logging (train_step reads these back) -- does not feed into
         # the returned loss/td_error at all.
         self._last_iqn_loss = iqn_loss.mean().item()
         self._last_spr_loss = spr_loss.mean().item()
+        self._last_bc_loss = bc_loss.mean().item()
 
         return total_loss, td_error.cpu().numpy()
 
@@ -987,7 +1067,12 @@ class QMIXTrainer:
                 )
                 self.tb.scalars(
                     "loss",
-                    {"total": loss.item(), "iqn": self._last_iqn_loss, "spr": self._last_spr_loss},
+                    {
+                        "total": loss.item(),
+                        "iqn": self._last_iqn_loss,
+                        "spr": self._last_spr_loss,
+                        "bc": self._last_bc_loss,
+                    },
                     self.train_step_count,
                 )
                 self.tb.scalar("td_error/mean", self._last_td_error_mean, self.train_step_count)
@@ -1224,7 +1309,19 @@ class QMIXTrainer:
         self.dist_mixer.load_state_dict(ckpt["dist_mixer_state"])
         self.target_dist_mixer.load_state_dict(ckpt["dist_mixer_state"])
         self.spr_predictor.load_state_dict(ckpt["spr_state"])
-        self.optimizer.load_state_dict(ckpt["optimizer_state"])
+        try:
+            self.optimizer.load_state_dict(ckpt["optimizer_state"])
+        except ValueError as e:
+            # Checkpoints saved before the graphic_encoder param group split (see
+            # QMIXConfig.encoder_lr/encoder_weight_decay) have a single AdamW param group;
+            # torch.optim.Optimizer.load_state_dict() hard-requires the same number of groups
+            # (and same per-group param counts) and raises ValueError otherwise. Net/mixer/spr
+            # weights above already loaded fine -- only Adam's per-parameter momentum/variance
+            # history is lost here, which is the same cost BBF's own periodic resets already
+            # pay for the params they touch (see maybe_reset()), so this is a safe fallback
+            # rather than a hard failure.
+            print(f"[load] optimizer_state incompatible with current param groups ({e}) -- "
+                  f"keeping freshly-initialized optimizer state (net/mixer/spr weights still loaded)")
         self.env_step_count = ckpt["env_step_count"]
         self.train_step_count = ckpt["train_step_count"]
 

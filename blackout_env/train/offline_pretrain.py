@@ -44,7 +44,11 @@ from pathlib import Path
 
 import numpy as np
 
+from blackout_env.env.blackout_env import BlackOutEnv
+from blackout_env.heuristics import RecommendedStrategicHeuristic
+from blackout_env.model.my_policy import MyPolicy
 from blackout_env.train.offline_dataset import load_dataset_into
+from blackout_env.train.periodic_eval import run_periodic_eval
 from blackout_env.train.qmix_trainer import QMIXConfig, QMIXTrainer, default_run_dir
 
 
@@ -70,6 +74,79 @@ def main() -> None:
     parser.add_argument("--checkpoint-interval", type=int, default=5_000, help="Gradient steps between periodic checkpoints")
     parser.add_argument("--lr", type=float, default=None, help="Override QMIXConfig.lr")
     parser.add_argument("--batch-size", type=int, default=None, help="Override QMIXConfig.batch_size")
+    parser.add_argument(
+        "--spr-loss-weight",
+        type=float,
+        default=None,
+        help="Override QMIXConfig.spr_loss_weight (default 1.0, i.e. equal weight with the IQN "
+        "loss -- see total_loss in QMIXTrainer.train_step). The original BBF paper's own config "
+        "(google-research/bigger_better_faster, BBF.gin) uses BBFAgent.spr_weight=5, 5x heavier "
+        "than the RL loss, not 1:1.",
+    )
+    parser.add_argument(
+        "--bc-loss-alpha",
+        type=float,
+        default=None,
+        help="Override QMIXConfig.bc_loss_alpha (default 0.0, i.e. off). Adds "
+        "cross_entropy(q_values, dataset_action) per own-team unit to total_loss -- a discrete- "
+        "BCQ-style (Fujimoto et al. 2019) behavior-cloning auxiliary loss that supervises the "
+        "net to reproduce the exact direction the heuristic dataset actually took, forcing it "
+        "to explain wall-avoidance/item-seeking decisions that depend on the vision channel "
+        "(unlike pure TD/SPR losses, which a purely offline heuristic dataset can satisfy "
+        "without the net ever needing to parse graphic_encoder's output -- see "
+        "docs/offline_pretrain_runs.md). NOT a raw loss weight: the BC term is rescaled every "
+        "step to iqn_loss's own current magnitude first (TD3+BC-style, Fujimoto & Gu 2021), "
+        "THEN multiplied by this alpha -- so alpha=1.0 means BC and TD contribute equally "
+        "regardless of their differing raw scales (cross-entropy over 8 actions starts near "
+        "ln(8)=2.08, ~2 orders of magnitude above this environment's iqn_loss).",
+    )
+    parser.add_argument(
+        "--encoder-lr",
+        type=float,
+        default=None,
+        help="Override QMIXConfig.encoder_lr -- separate AdamW lr for MyModel.graphic_encoder "
+        "only, independent of --lr for the rest of the net. Default: None, i.e. same as --lr. "
+        "Added after observing grad_norm/graphic_encoder decay to ~1e-7 (vs 1e-2..1e-1 for "
+        "every other component) over a 200k-step run -- see docs/offline_pretrain_runs.md.",
+    )
+    parser.add_argument(
+        "--encoder-weight-decay",
+        type=float,
+        default=None,
+        help="Override QMIXConfig.encoder_weight_decay -- separate AdamW weight_decay for "
+        "MyModel.graphic_encoder only. Default: None, i.e. same as --lr's weight_decay "
+        "(config.weight_decay).",
+    )
+    parser.add_argument(
+        "--reset-interval",
+        type=int,
+        default=None,
+        help="Gradient steps between BBF-style shrink-and-perturb resets of graphic_encoder/"
+        "attention (see QMIXConfig.reset_interval), which also re-anneals n_step/gamma from "
+        "scratch each cycle (see QMIXTrainer._anneal_frac). Previously this script only ever "
+        "called train_step() and never maybe_reset(), so n_step/gamma annealed exactly once "
+        "over the whole run and then sat frozen at their END values -- the opposite of BBF's "
+        "repeated resets-with-re-annealing. Default: steps//5 (BBF resets ~5x over a run); "
+        "pass 0 to disable resets and keep the old one-shot-anneal behavior.",
+    )
+    parser.add_argument(
+        "--eval-interval",
+        type=int,
+        default=10_000,
+        help="Train steps between periodic heuristic-match eval windows (win/loss/margin + "
+        "idle/blocked movement diagnostics, see blackout_env/train/periodic_eval.py and "
+        "movement_monitor.py -- same idle/blocked definitions examples/benchmark_heuristics.py "
+        "uses). Catches a degenerate policy (e.g. the graphic_encoder gradient-vanishing issue "
+        "that produced a walks-into-walls agent, docs/offline_pretrain_runs.md) within a few "
+        "windows instead of only at the end of a many-hour run. Pass 0 to disable (no Unity "
+        "process is started at all in that case).",
+    )
+    parser.add_argument(
+        "--eval-build", type=Path, default=Path("build/mac/BlackOut.app"), help="Unity build used only for periodic eval matches"
+    )
+    parser.add_argument("--eval-seeds", type=int, nargs="+", default=[101, 202, 303], help="Each seed is played both non-swapped and swapped")
+    parser.add_argument("--eval-time-scale", type=float, default=100.0, help="Unity time scale for eval matches (headless, so fast by default)")
+    parser.add_argument("--eval-graphics", action="store_true", help="Show the Unity window during eval matches (default: headless)")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--compile", action="store_true")
     parser.add_argument(
@@ -96,6 +173,17 @@ def main() -> None:
         config_kwargs["lr"] = args.lr
     if args.batch_size is not None:
         config_kwargs["batch_size"] = args.batch_size
+    if args.spr_loss_weight is not None:
+        config_kwargs["spr_loss_weight"] = args.spr_loss_weight
+    if args.bc_loss_alpha is not None:
+        config_kwargs["bc_loss_alpha"] = args.bc_loss_alpha
+    if args.encoder_lr is not None:
+        config_kwargs["encoder_lr"] = args.encoder_lr
+    if args.encoder_weight_decay is not None:
+        config_kwargs["encoder_weight_decay"] = args.encoder_weight_decay
+    config_kwargs["reset_interval"] = (
+        args.reset_interval if args.reset_interval is not None else max(1, args.steps // 5)
+    )
     # Grouped under an "offline/" subfolder in both cases -- kept apart from online
     # qmix_trainer.py runs (checkpoints/<ts>/, runs/<ts>/) rather than defaulting to
     # QMIXConfig's own top-level default_run_dir(), so listing either directory doesn't mix
@@ -117,6 +205,7 @@ def main() -> None:
     trainer = QMIXTrainer(env=None, config=config)
     print(f"[offline] checkpoint_dir={config.checkpoint_dir}")
     print(f"[offline] tb_log_dir={config.tb_log_dir or '(disabled)'}")
+    print(f"[offline] reset_interval={config.reset_interval or '(disabled -- single anneal over the whole run)'}")
 
     if args.resume:
         trainer.load(Path(args.resume))
@@ -130,13 +219,45 @@ def main() -> None:
     ckpt_dir = Path(config.checkpoint_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
+    # Lazily started (only if eval is actually enabled) so --eval-interval 0 never touches
+    # Unity at all, same as the rest of this script.
+    eval_env: BlackOutEnv | None = None
+    eval_opponent = RecommendedStrategicHeuristic()
+    if args.eval_interval > 0:
+        eval_env = BlackOutEnv(
+            str(args.eval_build), time_scale=args.eval_time_scale, no_graphics=not args.eval_graphics
+        )
+        print(f"[offline] periodic eval enabled: every {args.eval_interval} steps, "
+              f"{len(args.eval_seeds) * 2} matches vs {type(eval_opponent).__name__}")
+
+    def run_eval(step: int) -> None:
+        candidate = MyPolicy(trainer.net, device=args.device)
+        trainer.net.eval()
+        try:
+            metrics = run_periodic_eval(eval_env, candidate, eval_opponent, args.eval_seeds)
+        finally:
+            trainer.net.train()
+        trainer.tb.scalars("eval", metrics, step)
+        print(
+            f"[offline] eval @ step {step}: win_rate={metrics['win_rate']:.2f} "
+            f"loss_rate={metrics['loss_rate']:.2f} draw_rate={metrics['draw_rate']:.2f} "
+            f"mean_margin={metrics['mean_margin']:.2f} "
+            f"candidate_idle/1k={metrics['candidate_idle_per_1000_ticks']:.1f} "
+            f"candidate_blocked/1k={metrics['candidate_blocked_per_1000_ticks']:.1f}"
+        )
+
     trainer._total_env_steps_hint = args.steps  # spans n_step/gamma/per_beta annealing over [0, steps]
     recent_losses: list[float] = []
     t0 = time.time()
     start_step = trainer.train_step_count
     try:
+        if eval_env is not None and start_step == 0:
+            run_eval(0)  # baseline before any gradient steps, for comparison against later windows
         while trainer.train_step_count < args.steps:
             trainer.env_step_count = trainer.train_step_count  # drives the annealing schedules above
+            if config.reset_interval > 0 and trainer.env_step_count % config.reset_interval == 0:
+                print(f"[offline] step {trainer.env_step_count}: BBF reset (shrink-and-perturb + re-anneal n_step/gamma)")
+            trainer.maybe_reset()  # gated on env_step_count % reset_interval -- see QMIXTrainer.maybe_reset
             loss = trainer.train_step()  # increments trainer.train_step_count itself
             if loss is not None:
                 recent_losses.append(loss)
@@ -150,12 +271,17 @@ def main() -> None:
 
             if step % args.checkpoint_interval == 0:
                 trainer.save(ckpt_dir / f"step_{step}.pt")
+
+            if eval_env is not None and step % args.eval_interval == 0:
+                run_eval(step)
     except KeyboardInterrupt:
         print(f"\n[offline] KeyboardInterrupt at step {trainer.train_step_count} -- saving before exit")
         trainer.save(ckpt_dir / f"interrupted_step_{trainer.train_step_count}.pt")
         raise
     finally:
         trainer.tb.close()
+        if eval_env is not None:
+            eval_env.close()
 
     trainer.save(ckpt_dir / "final.pt")
     print(f"[offline] done. next:\n"

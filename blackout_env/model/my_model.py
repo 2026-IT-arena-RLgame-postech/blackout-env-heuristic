@@ -17,13 +17,14 @@ GRID_H = GRID_W = 6  # GraphicEncoder's final spatial size (24x24 input, two str
 N_VISION_TOKENS = GRID_H * GRID_W  # 36
 N_UNITS = 10
 N_TEAM_STATE_TOKENS = 1
+N_SPR_CLS_TOKENS = 1  # dedicated learned query token for the SPR aux loss -- see class docstring
 N_DISCRETE_ACTIONS = 8  # 8 compass directions, see my_policy.py:DIRECTION_VECTORS
 N_ATTENTION_HEADS = 8
 ATTENTION_DEPTH = 4
 
-# Token-type ids for the trunk sequence: which tokens are "graphic", "unit", or "global"
-# (team_state) — see MyModel's token_type_emb.
-TYPE_GRAPHIC, TYPE_UNIT, TYPE_GLOBAL = 0, 1, 2
+# Token-type ids for the trunk sequence: which tokens are "graphic", "unit", "global"
+# (team_state), or the dedicated SPR CLS token — see MyModel's token_type_emb.
+TYPE_GRAPHIC, TYPE_UNIT, TYPE_GLOBAL, TYPE_SPR_CLS = 0, 1, 2, 3
 
 
 class MyModel(nn.Module):
@@ -42,19 +43,43 @@ class MyModel(nn.Module):
     --------------
     The 47 trunk tokens (36 vision + 10 unit + 1 team_state) come from three different
     encoders and have no positional signal of their own once concatenated, so the trunk adds
-    two things before attention:
+    three things before attention:
       - a learned token-type embedding (graphic / unit / global), added to every token, so
         attention can tell which "kind" of token it's looking at;
       - 2D RoPE applied only to the 36 graphic tokens (unit/global tokens get row=col=0,
         which is a no-op rotation — see RotaryEmbedding2D), so attention can additionally
         tell *where in the 6x6 map* a graphic token came from, and reason about relative
-        spatial offsets between them.
+        spatial offsets between them;
+      - a learned per-slot identity embedding (vec_slot_emb) over the 10 unit tokens + 1
+        team_state token, added to vec_tokens before the type embedding. Without this, two
+        units with identical agent_states (e.g. stacked at the same spawn point) are
+        genuinely indistinguishable to a permutation-equivariant attention trunk -- same
+        input, same output, same action, every step, with no way for training to ever break
+        the tie (observed in practice: a whole team moving in perfect lockstep the entire
+        episode). The slot embedding is keyed on fixed unit index (0-9), not on content, so
+        it always tells two units apart even when their observed state coincides.
 
     The trunk's attention layers use Exclusive Self Attention (XSA, exclusive_attention=True
     by default — see GroupedQueryAttention) instead of standard SA: each position's attention
     output has its component along that position's own value vector removed, so attention
     can't just re-derive point-wise (FFN-like) features and is pushed to spend its capacity on
     context aggregation instead.
+
+    SPR CLS token
+    -------------
+    The SPR aux loss (see spr_head/QMIXTrainer._forward_and_loss) used to run off a plain
+    mean-pool over the 36 vision tokens' post-attention output. Two problems with that: (1) a
+    mean is a fixed, non-learned aggregation -- every graphic token contributes an identical
+    1/36 weight regardless of whether it's actually informative, unlike attention's learned,
+    input-dependent weighting; (2) backprop through a mean divides each individual token's
+    gradient contribution by 36, diluting whatever signal reaches graphic_encoder before it
+    even gets there (observed in practice: grad_norm/graphic_encoder decayed ~7 orders of
+    magnitude over a 200k-step offline pretrain run while every other component's grad_norm
+    stayed flat -- see docs/offline_pretrain_runs.md). A dedicated learned query token (in the
+    ViT/BERT [CLS] sense) added to the trunk sequence lets attention itself decide, per
+    example, which graphic tokens matter and pull from them directly with a learned weight
+    instead of a fixed uniform average -- spr_head now runs on this one token's post-attention
+    output instead of a mean over vis_out.
     """
 
     def __init__(
@@ -76,7 +101,7 @@ class MyModel(nn.Module):
             hidden_size, n_items=n_items, n_classes=n_classes, team_state_size=team_state_size
         )
 
-        # main trunk: [36 vision] + [10 units] + [1 team_state] = 47 tokens
+        # main trunk: [36 vision] + [10 units] + [1 team_state] + [1 spr_cls] = 48 tokens
         self.attention = AttentionLayers(
             hidden_size, N_ATTENTION_HEADS, ATTENTION_DEPTH, exclusive=exclusive_attention
         )
@@ -84,17 +109,45 @@ class MyModel(nn.Module):
         # token-type embedding: one row per type, gathered by a fixed per-position type id.
         n_vector_tokens = N_UNITS + N_TEAM_STATE_TOKENS
         token_type_ids = torch.tensor(
-            [TYPE_GRAPHIC] * N_VISION_TOKENS + [TYPE_UNIT] * N_UNITS + [TYPE_GLOBAL] * N_TEAM_STATE_TOKENS,
+            [TYPE_GRAPHIC] * N_VISION_TOKENS
+            + [TYPE_UNIT] * N_UNITS
+            + [TYPE_GLOBAL] * N_TEAM_STATE_TOKENS
+            + [TYPE_SPR_CLS] * N_SPR_CLS_TOKENS,
             dtype=torch.long,
         )
         self.register_buffer("token_type_ids", token_type_ids, persistent=False)
-        self.token_type_emb = nn.Embedding(3, hidden_size)
+        self.token_type_emb = nn.Embedding(4, hidden_size)
+
+        # Dedicated learned query token for the SPR aux loss (ViT/BERT [CLS]-style) -- pure
+        # nn.Embedding lookup, no data-dependent content of its own (unlike vis_tokens/
+        # vec_tokens), so its only job is to let attention pull whatever graphic info is
+        # actually useful into one slot. See class docstring "SPR CLS token".
+        self.spr_cls_emb = nn.Embedding(N_SPR_CLS_TOKENS, hidden_size)
+        spr_cls_ids = torch.arange(N_SPR_CLS_TOKENS, dtype=torch.long)
+        self.register_buffer("spr_cls_ids", spr_cls_ids, persistent=False)
+
+        # Per-slot identity embedding for the 10 unit tokens + 1 team_state token: unit tokens
+        # get no positional signal from RoPE (row=col=0, a no-op -- see class docstring) and
+        # token_type_emb only tells attention "this is *a* unit token", identical for all 10.
+        # Two units with identical agent_states rows (e.g. stacked at the same spawn point)
+        # therefore produced byte-identical Q-values and thus always chose the same action --
+        # a self-reinforcing lockstep with no way to break symmetry, since self-attention is
+        # permutation-equivariant over tokens with identical content. This embedding is added
+        # per fixed slot (unit index 0-9, independent of that unit's state) so two units are
+        # always distinguishable even when their observed state coincides exactly.
+        self.vec_slot_emb = nn.Embedding(n_vector_tokens, hidden_size)
+        vec_slot_ids = torch.arange(n_vector_tokens, dtype=torch.long)
+        self.register_buffer("vec_slot_ids", vec_slot_ids, persistent=False)
 
         # 2D RoPE cos/sin for the trunk sequence, precomputed once (deterministic given the
         # fixed grid size + token layout above, so there's no need to recompute it per call).
+        # n_extra_tokens covers every non-spatial token (unit + team_state + spr_cls) -- all
+        # get row=col=0 (no-op rotation, see build_grid_position_ids), spr_cls included since
+        # it has no spatial position of its own either.
         head_dim = hidden_size // N_ATTENTION_HEADS
         rope = RotaryEmbedding2D(head_dim)
-        row_ids, col_ids = build_grid_position_ids(GRID_H, GRID_W, n_vector_tokens)
+        n_extra_tokens = n_vector_tokens + N_SPR_CLS_TOKENS
+        row_ids, col_ids = build_grid_position_ids(GRID_H, GRID_W, n_extra_tokens)
         rope_cos, rope_sin = rope(row_ids, col_ids)
         self.register_buffer("rope_cos", rope_cos, persistent=False)
         self.register_buffer("rope_sin", rope_sin, persistent=False)
@@ -133,23 +186,29 @@ class MyModel(nn.Module):
         tau             : [B, n_quantiles]                          the quantile fractions
                            quantile_values was evaluated at (needed for the loss's asymmetric
                            weighting).
-        vision_latent   : [B, N_VISION_TOKENS, hidden_size]         auxiliary vision representation
+        vision_latent   : [B, hidden_size]                          SPR CLS token's post-
+                           attention output through spr_head -- a learned (not mean-pooled)
+                           summary of whatever graphic info attention found relevant, used by
+                           the SPR aux loss (see class docstring "SPR CLS token").
         global_latent   : [B, hidden_size]                          attention-refined team_state
                            token, used as QMixer's hypernetwork input.
         """
+        B = graphic.shape[0]
         vis_tokens = self.graphic_encoder(graphic)                   # [B, 36, hidden]
         vec_tokens = self.vector_encoder(agent_states, team_state)   # [B, 11, hidden]
+        vec_tokens = vec_tokens + self.vec_slot_emb(self.vec_slot_ids)[None, :, :]
+        spr_cls_tok = self.spr_cls_emb(self.spr_cls_ids)[None, :, :].expand(B, -1, -1)  # [B, 1, hidden]
 
-        tokens_in = torch.cat((vis_tokens, vec_tokens), dim=1)       # [B, 47, hidden]
+        tokens_in = torch.cat((vis_tokens, vec_tokens, spr_cls_tok), dim=1)  # [B, 48, hidden]
         tokens_in = tokens_in + self.token_type_emb(self.token_type_ids)[None, :, :]
 
         tokens_out = self.attention(tokens_in, rope=(self.rope_cos, self.rope_sin))
 
-        vis_out = tokens_out[:, :N_VISION_TOKENS, :]
         unit_out = tokens_out[:, N_VISION_TOKENS : N_VISION_TOKENS + N_UNITS, :]
-        global_out = tokens_out[:, -1, :]  # the single TYPE_GLOBAL (team_state) token
+        global_out = tokens_out[:, N_VISION_TOKENS + N_UNITS, :]  # the single TYPE_GLOBAL (team_state) token
+        spr_cls_out = tokens_out[:, -1, :]  # the single TYPE_SPR_CLS token, always last
 
-        vision_latent = self.spr_head(vis_out)
+        vision_latent = self.spr_head(spr_cls_out)
         quantile_values, tau = self.q_head(unit_out, n_quantiles=n_quantiles, tau=tau)
         q_values = quantile_values.mean(dim=2)  # [B, N_UNITS, n_actions]
 

@@ -11,6 +11,8 @@ import numpy as np
 
 from blackout_env import BlackOutEnv
 from blackout_env.env.constants import team_a_agents, team_b_agents
+from blackout_env.train.movement_monitor import FailureRuns, MovementMonitor
+from blackout_env.train.movement_monitor import aggregate as aggregate_failure_runs
 from blackout_env.heuristics import (
     StrategicHeuristicV1, StrategicHeuristicV2, StrategicHeuristicV3,
     StrategicHeuristicV4,
@@ -40,66 +42,6 @@ VERSIONS = {
     "v12": StrategicHeuristicV12,
 }
 BASELINES = {"v1": StrategicHeuristicV1, **VERSIONS}
-
-
-@dataclass
-class FailureRuns:
-    idle: list[int] = field(default_factory=list)
-    blocked: list[int] = field(default_factory=list)
-    unit_ticks: int = 0
-
-    @staticmethod
-    def _summarize(runs: list[int], threshold: int, unit_ticks: int) -> dict[str, float | int]:
-        incidents = [length for length in runs if length >= threshold]
-        return {
-            "incidents": len(incidents),
-            "per_1000_unit_ticks": 1000.0 * len(incidents) / max(1, unit_ticks),
-            "worst_ticks": max(runs, default=0),
-            "incident_ticks": sum(incidents),
-        }
-
-    def summary(self) -> dict[str, dict[str, float | int]]:
-        return {
-            "idle_6s": self._summarize(self.idle, 300, self.unit_ticks),
-            "blocked_0.24s": self._summarize(self.blocked, 12, self.unit_ticks),
-        }
-
-
-class MovementMonitor:
-    """Track consecutive actionless and commanded-but-motionless unit ticks."""
-
-    def __init__(self):
-        self.result = FailureRuns()
-        self._idle = {}
-        self._blocked = {}
-
-    def observe(self, names, before, after, actions):
-        for name in names:
-            if name not in actions:
-                continue
-            row = int(name.split("_")[1])
-            action_norm = float(np.linalg.norm(actions[name]))
-            movement = float(np.linalg.norm(after[row, :2] - before[row, :2]))
-            # Respawn/teleport and class/cargo transitions delimit a run rather than count as
-            # successful navigation; this prevents unrelated episodes being joined together.
-            transition = movement > 0.15 or not np.array_equal(before[row, 3:], after[row, 3:])
-            self.result.unit_ticks += 1
-            self._update(name, "idle", action_norm <= 0.05 and movement <= 2e-4 and not transition)
-            self._update(name, "blocked", action_norm >= 0.35 and movement <= 2e-4 and not transition)
-
-    def _update(self, name, kind, active):
-        current = self._idle if kind == "idle" else self._blocked
-        runs = self.result.idle if kind == "idle" else self.result.blocked
-        if active:
-            current[name] = current.get(name, 0) + 1
-        elif current.get(name, 0):
-            runs.append(current.pop(name))
-
-    def finish(self):
-        self.result.idle.extend(self._idle.values())
-        self.result.blocked.extend(self._blocked.values())
-        self._idle.clear()
-        self._blocked.clear()
 
 
 @dataclass
@@ -213,13 +155,7 @@ def play(env, seed: int, swapped: bool, candidate_type, baseline_type) -> Game:
 
 
 def aggregate(games: list[Game], attr: str) -> dict[str, dict[str, float | int]]:
-    merged = FailureRuns()
-    for game in games:
-        result = getattr(game, attr)
-        merged.idle.extend(result.idle)
-        merged.blocked.extend(result.blocked)
-        merged.unit_ticks += result.unit_ticks
-    return merged.summary()
+    return aggregate_failure_runs([getattr(game, attr) for game in games])
 
 
 def main() -> int:
