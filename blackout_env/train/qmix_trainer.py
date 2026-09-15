@@ -81,7 +81,13 @@ from blackout_env.model.modules import (
 from blackout_env.model.my_model import ATTENTION_DEPTH, N_ATTENTION_HEADS, N_DISCRETE_ACTIONS, MyModel
 from blackout_env.model.my_policy import DIRECTION_VECTORS, direction_vector_to_idx
 from blackout_env.train.ema import ema_update
-from blackout_env.train.replay_buffer import SOURCE_NAMES, SequentialReplayBuffer
+from blackout_env.train.replay_buffer import (
+    SOURCE_DATASET,
+    SOURCE_NAMES,
+    SOURCE_SELF_PLAY,
+    SOURCE_SELF_VS_HEURISTIC,
+    SequentialReplayBuffer,
+)
 from blackout_env.train.reset_utils import shrink_and_perturb
 from blackout_env.train.returns import compute_n_step_return, compute_spr_valid_mask
 from blackout_env.train.schedules import linear_anneal, log_linear_anneal
@@ -208,7 +214,25 @@ class QMIXConfig:
     # Not intended for online training (self-play data isn't a reference policy worth imitating
     # once the net starts outperforming it), so this stays 0.0 unless offline_pretrain.py's
     # --bc-loss-alpha sets it.
+    #
+    # Only demonstration transitions (SequentialReplayBuffer.demo: the stream's own team was played
+    # by a heuristic) are cloned -- the static dataset, the heuristic side of self-vs-heuristic
+    # matches, online phase-1 bootstrap and heuristic-opponent streams. Rows the net itself played
+    # carry its own greedy actions, and since BC uses the Q-values as logits it would raise the Q
+    # of exactly those actions -- in Run 5 that meant reinforcing the wall-walking the blocked
+    # penalty was trying to remove.
     bc_loss_alpha: float = 0.0
+    # Fixed share of every batch drawn from each replay source (indexed like
+    # replay_buffer.SOURCE_NAMES: dataset, self_vs_heuristic, self_play). When set, buffer_a/b hold
+    # only the static dataset and are never written after loading, and each on-policy source with a
+    # nonzero share gets its own small FIFO buffer pair (onpolicy_buffers, onpolicy_buffer_capacity
+    # rows per stream), each buffer with its own PER priorities. Previously on-policy data shared
+    # buffer_a/b's ring and overwrote the dataset's earliest episodes (Run 5 lost ~41% of it).
+    # A source whose buffer can't be sampled yet has its share spread over the others.
+    # offline_pretrain.py sets this from its --onpolicy-*-frac collection ratios. None = sample
+    # buffer_a/b alone (the online trainer, where one mixed buffer is the design).
+    batch_source_fracs: tuple[float, float, float] | None = None
+    onpolicy_buffer_capacity: int = 262_144
     ema_tau: float = 0.99
 
     # Prioritized Experience Replay
@@ -391,6 +415,15 @@ class QMIXTrainer:
         )
         self.buffer_a = SequentialReplayBuffer(**buffer_kwargs)
         self.buffer_b = SequentialReplayBuffer(**buffer_kwargs)
+        self.onpolicy_buffers: dict[int, tuple[SequentialReplayBuffer, SequentialReplayBuffer]] = {}
+        if config.batch_source_fracs is not None:
+            onpolicy_kwargs = dict(buffer_kwargs, capacity=config.onpolicy_buffer_capacity)
+            for source in (SOURCE_SELF_VS_HEURISTIC, SOURCE_SELF_PLAY):
+                if config.batch_source_fracs[source] > 0:
+                    self.onpolicy_buffers[source] = (
+                        SequentialReplayBuffer(**onpolicy_kwargs),
+                        SequentialReplayBuffer(**onpolicy_kwargs),
+                    )
 
         # ---- Heuristic bootstrap (see QMIXConfig.heuristic_fill_frac docstring) ----
         # Sizes computed off buffer_a.capacity (not config.buffer_capacity) because
@@ -738,8 +771,18 @@ class QMIXTrainer:
         self._episode_return_a += reward_a
         self._episode_return_b += reward_b
 
-        self.buffer_a.push(obs_a["graphic"], obs_a["team_state"], obs_a["agent_states"], full_direction_idx, reward_a, buffer_done)
-        self.buffer_b.push(obs_b["graphic"], obs_b["team_state"], obs_b["agent_states"], full_direction_idx, reward_b, buffer_done)
+        # Phase-1 bootstrap rows are pure heuristic play. In phase 2 only a full-episode heuristic
+        # opponent's own stream is still a demonstration; the online side (and an ema_net
+        # opponent) carries the net's own epsilon-mixed actions (see bc_loss_alpha).
+        if bootstrapping:
+            source, demo_a, demo_b = SOURCE_DATASET, True, True
+        elif self._opponent_is_heuristic:
+            source = SOURCE_SELF_VS_HEURISTIC
+            demo_a, demo_b = not self._online_is_team_a, self._online_is_team_a
+        else:
+            source, demo_a, demo_b = SOURCE_SELF_PLAY, False, False
+        self.buffer_a.push(obs_a["graphic"], obs_a["team_state"], obs_a["agent_states"], full_direction_idx, reward_a, buffer_done, source, demo_a)
+        self.buffer_b.push(obs_b["graphic"], obs_b["team_state"], obs_b["agent_states"], full_direction_idx, reward_b, buffer_done, source, demo_b)
 
         self.env_step_count += 1
         if self.env_step_count % self.cfg.tb_log_interval == 0:
@@ -837,11 +880,12 @@ class QMIXTrainer:
         "n_step_return", "not_done", "gamma_eff",
         "boot_graphic", "boot_team_state", "boot_agent_states",
         "future_graphic", "future_team_state", "future_agent_states",
-        "action_window", "valid_mask", "source",
+        "action_window", "valid_mask", "source", "demo",
     )
 
     def _sample_batch(
-        self, buffer: SequentialReplayBuffer, batch_size: int, n_step: int, gamma: float, beta: float
+        self, buffer: SequentialReplayBuffer, batch_size: int, n_step: int, gamma: float, beta: float,
+        normalize: bool = True,
     ) -> dict[str, np.ndarray]:
         """
         Pure-numpy anchor sampling + n-step/SPR window bookkeeping for ONE stream. Deliberately
@@ -853,7 +897,7 @@ class QMIXTrainer:
         compute, at this batch size).
         """
         window = max(n_step, self.cfg.spr_k)
-        batch = buffer.sample(batch_size, window=window, beta=beta)
+        batch = buffer.sample(batch_size, window=window, beta=beta, normalize=normalize)
         indices = batch["indices"]
 
         n_step_return, bootstrap_idx, not_done, gamma_eff = compute_n_step_return(
@@ -882,18 +926,54 @@ class QMIXTrainer:
             "future_agent_states": buffer.read_window(indices, offsets_future, "agent_states"),
             "action_window": buffer.read_window(indices, offsets_action, "actions"),  # [b, K, 10]
             "valid_mask": valid_mask,  # [b, K] bool
-            "source": batch["source"],  # [b] int8, diagnostics only
+            "source": batch["source"],  # [b] int8
+            "demo": batch["demo"],  # [b] bool, BC target
         }
 
     def _merge_stream_batches(self, batch_a: dict[str, np.ndarray], batch_b: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
         """Concatenates two streams' sampled batches along dim 0 for one shared forward pass."""
         return {field: np.concatenate([batch_a[field], batch_b[field]], axis=0) for field in self._MERGE_FIELDS}
 
+    def _stream_buffers(self, stream: int) -> list[tuple[int, SequentialReplayBuffer]]:
+        """(source, buffer) for every buffer one stream (0 = team A, 1 = team B) samples from."""
+        main = self.buffer_a if stream == 0 else self.buffer_b
+        return [(SOURCE_DATASET, main)] + [(src, pair[stream]) for src, pair in self.onpolicy_buffers.items()]
+
+    def _sample_stream(
+        self, stream: int, batch_size: int, n_step: int, gamma: float, beta: float
+    ) -> tuple[dict[str, np.ndarray], list[tuple[SequentialReplayBuffer, int]]]:
+        """
+        One stream's batch plus (buffer, n_rows) parts in batch order, for routing priority updates
+        back. With batch_source_fracs set, each source contributes its fixed quota (largest-remainder
+        rounding); a source whose buffer can't serve the n-step/SPR window yet gives its share to the
+        rest. Importance weights are normalized over the combined batch, so they correct priority
+        skew within each buffer but leave the chosen between-source ratio alone.
+        """
+        if self.cfg.batch_source_fracs is None:
+            main = self.buffer_a if stream == 0 else self.buffer_b
+            return self._sample_batch(main, batch_size, n_step, gamma, beta), [(main, batch_size)]
+
+        min_rows = max(n_step, self.cfg.spr_k) + 1
+        usable = [(buf, self.cfg.batch_source_fracs[src]) for src, buf in self._stream_buffers(stream) if len(buf) > min_rows]
+        fracs = np.array([frac for _, frac in usable], dtype=np.float64)
+        raw = fracs / fracs.sum() * batch_size
+        quotas = np.floor(raw).astype(np.int64)
+        remainder = batch_size - int(quotas.sum())
+        if remainder > 0:
+            quotas[np.argsort(-(raw - quotas), kind="stable")[:remainder]] += 1
+
+        parts = [(buf, int(q)) for (buf, _), q in zip(usable, quotas) if q > 0]
+        batches = [self._sample_batch(buf, q, n_step, gamma, beta, normalize=False) for buf, q in parts]
+        batch = {field: np.concatenate([b[field] for b in batches], axis=0) for field in batches[0]}
+        batch["is_weights"] = batch["is_weights"] / batch["is_weights"].max()
+        return batch, parts
+
     def _log_source_stats(self, merged: dict[str, np.ndarray], td_error_np: np.ndarray) -> None:
         """Splits buffer composition and this batch's return/TD-error by transition origin
         (static dataset vs on-policy collection), so a drift in Q can be traced to which data
         is driving it."""
-        total = self.buffer_a.source_counts + self.buffer_b.source_counts
+        buffers = self._stream_buffers(0) + self._stream_buffers(1)
+        total = sum(buf.source_counts for _, buf in buffers)
         n_stored = max(1, int(total.sum()))
         self.tb.scalars(
             "buffer_source_frac",
@@ -910,6 +990,16 @@ class QMIXTrainer:
                 batch_return[name] = float(returns[mask].mean())
                 batch_td[name] = float(td_error_np[mask].mean())
         self.tb.scalars("batch_source_frac", batch_frac, self.train_step_count)
+        self.tb.scalars(
+            "buffer_rows",
+            {SOURCE_NAMES[src]: float(sum(len(buf) for s, buf in buffers if s == src)) for src, _ in self._stream_buffers(0)},
+            self.train_step_count,
+        )
+        self.tb.scalars(
+            "per_max_priority",
+            {SOURCE_NAMES[src]: max(buf._max_priority for s, buf in buffers if s == src) for src, _ in self._stream_buffers(0)},
+            self.train_step_count,
+        )
         if batch_return:
             self.tb.scalars("batch_n_step_return", batch_return, self.train_step_count)
             self.tb.scalars("batch_td_error", batch_td, self.train_step_count)
@@ -936,6 +1026,7 @@ class QMIXTrainer:
             "future_agent_states": batch["future_agent_states"],
             "action_window": torch.tensor(batch["action_window"], dtype=torch.long, device=self.device),  # [B, K, 10]
             "valid_mask": torch.tensor(batch["valid_mask"], dtype=torch.float32, device=self.device),  # [B, K]
+            "bc_mask": torch.tensor(batch["demo"], dtype=torch.float32, device=self.device),  # [B]
         }
 
     def _forward_and_loss(
@@ -1043,6 +1134,11 @@ class QMIXTrainer:
         bc_loss_raw = F.cross_entropy(
             own_q_values.reshape(-1, own_q_values.shape[-1]), own_actions.reshape(-1), reduction="none"
         ).view(own_actions.shape).mean(dim=1)  # [B]
+        # Clone only demonstration transitions (see QMIXConfig.bc_loss_alpha). With every sample a
+        # demonstration this reduces exactly to the unmasked loss; otherwise each cloned sample
+        # keeps the same weight and net-played samples contribute nothing.
+        bc_mask = t["bc_mask"]
+        n_bc = bc_mask.sum().clamp_min(1.0)
         # TD3+BC-style adaptive rescale (Fujimoto & Gu 2021): match bc_loss's current magnitude
         # to iqn_loss's, THEN apply bc_loss_alpha -- so alpha is a dimensionless "how much BC
         # relative to TD" knob that stays meaningful throughout training even though the two
@@ -1051,10 +1147,11 @@ class QMIXTrainer:
         # gradient path, and no_grad avoids paying autograd bookkeeping on a ratio of scalars
         # that's immediately used only to rescale (not backprop through) bc_loss_raw.
         with torch.no_grad():
+            bc_raw_mean = (bc_loss_raw.detach() * bc_mask).sum() / n_bc
             bc_scale = self.cfg.bc_loss_alpha * (
-                iqn_loss.detach().mean().clamp_min(1e-6) / bc_loss_raw.detach().mean().clamp_min(1e-6)
+                iqn_loss.detach().mean().clamp_min(1e-6) / bc_raw_mean.clamp_min(1e-6)
             )
-        bc_loss = bc_scale * bc_loss_raw
+        bc_loss = bc_scale * bc_loss_raw * bc_mask
 
         total_loss = is_weights * iqn_loss + self.cfg.spr_loss_weight * spr_loss + bc_loss  # [B]
 
@@ -1069,10 +1166,20 @@ class QMIXTrainer:
                 # value just mirrors loss/iqn -- the raw CE and argmax agreement are the only way
                 # to see whether behavior cloning itself is actually converging.
                 top2 = own_q_values.topk(2, dim=-1).values
+                agreement = (own_q_values.argmax(dim=-1) == own_actions).float().mean(dim=1)  # [B]
+                n_model = (1.0 - bc_mask).sum()
                 self._last_diagnostics = {
-                    "bc_raw": bc_loss_raw.mean().item(),
+                    "bc_raw": bc_raw_mean.item(),
                     "bc_scale": float(bc_scale),
-                    "bc_accuracy": (own_q_values.argmax(dim=-1) == own_actions).float().mean().item(),
+                    "bc_active_frac": bc_mask.mean().item(),
+                    # Argmax agreement with demonstration actions (what BC trains) and, separately,
+                    # with the actions the net itself took in net-played transitions -- the latter
+                    # is just how consistent the net stays with its own recent behavior, not an
+                    # imitation target.
+                    "bc_accuracy": ((agreement * bc_mask).sum() / n_bc).item(),
+                    "model_action_agreement": (
+                        ((agreement * (1.0 - bc_mask)).sum() / n_model).item() if n_model > 0 else None
+                    ),
                     # Per-unit gap between the best and second-best action's Q: how decisive the
                     # greedy policy is, compared against the reward scale of a single move.
                     "q_action_margin": (top2[..., 0] - top2[..., 1]).mean().item(),
@@ -1093,8 +1200,8 @@ class QMIXTrainer:
         losses = []
         for _ in range(self.cfg.grad_steps_per_call):
             t_prep0 = time.perf_counter()
-            batch_a = self._sample_batch(self.buffer_a, half, n_step, gamma, beta)
-            batch_b = self._sample_batch(self.buffer_b, half, n_step, gamma, beta)
+            batch_a, parts_a = self._sample_stream(0, half, n_step, gamma, beta)
+            batch_b, parts_b = self._sample_stream(1, half, n_step, gamma, beta)
             merged = self._merge_stream_batches(batch_a, batch_b)
             tensors = self._to_tensors(merged)
             self._sync()
@@ -1152,7 +1259,12 @@ class QMIXTrainer:
                 )
                 self.tb.scalars(
                     "bc",
-                    {"accuracy": self._last_diagnostics["bc_accuracy"], "scale": self._last_diagnostics["bc_scale"]},
+                    {
+                        "accuracy": self._last_diagnostics["bc_accuracy"],
+                        "scale": self._last_diagnostics["bc_scale"],
+                        "active_frac": self._last_diagnostics["bc_active_frac"],
+                        "model_action_agreement": self._last_diagnostics["model_action_agreement"],
+                    },
                     self.train_step_count,
                 )
                 self.tb.scalar("td_error/mean", self._last_td_error_mean, self.train_step_count)
@@ -1198,9 +1310,12 @@ class QMIXTrainer:
                     self.train_step_count,
                 )
 
-            n_a = len(batch_a["indices"])
-            self.buffer_a.update_priorities(batch_a["indices"], td_error_np[:n_a])
-            self.buffer_b.update_priorities(batch_b["indices"], td_error_np[n_a:])
+            # merged rows are batch_a's parts in order, then batch_b's -- same order as parts_a + parts_b.
+            merged_indices = np.concatenate([batch_a["indices"], batch_b["indices"]])
+            offset = 0
+            for buf, n_rows in parts_a + parts_b:
+                buf.update_priorities(merged_indices[offset:offset + n_rows], td_error_np[offset:offset + n_rows])
+                offset += n_rows
 
             ema_update(self.ema_net, self.net, self.cfg.ema_tau)
             ema_update(self.spr_predictor.target_projector, self.spr_predictor.projector, self.cfg.ema_tau)

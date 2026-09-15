@@ -25,20 +25,21 @@ so the SPR transition model can condition on the true joint action (the map's fu
 on what every unit on the field did, not just "my" team).
 
 Priorities follow Prioritized Experience Replay (Schaul et al., 2016): sampling probability
-proportional to |TD-error|^alpha via a sum-tree, importance-sampling correction via a min-tree
-(for the max-weight normalization) and a beta exponent the trainer anneals toward 1 over
-training.
+proportional to |TD-error|^alpha, importance-sampling correction with a beta exponent the trainer
+anneals toward 1 over training, weights normalized by the batch maximum (as Dopamine/BBF do).
+`sample(normalize=False)` returns the unnormalized weights instead, so a caller drawing one batch
+from several buffers can normalize across all of them together.
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-from .segment_tree import MinSegmentTree, SumSegmentTree
+from .segment_tree import SumSegmentTree
 
-# Where a stored transition came from -- diagnostics only (never affects sampling/priorities),
-# so TensorBoard can split batch/buffer stats by origin once on-policy data starts displacing
-# the static heuristic dataset (see onpolicy_collect.py).
+# Where a stored transition came from. offline_pretrain.py keeps each on-policy source in its own
+# buffer (see QMIXConfig.batch_source_fracs); a buffer that mixes sources (the online trainer's)
+# uses the tag only to split TensorBoard stats by origin.
 SOURCE_DATASET = 0
 SOURCE_SELF_VS_HEURISTIC = 1
 SOURCE_SELF_PLAY = 2
@@ -73,10 +74,12 @@ class SequentialReplayBuffer:
         self.reward = np.zeros((self.capacity,), dtype=np.float32)
         self.done = np.zeros((self.capacity,), dtype=np.bool_)
         self.source = np.zeros((self.capacity,), dtype=np.int8)
+        # Whether this stream's own-team actions came from a heuristic (behavior-cloning target)
+        # rather than from the net being trained.
+        self.demo = np.zeros((self.capacity,), dtype=np.bool_)
         self.source_counts = np.zeros(len(SOURCE_NAMES), dtype=np.int64)
 
         self._sum_tree = SumSegmentTree(self.capacity)
-        self._min_tree = MinSegmentTree(self.capacity)
 
     def __len__(self) -> int:
         return self._size
@@ -94,6 +97,7 @@ class SequentialReplayBuffer:
         reward: float,
         done: bool,
         source: int = SOURCE_DATASET,
+        demo: bool = True,
     ) -> None:
         i = self._pos
         if self._size == self.capacity:
@@ -105,11 +109,10 @@ class SequentialReplayBuffer:
         self.reward[i] = reward
         self.done[i] = done
         self.source[i] = source
+        self.demo[i] = demo
         self.source_counts[source] += 1
 
-        priority = self._max_priority ** self._per_alpha
-        self._sum_tree[i] = priority
-        self._min_tree[i] = priority
+        self._sum_tree[i] = self._max_priority ** self._per_alpha
 
         self._pos = (self._pos + 1) % self.capacity
         self._size = min(self._size + 1, self.capacity)
@@ -143,38 +146,36 @@ class SequentialReplayBuffer:
         idx = (anchor_idx[:, None] + offsets[None, :]) % self.capacity
         return getattr(self, field)[idx]
 
-    def sample(self, batch_size: int, window: int, beta: float) -> dict[str, np.ndarray]:
+    def sample(self, batch_size: int, window: int, beta: float, normalize: bool = True) -> dict[str, np.ndarray]:
         """
         window: how many steps forward from each anchor must be safely readable (the caller
         passes max(n_step, spr_k) and is responsible for truncating consumed windows at the
         first `done` itself — this only guarantees the *memory* is safe to read).
 
-        Anchors too close to the write head (see `_forbidden_ranges`) are excluded from
-        sampling by temporarily zeroing their priority in both trees for the duration of this
-        call — not by rejection-sampling and discarding draws that land there. Rejecting after
-        the fact would leave `total`/`p_min` computed over the *unconditional* distribution
-        (valid + invalid anchors) while the realized draws come from the valid-conditioned
-        one, which both skews every importance-sampling weight by the same hard-to-predict
-        factor (how much priority mass currently sits in the forbidden zone — freshly-pushed
-        transitions start at max priority, so that fraction is often large, not a rare edge
-        case) and, if the forbidden zone happens to hold most of the mass, can make the
-        rejection loop churn for a very long time. Zeroing first makes every draw valid by
-        construction and keeps `total`/`p_min` consistent with what's actually sampled.
+        normalize: divide the importance weights by this batch's maximum. Pass False when
+        combining draws from several buffers, and normalize over the combined batch instead.
 
-        Returns per-anchor fields (graphic/team_state/agent_states/actions/reward/done at the
-        anchor itself) plus 'indices' (for update_priorities) and 'is_weights'. Anything the
-        caller needs beyond the anchor (n-step rewards, SPR future frames) should be read via
-        read_window(indices, offsets, field).
+        Anchors too close to the write head (see `_forbidden_ranges`) are excluded from
+        sampling by temporarily zeroing their priority for the duration of this call — not by
+        rejection-sampling and discarding draws that land there. Rejecting after the fact would
+        leave the sampling total computed over the *unconditional* distribution (valid + invalid
+        anchors) while the realized draws come from the valid-conditioned one, which skews every
+        importance-sampling weight (freshly-pushed transitions start at max priority, so the
+        forbidden zone often holds a large share of the mass) and can make a rejection loop churn
+        for a very long time. Zeroing first makes every draw valid by construction and keeps the
+        total consistent with what's actually sampled.
+
+        Returns per-anchor fields (graphic/team_state/agent_states/actions/reward/done/source/
+        demo at the anchor itself) plus 'indices' (for update_priorities) and 'is_weights'.
+        Anything the caller needs beyond the anchor (n-step rewards, SPR future frames) should be
+        read via read_window(indices, offsets, field).
         """
         assert self._size > 0, "cannot sample from an empty buffer"
 
-        forbidden_ranges = self._forbidden_ranges(window)
-        saved: dict[int, float] = {}
-        for start, end in forbidden_ranges:
-            for i in range(start, end):
-                saved[i] = self._sum_tree[i]
-                self._sum_tree[i] = 0.0
-                self._min_tree[i] = float("inf")
+        forbidden = [i for start, end in self._forbidden_ranges(window) for i in range(start, end)]
+        saved = [(i, self._sum_tree[i]) for i in forbidden]
+        for i in forbidden:
+            self._sum_tree[i] = 0.0
 
         try:
             total = self._sum_tree.sum(0, self._size)
@@ -186,19 +187,22 @@ class SequentialReplayBuffer:
                 )
 
             indices = np.empty(batch_size, dtype=np.int64)
+            probs = np.empty(batch_size, dtype=np.float64)
             for n in range(batch_size):
-                mass = np.random.uniform(0, total)
-                idx = self._sum_tree.find_prefixsum_idx(mass)
-                indices[n] = min(idx, self._size - 1)
-
-            p_min = self._min_tree.min(0, self._size) / total
-            max_weight = (p_min * self._size) ** (-beta)
-            probs = np.array([self._sum_tree[int(i)] for i in indices]) / total
-            is_weights = (probs * self._size) ** (-beta) / max_weight
+                idx = min(self._sum_tree.find_prefixsum_idx(np.random.uniform(0, total)), self._size - 1)
+                while self._sum_tree[idx] <= 0.0:
+                    # Float rounding in the tree sums can walk a draw at the very top of the mass
+                    # onto an empty or forbidden leaf -- redraw.
+                    idx = min(self._sum_tree.find_prefixsum_idx(np.random.uniform(0, total)), self._size - 1)
+                indices[n] = idx
+                probs[n] = self._sum_tree[idx] / total
         finally:
-            for i, v in saved.items():
+            for i, v in saved:
                 self._sum_tree[i] = v
-                self._min_tree[i] = v
+
+        is_weights = (probs * (self._size - len(forbidden))) ** (-beta)
+        if normalize:
+            is_weights = is_weights / is_weights.max()
 
         return {
             "indices": indices,
@@ -210,12 +214,11 @@ class SequentialReplayBuffer:
             "reward": self.reward[indices],
             "done": self.done[indices],
             "source": self.source[indices],
+            "demo": self.demo[indices],
         }
 
     def update_priorities(self, indices: np.ndarray, priorities: np.ndarray) -> None:
         priorities = np.abs(priorities) + self._per_eps
         for i, p in zip(indices, priorities):
-            pa = float(p) ** self._per_alpha
-            self._sum_tree[int(i)] = pa
-            self._min_tree[int(i)] = pa
+            self._sum_tree[int(i)] = float(p) ** self._per_alpha
         self._max_priority = max(self._max_priority, float(priorities.max()))

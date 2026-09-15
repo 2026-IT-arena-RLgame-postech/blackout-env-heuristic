@@ -53,6 +53,7 @@ from blackout_env.train.offline_dataset import load_dataset_into
 from blackout_env.train.onpolicy_collect import collect_onpolicy_data
 from blackout_env.train.periodic_eval import run_periodic_eval
 from blackout_env.train.qmix_trainer import QMIXConfig, QMIXTrainer, default_run_dir
+from blackout_env.train.replay_buffer import SOURCE_NAMES
 
 
 def main() -> None:
@@ -101,7 +102,10 @@ def main() -> None:
         "step to iqn_loss's own current magnitude first (TD3+BC-style, Fujimoto & Gu 2021), "
         "THEN multiplied by this alpha -- so alpha=1.0 means BC and TD contribute equally "
         "regardless of their differing raw scales (cross-entropy over 8 actions starts near "
-        "ln(8)=2.08, ~2 orders of magnitude above this environment's iqn_loss).",
+        "ln(8)=2.08, ~2 orders of magnitude above this environment's iqn_loss). Applied only to "
+        "heuristic-played transitions: the static dataset and the heuristic side of "
+        "self-vs-heuristic matches -- rows the net itself played carry its own actions and are "
+        "excluded.",
     )
     parser.add_argument(
         "--encoder-lr",
@@ -179,19 +183,31 @@ def main() -> None:
         "--onpolicy-self-vs-heuristic-frac",
         type=float,
         default=0.0,
-        help="Target fraction of buffer_capacity worth of self(candidate)-vs-heuristic ticks to "
-        "collect and push into buffer_a/buffer_b over the whole run, spread evenly across "
+        help="Target fraction of the dataset's size worth of self(candidate)-vs-heuristic ticks to "
+        "collect over the whole run (into this source's own FIFO buffer, see "
+        "--onpolicy-buffer-capacity), spread evenly across "
         "--eval-interval windows (skips the step-0 baseline window, since that checkpoint is "
-        "untrained). Since SequentialReplayBuffer is a FIFO ring buffer already full from the "
-        "static dataset, pushing new transitions naturally evicts the oldest (originally "
-        "pure-heuristic) ones -- no separate weighted sampler needed. Default 0.0 (off).",
+        "untrained). Also sets this source's fixed share of every training batch: batches are "
+        "drawn dataset : self-vs-heuristic : self-play = (1 - both fracs) : this : "
+        "--onpolicy-self-play-frac, each source with its own PER priorities (a source with no "
+        "data yet has its share spread over the others). Default 0.0 (off).",
     )
     parser.add_argument(
         "--onpolicy-self-play-frac",
         type=float,
         default=0.0,
         help="Same as --onpolicy-self-vs-heuristic-frac but for candidate-vs-itself matches, run "
-        "after the self-vs-heuristic collection in each window. Default 0.0 (off).",
+        "after the self-vs-heuristic collection in each window; also this source's batch share. "
+        "Default 0.0 (off).",
+    )
+    parser.add_argument(
+        "--onpolicy-buffer-capacity",
+        type=int,
+        default=262_144,
+        help="Rows per stream in each on-policy source's own FIFO buffer (rounded up to a power "
+        "of 2). The static dataset stays in its own buffer and is never overwritten; on-policy "
+        "data only ever displaces older on-policy data of the same source. ~30KB per row per "
+        "stream, allocated lazily. Default 262144 (~17 eval windows of self-vs-heuristic data at 0.3, ~7.9GB per stream when full).",
     )
     parser.add_argument(
         "--onpolicy-max-matches",
@@ -240,6 +256,16 @@ def main() -> None:
         config_kwargs["encoder_weight_decay"] = args.encoder_weight_decay
     if args.reset_warmup_steps is not None:
         config_kwargs["reset_warmup_steps"] = args.reset_warmup_steps
+    onpolicy_frac = args.onpolicy_self_vs_heuristic_frac + args.onpolicy_self_play_frac
+    if not 0.0 <= onpolicy_frac <= 1.0 or min(args.onpolicy_self_vs_heuristic_frac, args.onpolicy_self_play_frac) < 0.0:
+        parser.error("--onpolicy-self-vs-heuristic-frac and --onpolicy-self-play-frac must be >= 0 and sum to <= 1")
+    if onpolicy_frac > 0.0:
+        config_kwargs["batch_source_fracs"] = (
+            1.0 - onpolicy_frac,
+            args.onpolicy_self_vs_heuristic_frac,
+            args.onpolicy_self_play_frac,
+        )
+        config_kwargs["onpolicy_buffer_capacity"] = args.onpolicy_buffer_capacity
     config_kwargs["reset_interval"] = (
         args.reset_interval if args.reset_interval is not None else max(1, args.steps // 5)
     )
@@ -265,6 +291,11 @@ def main() -> None:
     print(f"[offline] checkpoint_dir={config.checkpoint_dir}")
     print(f"[offline] tb_log_dir={config.tb_log_dir or '(disabled)'}")
     print(f"[offline] reset_interval={config.reset_interval or '(disabled -- single anneal over the whole run)'}")
+    print(
+        f"[offline] batch_source_fracs (dataset, self_vs_heuristic, self_play)="
+        f"{config.batch_source_fracs or '(off -- dataset buffer only)'}"
+        + "".join(f", {SOURCE_NAMES[src]} FIFO buffer {a.capacity} rows/stream" for src, (a, _) in trainer.onpolicy_buffers.items())
+    )
 
     if args.resume:
         trainer.load(Path(args.resume))
@@ -323,8 +354,7 @@ def main() -> None:
         try:
             stats = collect_onpolicy_data(
                 eval_env,
-                trainer.buffer_a,
-                trainer.buffer_b,
+                trainer.onpolicy_buffers,
                 candidate,
                 eval_opponent,
                 target_svh_per_window,
@@ -349,7 +379,9 @@ def main() -> None:
             f"[offline] onpolicy collect @ step {step}: "
             f"self_vs_heuristic={stats['self_vs_heuristic_ticks']} ticks/{stats['self_vs_heuristic_matches']} matches, "
             f"self_play={stats['self_play_ticks']} ticks/{stats['self_play_matches']} matches "
-            f"(buffer_a={len(trainer.buffer_a)}, buffer_b={len(trainer.buffer_b)}){svh_summary}"
+            f"(onpolicy buffer rows a/b: "
+            + ", ".join(f"{SOURCE_NAMES[src]}={len(a)}/{len(b)}" for src, (a, b) in trainer.onpolicy_buffers.items())
+            + f"){svh_summary}"
         )
 
     trainer._total_env_steps_hint = args.steps  # spans n_step/gamma/per_beta annealing over [0, steps]

@@ -23,6 +23,7 @@ from pathlib import Path
 import torch
 
 from blackout_env.train.qmix_trainer import QMIXConfig, QMIXTrainer
+from blackout_env.train.replay_buffer import SOURCE_DATASET, SOURCE_SELF_PLAY
 
 from .shared import SharedState
 
@@ -74,9 +75,14 @@ def run_learner(
             except queue.Empty:
                 pass
 
+            # Messages don't say which phase produced them; the bootstrap flag flips one way only,
+            # so at worst the few transitions still in flight at the switch get tagged as generated
+            # (excluded from BC) -- the safe direction.
+            bootstrap_rows = trainer._bootstrapping
+            source = SOURCE_DATASET if bootstrap_rows else SOURCE_SELF_PLAY
             for stream, graphic, team_state, agent_states, actions, reward, done in drained:
                 buf = trainer.buffer_a if stream == "a" else trainer.buffer_b
-                buf.push(graphic, team_state, agent_states, actions, reward, done)
+                buf.push(graphic, team_state, agent_states, actions, reward, done, source, bootstrap_rows)
 
             trainer.env_step_count = shared.global_step.value
             # Each real env.step() produces exactly one 'a' and one 'b' message (see actor.py) --

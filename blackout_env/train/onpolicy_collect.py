@@ -1,9 +1,9 @@
 """
 On-policy data collection for offline_pretrain.py's periodic eval hook: plays additional
 self-vs-heuristic and self-play matches with the CURRENT checkpoint and pushes their raw
-transitions into buffer_a/buffer_b (the same SequentialReplayBuffer instances offline_pretrain.py
-preloaded from the static heuristic dataset), applying reward_shaping.blocked_penalty_adjustment
-as it goes.
+transitions into that source's own small FIFO buffer pair (QMIXTrainer.onpolicy_buffers -- the static
+dataset's buffer_a/buffer_b stay untouched), applying reward_shaping.blocked_penalty_adjustment as it
+goes.
 
 Why this exists: diagnose_stopping2.py / diagnose_qvalues.py (docs/offline_pretrain_runs.md, Run4
 findings) found the Run4 checkpoint spends 41.66% of unit-ticks "blocked", with overconfident-but-
@@ -18,13 +18,13 @@ nothing in the game's reward structure penalizes wall-collision itself. Two comp
      heuristic doesn't get stuck), so growing the training distribution with on-policy rollouts
      from the checkpoint itself -- self-vs-heuristic and self-play -- gives the net examples of
      (and reward signal for recovering from) exactly the states it actually reaches at inference
-     time. SequentialReplayBuffer is a real ring buffer (FIFO eviction once full, see push()), so
-     simply pushing new transitions into the SAME buffer_a/buffer_b the static dataset was loaded
-     into naturally displaces the oldest (originally pure-heuristic) entries over time -- no
-     separate multi-buffer weighted sampler needed. Injecting ~0.3x and ~0.1x of the dataset's
-     original size in self-vs-heuristic / self-play transitions (spread evenly over
-     --eval-interval windows) converges to roughly a 60/30/10 final mix by the end of a run sized
-     the way the static dataset was.
+     time. Each on-policy source lives in its own bounded FIFO buffer, and the trainer draws a fixed
+     share of every batch from each buffer (QMIXConfig.batch_source_fracs), so the batch mix no
+     longer depends on how much of each source happens to be stored, and the dataset is never
+     overwritten.
+     In self-vs-heuristic matches the heuristic side's stream is also stored as a behavior-cloning
+     demonstration: it shows the heuristic playing against an opponent unlike anything in the
+     heuristic-vs-heuristic dataset.
 """
 
 from __future__ import annotations
@@ -171,7 +171,7 @@ def play_and_collect(
     return t_a, t_b, match_info
 
 
-def _push(buffer: SequentialReplayBuffer, transitions: dict[str, np.ndarray], source: int) -> None:
+def _push(buffer: SequentialReplayBuffer, transitions: dict[str, np.ndarray], source: int, demo: bool) -> None:
     n = transitions["graphic"].shape[0]
     for i in range(n):
         buffer.push(
@@ -182,6 +182,7 @@ def _push(buffer: SequentialReplayBuffer, transitions: dict[str, np.ndarray], so
             float(transitions["reward"][i]),
             bool(transitions["done"][i]),
             source,
+            demo,
         )
 
 
@@ -237,8 +238,7 @@ def _phase_metrics(totals: dict[str, float], penalty_per_unit: float) -> dict[st
 
 def collect_onpolicy_data(
     env: BlackOutEnv,
-    buffer_a: SequentialReplayBuffer,
-    buffer_b: SequentialReplayBuffer,
+    buffers: dict[int, tuple[SequentialReplayBuffer, SequentialReplayBuffer]],
     candidate: BaseModel,
     heuristic: BaseModel,
     target_ticks_self_vs_heuristic: int,
@@ -251,8 +251,9 @@ def collect_onpolicy_data(
     Plays self-vs-heuristic matches (candidate vs heuristic, side swapped every match for
     fairness) until >= target_ticks_self_vs_heuristic ticks are collected, then self-play matches
     (candidate vs itself) until >= target_ticks_self_play more, pushing every match's transitions
-    into buffer_a/buffer_b as it goes (so a crash mid-window still keeps whatever was pushed so
-    far). `seed_start` should differ every call (e.g. the current train step) so successive
+    into buffers[SOURCE_SELF_VS_HEURISTIC] / buffers[SOURCE_SELF_PLAY] (team A, team B) as it goes
+    (so a crash mid-window still keeps whatever was pushed so far); a phase with a positive target
+    needs its buffer pair present. `seed_start` should differ every call (e.g. the current train step) so successive
     windows don't replay identical episodes. Stops early past `max_matches` per phase with a
     printed warning rather than looping forever if matches turn out shorter than expected.
 
@@ -269,8 +270,9 @@ def collect_onpolicy_data(
     while svh["ticks"] < target_ticks_self_vs_heuristic and svh["matches"] < max_matches:
         team_a_policy, team_b_policy = (heuristic, candidate) if swap else (candidate, heuristic)
         t_a, t_b, info = play_and_collect(env, team_a_policy, team_b_policy, seed, penalty_per_unit)
-        _push(buffer_a, t_a, SOURCE_SELF_VS_HEURISTIC)
-        _push(buffer_b, t_b, SOURCE_SELF_VS_HEURISTIC)
+        buffer_a, buffer_b = buffers[SOURCE_SELF_VS_HEURISTIC]
+        _push(buffer_a, t_a, SOURCE_SELF_VS_HEURISTIC, demo=swap)  # team A is the heuristic when swapped
+        _push(buffer_b, t_b, SOURCE_SELF_VS_HEURISTIC, demo=not swap)
         _accumulate(svh, info, candidate_team=1 if swap else 0)
         seed += 1
         swap = not swap
@@ -282,8 +284,9 @@ def collect_onpolicy_data(
 
     while sp["ticks"] < target_ticks_self_play and sp["matches"] < max_matches:
         t_a, t_b, info = play_and_collect(env, candidate, candidate, seed, penalty_per_unit)
-        _push(buffer_a, t_a, SOURCE_SELF_PLAY)
-        _push(buffer_b, t_b, SOURCE_SELF_PLAY)
+        buffer_a, buffer_b = buffers[SOURCE_SELF_PLAY]
+        _push(buffer_a, t_a, SOURCE_SELF_PLAY, demo=False)
+        _push(buffer_b, t_b, SOURCE_SELF_PLAY, demo=False)
         _accumulate(sp, info, candidate_team=0)
         seed += 1
     if sp["ticks"] < target_ticks_self_play:
