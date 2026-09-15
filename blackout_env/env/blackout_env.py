@@ -402,7 +402,27 @@ class BlackOutEnv(ParallelEnv):
         if any(terminations.values()) and previous_scalars:
             previous_time = previous_scalars.get("time_left", 0.0)
             current_time = self._latest_scalars.get("time_left", 0.0)
-            if current_time > previous_time + 0.25:
+            previous_score_0 = previous_scalars.get("score_0", 0.0)
+            previous_score_1 = previous_scalars.get("score_1", 0.0)
+            current_score_0 = self._latest_scalars.get("score_0", 0.0)
+            current_score_1 = self._latest_scalars.get("score_1", 0.0)
+            # The time_left jump above only catches a leak on a time-expiry ending, where
+            # time_left was near 0 just before the reset broadcast's ~1.0 makes the jump
+            # exceed 0.25. On an early decisive win (a team hits TargetScore before time
+            # runs out), time_left is already high, so the jump to ~1.0 is too small to
+            # trip that check, and the just-reset (0, 0) score silently overwrites the
+            # real final score -- score_a == score_b == 0 then gets misread as a draw
+            # below. TeamContext.Score can legitimately drop mid-match (a dropped/expired
+            # unabsorbed item, see ScoreItemEffect.OnExitStorage), but never resets BOTH
+            # teams to exactly 0 simultaneously outside of Reset() -- so a hard (0, 0)
+            # that wasn't already (0, 0) is an unambiguous reset-leak signature, distinct
+            # from the time-based check above.
+            reset_to_zero = (
+                current_score_0 == 0.0
+                and current_score_1 == 0.0
+                and not (previous_score_0 == 0.0 and previous_score_1 == 0.0)
+            )
+            if current_time > previous_time + 0.25 or reset_to_zero:
                 self._latest_scalars = previous_scalars
         if any(terminations.values()) and self._latest_winner is None:
             # Winner is decided purely by final score, mirroring MatchManager.cs's own
