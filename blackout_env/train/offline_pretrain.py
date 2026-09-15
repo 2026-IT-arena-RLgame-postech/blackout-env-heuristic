@@ -45,9 +45,11 @@ from pathlib import Path
 import numpy as np
 
 from blackout_env.env.blackout_env import BlackOutEnv
+from blackout_env.env.constants import TEAM_A_INDICES, TEAM_B_INDICES
 from blackout_env.heuristics import RecommendedStrategicHeuristic
 from blackout_env.model.my_policy import MyPolicy
 from blackout_env.train.offline_dataset import load_dataset_into
+from blackout_env.train.onpolicy_collect import collect_onpolicy_data
 from blackout_env.train.periodic_eval import run_periodic_eval
 from blackout_env.train.qmix_trainer import QMIXConfig, QMIXTrainer, default_run_dir
 
@@ -130,6 +132,18 @@ def main() -> None:
         "pass 0 to disable resets and keep the old one-shot-anneal behavior.",
     )
     parser.add_argument(
+        "--reset-warmup-steps",
+        type=int,
+        default=None,
+        help="Override QMIXConfig.reset_warmup_steps -- linear lr warmup (env steps) for "
+        "graphic_encoder's own param group only, ramping 0 -> encoder_lr at the start of each "
+        "reset cycle. _reset_submodule() wipes this submodule's Adam state on every reset, so "
+        "the first post-reset steps have no momentum/variance history -- exactly the regime "
+        "Adam warmup schedules exist to smooth over, scoped to graphic_encoder since that's the "
+        "one component repeatedly found fragile right after reset/init (see "
+        "docs/offline_pretrain_runs.md). Default None (0, i.e. off).",
+    )
+    parser.add_argument(
         "--eval-interval",
         type=int,
         default=10_000,
@@ -147,6 +161,45 @@ def main() -> None:
     parser.add_argument("--eval-seeds", type=int, nargs="+", default=[101, 202, 303], help="Each seed is played both non-swapped and swapped")
     parser.add_argument("--eval-time-scale", type=float, default=100.0, help="Unity time scale for eval matches (headless, so fast by default)")
     parser.add_argument("--eval-graphics", action="store_true", help="Show the Unity window during eval matches (default: headless)")
+    parser.add_argument(
+        "--blocked-penalty",
+        type=float,
+        default=0.0,
+        help="Per-blocked-unit-tick reward penalty (see reward_shaping.blocked_penalty_adjustment) "
+        "applied to both the static dataset (retroactively, at load time) and any on-policy data "
+        "collected via --onpolicy-*-frac below. 'Blocked' = commanded movement, no actual "
+        "displacement (walking into a wall/obstacle) -- see diagnose_stopping2.py's Run4 finding "
+        "of 41.66% blocked unit-ticks and docs/offline_pretrain_runs.md for why nothing in the "
+        "actual game reward (reward_config.json) penalizes this directly. Default 0.0 (off, i.e. "
+        "exact prior behavior); ~0.02 was the value discussed against this dataset's own reward "
+        "scale (typical nonzero |reward| ~0.005, max single-tick nav-shaping ~0.08).",
+    )
+    parser.add_argument(
+        "--onpolicy-self-vs-heuristic-frac",
+        type=float,
+        default=0.0,
+        help="Target fraction of buffer_capacity worth of self(candidate)-vs-heuristic ticks to "
+        "collect and push into buffer_a/buffer_b over the whole run, spread evenly across "
+        "--eval-interval windows (skips the step-0 baseline window, since that checkpoint is "
+        "untrained). Since SequentialReplayBuffer is a FIFO ring buffer already full from the "
+        "static dataset, pushing new transitions naturally evicts the oldest (originally "
+        "pure-heuristic) ones -- no separate weighted sampler needed. Default 0.0 (off).",
+    )
+    parser.add_argument(
+        "--onpolicy-self-play-frac",
+        type=float,
+        default=0.0,
+        help="Same as --onpolicy-self-vs-heuristic-frac but for candidate-vs-itself matches, run "
+        "after the self-vs-heuristic collection in each window. Default 0.0 (off).",
+    )
+    parser.add_argument(
+        "--onpolicy-max-matches",
+        type=int,
+        default=50,
+        help="Safety cap on matches played per phase (self-vs-heuristic, self-play) per window, "
+        "in case matches turn out much shorter than expected and the target tick count would "
+        "otherwise take unboundedly many matches to reach.",
+    )
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--compile", action="store_true")
     parser.add_argument(
@@ -181,6 +234,8 @@ def main() -> None:
         config_kwargs["encoder_lr"] = args.encoder_lr
     if args.encoder_weight_decay is not None:
         config_kwargs["encoder_weight_decay"] = args.encoder_weight_decay
+    if args.reset_warmup_steps is not None:
+        config_kwargs["reset_warmup_steps"] = args.reset_warmup_steps
     config_kwargs["reset_interval"] = (
         args.reset_interval if args.reset_interval is not None else max(1, args.steps // 5)
     )
@@ -212,9 +267,10 @@ def main() -> None:
         print(f"[offline] resumed from {args.resume} at train_step_count={trainer.train_step_count}")
 
     print(f"[offline] loading dataset from {dataset_dir} ...")
-    load_dataset_into(trainer.buffer_a, dataset_dir / "buffer_a.npz")
-    load_dataset_into(trainer.buffer_b, dataset_dir / "buffer_b.npz")
-    print(f"[offline] loaded buffer_a={len(trainer.buffer_a)}, buffer_b={len(trainer.buffer_b)} transitions")
+    load_dataset_into(trainer.buffer_a, dataset_dir / "buffer_a.npz", TEAM_A_INDICES, args.blocked_penalty)
+    load_dataset_into(trainer.buffer_b, dataset_dir / "buffer_b.npz", TEAM_B_INDICES, args.blocked_penalty)
+    print(f"[offline] loaded buffer_a={len(trainer.buffer_a)}, buffer_b={len(trainer.buffer_b)} transitions"
+          f" (blocked_penalty={args.blocked_penalty})")
 
     ckpt_dir = Path(config.checkpoint_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
@@ -246,6 +302,42 @@ def main() -> None:
             f"candidate_blocked/1k={metrics['candidate_blocked_per_1000_ticks']:.1f}"
         )
 
+    n_eval_windows = max(1, args.steps // args.eval_interval) if args.eval_interval > 0 else 0
+    target_svh_per_window = int(args.onpolicy_self_vs_heuristic_frac * config.buffer_capacity / max(1, n_eval_windows))
+    target_sp_per_window = int(args.onpolicy_self_play_frac * config.buffer_capacity / max(1, n_eval_windows))
+    onpolicy_enabled = eval_env is not None and (target_svh_per_window > 0 or target_sp_per_window > 0)
+    if onpolicy_enabled:
+        print(
+            f"[offline] on-policy data collection enabled: ~{target_svh_per_window} self-vs-heuristic "
+            f"+ ~{target_sp_per_window} self-play ticks per eval window ({n_eval_windows} windows), "
+            f"blocked_penalty={args.blocked_penalty}"
+        )
+
+    def collect_onpolicy(step: int) -> None:
+        candidate = MyPolicy(trainer.net, device=args.device)
+        trainer.net.eval()
+        try:
+            stats = collect_onpolicy_data(
+                eval_env,
+                trainer.buffer_a,
+                trainer.buffer_b,
+                candidate,
+                eval_opponent,
+                target_svh_per_window,
+                target_sp_per_window,
+                args.blocked_penalty,
+                seed_start=10_000 + step,
+                max_matches=args.onpolicy_max_matches,
+            )
+        finally:
+            trainer.net.train()
+        print(
+            f"[offline] onpolicy collect @ step {step}: "
+            f"self_vs_heuristic={stats['self_vs_heuristic_ticks']} ticks/{stats['self_vs_heuristic_matches']} matches, "
+            f"self_play={stats['self_play_ticks']} ticks/{stats['self_play_matches']} matches "
+            f"(buffer_a={len(trainer.buffer_a)}, buffer_b={len(trainer.buffer_b)})"
+        )
+
     trainer._total_env_steps_hint = args.steps  # spans n_step/gamma/per_beta annealing over [0, steps]
     recent_losses: list[float] = []
     t0 = time.time()
@@ -274,6 +366,8 @@ def main() -> None:
 
             if eval_env is not None and step % args.eval_interval == 0:
                 run_eval(step)
+                if onpolicy_enabled:
+                    collect_onpolicy(step)
     except KeyboardInterrupt:
         print(f"\n[offline] KeyboardInterrupt at step {trainer.train_step_count} -- saving before exit")
         trainer.save(ckpt_dir / f"interrupted_step_{trainer.train_step_count}.pt")

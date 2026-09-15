@@ -16,6 +16,7 @@ from pathlib import Path
 import numpy as np
 
 from blackout_env.train.replay_buffer import SequentialReplayBuffer
+from blackout_env.train.reward_shaping import blocked_penalty_adjustment
 
 FIELDS = ("graphic", "team_state", "agent_states", "actions", "reward", "done")
 
@@ -27,23 +28,42 @@ def save_buffer(buffer: SequentialReplayBuffer, path: Path) -> None:
     np.savez(path, **{field: getattr(buffer, field)[:n] for field in FIELDS})
 
 
-def load_dataset_into(buffer: SequentialReplayBuffer, npz_path: Path) -> int:
+def load_dataset_into(
+    buffer: SequentialReplayBuffer,
+    npz_path: Path,
+    team_indices: tuple[int, ...] | None = None,
+    penalty_per_unit: float = 0.0,
+) -> int:
     """Replays every saved transition through .push(), in original order. This re-derives
     priorities exactly the way collection itself did (freshly pushed = max priority) rather
     than trying to hand-restore the sum/min segment trees, and if npz_path holds more
     transitions than `buffer`'s capacity, the ring buffer's own FIFO eviction naturally keeps
     only the most recent `capacity` of them -- no special-casing needed here for that case.
-    Returns the number of transitions loaded (pre-truncation, i.e. what npz_path held)."""
+    Returns the number of transitions loaded (pre-truncation, i.e. what npz_path held).
+
+    team_indices/penalty_per_unit: if given (team_indices non-None and penalty_per_unit != 0),
+    retroactively folds reward_shaping.blocked_penalty_adjustment into every loaded transition's
+    reward -- see that function's docstring. Off by default (both existing callers of this
+    function, qmix_trainer.py's --seed-dataset-dir and older scripts, keep their exact prior
+    behavior unless they opt in); offline_pretrain.py passes real values explicitly.
+    """
     data = np.load(npz_path)
-    n = data["graphic"].shape[0]
+    # NpzFile.__getitem__ re-reads and re-decompresses the whole member array from the zip on
+    # every call (no caching) -- indexing it per-row inside the loop below would re-read each
+    # multi-GB array once per transition. Load each field into memory exactly once instead.
+    arrays = {field: data[field] for field in FIELDS}
+    n = arrays["graphic"].shape[0]
+    reward = arrays["reward"]
+    if team_indices is not None and penalty_per_unit != 0.0:
+        reward = reward + blocked_penalty_adjustment(arrays["agent_states"], arrays["done"], team_indices, penalty_per_unit)
     for i in range(n):
         buffer.push(
-            data["graphic"][i],
-            data["team_state"][i],
-            data["agent_states"][i],
-            data["actions"][i],
-            float(data["reward"][i]),
-            bool(data["done"][i]),
+            arrays["graphic"][i],
+            arrays["team_state"][i],
+            arrays["agent_states"][i],
+            arrays["actions"][i],
+            float(reward[i]),
+            bool(arrays["done"][i]),
         )
     return n
 

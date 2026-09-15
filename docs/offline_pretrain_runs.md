@@ -74,7 +74,123 @@ Run 2가 200,000스텝 완료된 직후 GUI로 휴리스틱 대결을 돌려보�
 
 ---
 
-## Run 4 (진행 중, PID 81173, 시작 2026-09-14 22:2x) — 인코더 축소 + BC loss + 온라인/오프라인 비교
+## Run 4 완료 후 진단 (2026-09-15) — GUI 대결, blocked-tick 42% 발견, reward/Q값 조사, Run 5 준비
+
+**Run 4 완료 결과**: 200,000스텝 정상 종료 (`[offline] done.`, 에러 없음). 핵심 성과 —
+`grad_norm/graphic_encoder`가 **처음으로 전체 구간 내내 붕괴 없이 유지됨** (0.04~1.3 범위에서
+흔들림, step 0부터 200,000까지), `weight_norm/graphic_encoder`도 32.1→54.0으로 매끄럽게 계속 증가.
+4가지 조치(SPR CLS 토큰 + encoder 전용 weight_decay + 인코더 축소 + BC loss)가 그래디언트 붕괴
+자체는 확실히 해결한 것으로 판단.
+
+다만 `eval/win_rate`는 21개 체크포인트(step 0~200,000) 전부 정확히 0.0 (126게임 무승), GUI로 직접
+6판(시드 3개×스왑) 돌려봐도 **0승 2패 4무** — TensorBoard 수치와 일치. `candidate_blocked_per_1000_ticks`는
+초기 8.5→10,000스텝 만에 1.8~3.3으로 급감 후 200,000스텝까지 2.3~4.0에서 정체 (더 이상 개선 없음).
+사용자가 GUI로 직접 보고 "vs 이전 대비 확실히 개선됐지만 중간중간 멈추는 행동이 있고 전략적으로
+비효율적"이라고 보고.
+
+**추가 진단 1: idle/blocked 지표의 맹점 발견** — `eval/*_blocked_per_1000_ticks`는 **인시던트
+개수**(12틱 이상 연속 블록만 카운트)이지 지속시간이 아님. `examples/evaluate_checkpoint_vs_heuristic.py`로
+final.pt vs 휴리스틱 3매치를 직접 틱 단위로 재분석([movement_monitor.py](../blackout_env/train/movement_monitor.py)의
+`MovementMonitor`를 그대로 재사용)한 결과:
+- idle(정지) 비율 0.00% — `MyPolicy`는 항상 8방향 중 하나를 단위벡터로 명령하는 구조라 "정지" 액션이
+  아예 없음([my_policy.py](../blackout_env/model/my_policy.py) `DIRECTION_VECTORS`), 구조적으로 idle
+  판정이 절대 안 걸림.
+- 방향 반전(thrashing) 비율 0.2~1.2% — 왔다갔다 하는 문제는 아님.
+- **blocked(명령했지만 실제로 안 움직임) 비율이 전체 유닛-틱의 41.66%** (6515틱 중 2714틱). 12틱
+  이상 지속된 사건은 21건뿐이라 "인시던트 개수" 기준으로는 적어 보였지만, 각각이 평균적으로 매우
+  길게(30틱 이상 지속 15건) 이어지면서 전체 시간의 42%를 차지 — 인시던트 카운트가 심각성을 크게
+  과소평가하고 있었음.
+
+**추가 진단 2: reward_proposal.md / 실제 C# 코드 대조** — `/Users/mac/project/26rl/reward_proposal.md`
+(1253줄, 확률 기반 potential shaping 설계안)와 `blackout/Assets/Project/Runtime/Scripts/ML/`의
+`PotentialRewardCalculator.cs`/`IndividualNavPotentialCalculator.cs`/`BlackOutEpisodeCoordinator.cs`를
+직접 대조. **결론: `reward_config.json`의 killReward/deathPenalty/teamScoreReward/itemRewards=0은
+버그가 아니라 의도된 설계** (문서 §1: "중간 사건에 고정된 임의 보상을 직접 부여하지 않고, 확률
+변화를 보상으로 사용"). 실제 승패 신호는 potential shaping(`Ψ_k`, tanh(확정점수차+배터리기댓값)/
+potentialScale, η=0.25/γ=0.99995 — 문서 §2 권장값과 정확히 일치)과 terminal ±1
+(`BlackOutEpisodeCoordinator.cs`에 하드코딩)로 옴. 단, **벽 충돌 자체를 직접 벌하는 항은 어디에도
+없음** — `IndividualNavPotentialCalculator`의 nav-potential은 그리드 경로 거리 기반이라 유닛이
+막혀서 진전이 없으면 보상이 늘지도 줄지도 않음(중립). 이게 42% blocked 문제와 직결되는 지점.
+
+**추가 진단 3: Q값 분포 분석** (blocked vs 정상 틱 비교, 3시드 6515틱) —
+
+| | blocked | 정상 |
+|---|---|---|
+| top1-top2 마진 | 0.7975 | 1.4534 |
+| top1 Q값 | **3.0009** | 2.3576 |
+| 8방향 표준편차 | 1.0494 | 1.2332 |
+
+blocked일 때 확신도(마진)는 낮아지지만 완전히 tie는 아니고, 오히려 top1 Q값 자체는 **더 큼** —
+전형적인 오프라인 Q값 과대추정 신호. 결정적으로 **12틱 이상 지속된 blocked 구간 19건 전부(100%)가
+처음부터 끝까지 같은 방향만 반복 선택** — `MyPolicy`가 순수 greedy라 탐색/재시도 메커니즘이 없고,
+벽에 막혀 상태가 거의 안 바뀌면 Q값도 안 바뀌어서 같은 실수를 무한 반복. 휴리스틱 데이터에는 애초에
+"벽에 막혔다 회복" 상황이 거의 없어(휴리스틱은 이렇게 안 막힘) Q함수가 이 OOD 상태에 대한 학습
+신호를 못 받은 것으로 추정 — Run 4 설계 당시의 causal-confusion 가설과 일맥상통.
+
+**Run 5용 코드 변경 3건 (구현 + 스모크 테스트 완료, 2026-09-15):**
+
+1. **벽 충돌 페널티** ([reward_shaping.py](../blackout_env/train/reward_shaping.py) 신규) —
+   `blocked_penalty_adjustment()`: 연속 `agent_states`로 movement≤2e-4 판정된 유닛마다
+   `-penalty_per_unit`을 그 틱의 (팀 합산) reward에서 차감. action_norm 체크는 생략 —
+   `MyPolicy`/휴리스틱 모두 항상 8방향 중 하나(norm=1)를 고르므로 항상 참이라 무의미.
+   `offline_dataset.load_dataset_into()`에 `team_indices`/`penalty_per_unit` 파라미터 추가해서
+   기존 정적 데이터셋에도 로드 시점에 소급 적용 (휴리스틱은 거의 안 막히므로 영향 미미), 신규
+   수집 데이터에도 동일 적용. `--blocked-penalty` CLI 플래그 (기본 0.0=off).
+2. **온라인 데이터 혼합** ([onpolicy_collect.py](../blackout_env/train/onpolicy_collect.py) 신규) —
+   기존 eval 훅(10k스텝마다)을 재활용해서 self(후보)-vs-휴리스틱 매치는 그대로 두고, 틱 데이터를
+   `buffer_a`/`buffer_b`에 push. 추가로 self-play(후보 vs 자기자신) 매치도 실행해서 push.
+   `SequentialReplayBuffer`가 이미 진짜 FIFO ring buffer라 새 로직 없이 그냥 push만 하면 오래된
+   순수 휴리스틱 데이터부터 자연스럽게 밀려남. 목표: 전체 런에 걸쳐 buffer_capacity의 30%를
+   self-vs-heuristic, 10%를 self-play로 주입(윈도우당 균등 분배) → 최종적으로 대략 60/30/10 구성에
+   수렴. 매치는 고정 판수가 아니라 **목표 틱 수 도달할 때까지 반복**(매치 끝나고 나서 체크, 중간에
+   안 끊음) — safety cap(`--onpolicy-max-matches`, 기본 50)으로 무한루프만 방지.
+   self-play 매치는 헤드-투-헤드라 초반엔 시간제한까지 채우는 경우가 많아(스모크 테스트에서 목표
+   500틱인데 실제 1판이 10,501틱) self-play 비중이 의도한 10%보다 커질 수 있음 — 사용자 확인:
+   중간에 끊지 않고 그대로 두는 것으로 결정(self-play는 eval 지표에 안 쓰이므로 오염 없음).
+   `--onpolicy-self-vs-heuristic-frac`/`--onpolicy-self-play-frac` CLI 플래그 (기본 0.0=off).
+3. **reset 직후 encoder LR 웜업** ([qmix_trainer.py](../blackout_env/train/qmix_trainer.py)) —
+   `QMIXConfig.reset_warmup_steps` 추가 (기본 0=off). `_reset_submodule()`이 리셋 시 해당 서브모듈의
+   Adam momentum/variance state도 지우므로, 리셋 직후 몇 스텝은 2차 모멘트 추정치가 없는 상태로
+   업데이트가 들어감 — Adam warmup이 원래 완화하려는 바로 그 상황. graphic_encoder 전용 param
+   group의 lr만 `_anneal_cycle_start_step`(리셋마다 갱신되는 사이클 시작점) 기준으로 0→목표값
+   선형 램프. **주의: 이건 논문 근거(BBF/IQL 등)로 도입한 게 아니라 우리 자체 진단(reset 직후
+   graphic_encoder 그래디언트 불안정)에 국한된 대증 조치** — 아래 "학습률 스케줄 조사" 참고.
+   attention도 리셋되지만 grad_norm이 계속 건강했으므로 warmup 대상에서 제외.
+   `--reset-warmup-steps` CLI 플래그.
+
+**학습률 스케줄 조사 (전체 런 스케줄은 도입 안 하기로 결정)**: BBF 공식 gin config
+(`BBF.gin`)를 직접 확인한 결과 `learning_rate=0.0001` **고정, 스케줄 전혀 없음** — reset_every=20k/
+cycle_steps=10k로 리셋해도 lr은 안 바뀜. 즉 이 코드베이스가 그대로 복제한 reset 메커니즘의 원전
+자체가 "리셋해도 스케줄 불필요"를 실측으로 보여줌. IQL 논문(Kostrikov et al. 2021, Appendix B)도
+직접 확인 — "We use cosine schedule for the actor learning rate"라는 한 줄이 전부(근거 설명 없음),
+게다가 **actor(정책망) 전용**이고 critic/value는 고정 3e-4. 우리 구조(QMIX+IQN)는 별도 정책망 없이
+Q값 argmax가 곧 정책이라 IQL의 "정책망 스케줄" 논리가 적용될 대상 자체가 없음 → 전체 런
+cosine/linear decay는 근거 부족으로 기각, 위 3번(reset 직후 encoder만 국소 웜업)으로 대체.
+
+**검증**: `--steps 40 --eval-interval 20` 스모크 테스트 2회(Unity 실제 빌드, 헤드리스) — 1회는
+블록 페널티+온폴리시 수집만, 2회는 `--reset-warmup-steps 5`까지 포함 — 둘 다 에러 없이 끝까지
+완료 확인. `_apply_encoder_lr_warmup()`은 별도 유닛테스트로 리셋마다 0→목표lr 선형 램프, 다른
+param group은 안 건드리는 것도 확인.
+
+**다음 실행 예정 (Run 5, 아직 시작 안 함)**:
+```bash
+python -m blackout_env.train.offline_pretrain \
+    --dataset-dir datasets/heuristic_mixv2_20260913 \
+    --steps 200000 \
+    --device mps \
+    --spr-loss-weight 5.0 \
+    --encoder-weight-decay 1e-4 \
+    --bc-loss-alpha 1.0 \
+    --blocked-penalty 0.02 \
+    --onpolicy-self-vs-heuristic-frac 0.3 \
+    --onpolicy-self-play-frac 0.1 \
+    --reset-warmup-steps 2000 \
+    --eval-interval 10000
+```
+
+---
+
+## Run 4 (완료, PID 81173, 시작 2026-09-14 22:2x, 종료 2026-09-15) — 인코더 축소 + BC loss + 온라인/오프라인 비교
 
 **배경**: Run 3(spr_loss_weight=5.0 + encoder_weight_decay=1e-4만 적용, PID 79933)을 4000스텝까지
 돌려본 결과 `grad_norm/graphic_encoder` 붕괴 속도가 Run 2와 **거의 동일**(step 4000 기준 Run2=2.6e-4,

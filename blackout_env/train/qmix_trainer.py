@@ -231,6 +231,18 @@ class QMIXConfig:
     reset_alpha_cnn: float = 0.8
     reset_alpha_attention: float = 0.925
 
+    # Linear warmup (env steps, counted from the current reset cycle's start -- see
+    # _anneal_cycle_start_step) for graphic_encoder's own AdamW param group LR only, ramping
+    # 0 -> encoder_lr. _reset_submodule() wipes this submodule's Adam momentum/variance state on
+    # every reset, so the first post-reset steps run with no second-moment history -- exactly the
+    # high-variance regime Adam warmup schedules exist to smooth over, and graphic_encoder is the
+    # one component repeatedly found fragile right after reset/init (docs/offline_pretrain_runs.md
+    # -- unlike attention, whose grad_norm has stayed healthy throughout, so this is scoped to the
+    # encoder param group rather than the whole optimizer). 0 (default) disables it (no-op, LR
+    # stays at encoder_lr always). Also applies once at true training start (env step 0), since
+    # the first reset fires there too (env_step_count % reset_interval == 0).
+    reset_warmup_steps: int = 0
+
     eps_start: float = 1.0
     eps_end: float = 0.05
     eps_decay_steps: int = 100_000
@@ -348,6 +360,10 @@ class QMIXTrainer:
                 },
             ]
         )
+        # Reference to the encoder's own param group (index fixed by construction order above),
+        # plus its target (post-warmup) lr -- see reset_warmup_steps / _apply_encoder_lr_warmup().
+        self._encoder_param_group = self.optimizer.param_groups[1]
+        self._encoder_target_lr = self._encoder_param_group["lr"]
 
         if env is not None:
             graphic_shape = env.observation_space(team_a_agents()[0])["graphic"].shape
@@ -506,6 +522,16 @@ class QMIXTrainer:
         # selection, but would otherwise have been silently ticking down anyway).
         frac = min(1.0, max(0.0, self.env_step_count - self._phase2_epsilon_anchor_step) / self.cfg.eps_decay_steps)
         return self.cfg.eps_start + frac * (self.cfg.eps_end - self.cfg.eps_start)
+
+    def _apply_encoder_lr_warmup(self) -> None:
+        """Linear warmup of the encoder param group's lr from 0 -> _encoder_target_lr over the
+        first reset_warmup_steps env steps of the current reset cycle -- see
+        QMIXConfig.reset_warmup_steps. No-op (lr stays at _encoder_target_lr) when disabled."""
+        if self.cfg.reset_warmup_steps <= 0:
+            return
+        steps_since_reset = self.env_step_count - self._anneal_cycle_start_step
+        scale = min(1.0, max(0.0, steps_since_reset / self.cfg.reset_warmup_steps))
+        self._encoder_param_group["lr"] = self._encoder_target_lr * scale
 
     def _anneal_frac(self) -> float:
         # BBF resets AND re-anneals n_step/gamma every cycle -- annealing once across the
@@ -1052,6 +1078,7 @@ class QMIXTrainer:
                 itertools.chain(self.net.parameters(), self.dist_mixer.parameters(), self.spr_predictor.parameters()),
                 self.cfg.grad_clip,
             )
+            self._apply_encoder_lr_warmup()
             self.optimizer.step()
             self._sync()
             t_bwd1 = time.perf_counter()
@@ -1417,6 +1444,14 @@ def main() -> None:
         "the network's already-learned behavior).",
     )
     parser.add_argument(
+        "--reset-warmup-steps", type=int, default=None,
+        help="Linear lr warmup (env steps) for graphic_encoder's own param group only, ramping "
+        "0 -> encoder_lr at the start of each reset cycle (see QMIXConfig.reset_warmup_steps) -- "
+        "_reset_submodule() wipes this submodule's Adam state on every reset, so the first "
+        "post-reset steps have no momentum/variance history. Default (None) keeps the dataclass "
+        "default (0, i.e. off).",
+    )
+    parser.add_argument(
         "--tb-log-dir",
         default=None,
         help="TensorBoard log dir; default is a fresh timestamped folder under runs/ (see default_run_dir), pass '' to disable",
@@ -1466,6 +1501,8 @@ def main() -> None:
         config_kwargs["reset_alpha_cnn"] = args.reset_alpha_cnn
     if args.reset_alpha_attention is not None:
         config_kwargs["reset_alpha_attention"] = args.reset_alpha_attention
+    if args.reset_warmup_steps is not None:
+        config_kwargs["reset_warmup_steps"] = args.reset_warmup_steps
     if args.skip_bootstrap:
         config_kwargs["heuristic_fill_frac"] = 0.0
     if args.checkpoint_dir is not None:
