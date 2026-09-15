@@ -30,6 +30,119 @@ lr/weight_decay/reset 강도는 아직 실험 안 해봄 — spr_loss_weight부�
 
 ---
 
+## Run 6 계획 (실행 전, 2026-09-15) — 무엇을 보고, 언제 멈추고, 결과를 어떻게 해석할지
+
+결과를 보고 해석을 끼워 맞추지 않도록 실행 전에 기준을 정해둔다. 런이 끝나면 아래 "결과" 칸을 채울 것.
+
+```bash
+python -m blackout_env.train.offline_pretrain \
+    --dataset-dir datasets/heuristic_mixv3_20260915 --steps 200000 --device mps \
+    --spr-loss-weight 5.0 --encoder-weight-decay 1e-4 --bc-loss-alpha 1.0 \
+    --blocked-penalty 0.02 --onpolicy-self-vs-heuristic-frac 0.3 --onpolicy-self-play-frac 0 \
+    --reset-warmup-steps 2000 --eval-interval 10000
+```
+
+실행 전 확인: `.venv`의 protobuf가 `cpp`인지(`docs/perf_experiments_20260915.md`). 하이퍼파라미터는 Run 5와 같고
+셀프플레이 비율만 0이다.
+
+### Run 5 대비 바뀐 것 (결과 해석의 연결 대상)
+
+| # | 변경 | 커밋 |
+|---|---|---|
+| C1 | 새 데이터셋 `heuristic_mixv3`: 네비 포텐셜 Φ(점수 배터리 전용·가치 가중·팀 단위 배정)가 리워드에 반영됨 | blackout `fba77db`, `b4b5c07` |
+| C2 | 데이터셋 휴리스틱: 보호된 스폰 창고 대신 수비 가능한 창고를 지킴 (주로 V14) | `4ef4bde` |
+| C3 | 데이터셋 수집 가중치: 버그 수정 후 Elo 기준 (V13·V11↑, V14·V5↓) | `c42d0ee` |
+| C4 | 벽충돌 페널티에서 사망 대기 제외 (데이터셋·온폴리시 모두) | `385a17d` |
+| C5 | 데이터셋 버퍼 고정 + 온폴리시는 별도 FIFO 버퍼 (Run 5는 데이터셋 41%를 덮어씀) | `708b10c` |
+| C6 | 배치를 출처별 고정 비율(데이터셋 70 : 휴리스틱 상대 30)로, 버퍼별 PER 우선순위 | `708b10c` |
+| C7 | BC는 휴리스틱이 조종한 행에만 (데이터셋 + 휴리스틱 상대 경기의 휴리스틱 쪽) | `708b10c` |
+| C8 | 셀프플레이 주입 제거 | 실행 인자 |
+
+### Run 5 기준값 (비교 대상)
+
+| 지표 | Run 5 |
+|---|---|
+| `eval/win_rate` | 19개 윈도우 전부 0 |
+| `eval/mean_margin` | −56 ~ −92 |
+| `eval/mean_steps` | 395~462 (게임 시간 약 17초 만에 패배) |
+| `eval/candidate_blocked_per_1000_ticks` | 1.9~2.8 |
+| `q_value/mean` / `q_value/std` | +0.77 → −3.3 단조 하락 / 0.19 → 6.5 증가 |
+| 주입 직후 `grad_norm/total_preclip` | 평상시의 약 7배, 130k 이후 11~15 (클립 10 초과) |
+| `grad_norm/graphic_encoder` | 약 0.9 |
+| `loss/total` | 5만 스텝 이후 0.06~0.07 정체 |
+| 체크포인트 롤아웃 (180k) | 휴리스틱 상대 모델 막힘 49% (사망 대기 18.7% 포함), 휴리스틱 상태에서 BC 일치율 50.5% |
+
+### 봐야 할 값
+
+**① 초반 건강 체크 (0~20k)** — 여기서 이상하면 설정/코드 문제다.
+- `grad_norm/graphic_encoder`가 0.05~1.5 근처를 유지하는지 (Run 2의 1e-7 붕괴 재발 여부).
+- `loss/bc_raw`가 ln 8 ≈ 2.08에서 내려가는지, `bc/accuracy`가 오르는지. BC가 데이터셋 행에만 걸리므로 이게 안 내려가면
+  학습 자체가 안 되는 것이다.
+- 10k 첫 주입 이후 `buffer_rows/self_vs_heuristic`이 윈도우마다 약 3.1만 행(두 스트림 합)씩 늘고,
+  `batch_source_frac`이 dataset 0.70 / self_vs_heuristic 0.30으로 고정되는지 (C5·C6 동작 확인).
+- `bc/active_frac` ≈ 0.85 (데이터셋 0.70 + 휴리스틱 상대 몫의 절반, C7 동작 확인).
+
+**② 안정성 (Run 5 이상 증상이 사라졌는지)** — C5·C6·C8과 연결.
+- `q_value/mean`이 리셋과 무관하게 단조 하락하지 않고 안정되는지, `q_value/std`가 계속 커지지 않는지.
+  `q_value/mean` ≈ 0.7 × 데이터셋 Q + 0.3 × 온폴리시 Q이므로, `batch_n_step_return/self_vs_heuristic`이 음수여도
+  전체가 안정되면 정상이다.
+- 10k 배수 스텝 직후 `grad_norm/total_preclip` 스파이크와 `q_value/mean` 계단이 줄었는지.
+  `per_max_priority/self_vs_heuristic`은 데이터셋과 따로 움직여야 한다.
+
+**③ 행동·실력** — 주 신호. eval은 윈도우당 6경기(시드 3 × 좌우)라 잡음이 크니 **3개 윈도우 이동평균**으로 본다.
+- 기대 순서: `eval/mean_steps` 증가(더 오래 버팀) → `eval/mean_margin`이 −56~−92 밴드 위로 → `eval/win_rate` > 0.
+  승률은 런 대부분 동안 0일 수 있다. **점수차와 경기 길이가 1차 판단 기준**이다.
+- `onpolicy/self_vs_heuristic/candidate_blocked_unit_frac` 하락. 주의: C4 이후 이 값은 사망 대기를 **제외한**
+  비율이라, Run 5 롤아웃의 49%(사망 대기 포함)가 아니라 약 30%(벽 막힘만)와 비교해야 한다.
+  `eval/candidate_blocked_per_1000_ticks`는 정의가 그대로라 Run 5와 직접 비교할 수 있다.
+- `onpolicy/self_vs_heuristic/candidate_blocked_penalty_per_tick` ÷ `candidate_env_reward_per_tick`
+  (Run 5 표본에서 페널티가 환경 리워드의 약 3.5배). 줄어들면 페널티가 학습 신호를 덜 지배한다는 뜻 (H5).
+- `onpolicy/self_vs_heuristic/psi_saturated_frac`, `abs_score_diff_mean` (Run 5 표본 약 0.5 / 50점).
+  경기가 팽팽해질수록 떨어진다 (H3).
+- `q_value/action_margin`: 이동 결정의 Q 차이. 새로 생긴 로그라 Run 5 기준값은 없다 (H2 판단용).
+
+### 조기 종료 기준
+
+**즉시 중단 (버그·불안정)**
+- loss나 Q가 NaN/inf.
+- `grad_norm/graphic_encoder` < 1e-4가 1만 스텝 이상 지속 (인코더 붕괴 재발).
+- 첫 주입(10k) 이후 `buffer_rows/self_vs_heuristic`이 안 늘거나, 20k 이후 `batch_source_frac`이 0.70/0.30에서
+  벗어남 (수집·샘플링 버그).
+- 학습 속도가 Run 5(약 9 스텝/초)의 절반 아래로 계속 떨어짐 (메모리 스왑 폭주 등).
+
+**Run 5와 같은 실패로 판단하고 중단 (80k~100k 시점 검토)** — 아래가 **모두** 해당하면 이번 변경들이 실패 원인을
+건드리지 못한 것이므로 남은 스텝을 쓰지 않는다.
+- `eval/mean_margin` 3윈도우 이동평균이 계속 Run 5 밴드(−56~−92) 안.
+- `eval/mean_steps`가 약 460을 넘지 못함.
+- `onpolicy/self_vs_heuristic/candidate_blocked_unit_frac`이 초반 윈도우 대비 뚜렷한 감소 없음.
+- `q_value/mean`이 Run 5처럼 단조 하락.
+
+반대로 점수차·경기 길이가 개선 추세면, 승률이 0이어도 200k까지 돌린다.
+
+### 결과 해석 → 변경 연결
+
+| 관측 | 가장 유력한 원인 | 구분 방법 |
+|---|---|---|
+| Q 드리프트·분산 증가가 사라짐 | C5(데이터셋 보존), C6(고정 비율), C8(셀프플레이 제거) | `batch_n_step_return/*`로 출처별 리턴 확인. 온폴리시 Q는 여전히 음수인데 전체가 안정되면 C6가 격리한 것 |
+| 주입 직후 그래디언트 스파이크가 사라짐 | C6(버퍼별 우선순위), C8 | 스파이크가 남으면 휴리스틱 상대 버퍼 **안에서의** PER 쏠림 → 다음 후보: 새 전이 우선순위를 최대 대신 평균으로, SPR·BC에도 중요도 가중치 |
+| 온폴리시 막힘 비율 하락 | C7(자기 행동 모방 제거)가 1순위, C4(페널티가 행동 기인분만) | `bc/model_action_agreement`가 떨어지며 막힘이 줄면 C7. 막힘은 그대로인데 페널티만 줄면 C4 효과뿐 |
+| 점수차·경기 길이 개선 | 여러 변경의 합. 사전 확률은 C7, C1 순 | 이번 런 하나로는 분리 불가. 필요하면 C7만 되돌린 짧은 런(4만 스텝)으로 확인 |
+| 팀원이 같은 배터리로 몰리는 행동 감소 (GUI·롤아웃) | C1(Φ 팀 배정), C2·C3(데이터 분포) | 데이터셋에서 휴리스틱끼리 동시에 같은 배터리를 노리는 빈도를 먼저 재서 C2·C3 기여 분리 (H4 입증 방법 1) |
+| 아무것도 개선되지 않음 | 남은 가설: H2(이동 신호 묻힘), H3(tanh 포화), H1(γ 불일치), H6(크레딧 할당) | `q_value/action_margin`이 네비 쉐이핑 크기에 비해 노이즈 수준이면 H2, `psi_saturated_frac`이 높게 유지되면 H3 ([reward_hypotheses.md](reward_hypotheses.md)) |
+
+### 해석할 때의 한계
+- 변경 8개가 한꺼번에 들어가서, 개선이 나와도 단일 원인으로 돌리기 어렵다.
+- eval 상대는 V4(`RecommendedStrategicHeuristic`) 하나다.
+- C3의 Elo는 C2(수비 수정) 반영 전이다.
+- eval 수치는 0-0 무승부 버그를 고친 Run 5부터만 비교할 수 있다. Run 4 이전 수치와 비교하지 말 것.
+- 체크포인트는 5k마다 저장된다. 20k·60k·100k·최종 시점에 GUI로 직접 보는 것을 권장한다. 수치로 안 잡히는
+  전략적 비효율(이전에 GUI로 관찰된 것)은 그렇게만 확인된다.
+
+### 결과
+(런 종료 후 작성)
+
+---
+
 ## Run 5 (중단, PID 23899, 2026-09-15 15:55 ~ 21:30, step 약 184k에서 종료) — 벽충돌 페널티 + 온폴리시 주입 + 리셋 웜업
 
 ```bash
