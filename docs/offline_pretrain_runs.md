@@ -25,6 +25,47 @@ lr/weight_decay/reset 강도는 아직 실험 안 해봄 — spr_loss_weight부�
 
 ---
 
+## Run 5 (중단, PID 23899, 2026-09-15 15:55 ~ 21:30, step 약 184k에서 종료) — 벽충돌 페널티 + 온폴리시 주입 + 리셋 웜업
+
+```bash
+python -m blackout_env.train.offline_pretrain \
+    --dataset-dir datasets/heuristic_mixv2_20260913 --steps 200000 --device mps \
+    --spr-loss-weight 5.0 --encoder-weight-decay 1e-4 --bc-loss-alpha 1.0 \
+    --blocked-penalty 0.02 --onpolicy-self-vs-heuristic-frac 0.3 --onpolicy-self-play-frac 0.1 \
+    --reset-warmup-steps 2000 --eval-interval 10000
+```
+
+- 체크포인트 `checkpoints/offline/20260915-155519_23899/` (마지막 `step_180000.pt`), TB
+  `runs/offline/20260915-155519_23899/`.
+- 0-0 무승부 버그 수정(`0f48f95`) 후 첫 런이라 **eval 수치를 신뢰할 수 있는 첫 런**이다.
+
+**결과**
+| 지표 | 값 |
+|---|---|
+| `eval/win_rate` | 19개 윈도우(0~180k) 전부 **0.0**, 매 판 패배 |
+| `eval/mean_margin` | −56 ~ −92, 추세 없음 |
+| `eval/mean_steps` | 395~462결정 (게임 시간 약 16~18초 만에 휴리스틱이 100점 도달) |
+| `eval/candidate_blocked_per_1000_ticks` | 6.5 → 1.9~2.8 (Run 4의 2.3~4.0보다 약간 낮음) |
+| `grad_norm/graphic_encoder` | 약 0.9, 붕괴 재발 없음 |
+| `loss/total` | 약 5만 스텝 이후 0.06~0.07에서 정체 |
+
+**실제 온폴리시 주입량 (윈도우당)**
+- 휴리스틱 상대: 약 15,200틱 / 35~37경기 (경기당 약 425틱).
+- 셀프플레이: 매번 정확히 **10,501틱 / 1경기**. 시간 만료까지 풀타임이고, 경기 단위로 자르기 때문에 목표(약
+  5,200틱)의 2배가 들어갔다.
+
+**이상 증상** (자세한 분석은 [reward_hypotheses.md](reward_hypotheses.md) §5, H8)
+- `q_value/mean`이 +0.77 → −3.3으로 거의 직선 하락하고 `q_value/std`는 0.19 → 6.5로 증가했다. Run 4는 40k
+  이후 0.3~0.6에서 안정.
+- 10k 주입 직후마다 그래디언트가 튄다 (평상시의 약 7배, 130k~150k엔 11~15로 `grad_clip=10` 초과,
+  graphic_encoder 19.8배). 같은 순간 Q가 계단식으로 떨어졌다가 회복한다.
+
+**중단 사유와 다음 결정**: eval 전패와 loss 정체가 계속돼 남은 약 1.6만 스텝으로는 결론이 바뀌지 않는다고 판단해
+중단했다. Run 6는 셀프플레이 주입을 제거한다 (`--onpolicy-self-play-frac 0`).
+
+**운영 메모**: `nohup ... &`로 띄운 프로세스는 SIGINT를 무시해서 `KeyboardInterrupt` 핸들러(현재 스텝 저장)가
+작동하지 않았다. SIGTERM으로 종료했기 때문에 마지막 체크포인트(180k) 이후 약 4천 스텝(TB 기준 184k까지)은 저장되지 않았다.
+
 ## graphic_encoder 그래디언트 소실 진단 + 코드 수정 (2026-09-14, Run 2 완료 직후)
 
 Run 2가 200,000스텝 완료된 직후 GUI로 휴리스틱 대결을 돌려보니 **6전 6무, 전부 0-0** — 유닛끼리
@@ -87,6 +128,17 @@ Run 2가 200,000스텝 완료된 직후 GUI로 휴리스틱 대결을 돌려보�
 초기 8.5→10,000스텝 만에 1.8~3.3으로 급감 후 200,000스텝까지 2.3~4.0에서 정체 (더 이상 개선 없음).
 사용자가 GUI로 직접 보고 "vs 이전 대비 확실히 개선됐지만 중간중간 멈추는 행동이 있고 전략적으로
 비효율적"이라고 보고.
+
+> **정정 (2026-09-15, 커밋 `0f48f95` 이후)**: Run 4의 `eval/mean_margin`(−1.67~0)과 GUI 대결의 "4무"는
+> **0-0 무승부 버그의 아티팩트**였다. `BlackOutEnv._collect_obs()`의 리셋 누수 감지가 조기 결정승을 못 잡아서,
+> 조기에 끝난 경기의 점수가 다음 에피소드의 0-0으로 덮어써졌다. 근거:
+> - Run 4의 `eval/mean_steps`는 408~514결정으로 **게임 시간 약 16~21초**다. 버그 수정 후의 Run 5도 같은 길이
+>   (395~462)인데, 점수차는 −56~−92로 전패였다.
+> - 즉 Run 4도 휴리스틱에게 약 18초 만에 지고 있었다.
+>
+> 버그는 조기 승리도 무승부로 바꾸므로 Run 4의 승률 0이 승리를 가렸을 가능성이 이론상 있지만, 같은 경기 길이
+> 패턴을 보인 Run 5 보정 데이터가 전패라 가능성은 낮다. 아래의 41.66% blocked 분석은 `agent_states`만 쓰므로
+> 이 버그와 무관하다. 학습 리워드도 버그와 무관하다 (유닛 terminal reward 채널을 씀).
 
 **추가 진단 1: idle/blocked 지표의 맹점 발견** — `eval/*_blocked_per_1000_ticks`는 **인시던트
 개수**(12틱 이상 연속 블록만 카운트)이지 지속시간이 아님. `examples/evaluate_checkpoint_vs_heuristic.py`로

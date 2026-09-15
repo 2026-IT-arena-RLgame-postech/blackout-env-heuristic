@@ -36,6 +36,14 @@ import numpy as np
 
 from .segment_tree import MinSegmentTree, SumSegmentTree
 
+# Where a stored transition came from -- diagnostics only (never affects sampling/priorities),
+# so TensorBoard can split batch/buffer stats by origin once on-policy data starts displacing
+# the static heuristic dataset (see onpolicy_collect.py).
+SOURCE_DATASET = 0
+SOURCE_SELF_VS_HEURISTIC = 1
+SOURCE_SELF_PLAY = 2
+SOURCE_NAMES = ("dataset", "self_vs_heuristic", "self_play")
+
 
 class SequentialReplayBuffer:
     def __init__(
@@ -64,6 +72,8 @@ class SequentialReplayBuffer:
         self.actions = np.zeros((self.capacity, n_units), dtype=np.int64)  # all n_units, physical order
         self.reward = np.zeros((self.capacity,), dtype=np.float32)
         self.done = np.zeros((self.capacity,), dtype=np.bool_)
+        self.source = np.zeros((self.capacity,), dtype=np.int8)
+        self.source_counts = np.zeros(len(SOURCE_NAMES), dtype=np.int64)
 
         self._sum_tree = SumSegmentTree(self.capacity)
         self._min_tree = MinSegmentTree(self.capacity)
@@ -83,14 +93,19 @@ class SequentialReplayBuffer:
         actions: np.ndarray,
         reward: float,
         done: bool,
+        source: int = SOURCE_DATASET,
     ) -> None:
         i = self._pos
+        if self._size == self.capacity:
+            self.source_counts[self.source[i]] -= 1
         self.graphic[i] = graphic
         self.team_state[i] = team_state
         self.agent_states[i] = agent_states
         self.actions[i] = actions
         self.reward[i] = reward
         self.done[i] = done
+        self.source[i] = source
+        self.source_counts[source] += 1
 
         priority = self._max_priority ** self._per_alpha
         self._sum_tree[i] = priority
@@ -194,6 +209,7 @@ class SequentialReplayBuffer:
             "actions": self.actions[indices],
             "reward": self.reward[indices],
             "done": self.done[indices],
+            "source": self.source[indices],
         }
 
     def update_priorities(self, indices: np.ndarray, priorities: np.ndarray) -> None:

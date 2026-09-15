@@ -39,6 +39,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import sys
 import time
 from pathlib import Path
 
@@ -211,6 +212,9 @@ def main() -> None:
         "the pretrain->online handoff. Pass '' to disable.",
     )
     args = parser.parse_args()
+    # Runs are normally launched with stdout redirected to a log file, where Python block-buffers
+    # and the log can lag the real step count by tens of thousands of steps.
+    sys.stdout.reconfigure(line_buffering=True)
 
     dataset_dir = Path(args.dataset_dir)
 
@@ -331,11 +335,21 @@ def main() -> None:
             )
         finally:
             trainer.net.train()
+        trainer.tb.scalars("onpolicy", stats, step)
+        svh_summary = ""
+        if "self_vs_heuristic/win_rate" in stats:
+            svh_summary = (
+                f" | svh W/L/D={stats['self_vs_heuristic/win_rate']:.2f}/{stats['self_vs_heuristic/loss_rate']:.2f}/"
+                f"{stats['self_vs_heuristic/draw_rate']:.2f} margin={stats['self_vs_heuristic/mean_margin']:.1f} "
+                f"env_r/tick={stats['self_vs_heuristic/candidate_env_reward_per_tick']:.5f} "
+                f"penalty/tick={stats['self_vs_heuristic/candidate_blocked_penalty_per_tick']:.5f} "
+                f"psi_saturated={stats['self_vs_heuristic/psi_saturated_frac']:.2f}"
+            )
         print(
             f"[offline] onpolicy collect @ step {step}: "
             f"self_vs_heuristic={stats['self_vs_heuristic_ticks']} ticks/{stats['self_vs_heuristic_matches']} matches, "
             f"self_play={stats['self_play_ticks']} ticks/{stats['self_play_matches']} matches "
-            f"(buffer_a={len(trainer.buffer_a)}, buffer_b={len(trainer.buffer_b)})"
+            f"(buffer_a={len(trainer.buffer_a)}, buffer_b={len(trainer.buffer_b)}){svh_summary}"
         )
 
     trainer._total_env_steps_hint = args.steps  # spans n_step/gamma/per_beta annealing over [0, steps]

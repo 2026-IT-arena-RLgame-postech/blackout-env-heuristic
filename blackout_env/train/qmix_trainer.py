@@ -81,7 +81,7 @@ from blackout_env.model.modules import (
 from blackout_env.model.my_model import ATTENTION_DEPTH, N_ATTENTION_HEADS, N_DISCRETE_ACTIONS, MyModel
 from blackout_env.model.my_policy import DIRECTION_VECTORS, direction_vector_to_idx
 from blackout_env.train.ema import ema_update
-from blackout_env.train.replay_buffer import SequentialReplayBuffer
+from blackout_env.train.replay_buffer import SOURCE_NAMES, SequentialReplayBuffer
 from blackout_env.train.reset_utils import shrink_and_perturb
 from blackout_env.train.returns import compute_n_step_return, compute_spr_valid_mask
 from blackout_env.train.schedules import linear_anneal, log_linear_anneal
@@ -451,6 +451,9 @@ class QMIXTrainer:
         self._last_iqn_loss: float | None = None
         self._last_spr_loss: float | None = None
         self._last_bc_loss: float | None = None
+        # Only populated on TB-logging steps (collect_diagnostics=True) -- each .item() is a
+        # device sync, so these aren't paid for on every gradient step.
+        self._last_diagnostics: dict[str, float] = {}
         self._last_td_error_mean: float | None = None
         self._last_q_mean: float | None = None
         self._last_q_std: float | None = None
@@ -834,7 +837,7 @@ class QMIXTrainer:
         "n_step_return", "not_done", "gamma_eff",
         "boot_graphic", "boot_team_state", "boot_agent_states",
         "future_graphic", "future_team_state", "future_agent_states",
-        "action_window", "valid_mask",
+        "action_window", "valid_mask", "source",
     )
 
     def _sample_batch(
@@ -879,11 +882,37 @@ class QMIXTrainer:
             "future_agent_states": buffer.read_window(indices, offsets_future, "agent_states"),
             "action_window": buffer.read_window(indices, offsets_action, "actions"),  # [b, K, 10]
             "valid_mask": valid_mask,  # [b, K] bool
+            "source": batch["source"],  # [b] int8, diagnostics only
         }
 
     def _merge_stream_batches(self, batch_a: dict[str, np.ndarray], batch_b: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
         """Concatenates two streams' sampled batches along dim 0 for one shared forward pass."""
         return {field: np.concatenate([batch_a[field], batch_b[field]], axis=0) for field in self._MERGE_FIELDS}
+
+    def _log_source_stats(self, merged: dict[str, np.ndarray], td_error_np: np.ndarray) -> None:
+        """Splits buffer composition and this batch's return/TD-error by transition origin
+        (static dataset vs on-policy collection), so a drift in Q can be traced to which data
+        is driving it."""
+        total = self.buffer_a.source_counts + self.buffer_b.source_counts
+        n_stored = max(1, int(total.sum()))
+        self.tb.scalars(
+            "buffer_source_frac",
+            {name: float(total[i]) / n_stored for i, name in enumerate(SOURCE_NAMES)},
+            self.train_step_count,
+        )
+        source = merged["source"]
+        returns = merged["n_step_return"]
+        batch_frac, batch_return, batch_td = {}, {}, {}
+        for i, name in enumerate(SOURCE_NAMES):
+            mask = source == i
+            batch_frac[name] = float(mask.mean())
+            if mask.any():
+                batch_return[name] = float(returns[mask].mean())
+                batch_td[name] = float(td_error_np[mask].mean())
+        self.tb.scalars("batch_source_frac", batch_frac, self.train_step_count)
+        if batch_return:
+            self.tb.scalars("batch_n_step_return", batch_return, self.train_step_count)
+            self.tb.scalars("batch_td_error", batch_td, self.train_step_count)
 
     def _to_tensors(self, batch: dict[str, np.ndarray]) -> dict[str, torch.Tensor]:
         """Numpy -> device tensors for every _MERGE_FIELDS entry except the SPR future_* window
@@ -910,7 +939,7 @@ class QMIXTrainer:
         }
 
     def _forward_and_loss(
-        self, t: dict[str, torch.Tensor], collect_attention_stats: bool = False
+        self, t: dict[str, torch.Tensor], collect_attention_stats: bool = False, collect_diagnostics: bool = False
     ) -> tuple[torch.Tensor, np.ndarray]:
         """Runs net/target_net/ema_net/mixers ONCE on the (already-merged) batch `t` and
         returns (total_loss_per_sample [B], td_error [B]). Same math as before the A/B merge --
@@ -1034,6 +1063,21 @@ class QMIXTrainer:
         self._last_iqn_loss = iqn_loss.mean().item()
         self._last_spr_loss = spr_loss.mean().item()
         self._last_bc_loss = bc_loss.mean().item()
+        if collect_diagnostics:
+            with torch.no_grad():
+                # bc_loss above is rescaled to iqn_loss's magnitude every step, so its logged
+                # value just mirrors loss/iqn -- the raw CE and argmax agreement are the only way
+                # to see whether behavior cloning itself is actually converging.
+                top2 = own_q_values.topk(2, dim=-1).values
+                self._last_diagnostics = {
+                    "bc_raw": bc_loss_raw.mean().item(),
+                    "bc_scale": float(bc_scale),
+                    "bc_accuracy": (own_q_values.argmax(dim=-1) == own_actions).float().mean().item(),
+                    # Per-unit gap between the best and second-best action's Q: how decisive the
+                    # greedy policy is, compared against the reward scale of a single move.
+                    "q_action_margin": (top2[..., 0] - top2[..., 1]).mean().item(),
+                    "q_action_range": (own_q_values.max(dim=-1).values - own_q_values.min(dim=-1).values).mean().item(),
+                }
 
         return total_loss, td_error.cpu().numpy()
 
@@ -1051,14 +1095,17 @@ class QMIXTrainer:
             t_prep0 = time.perf_counter()
             batch_a = self._sample_batch(self.buffer_a, half, n_step, gamma, beta)
             batch_b = self._sample_batch(self.buffer_b, half, n_step, gamma, beta)
-            tensors = self._to_tensors(self._merge_stream_batches(batch_a, batch_b))
+            merged = self._merge_stream_batches(batch_a, batch_b)
+            tensors = self._to_tensors(merged)
             self._sync()
             t_prep1 = time.perf_counter()
             self._time_prep += t_prep1 - t_prep0
 
             log_tb_this_step = self.tb.enabled and self.train_step_count % self.cfg.tb_log_interval == 0
 
-            total_loss, td_error_np = self._forward_and_loss(tensors, collect_attention_stats=log_tb_this_step)
+            total_loss, td_error_np = self._forward_and_loss(
+                tensors, collect_attention_stats=log_tb_this_step, collect_diagnostics=log_tb_this_step
+            )
             loss = total_loss.mean()
             self._last_td_error_mean = float(td_error_np.mean())
             self._sync()
@@ -1099,13 +1146,27 @@ class QMIXTrainer:
                         "iqn": self._last_iqn_loss,
                         "spr": self._last_spr_loss,
                         "bc": self._last_bc_loss,
+                        "bc_raw": self._last_diagnostics["bc_raw"],
                     },
+                    self.train_step_count,
+                )
+                self.tb.scalars(
+                    "bc",
+                    {"accuracy": self._last_diagnostics["bc_accuracy"], "scale": self._last_diagnostics["bc_scale"]},
                     self.train_step_count,
                 )
                 self.tb.scalar("td_error/mean", self._last_td_error_mean, self.train_step_count)
                 self.tb.scalars(
-                    "q_value", {"mean": self._last_q_mean, "std": self._last_q_std}, self.train_step_count
+                    "q_value",
+                    {
+                        "mean": self._last_q_mean,
+                        "std": self._last_q_std,
+                        "action_margin": self._last_diagnostics["q_action_margin"],
+                        "action_range": self._last_diagnostics["q_action_range"],
+                    },
+                    self.train_step_count,
                 )
+                self._log_source_stats(merged, td_error_np)
                 # Monotonicity "clamp pressure" (see clamp_pressure_stats docstring): how hard
                 # each mixer hypernetwork's raw (pre-abs) output is being pushed negative by
                 # gradient descent, i.e. how much the QMIX non-negative-weight constraint is
