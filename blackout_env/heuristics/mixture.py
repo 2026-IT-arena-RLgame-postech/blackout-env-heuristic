@@ -88,46 +88,44 @@ class HeuristicPolicyMixture(BaseModel):
         resample_each_absorption: bool = True,
     ):
         self._rng = np.random.default_rng(seed)
-        # Rebalanced 2026-09-15 against the leave-one-pair-out Bradley-Terry Elo fit over
-        # reports/heuristic_tournament_all17_targeted_replication_round2_20260915/tournament.json
-        # (full 17-way round robin + targeted replications on the highest-variance pairs; every
-        # policy has >=200 games, per-policy Elo standard errors ~19-24). Ranking (best to worst):
-        # v7(+54) > v8(+52) > v12(+42) > v9(+33) > v3(+22) > v6(+21) > v10(+20) > v4-near(+11)
-        # > v14(+8) > v4(+5) > v13(-1) > v11(-2) > v5(-16) > v16(-17) > v15(-44) > v2(-66) > v1(-123).
-        # This upended several of the old hand-picked weights below, which were set from
-        # behavioural-category assumptions before any tournament existed:
-        #  - v1/v2 turn out to be the two clearly weakest policies (not just "simple baselines"),
-        #    so their weight is cut hard -- kept nonzero only as a trivial-play contrast case.
-        #  - v7/v8/v9/v12 turn out to be the strongest cluster, well above the v4 baseline that's
-        #    still the production/eval default -- raised accordingly. v8 stays well under v7
-        #    despite a near-identical Elo because its respec trigger fires so rarely
-        #    (see lifecycle_roles.py) that most of its games look identical to plain V7; extra
-        #    weight there would mostly duplicate V7 samples rather than add new behaviour.
-        #  - v16 (V10 + counterplay modes) rates *below* its own undirected base V10 -- the added
-        #    conditional modes look net-negative in this pool, not just situational, so its
-        #    weight is trimmed rather than raised alongside V10's.
-        # v4/v4-near are left as the dominant pair regardless of rank: v4 is the promoted
-        # production/eval reference for reasons beyond round-robin Elo (stability, simplicity,
-        # the most scrutinized policy), and v4-near is its bounded neighbourhood -- both need
-        # heavy representation independent of where they land in this ranking.
+        # Rebalanced 2026-09-15 (second pass) against the leave-one-pair-out Bradley-Terry Elo fit
+        # in reports/heuristic_draw_census_20260915_130356/elo_diagnostics_corrected/: a 16-policy
+        # round robin (no v4-near), 10 games per pair, re-run after fixing BlackOutEnv's reset leak
+        # that recorded early decisive wins as 0-0 draws (commit 0f48f95). The earlier fit
+        # (reports/heuristic_tournament_all17_targeted_replication_round2_20260915) had more games
+        # but ~27% of them were those phantom draws, which hid real losses as half-wins. Ranking,
+        # Elo minus the 1500 pool mean (standard errors ~28-39):
+        # v13(+103) > v11(+84) > v12(+79) > v6(+72) > v10(+64) > v3(+62) > v4(+60) = v8(+60)
+        # = v9(+60) > v7(+50) > v15(-13) > v16(-37) > v2(-68) > v5(-166) > v14(-171) > v1(-237).
+        # Not yet reflected: the later protected-spawn-storage guard fix, which mainly changed v14
+        # (also v16, v12, v1, v2); a re-run was skipped for time.
+        # Same principles as the first pass, applied to the corrected ranking:
+        #  - v4/v4-near stay the dominant pair regardless of rank: v4 is the production/eval
+        #    reference and v4-near its bounded neighbourhood.
+        #  - v13/v11 moved from neutral to the top two and v12/v6 are close behind -- raised.
+        #  - v14 and v5 collapsed to near the bottom once losses stopped counting as draws -- cut to
+        #    the contrast-case minimum alongside v1/v2.
+        #  - v8 stays low despite its rank: its respec rarely fires, so most games duplicate v7
+        #    (see lifecycle_roles.py).
+        #  - v16 still rates well below its own base v10 -- kept low.
         default_weights = {
-            "strategic_v1": 0.02,   # Elo -123, clearly the weakest; kept only as trivial-play contrast
-            "strategic_v2": 0.03,   # Elo -66, 2nd-weakest
-            "strategic_v3": 0.08,   # Elo +22, solid mid-strong "safe deposit" style
-            "strategic_v4": 0.16,   # promoted production/eval baseline (kept dominant regardless of Elo)
+            "strategic_v1": 0.02,   # Elo -237, weakest; trivial-play contrast only
+            "strategic_v2": 0.02,   # Elo -68
+            "strategic_v3": 0.07,   # Elo +62, "safe deposit" style
+            "strategic_v4": 0.16,   # production/eval reference (dominant regardless of Elo)
             "strategic_v4_near": 0.13,  # near-V4 neighbourhood, same rationale as v4
-            "strategic_v5": 0.02,   # Elo -16; intentionally aggressive, but weak in direct evaluation
-            "strategic_v6": 0.07,   # Elo +21, low-stagnation risk-aware routing
-            "strategic_v7": 0.09,   # Elo +54 -- the strongest policy in the pool; role-assignment diversity too
-            "strategic_v8": 0.03,   # Elo +52 but respec rarely fires -- mostly duplicates V7 (see above)
-            "strategic_v9": 0.06,   # Elo +33; unlike V8, its respec trajectories actually fire
-            "strategic_v10": 0.07,  # Elo +20; phase switching: economy / pressure / closeout
-            "strategic_v11": 0.04,  # Elo -2, roughly neutral; bounded absorption-window raids
-            "strategic_v12": 0.06,  # Elo +42, 3rd-strongest; lead-preserving fortress trajectories
-            "strategic_v13": 0.03,  # Elo -1, roughly neutral; persistent storage siege, deliberately polarised
-            "strategic_v14": 0.04,  # Elo +8, above the v4 baseline; anti-raid home sentinel, distinct style
-            "strategic_v15": 0.02,  # Elo -44; Carrier throughput race with no Hunter, genuinely weak
-            "strategic_v16": 0.03,  # Elo -17, underperforms its own base V10 (see above)
+            "strategic_v5": 0.02,   # Elo -166; aggressive interceptor, weak in direct play
+            "strategic_v6": 0.07,   # Elo +72, risk-aware routing
+            "strategic_v7": 0.06,   # Elo +50, role-assignment diversity
+            "strategic_v8": 0.03,   # Elo +60 but mostly duplicates V7 (see above)
+            "strategic_v9": 0.06,   # Elo +60; respec trajectories actually fire
+            "strategic_v10": 0.07,  # Elo +64; phase switching economy / pressure / closeout
+            "strategic_v11": 0.07,  # Elo +84, 2nd; bounded absorption-window raids
+            "strategic_v12": 0.07,  # Elo +79, 3rd; lead-preserving fortress trajectories
+            "strategic_v13": 0.07,  # Elo +103, strongest; persistent storage siege
+            "strategic_v14": 0.02,  # Elo -171 (before the guard fix); home sentinel style
+            "strategic_v15": 0.03,  # Elo -13; Carrier throughput race with no Hunter
+            "strategic_v16": 0.03,  # Elo -37, below its own base V10 (see above)
         }
         self.weights = dict(default_weights if weights is None else weights)
         unknown = set(self.weights) - set(POLICY_REGISTRY)
