@@ -22,6 +22,13 @@ def blocked_penalty_adjustment(
     tick (no next state to compare against) and any tick immediately followed by an episode
     boundary (done[t]==True, so agent_states[t+1] belongs to a new episode) get 0.
 
+    Waiting to respawn is not penalized: a dead unit's position stays frozen until the respawn
+    teleport, so it looks exactly like walking into a wall but no action can change it. The obs
+    carries no alive flag, so a blocked run that ends in a teleport (movement > 0.15, not at an
+    episode boundary) is treated as a death wait. Measured on the Run 5 checkpoint vs the
+    heuristic, those runs were 38% of the penalty the candidate received
+    (docs/reward_hypotheses.md H5).
+
     "blocked" mirrors movement_monitor.MovementMonitor's own definition MINUS the action_norm
     check: every action this codebase's agents ever take is one of MyPolicy.DIRECTION_VECTORS'
     8 unit-length compass directions (no "stay" action exists -- see my_policy.py), so
@@ -51,6 +58,16 @@ def blocked_penalty_adjustment(
 
     blocked = (movement <= 2e-4) & ~transition
     blocked &= ~done[:-1, None]
+
+    # For every tick, the index of the first non-blocked tick at or after it (T-1 past the end),
+    # then whether that tick is a respawn teleport.
+    n_trans = blocked.shape[0]
+    candidate = np.where(blocked, n_trans, np.arange(n_trans)[:, None])
+    run_end = np.minimum.accumulate(candidate[::-1], axis=0)[::-1]
+    respawn = (movement > 0.15) & ~done[:-1, None]
+    respawn = np.vstack([respawn, np.zeros((1, respawn.shape[1]), dtype=bool)])  # sentinel row for n_trans
+    death_wait = blocked & np.take_along_axis(respawn, run_end, axis=0)
+    blocked &= ~death_wait
 
     n_blocked = blocked.sum(axis=-1)  # [T-1]
     adjustment[:-1] = -penalty_per_unit * n_blocked
