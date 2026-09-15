@@ -192,9 +192,7 @@ class StrategicHeuristic(BaseModel):
                     return cargo + carrier - dist
                 enemy = max(enemies, key=hunter_value)[1]
                 return self._to_pixel(enemy[:2], graphic.shape[:2]), "hunt"
-            return self._patrol_component_center(
-                graphic[..., STORAGE_ALLY] > 0.5, local_index, period=220
-            ), "patrol_defend"
+            return self._defend_patrol_target(graphic, pos), "patrol_defend"
 
         candidates: list[tuple[float, tuple[int, int], str]] = []
         protected_enemy = self._cached_protected_enemy_storage_mask(graphic)
@@ -413,6 +411,27 @@ class StrategicHeuristic(BaseModel):
         return (min(shape[0] - 1, max(0, int(round(float(p[0]))))),
                 min(shape[1] - 1, max(0, int(round(float(p[1]))))))
 
+    def _cached_protected_ally_storage_mask(self, graphic: np.ndarray) -> np.ndarray:
+        cached = self._static_masks.get("protected_ally_storage")
+        if cached is None:
+            cached = self._protected_storage_mask(graphic, STORAGE_ALLY, SPAWN_ALLY)
+            self._static_masks["protected_ally_storage"] = cached
+        return cached
+
+    def _defendable_storage_mask(self, graphic: np.ndarray) -> np.ndarray:
+        """Own storage the enemy can actually reach. The component next to our own spawn sits inside
+        the protected base (MapManager rejects enemy movement there), so guarding it or reacting to
+        cargo near it wastes a unit."""
+        return (graphic[..., STORAGE_ALLY] > 0.5) & ~self._cached_protected_ally_storage_mask(graphic)
+
+    def _defend_patrol_target(self, graphic: np.ndarray, pos: tuple[int, int]) -> tuple[int, int] | None:
+        """Center of the defendable storage component nearest this unit; all own storage only if the
+        map has no defendable storage at all."""
+        mask = self._defendable_storage_mask(graphic)
+        if not mask.any():
+            mask = graphic[..., STORAGE_ALLY] > 0.5
+        return self._nearest_component_center(mask, pos)
+
     def _cached_protected_enemy_storage_mask(self, graphic: np.ndarray) -> np.ndarray:
         """Cache topology-only protected storage inference for one episode."""
         cached = self._static_masks.get("protected_enemy_storage")
@@ -600,10 +619,15 @@ class StrategicHeuristic(BaseModel):
     @classmethod
     def _protected_enemy_storage_mask(cls, graphic: np.ndarray) -> np.ndarray:
         """Infer the unraidable home storage as the component nearest enemy spawn."""
-        storage = graphic[..., STORAGE_ENEMY] > 0.5
+        return cls._protected_storage_mask(graphic, STORAGE_ENEMY, SPAWN_ENEMY)
+
+    @classmethod
+    def _protected_storage_mask(cls, graphic: np.ndarray, storage_channel: int, spawn_channel: int) -> np.ndarray:
+        """The storage component nearest a team's spawn, which sits inside that team's protected base."""
+        storage = graphic[..., storage_channel] > 0.5
         result = np.zeros_like(storage)
         components = cls._components(storage)
-        spawn_points = list(zip(*np.nonzero(graphic[..., SPAWN_ENEMY] > 0.5)))
+        spawn_points = list(zip(*np.nonzero(graphic[..., spawn_channel] > 0.5)))
         if not components or not spawn_points:
             return result
         spawn = (int(spawn_points[0][0]), int(spawn_points[0][1]))

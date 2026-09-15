@@ -162,9 +162,7 @@ class StrategicHeuristicV10(_ModeSwitchMixin, StrategicHeuristicV7):
                 if cargo:
                     enemy = min(cargo, key=lambda other: np.linalg.norm(other[:2] - state[:2]))
                     return self._to_pixel(enemy[:2], graphic.shape[:2]), "hunt"
-                return self._patrol_component_center(
-                    graphic[..., STORAGE_ALLY] > 0.5, local_index, period=100
-                ), "patrol_defend"
+                return self._defend_patrol_target(graphic, self._to_pixel(state[:2], graphic.shape[:2])), "patrol_defend"
         return super()._choose_target(
             role, state, states, graphic, reservations, local_index, team_state
         )
@@ -295,8 +293,7 @@ class StrategicHeuristicV12(_ModeSwitchMixin, StrategicHeuristicV7):
     def _choose_target(self, role, state, states, graphic, reservations, local_index, team_state):
         if self.current_mode == "fortress" and self._class_id(state) == HUNTER:
             pos = self._to_pixel(state[:2], graphic.shape[:2])
-            home_components = self._cached_components(graphic[..., STORAGE_ALLY] > 0.5)
-            home_points = [point for component in home_components for point in component]
+            home_points = list(zip(*np.nonzero(self._defendable_storage_mask(graphic))))
             threatening = []
             for enemy in states:
                 if enemy[2] >= 0 or not self._is_holding(enemy):
@@ -307,9 +304,7 @@ class StrategicHeuristicV12(_ModeSwitchMixin, StrategicHeuristicV7):
             if threatening:
                 enemy = min(threatening, key=lambda other: np.linalg.norm(other[:2] - state[:2]))
                 return self._to_pixel(enemy[:2], graphic.shape[:2]), "hunt"
-            return self._patrol_component_center(
-                graphic[..., STORAGE_ALLY] > 0.5, local_index, period=70
-            ), "patrol_defend"
+            return self._defend_patrol_target(graphic, pos), "patrol_defend"
         return super()._choose_target(
             role, state, states, graphic, reservations, local_index, team_state
         )

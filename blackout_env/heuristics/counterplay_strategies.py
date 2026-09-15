@@ -79,7 +79,7 @@ class StrategicHeuristicV14(StrategicHeuristicV7):
         super()._update_roles(obs, sample)
         states = sample["agent_states"]
         graphic = sample["graphic"]
-        home_points = list(zip(*np.nonzero(graphic[..., STORAGE_ALLY] > 0.5)))
+        home_points = list(zip(*np.nonzero(self._defendable_storage_mask(graphic))))
         cargo_near_home = any(
             enemy[2] < 0 and self._is_holding(enemy)
             and home_points
@@ -96,7 +96,7 @@ class StrategicHeuristicV14(StrategicHeuristicV7):
         self, role, state, states, graphic, reservations, local_index, team_state,
     ):
         if self._class_id(state) == HUNTER:
-            home_points = list(zip(*np.nonzero(graphic[..., STORAGE_ALLY] > 0.5)))
+            home_points = list(zip(*np.nonzero(self._defendable_storage_mask(graphic))))
             threats = []
             for enemy in states:
                 if enemy[2] >= 0 or not self._is_holding(enemy) or not home_points:
@@ -107,9 +107,7 @@ class StrategicHeuristicV14(StrategicHeuristicV7):
             if threats:
                 threat = min(threats, key=lambda enemy: np.linalg.norm(enemy[:2] - state[:2]))
                 return self._to_pixel(threat[:2], graphic.shape[:2]), "hunt"
-            return self._patrol_component_center(
-                graphic[..., STORAGE_ALLY] > 0.5, local_index, period=55
-            ), "patrol_defend"
+            return self._defend_patrol_target(graphic, self._to_pixel(state[:2], graphic.shape[:2])), "patrol_defend"
         return super()._choose_target(
             role, state, states, graphic, reservations, local_index, team_state
         )
@@ -209,7 +207,7 @@ class StrategicHeuristicV16(StrategicHeuristicV10):
         return external, field
 
     def _enemy_cargo_near_home(self, states: np.ndarray, graphic: np.ndarray) -> bool:
-        home_points = list(zip(*np.nonzero(graphic[..., STORAGE_ALLY] > 0.5)))
+        home_points = list(zip(*np.nonzero(self._defendable_storage_mask(graphic))))
         return any(
             enemy[2] < 0 and self._is_holding(enemy) and home_points
             and min(math.dist(self._to_pixel(enemy[:2], graphic.shape[:2]), point)
@@ -332,7 +330,7 @@ class StrategicHeuristicV16(StrategicHeuristicV10):
         self, role, state, states, graphic, reservations, local_index, team_state,
     ):
         if self.current_mode == "home_guard" and self._class_id(state) == HUNTER:
-            home_points = list(zip(*np.nonzero(graphic[..., STORAGE_ALLY] > 0.5)))
+            home_points = list(zip(*np.nonzero(self._defendable_storage_mask(graphic))))
             threats = [
                 enemy for enemy in states
                 if enemy[2] < 0 and self._is_holding(enemy) and home_points
@@ -342,9 +340,7 @@ class StrategicHeuristicV16(StrategicHeuristicV10):
             if threats:
                 threat = min(threats, key=lambda enemy: np.linalg.norm(enemy[:2] - state[:2]))
                 return self._to_pixel(threat[:2], graphic.shape[:2]), "hunt"
-            return self._patrol_component_center(
-                graphic[..., STORAGE_ALLY] > 0.5, local_index, period=55
-            ), "patrol_defend"
+            return self._defend_patrol_target(graphic, self._to_pixel(state[:2], graphic.shape[:2])), "patrol_defend"
         return super()._choose_target(
             role, state, states, graphic, reservations, local_index, team_state
         )

@@ -512,3 +512,59 @@ def test_v8_respec_requires_mutual_kill_target_and_enforces_cooldown():
     assert policy.respec_completions == 1
     assert "hunter" not in policy.role_assignments.values()
     assert policy._hunter_cooldown > 0
+
+
+def _unit_state(row, col, *, enemy=False, holding=False, cls=0, size=14):
+    state = np.zeros(12, dtype=np.float32)
+    state[0] = (col + 0.5) * 2.0 / size - 1.0
+    state[1] = 1.0 - (row + 0.5) * 2.0 / size
+    state[2] = -1.0 if enemy else 1.0
+    state[4 if holding else 3] = 0.4 if holding else 1.0
+    state[9 + cls] = 1.0
+    return state
+
+
+def _two_storage_home_graphic():
+    graphic = np.zeros((14, 14, 13), dtype=np.float32)
+    graphic[..., 0] = 1
+    graphic[1, 1, 4] = 1        # own spawn
+    graphic[1:3, 2:4, 6] = 1    # own storage inside the protected base
+    graphic[9:11, 9:11, 6] = 1  # own storage the enemy can reach
+    return graphic
+
+
+def test_own_spawn_storage_is_protected():
+    graphic = _two_storage_home_graphic()
+    policy = StrategicHeuristic()
+    assert policy._cached_protected_ally_storage_mask(graphic)[1:3, 2:4].all()
+    defendable = policy._defendable_storage_mask(graphic)
+    assert defendable[9:11, 9:11].all() and not defendable[1:3, 2:4].any()
+
+
+def test_defend_patrol_skips_protected_storage_even_when_closer():
+    graphic = _two_storage_home_graphic()
+    target = StrategicHeuristic()._defend_patrol_target(graphic, (2, 5))
+    assert 9 <= target[0] <= 10 and 9 <= target[1] <= 10
+
+
+def test_defend_patrol_falls_back_when_all_storage_is_protected():
+    graphic = np.zeros((14, 14, 13), dtype=np.float32)
+    graphic[1, 1, 4] = 1
+    graphic[1:3, 2:4, 6] = 1
+    target = StrategicHeuristic()._defend_patrol_target(graphic, (8, 8))
+    assert 1 <= target[0] <= 2 and 2 <= target[1] <= 3
+
+
+def test_home_guard_ignores_cargo_next_to_protected_storage():
+    graphic = _two_storage_home_graphic()
+    policy = StrategicHeuristicV14()
+    hunter = _unit_state(6, 6, cls=1)
+    team_state = np.array([0, 0, 1, 1], dtype=np.float32)
+
+    near_protected = _unit_state(3, 4, enemy=True, holding=True)
+    target, kind = policy._choose_target("hunter", hunter, np.stack([hunter, near_protected]), graphic, set(), 0, team_state)
+    assert kind == "patrol_defend" and 9 <= target[0] <= 10 and 9 <= target[1] <= 10
+
+    near_defendable = _unit_state(8, 11, enemy=True, holding=True)
+    _, kind = policy._choose_target("hunter", hunter, np.stack([hunter, near_defendable]), graphic, set(), 0, team_state)
+    assert kind == "hunt"
