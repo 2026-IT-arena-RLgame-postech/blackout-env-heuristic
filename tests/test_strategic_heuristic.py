@@ -17,6 +17,7 @@ from blackout_env.heuristics import (
     StrategicHeuristicV14,
     StrategicHeuristicV15,
     StrategicHeuristicV16,
+    StrategicHeuristicV17,
 )
 
 
@@ -653,3 +654,77 @@ def test_home_guard_ignores_cargo_next_to_protected_storage():
     near_defendable = _unit_state(8, 11, enemy=True, holding=True)
     _, kind = policy._choose_target("hunter", hunter, np.stack([hunter, near_defendable]), graphic, set(), 0, team_state)
     assert kind == "hunt"
+
+
+def _v17_observation():
+    """Open 24x24 arena with spawns in opposite corners, as in Prototype.unity."""
+    graphic = np.zeros((24, 24, 13), dtype=np.float32)
+    graphic[0, :, 1] = graphic[-1, :, 1] = graphic[:, 0, 1] = graphic[:, -1, 1] = 1
+    graphic[1, 1, 4] = 1  # our spawn: base rows/cols 1-4
+    graphic[22, 22, 5] = 1  # enemy spawn: base rows/cols 19-22
+    graphic[3, 1, 3] = 1  # Carrier sanctuary inside our base
+    graphic[11:13, 11:13, 2] = 1  # Hunter sanctuary at the centre
+    graphic[1:3, 3, 6] = 1  # protected home storage
+    graphic[8:10, 14:16, 6] = 1  # exposed storage
+    graphic[20:22, 21, 7] = 1
+    graphic[14:16, 8:10, 7] = 1
+    for y, x in ((6, 6), (6, 16), (16, 6), (9, 9), (15, 15)):
+        graphic[y, x, 8] = 8 / 15
+    states = np.zeros((10, 12), dtype=np.float32)
+
+    def world(row, col):
+        return ((col + 0.5) * 2 / 24 - 1, 1 - (row + 0.5) * 2 / 24)
+
+    for i in range(10):
+        own = i < 5
+        states[i, :2] = world(2, 2) if own else world(21, 21)
+        states[i, 2] = 1 if own else -1
+        states[i, 3] = 1
+        states[i, 9] = 1
+    return {"graphic": graphic, "team_state": np.array([0, 0, 1, 1], np.float32), "agent_states": states}
+
+
+def test_v17_base_is_the_4x4_corner_square_around_spawn_and_camp_faces_the_centre():
+    base = StrategicHeuristicV17._base_mask((22, 22), (24, 24))
+    assert base.sum() == 16 and base[19, 19] and base[22, 22] and not base[18, 22]
+    policy = StrategicHeuristicV17()
+    o = _v17_observation()
+    ctx = {"enemy_spawn": (22, 22), "shape": (24, 24), "walkable": o["graphic"][..., 1] < 0.5}
+    slots = policy._camp_slots(ctx)
+    assert slots[0] == (18, 18)
+    assert all(not base[slot] for slot in slots)
+    assert all(abs(a[0] - b[0]) + abs(a[1] - b[1]) >= 2 for a, b in zip(slots, slots[1:]))
+
+
+def test_v17_commits_one_carrier_and_three_hunters_from_the_opening():
+    policy = StrategicHeuristicV17()
+    o = _v17_observation()
+    actions = policy.act({f"unit_{i}": o for i in range(5)})
+    assert all(np.isfinite(a).all() for a in actions.values())
+    roles = sorted(policy.role_assignments.values())
+    assert roles == ["carrier", "collector", "hunter", "hunter", "hunter"]
+    kinds = {kind for _, kind in policy.plan.values()}
+    assert "transform" in kinds
+
+
+def test_v17_camping_hunter_strikes_cargo_near_the_enemy_base_but_ignores_enemy_hunters():
+    policy = StrategicHeuristicV17()
+    o = _v17_observation()
+    states = o["agent_states"]
+
+    def world(row, col):
+        return ((col + 0.5) * 2 / 24 - 1, 1 - (row + 0.5) * 2 / 24)
+
+    states[0, :2] = world(18, 18)
+    states[0, 9], states[0, 10] = 0, 1  # our Hunter, already on its camp slot
+    states[5, :2] = world(16, 17)
+    states[5, 3], states[5, 4] = 0, 6 / 15  # enemy Collector bringing 6 points home
+    states[6, :2] = world(17, 19)
+    states[6, 9], states[6, 10] = 0, 1  # enemy Hunter right next to the slot
+    policy.act({f"unit_{i}": o for i in range(5)})
+    target, kind = policy.plan["unit_0"]
+    assert kind == "hunt" and target == (16, 17)
+    # Nothing but an enemy Hunter in reach: hold the slot instead of trading.
+    states[5, :2] = world(8, 3)
+    policy.act({f"unit_{i}": o for i in range(5)})
+    assert policy.plan["unit_0"] == ((18, 18), "patrol_defend")

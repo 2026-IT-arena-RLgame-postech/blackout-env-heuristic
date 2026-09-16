@@ -43,6 +43,7 @@ StrategicHeuristicV13  ── 외부 창고가 보이면 지속하는 3기 공�
 StrategicHeuristicV14  ── 초반 Hunter 1기로 아군 창고 주변만 방어하는 counter-raid sentinel
 StrategicHeuristicV15  ── Hunter를 포기하고 Carrier 1기의 고가 필드 배터리 운송에 올인
 StrategicHeuristicV16  ── V10 director + storage siege / home guard / convoy rush 선택
+StrategicHeuristicV17  ── V6 이동 계층 위의 팀 단위 planner: Hunter 3기(1기 적 본진 출구 진치기 + 2기 추격)로 운반 차단
 
 V4PolicyFamily  ── V4의 작은 근접 파라미터 변형 (기본은 매치 단위, `resample_each_absorption=True`면 흡수 단위)
 HeuristicPolicyMixture ── 위 policy_id와 V4PolicyFamily를 함께 샘플링
@@ -124,6 +125,66 @@ Bradley–Terry/Elo 값이며 전체 평균은 1,500으로 고정했다.
 따라서 기본 혼합에서는 V14와 V16을 각각 3%, 4%로 유지하고, V13/V15는 약점과 반례를 충분히
 수집하기 위한 3% 희귀 정책으로 유지한다. 이 결과는 성능만으로 V13/V15를 제거하지 않는 근거이기도
 하다. 완성된 원시 결과와 히트맵은 `reports/heuristic_tournament_all17_workers18_20260913/`에 보관한다.
+
+## V17: 차단 중심 팀 planner (2026-09-16)
+
+V1–V16을 모두 이기는 것을 목표로 새로 설계한 정책이다. V1–V16 코드는 건드리지 않았고, V17은
+`POLICY_REGISTRY`와 토너먼트 스크립트에는 등록했지만 `HeuristicPolicyMixture` 기본 가중치에는 넣지 않았다
+(기존 데이터 수집 분포를 바꾸지 않기 위해).
+
+### 설계 근거가 된 측정
+
+- **경기는 첫 1분에 결정된다.** 배터리 ~200점은 시작 시 한 번만 생성되고 재생성되지 않는다. 필드는
+  ~40초 안에 비고, 세 번째 흡수(60초) 이후 점수는 거의 변하지 않는다.
+- **약탈이 매우 크다.** 60초 안에 외부 창고에 적재한 점수의 대부분이 한 번 이상 도둑맞는다(V7 대 V4에서
+  228점 적재 중 203점).
+- **운반 중 사망이 점수를 없앤다.** 두 팀 점수 합이 보통 120 안팎이라 200점 중 80점가량이 화물 파괴로 사라진다.
+- **기존 휴리스틱의 빈손 Collector는 Hunter를 피하지 않는다.** 본진 출구 앞 Hunter 하나가 나오는 유닛을
+  연속으로 처치한다(V7 Hunter가 V17을 상대로 15초에 20회 이상).
+
+### 동작
+
+| 구성 요소 | 내용 |
+|---|---|
+| 역할 | Carrier 1기, Hunter 3기, Collector 1기 (`carrier_quota=1`, `hunter_quota=3`) |
+| 진치기 Hunter | 적 본진(스폰을 포함한 코너 4×4, 적은 못 들어가는 바닥)의 중앙 쪽 출구 칸에 서서 `camp_engage_radius`(4.5칸) 안의 비-Hunter 적을 처치. 화물·Carrier 우선, 적 Hunter와는 교환하지 않음 |
+| 추격 Hunter | 화물 가치/요격 시간으로 목표 선택. 적 Hunter는 우리 스폰 앞이나 노출 창고를 막을 때만 교환 |
+| 경제 | 팀 전체를 한 번에 배정. 필드 배터리는 왕복 시간당 가치, 약탈은 흡수 전에 도착 가능할 때만, 속도 아이템은 효과 지속 시간으로 평가. 적재 창고는 이동 시간과 다음 흡수 전 약탈 위험을 함께 비교 |
+| 이동 | V6 위협 비용 A*와 V1 막힘 복구를 그대로 사용(위협 위치가 바뀌므로 경로 캐시는 쓰지 않음) |
+
+### 평가
+
+64초에서 끊는 진영 교대 gauntlet(`examples/race_gauntlet.py`)으로 설계를 고르고, 튜닝에 쓰지 않은 시드로
+420초 전체 경기(`examples/gauntlet_heuristics.py`)로 확인했다.
+
+| 변형 (64초 근사, 16상대 × 4시드 × 양 진영) | 승률 | 평균 점수차 |
+|---|---:|---:|
+| Hunter 1기 추격 (초기 설계) | 66% | +14.7 |
+| Hunter 0기 | 50% | +1.1 |
+| Hunter 2기 추격 | 86% | +28.2 |
+| Hunter 3기 전원 진치기 | 53% | −2.8 |
+| **Hunter 3기 혼합(1기 진치기)** | **96%** | **+49.2** |
+| 빈손 유닛도 Hunter 주변을 벽으로 막고 대기 | 20–27% | −21~−28 |
+| 참고: V13 | 50% | −0.4 |
+
+새 시드 6개 확인에서 채택 구성은 98.4%(+47.3)였다. 최종 420초 전체 경기(새 시드 5개 × 양 진영 × 16상대,
+160경기) 결과는 다음과 같다. 원시 결과는 `reports/gauntlet_v17_final_full/`에 있다.
+
+| 상대 | V17 승-패 | 평균 점수차 |
+|---|---:|---:|
+| v1, v3, v4, v5, v6, v10, v13, v14, v16 | 각 10-0 | +40 ~ +60 |
+| v7, v8, v9, v11, v12, v15 | 각 9-1 | +39 ~ +49 |
+| v2 | 7-3 | +31.8 |
+| **합계** | **151-9 (94%)** | |
+
+```bash
+# 빠른 설계 비교 (64초 근사, 18 프로세스)
+./.venv/bin/python examples/race_gauntlet.py --workers 18 --n-seeds 4 \
+    --variants 'v17=strategic_v17' 'hq2=strategic_v17:{"hunter_quota": 2}'
+
+# 전체 경기 검증
+./.venv/bin/python examples/gauntlet_heuristics.py --candidate strategic_v17 --workers 18 --n-seeds 5
+```
 
 ## V4 근접 변형군
 
