@@ -356,8 +356,7 @@ def main() -> None:
             f"{metrics.get('as_team_b/blocked_per_1000_ticks', float('nan')):.1f}"
         )
 
-    # +1: on-policy data is also collected once before the first gradient step (see below).
-    n_eval_windows = max(1, args.steps // args.eval_interval) + 1 if args.eval_interval > 0 else 0
+    n_eval_windows = max(1, args.steps // args.eval_interval) if args.eval_interval > 0 else 0
     target_svh_per_window = int(args.onpolicy_self_vs_heuristic_frac * config.buffer_capacity / max(1, n_eval_windows))
     target_sp_per_window = int(args.onpolicy_self_play_frac * config.buffer_capacity / max(1, n_eval_windows))
     onpolicy_enabled = eval_env is not None and (target_svh_per_window > 0 or target_sp_per_window > 0)
@@ -415,14 +414,13 @@ def main() -> None:
     try:
         if eval_env is not None and start_step == 0:
             run_eval(0)  # baseline before any gradient steps, for comparison against later windows
-        if onpolicy_enabled:
-            # Fill the on-policy buffer before training rather than after the first eval window.
-            # Until it arrives every batch is demonstration data whose per-tick TD errors are
-            # tiny (~0.02), and Runs 7-9 spent their first 7-10k steps with SPR collapsed and Q
-            # fitted from vector tokens alone -- Run 9 only left that state when on-policy
-            # batches (TD error ~0.26) started at 10k (train/input_reliance.py). On --resume the
-            # checkpoint carries no on-policy buffer, so this refills it instead of training on
-            # the dataset alone for a whole window.
+        if onpolicy_enabled and start_step > 0:
+            # --resume: the checkpoint carries no on-policy buffer, so refill it from the resumed
+            # (already trained) policy instead of training on the dataset alone for a whole
+            # window. A fresh run deliberately does NOT collect at step 0: that policy is
+            # effectively random, and its transitions would sit in the FIFO buffer as noise for
+            # many windows. The early dead-encoder phase that motivated trying it recovers on
+            # its own once on-policy data arrives (docs/offline_pretrain_runs.md, Run 9).
             collect_onpolicy(start_step)
         while trainer.train_step_count < args.steps:
             trainer.env_step_count = trainer.train_step_count  # drives the annealing schedules above

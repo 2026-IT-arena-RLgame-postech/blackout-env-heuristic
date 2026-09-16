@@ -100,8 +100,9 @@ Run 9 10k에서 `grad_norm/graphic_encoder`가 4e-5에 머물러 조사했다. �
   두 경로가 다 죽어 인코더에 그래디언트가 없다. Run 7·8·9 공통이다.
 - 빠져나오는 계기는 큰 TD 오차다. Run 7은 8k, Run 8은 7k에 우연히 튀었고, Run 9는 **온폴리시 배치가 들어온
   10k**(TD 오차 0.26, 시연의 약 9배)에 빠져나왔다. 10k의 벽 막힘 600/1000은 이 구간의 결과로 본다.
-- 조치(Run 9에는 미적용, 다음 런부터): ① 온폴리시 데이터를 **0스텝에도** 수집(`--resume` 시에도 버퍼를 다시
-  채운다), ② `probe/*`(`train/input_reliance.py`)를 TB에 1000스텝마다 기록 — `graphic_shuffle_dq`,
+- 조치(Run 9에는 미적용, 다음 런부터): ① `--resume` 시작 시 온폴리시 버퍼를 다시 채운다. **0스텝 수집은
+  넣었다가 뺐다** — 그 시점 정책은 사실상 랜덤이라 FIFO 버퍼에 여러 윈도우 동안 노이즈로 남고, 인코더는 온폴리시
+  데이터가 들어오면 스스로 회복했다. ② `probe/*`(`train/input_reliance.py`)를 TB에 1000스텝마다 기록 — `graphic_shuffle_dq`,
   `vector_shuffle_dq`, `graphic_shuffle_argmax_kept`, `spr_latent_cos`. SPR 붕괴 자체(분산 정규화 등)는
   아직 손대지 않았다.
 
