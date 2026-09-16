@@ -80,6 +80,19 @@ def legal_direction_mask(graphic: torch.Tensor, agent_states: torch.Tensor) -> t
     return torch.where(mask.any(dim=-1, keepdim=True), mask, torch.ones_like(mask))
 
 
+def world_legal_mask(graphic: np.ndarray, agent_states: np.ndarray) -> np.ndarray:
+    """Bool [N_UNITS, 8] walkability mask for one raw observation (numpy, channels-last).
+
+    Same rule as legal_direction_mask, for the single-observation inference path; the mask is
+    purely geometric, so it is identical in the world and canonical frames.
+    """
+    mask = legal_direction_mask(
+        torch.as_tensor(graphic, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0),
+        torch.as_tensor(agent_states, dtype=torch.float32).unsqueeze(0),
+    )
+    return mask.squeeze(0).numpy()
+
+
 def masked_greedy(q_values: torch.Tensor, graphic: torch.Tensor, agent_states: torch.Tensor) -> torch.Tensor:
     """argmax over q_values [B, N, 8] restricted to walkable directions of those N unit rows.
 

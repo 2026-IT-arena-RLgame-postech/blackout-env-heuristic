@@ -115,3 +115,50 @@ def test_collect_step_uses_the_same_frame_as_the_policy():
         expected = mirror_direction_idx(int(greedy[1, slot]))  # canonical -> world
         assert full_idx[unit_index(agent)] == expected, f"{agent}: {full_idx[unit_index(agent)]} vs {expected}"
         assert np.allclose(env_actions[agent], DIRECTION_VECTORS[expected])
+
+
+def test_action_values_are_in_the_world_frame():
+    """act() is argmax over action_values, and both sides agree on which direction that is."""
+    rng = np.random.default_rng(4)
+    policy = MyPolicy(MyModel().eval(), device="cpu")
+
+    view_b = _team_b_observation(rng)
+    view_a = canonical_obs(view_b)
+
+    torch.manual_seed(SEED)
+    q_b = policy.action_values({a: view_b for a in team_b_agents()})
+    torch.manual_seed(SEED)
+    q_a = policy.action_values({a: view_a for a in team_a_agents()})
+
+    for agent_a, agent_b in zip(team_a_agents(), team_b_agents()):
+        # the same underlying canonical row, read out in each side's own world frame
+        assert np.allclose(q_b[agent_b], q_a[agent_a][[mirror_direction_idx(i) for i in range(8)]])
+
+    torch.manual_seed(SEED)
+    acted = policy.act({a: view_b for a in team_b_agents()})
+    for agent, row in q_b.items():
+        assert int(direction_vector_to_idx(acted[agent][None, :])[0]) == int(np.argmax(row))
+
+
+def test_wall_masking_only_removes_blocked_directions():
+    rng = np.random.default_rng(5)
+    view = _team_b_observation(rng)
+    view["graphic"] = np.zeros((H, W, 13), dtype=np.float32)
+    view["graphic"][:, :, 1] = 1.0  # wall everywhere...
+    view["graphic"][10:13, 10:13, 1] = 0.0  # ...except a 3x3 pocket
+    view["agent_states"][:, 0] = (11 + 0.5) * 2.0 / W - 1.0  # every unit in the middle of it
+    view["agent_states"][:, 1] = 1.0 - (11 + 0.5) * 2.0 / H
+
+    net = MyModel().eval()
+    free = MyPolicy(net, device="cpu", mask_walls=False)
+    masked = MyPolicy(net, device="cpu", mask_walls=True)
+    obs = {a: view for a in team_b_agents()}
+
+    torch.manual_seed(SEED)
+    q_rows = free.action_values(obs)
+    torch.manual_seed(SEED)
+    chosen = masked.act(obs)
+    for agent, row in q_rows.items():
+        idx = int(direction_vector_to_idx(chosen[agent][None, :])[0])
+        # the pocket is 3x3 with the unit at its centre, so every direction stays walkable
+        assert idx == int(np.argmax(row))
