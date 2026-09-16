@@ -44,8 +44,8 @@ class VectorEncoder(nn.Module):
     tokens (see blackout_env/env/my_obs_preprocessor.py:preprocess_agent_states).
 
     Each agent_states row is [pos(2), team(1), item_onehot(n_items+1), class_onehot(n_classes)]
-    followed by the local features MyModel derives (a 3x3 walkability patch and the unit's offset
-    within its tile — see model/derived_obs.py). These describe unrelated things, so each group
+    followed by the local features MyModel derives (walkability sampled around the unit's true
+    position and its in-tile phase — see model/derived_obs.py). These describe unrelated things, so each group
     gets its own small projection before the per-unit token is assembled, rather than one Linear
     over the raw concatenated row. Position and the derived local geometry are projected together
     as one "spatial" group, and the widths come from SPATIAL_GROUP_WEIGHTS.

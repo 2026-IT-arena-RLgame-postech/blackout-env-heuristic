@@ -37,17 +37,32 @@ wall patch          97.5% of the final checkpoint's failed moves were into a wal
                     before the unit tokens meet it. Walkability only -- tile identity is already
                     in the map channels at the same resolution; what the patch adds over them is
                     sub-tile relative geometry, and only walkability needs it.
+
+                    Both parts must be CONTINUOUS in the unit's position. The first version read
+                    a 3x3 patch around the rounded cell plus the offset within it (in [-0.5,
+                    0.5]); crossing a tile boundary shifted the patch by a whole tile and flipped
+                    the offset from +0.5 to -0.5. On the Run 9 40k checkpoint the greedy action
+                    pointed back at the boundary from both sides for 19.3% of Hunters placed
+                    there (0.2% at a tile centre) -- the two-cell oscillation seen in GUI -- and
+                    computing these features from the unmoved position removed it (0.2%). The
+                    offset alone accounted for most of it (19.3% -> 4.1% when frozen).
+                    So walkability is now sampled bilinearly at fixed offsets around the true
+                    position, and the in-tile position is encoded as sin/cos of the tile phase,
+                    which is identical at +0.5 and -0.5.
 """
 
 from __future__ import annotations
+
+import math
 
 import torch
 import torch.nn.functional as F
 
 N_UNIT_CHANNELS = 4
 N_DERIVED_MAP_CHANNELS = N_UNIT_CHANNELS + 2  # + storage free capacity + fetchable battery
-PATCH = 3  # wall patch edge, in tiles
-N_PATCH_FEATURES = PATCH * PATCH + 2  # + the unit's offset within its own tile
+PATCH = 5  # wall samples per side, PATCH_SPACING tiles apart, centred on the unit's true position
+PATCH_SPACING = 0.5
+N_PATCH_FEATURES = PATCH * PATCH + 4  # + sin/cos of the in-tile phase, for row and col
 
 VOID, WALL = 0, 1
 STORAGE_ALLY, STORAGE_ENEMY, BATTERY = 6, 7, 8
@@ -157,28 +172,54 @@ def derived_map_channels(graphic: torch.Tensor, agent_states: torch.Tensor) -> t
 
 def local_wall_features(graphic: torch.Tensor, agent_states: torch.Tensor) -> torch.Tensor:
     """
-    [B, N_UNITS, 11] appended to each unit's agent_states row: a 3x3 walkability patch centred
-    on the unit (1 = blocked, and outside the map counts as blocked), then the unit's offset
-    within its own tile in [-0.5, 0.5].
+    [B, N_UNITS, N_PATCH_FEATURES] appended to each unit's agent_states row, all continuous in the
+    unit's position (see the module docstring for why that matters):
+
+      - PATCH x PATCH walkability samples (1 = blocked, off-map counts as blocked), taken
+        PATCH_SPACING tiles apart around the unit's true position, row-major from the north-west,
+        each bilinearly interpolated between the four surrounding tile centres;
+      - sin and cos of 2*pi*(position in tile units), for row then col -- the in-tile phase,
+        which is the same at either side of a tile boundary.
 
     Computed for all ten units, not just own team: the frame is symmetric that way, and where an
     enemy is pinned against geometry is as informative as where you are.
     """
     batch, n_units = agent_states.shape[:2]
     height, width = graphic.shape[-2:]
-    blocked = (graphic[:, WALL : WALL + 1] >= 0.5).to(agent_states.dtype)
-    padded = F.pad(blocked, (1, 1, 1, 1), value=1.0)  # off-map is a wall
+    dtype = agent_states.dtype
+    pad = int(math.ceil(PATCH // 2 * PATCH_SPACING)) + 1
+    blocked = (graphic[:, WALL] >= 0.5).to(dtype)
+    padded = F.pad(blocked, (pad, pad, pad, pad), value=1.0)  # [B, H + 2pad, W + 2pad]
+    padded_w = width + 2 * pad
 
-    row, col = unit_cells(agent_states, height, width)
-    offsets = torch.arange(PATCH, device=agent_states.device) - PATCH // 2
-    patch_rows = (row.unsqueeze(-1) + offsets + 1).clamp(0, height + 1)  # +1 for the pad
-    patch_cols = (col.unsqueeze(-1) + offsets + 1).clamp(0, width + 1)
-    flat = (patch_rows.unsqueeze(-1) * (width + 2) + patch_cols.unsqueeze(-2)).reshape(batch, -1)
-    patch = padded.view(batch, -1).gather(1, flat).view(batch, n_units, PATCH * PATCH)
-
-    # Where the unit stands inside its tile: the cell it occupies is rounded, this is the part
-    # that rounding drops -- which is what decides whether it clears a corner.
+    # Tile-centre coordinates: tile (r, c) sits at exactly (r, c).
     x, y = agent_states[..., 0], agent_states[..., 1]
-    offset_row = (1.0 - y) * 0.5 * height - 0.5 - row.to(agent_states.dtype)
-    offset_col = (x + 1.0) * 0.5 * width - 0.5 - col.to(agent_states.dtype)
-    return torch.cat([patch, offset_row.unsqueeze(-1), offset_col.unsqueeze(-1)], dim=-1)
+    row = (1.0 - y) * 0.5 * height - 0.5  # [B, N]
+    col = (x + 1.0) * 0.5 * width - 0.5
+
+    steps = (torch.arange(PATCH, device=agent_states.device, dtype=dtype) - PATCH // 2) * PATCH_SPACING
+    sample_row = (row.unsqueeze(-1) + steps).unsqueeze(-1).expand(-1, -1, PATCH, PATCH)  # [B, N, P, P]
+    sample_col = (col.unsqueeze(-1) + steps).unsqueeze(-2).expand(-1, -1, PATCH, PATCH)
+
+    r = (sample_row + pad).clamp(0, height + 2 * pad - 1)
+    c = (sample_col + pad).clamp(0, padded_w - 1)
+    r0 = r.floor().clamp(max=height + 2 * pad - 2)
+    c0 = c.floor().clamp(max=padded_w - 2)
+    fr, fc = r - r0, c - c0
+    r0, c0 = r0.long(), c0.long()
+
+    flat = padded.view(batch, -1)
+
+    def at(rows: torch.Tensor, cols: torch.Tensor) -> torch.Tensor:
+        return flat.gather(1, (rows * padded_w + cols).reshape(batch, -1)).view_as(fr)
+
+    patch = (
+        at(r0, c0) * (1 - fr) * (1 - fc)
+        + at(r0, c0 + 1) * (1 - fr) * fc
+        + at(r0 + 1, c0) * fr * (1 - fc)
+        + at(r0 + 1, c0 + 1) * fr * fc
+    ).reshape(batch, n_units, PATCH * PATCH)
+
+    phase_row, phase_col = 2.0 * math.pi * row, 2.0 * math.pi * col
+    phase = torch.stack([phase_row.sin(), phase_row.cos(), phase_col.sin(), phase_col.cos()], dim=-1)
+    return torch.cat([patch, phase], dim=-1)

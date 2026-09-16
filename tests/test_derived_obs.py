@@ -151,30 +151,56 @@ def test_own_storage_batteries_are_not_fetchable_but_enemy_ones_are():
 # ---------------------------------------------------------------- wall patch
 
 
-def test_wall_patch_reads_the_eight_neighbours():
+PATCH_CENTRE = 2  # index of the unit's own position along each side of the 5x5 sample grid
+
+
+def _patch(features: torch.Tensor) -> torch.Tensor:
+    return features[..., :25].reshape(*features.shape[:-1], 5, 5)
+
+
+def test_wall_samples_at_tile_centres_read_the_tiles():
     graphic = _graphic()
     graphic[0, WALL, 10, 11] = 1.0  # east of the unit
     features = local_wall_features(graphic, _states([(10, 10)] * N_UNITS))[0, 0]
     assert features.shape == (N_PATCH_FEATURES,)
-    patch = features[:9].reshape(3, 3)
-    assert float(patch[1, 2]) == 1.0  # east blocked
-    assert float(patch[1, 1]) == 0.0  # the unit's own cell
-    assert float(patch[0, 1]) == 0.0  # north open
+    patch = _patch(features)
+    assert abs(float(patch[2, 4]) - 1.0) < 1e-4  # one tile east: the wall itself
+    assert abs(float(patch[2, 3]) - 0.5) < 1e-4  # half a tile east: halfway to it
+    assert abs(float(patch[2, 2])) < 1e-4        # the unit's own position
+    assert abs(float(patch[0, 2])) < 1e-4        # one tile north: open
 
 
 def test_outside_the_map_counts_as_blocked():
-    patch = local_wall_features(_graphic(), _states([(0, 0)] * N_UNITS))[0, 0][:9].reshape(3, 3)
-    assert float(patch[0, 0]) == 1.0 and float(patch[0, 1]) == 1.0  # north row is off-map
-    assert float(patch[1, 0]) == 1.0                                # west is off-map
-    assert float(patch[2, 2]) == 0.0                                # south-east is inside
+    patch = _patch(local_wall_features(_graphic(), _states([(0, 0)] * N_UNITS))[0, 0])
+    # positions round-trip through normalized coordinates, so allow float error
+    assert abs(float(patch[0, 2]) - 1.0) < 1e-4 and abs(float(patch[0, 0]) - 1.0) < 1e-4  # north is off-map
+    assert abs(float(patch[2, 0]) - 1.0) < 1e-4  # one tile west is off-map
+    assert abs(float(patch[4, 4])) < 1e-4        # one tile south-east is inside
 
 
-def test_sub_tile_offset_is_what_rounding_to_a_cell_drops():
-    states = _states([(10.4, 10.0)] * N_UNITS)  # 0.4 of a tile below its cell centre
-    features = local_wall_features(_graphic(), states)[0, 0]
-    assert abs(float(features[9]) - 0.4) < 1e-4   # row offset
-    assert abs(float(features[10]) - 0.0) < 1e-4  # col offset
-    assert -0.5 <= float(features[9]) <= 0.5
+def test_in_tile_phase_is_periodic():
+    at_centre = local_wall_features(_graphic(), _states([(10.0, 7.0)] * N_UNITS))[0, 0, 25:]
+    assert torch.allclose(at_centre, torch.tensor([0.0, 1.0, 0.0, 1.0]), atol=1e-5)
+    at_boundary = local_wall_features(_graphic(), _states([(10.5, 7.0)] * N_UNITS))[0, 0, 25:]
+    assert abs(float(at_boundary[1]) + 1.0) < 1e-5  # cos = -1 at the tile edge
+    row = local_wall_features(_graphic(), _states([(10.4, 7.0)] * N_UNITS))[0, 0, 25:27]
+    assert torch.allclose(row, torch.tensor([np.sin(2 * np.pi * 0.4), np.cos(2 * np.pi * 0.4)], dtype=torch.float32), atol=1e-4)
+
+
+def test_features_are_continuous_across_a_tile_boundary():
+    """The whole point: a unit stepping over a tile edge must not see its features jump.
+
+    The previous 3x3-around-the-rounded-cell patch plus [-0.5, 0.5] offset jumped by a whole tile
+    here, and the Run 9 policy chattered between the two cells because of it."""
+    rng = np.random.default_rng(3)
+    graphic = _graphic()
+    graphic[0, WALL] = torch.tensor(rng.random((H, W)) < 0.35, dtype=torch.float32)
+    for row, col in [(10.5, 7.0), (4.0, 12.5), (15.5, 15.5), (0.5, 3.0)]:
+        for d in (1e-3, 1e-2):
+            before = local_wall_features(graphic, _states([(row - d, col - d)] * N_UNITS))[0, 0]
+            after = local_wall_features(graphic, _states([(row + d, col + d)] * N_UNITS))[0, 0]
+            # bilinear: at most 4 * slope(1 per tile) * 2d per sample; phase: 2*pi*2d
+            assert float((after - before).abs().max()) <= 2 * np.pi * 2 * d + 1e-4, (row, col, d)
 
 
 def test_every_unit_gets_a_patch_including_the_enemy():
@@ -183,7 +209,7 @@ def test_every_unit_gets_a_patch_including_the_enemy():
     features = local_wall_features(graphic, _states([(3, 2)] * N_UNITS))
     assert features.shape == (1, N_UNITS, N_PATCH_FEATURES)
     for unit in range(N_UNITS):
-        assert float(features[0, unit, :9].reshape(3, 3)[1, 2]) == 1.0
+        assert abs(float(_patch(features[0, unit])[2, 4]) - 1.0) < 1e-4
 
 
 # ---------------------------------------------------------------- frame consistency / wiring
