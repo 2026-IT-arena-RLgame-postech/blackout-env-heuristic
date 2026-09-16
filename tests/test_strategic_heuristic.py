@@ -230,7 +230,7 @@ def test_policy_mixture_is_reproducible_and_exposes_dataset_metadata():
         "strategic_v9",
         "strategic_v10", "strategic_v11", "strategic_v12",
         "strategic_v13", "strategic_v14", "strategic_v15",
-        "strategic_v16",
+        "strategic_v16", "strategic_v17", "strategic_v18", "strategic_v19",
     }
     assert 8 <= first.current_sample.parameters["replan_interval"] <= 13
     next_first = first.reset()
