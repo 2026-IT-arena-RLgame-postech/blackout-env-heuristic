@@ -52,6 +52,7 @@ different staleness properties):
 from __future__ import annotations
 
 import argparse
+import contextlib
 import copy
 import itertools
 import time
@@ -302,7 +303,43 @@ class QMIXConfig:
     checkpoint_dir: str = field(default_factory=lambda: default_run_dir(base="checkpoints"))
     checkpoint_interval: int = 5_000  # env steps
     device: str = "cpu"
+    # Half precision for the three forwards that carry no gradient: the Double-DQN bootstrap
+    # (online net picking the action, target net evaluating it) and the SPR target, which alone
+    # runs the trunk on batch*spr_k states and was 38% of a train step. Measured on MPS at that
+    # size: fp32 36.3ms, fp16 21.5ms, bf16 33.7ms -- fp16 is both the fastest and the closest to
+    # fp32 here (0.08% vs bf16's 0.66% max relative error on Q), and this network's activations
+    # peak around 5, nowhere near fp16's 65504 ceiling. Gradient underflow is the usual reason to
+    # prefer bf16, and it cannot apply to a no_grad forward. The loss itself stays fp32.
+    # None disables. CPU is left alone (autocast there is a pessimization).
+    amp_dtype: str | None = "float16"
+    # Quantile samples used only for the logged return-distribution diagnostics. Training runs at
+    # n_quantiles (8) because that is a gradient-noise/compute tradeoff, but 8 draws give a very
+    # coarse read of the distribution's own shape -- its p10/p90 and crossing rate are what the
+    # log is for. Re-sampling at high resolution costs two extra no-grad forwards, paid only on
+    # TB-logging steps (tb_log_interval), the same cadence the attention-logit stats use.
+    iqn_log_quantiles: int = 128
     compile: bool = False  # torch.compile net/target_net/ema_net to cut kernel-launch overhead
+
+
+@contextlib.contextmanager
+def _maybe_autocast(device: torch.device, dtype_name: str | None):
+    """Half precision for a no-grad forward, on accelerators only (see QMIXConfig.amp_dtype)."""
+    if dtype_name is None or device.type not in ("mps", "cuda"):
+        yield
+        return
+    with torch.autocast(device_type=device.type, dtype=getattr(torch, dtype_name)):
+        yield
+
+
+def _uncompiled(module: nn.Module) -> nn.Module:
+    """The module itself, looking through a torch.compile wrapper.
+
+    torch.compile returns an OptimizedModule whose state_dict keys all gain an `_orig_mod.`
+    prefix, so a checkpoint written by a --compile run could not be loaded by anything else --
+    including examples/evaluate_checkpoint_vs_heuristic.py, which is how these runs get watched
+    in the GUI. Checkpoints therefore always go through the wrapped module, in both directions.
+    """
+    return getattr(module, "_orig_mod", module)
 
 
 def _own_team_rows(tensor: torch.Tensor, agent_states: torch.Tensor) -> torch.Tensor:
@@ -1113,9 +1150,11 @@ class QMIXTrainer:
 
         # ---- Double DQN target: online net picks the bootstrap action, target net evaluates it ----
         with torch.no_grad():
-            boot_q_online, *_ = self.net(
-                t["boot_graphic"], t["boot_team_state"], t["boot_agent_states"], n_quantiles=self.cfg.n_quantiles
-            )
+            with _maybe_autocast(self.device, self.cfg.amp_dtype):
+                boot_q_online, *_ = self.net(
+                    t["boot_graphic"], t["boot_team_state"], t["boot_agent_states"], n_quantiles=self.cfg.n_quantiles
+                )
+            boot_q_online = boot_q_online.float()
             boot_own_q_online = _own_team_rows(boot_q_online, t["boot_agent_states"])  # [B, N_TEAM, A]
             boot_greedy = (
                 masked_greedy(boot_own_q_online, t["boot_graphic"], t["boot_agent_states"])
@@ -1123,9 +1162,12 @@ class QMIXTrainer:
                 else boot_own_q_online.argmax(dim=-1)
             )  # [B, N_TEAM]
 
-            _, boot_quantiles_target, _, _, boot_global_target = self.target_net(
-                t["boot_graphic"], t["boot_team_state"], t["boot_agent_states"], n_quantiles=self.cfg.n_quantiles
-            )
+            with _maybe_autocast(self.device, self.cfg.amp_dtype):
+                _, boot_quantiles_target, _, _, boot_global_target = self.target_net(
+                    t["boot_graphic"], t["boot_team_state"], t["boot_agent_states"], n_quantiles=self.cfg.n_quantiles
+                )
+            boot_quantiles_target = boot_quantiles_target.float()
+            boot_global_target = boot_global_target.float()
             boot_own_quantiles_target = _own_team_rows(boot_quantiles_target, t["boot_agent_states"])  # [B, N_TEAM, Q', A]
             boot_chosen_target = torch.gather(
                 boot_own_quantiles_target, 3, boot_greedy.view(*boot_greedy.shape, 1, 1).expand(-1, -1, self.cfg.n_quantiles, 1)
@@ -1162,9 +1204,11 @@ class QMIXTrainer:
             flat_agent_states = torch.tensor(
                 future_agent_states.reshape(Bsz * K, *future_agent_states.shape[2:]), dtype=torch.float32, device=self.device
             )
-            _, _, _, ema_vision_latent, _ = self.ema_net(
-                flat_graphic, flat_team_state, flat_agent_states, n_quantiles=1
-            )
+            with _maybe_autocast(self.device, self.cfg.amp_dtype):
+                _, _, _, ema_vision_latent, _ = self.ema_net(
+                    flat_graphic, flat_team_state, flat_agent_states, n_quantiles=1
+                )
+            ema_vision_latent = ema_vision_latent.float()
             target_pooled = ema_vision_latent.view(Bsz, K, -1)  # [B, K, hidden] -- already pooled by ema_net's SPR CLS token
 
         z = pooled_vision
@@ -1232,10 +1276,44 @@ class QMIXTrainer:
                     # greedy policy is, compared against the reward scale of a single move.
                     "q_action_margin": (top2[..., 0] - top2[..., 1]).mean().item(),
                     "q_action_range": (own_q_values.max(dim=-1).values - own_q_values.min(dim=-1).values).mean().item(),
-                    **self._quantile_diagnostics(q_tot_online, tau, target),
+                    **self._quantile_diagnostics(*self._high_res_distributions(t, own_actions, boot_greedy)),
                 }
 
         return total_loss, td_error.cpu().numpy()
+
+    def _high_res_distributions(
+        self, t: dict[str, torch.Tensor], own_actions: torch.Tensor, boot_greedy: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        (q_tot_online, tau, target) re-sampled at iqn_log_quantiles, for the logged distribution
+        shape only -- never for the loss. Reuses the actions the training forwards already chose
+        (the taken action, and the bootstrap action the online net picked) so this measures the
+        same distribution training is fitting, just resolved finely enough to read.
+        """
+        n = self.cfg.iqn_log_quantiles
+        with torch.no_grad(), _maybe_autocast(self.device, self.cfg.amp_dtype):
+            _, quantiles, tau, _, global_latent = self.net(
+                t["graphic"], t["team_state"], t["agent_states"], n_quantiles=n
+            )
+            own = _own_team_rows(quantiles.float(), t["agent_states"])  # [B, N_TEAM, n, A]
+            chosen = torch.gather(
+                own, 3, own_actions.view(*own_actions.shape, 1, 1).expand(-1, -1, n, 1)
+            ).squeeze(-1)
+            q_tot = self.dist_mixer(chosen, global_latent.float())  # [B, n]
+
+            _, boot_quantiles, _, _, boot_global = self.target_net(
+                t["boot_graphic"], t["boot_team_state"], t["boot_agent_states"], n_quantiles=n
+            )
+            boot_own = _own_team_rows(boot_quantiles.float(), t["boot_agent_states"])
+            boot_chosen = torch.gather(
+                boot_own, 3, boot_greedy.view(*boot_greedy.shape, 1, 1).expand(-1, -1, n, 1)
+            ).squeeze(-1)
+            q_tot_target = self.target_dist_mixer(boot_chosen, boot_global.float())
+            target = (
+                t["n_step_return"].unsqueeze(1)
+                + t["gamma_eff"].unsqueeze(1) * t["not_done"].unsqueeze(1) * q_tot_target
+            )
+        return q_tot.float(), tau.float(), target.float()
 
     @staticmethod
     def _quantile_diagnostics(
@@ -1260,13 +1338,25 @@ class QMIXTrainer:
         sorted_q = q_tot_online.gather(1, order)  # quantile values in increasing-tau order
         n = sorted_q.shape[1]
         low, mid, high = sorted_q[:, n // 10], sorted_q[:, n // 2], sorted_q[:, -(n // 10) - 1]
-        spread = (high - low).clamp_min(1e-6)
+        spread = high - low
+        # Skew is a shape ratio, so it is only defined where there IS a shape: on a row whose
+        # quantiles have collapsed to a point the ratio divides ~0 by ~0 and explodes (a clamped
+        # epsilon denominator turned a flat distribution into a skew of -4e4 in practice). Rows
+        # narrower than a thousandth of their own level are dropped instead, and a batch with no
+        # measurable spread at all reports 0 -- iqn_spread_p10_p90 is what flags that case.
+        measurable = spread > 1e-3 * (mid.abs() + 1.0)
+        skew = (
+            ((high + low - 2 * mid)[measurable] / spread[measurable]).mean().item()
+            if bool(measurable.any())
+            else 0.0
+        )
         return {
-            "iqn_spread_p10_p90": (high - low).mean().item(),
+            "iqn_spread_p10_p90": spread.mean().item(),
             "iqn_std": q_tot_online.std(dim=1).mean().item(),
             "iqn_median": mid.mean().item(),
             # >0: a long upper tail (a few optimistic outcomes); <0: a long lower tail.
-            "iqn_skew": ((high + low - 2 * mid) / spread).mean().item(),
+            "iqn_skew": skew,
+            "iqn_skew_measurable_frac": measurable.float().mean().item(),
             "iqn_crossing_frac": (sorted_q.diff(dim=1) < 0).float().mean().item(),
             "iqn_target_spread": (
                 target.gather(1, target.argsort(dim=1))[:, -(target.shape[1] // 10) - 1]
@@ -1375,6 +1465,7 @@ class QMIXTrainer:
                         "median": self._last_diagnostics["iqn_median"],
                         "skew": self._last_diagnostics["iqn_skew"],
                         "crossing_frac": self._last_diagnostics["iqn_crossing_frac"],
+                        "skew_measurable_frac": self._last_diagnostics["iqn_skew_measurable_frac"],
                         "target_spread": self._last_diagnostics["iqn_target_spread"],
                     },
                     self.train_step_count,
@@ -1423,7 +1514,7 @@ class QMIXTrainer:
 
             self.train_step_count += 1
             if self.train_step_count % self.cfg.target_update_interval == 0:
-                self.target_net.load_state_dict(self.net.state_dict())
+                _uncompiled(self.target_net).load_state_dict(_uncompiled(self.net).state_dict())
                 self.target_dist_mixer.load_state_dict(self.dist_mixer.state_dict())
 
             losses.append(loss.item())
@@ -1591,7 +1682,7 @@ class QMIXTrainer:
     def save(self, path: Path) -> None:
         torch.save(
             {
-                "policy_state": self.net.state_dict(),
+                "policy_state": _uncompiled(self.net).state_dict(),
                 # dist_mixer's state already includes the inner QMixer's params (registered
                 # as its `mixer` submodule) plus DistributionalQMixer's own shape_weight
                 # params -- one key covers both, no need to also save self.mixer separately.
@@ -1607,9 +1698,9 @@ class QMIXTrainer:
 
     def load(self, path: Path) -> None:
         ckpt = torch.load(path, map_location=self.device, weights_only=True)
-        self.net.load_state_dict(ckpt["policy_state"])
-        self.target_net.load_state_dict(ckpt["policy_state"])
-        self.ema_net.load_state_dict(ckpt["policy_state"])
+        _uncompiled(self.net).load_state_dict(ckpt["policy_state"])
+        _uncompiled(self.target_net).load_state_dict(ckpt["policy_state"])
+        _uncompiled(self.ema_net).load_state_dict(ckpt["policy_state"])
         self.dist_mixer.load_state_dict(ckpt["dist_mixer_state"])
         self.target_dist_mixer.load_state_dict(ckpt["dist_mixer_state"])
         self.spr_predictor.load_state_dict(ckpt["spr_state"])

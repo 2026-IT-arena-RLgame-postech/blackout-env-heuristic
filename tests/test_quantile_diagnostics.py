@@ -57,3 +57,43 @@ def test_target_spread_is_read_off_the_target_distribution():
     target = torch.linspace(-5.0, 5.0, Q).expand(3, Q).contiguous()
     stats = QMIXTrainer._quantile_diagnostics(_sorted_by_tau(online, tau), tau, target)
     assert stats["iqn_target_spread"] > stats["iqn_spread_p10_p90"] * 10
+
+
+def test_a_flat_row_does_not_blow_up_the_skew():
+    """A collapsed row's skew is 0/0; a clamped epsilon denominator once reported skew = -4e4."""
+    tau = torch.rand(4, Q)
+    flat = torch.full((4, Q), -2.0)
+    stats = QMIXTrainer._quantile_diagnostics(flat, tau, flat)
+    assert stats["iqn_skew"] == 0.0
+    assert stats["iqn_skew_measurable_frac"] == 0.0
+
+
+def test_skew_is_read_only_off_rows_with_real_spread():
+    tau = torch.rand(2, Q)
+    values = torch.zeros(2, Q)
+    values[0] = torch.cat([torch.zeros(Q - 4), torch.linspace(1.0, 5.0, 4)])  # upper tail
+    values[1] = -3.0  # collapsed row, must be ignored rather than averaged in
+    stats = QMIXTrainer._quantile_diagnostics(_sorted_by_tau(values, tau), tau, torch.zeros(2, Q))
+    assert stats["iqn_skew"] > 0
+    assert stats["iqn_skew_measurable_frac"] == 0.5
+
+
+def test_checkpoints_cross_the_compile_boundary():
+    """torch.compile prefixes every state_dict key with _orig_mod., which would strand a
+    --compile run's checkpoints -- including from the GUI eval script."""
+    import torch.nn as nn
+
+    from blackout_env.train.qmix_trainer import _uncompiled
+
+    inner = nn.Linear(3, 3)
+
+    class FakeOptimizedModule(nn.Module):
+        def __init__(self, mod):
+            super().__init__()
+            self._orig_mod = mod
+
+    wrapped = FakeOptimizedModule(inner)
+    assert list(wrapped.state_dict().keys()) == ["_orig_mod.weight", "_orig_mod.bias"]
+    assert _uncompiled(wrapped) is inner
+    assert list(_uncompiled(wrapped).state_dict().keys()) == ["weight", "bias"]
+    assert _uncompiled(inner) is inner  # plain modules pass through

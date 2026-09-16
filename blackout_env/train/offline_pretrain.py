@@ -220,6 +220,11 @@ def main() -> None:
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--compile", action="store_true")
     parser.add_argument(
+        "--amp-dtype", default="float16", choices=["float16", "bfloat16", "none"],
+        help="Half precision for the no-grad bootstrap/target/SPR forwards (QMIXConfig.amp_dtype). "
+             "'none' keeps everything fp32.",
+    )
+    parser.add_argument(
         "--tb-log-dir",
         default=None,
         help="Default: fresh timestamped folder under runs/offline/ -- kept apart from online "
@@ -240,6 +245,7 @@ def main() -> None:
         buffer_capacity=1,
         device=args.device,
         compile=args.compile,
+        amp_dtype=None if args.amp_dtype == "none" else args.amp_dtype,
         checkpoint_interval=args.checkpoint_interval,
     )
     if args.lr is not None:
@@ -290,6 +296,7 @@ def main() -> None:
     trainer = QMIXTrainer(env=None, config=config)
     print(f"[offline] checkpoint_dir={config.checkpoint_dir}")
     print(f"[offline] tb_log_dir={config.tb_log_dir or '(disabled)'}")
+    print(f"[offline] amp_dtype={config.amp_dtype or 'off (fp32)'}, compile={config.compile}")
     print(f"[offline] reset_interval={config.reset_interval or '(disabled -- single anneal over the whole run)'}")
     print(
         f"[offline] batch_source_fracs (dataset, self_vs_heuristic, self_play)="
