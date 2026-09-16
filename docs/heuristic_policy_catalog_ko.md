@@ -44,6 +44,7 @@ StrategicHeuristicV14  ── 초반 Hunter 1기로 아군 창고 주변만 방�
 StrategicHeuristicV15  ── Hunter를 포기하고 Carrier 1기의 고가 필드 배터리 운송에 올인
 StrategicHeuristicV16  ── V10 director + storage siege / home guard / convoy rush 선택
 StrategicHeuristicV17  ── V6 이동 계층 위의 팀 단위 planner: Hunter 3기(1기 적 본진 출구 진치기 + 2기 추격)로 운반 차단
+    └── StrategicHeuristicV18  ── V17 전용 카운터: 아이템을 피하는 변신 경로 + 우리 출구 경비 Hunter
 
 V4PolicyFamily  ── V4의 작은 근접 파라미터 변형 (기본은 매치 단위, `resample_each_absorption=True`면 흡수 단위)
 HeuristicPolicyMixture ── 위 policy_id와 V4PolicyFamily를 함께 샘플링
@@ -184,6 +185,51 @@ V1–V16을 모두 이기는 것을 목표로 새로 설계한 정책이다. V1�
 
 # 전체 경기 검증
 ./.venv/bin/python examples/gauntlet_heuristics.py --candidate strategic_v17 --workers 18 --n-seeds 5
+```
+
+## V18: V17 전용 카운터 (2026-09-16)
+
+V17을 고정한 채 V17만 이기도록 만든 정책이다. 다른 정책 상대 성능은 목표가 아니다. V17과 마찬가지로
+mixture 기본 가중치에는 넣지 않았다.
+
+### V17 대 V17에서 관찰한 승부처
+
+V17 거울전은 **먼저 상대 본진 출구에 진치기 Hunter를 세운 쪽이 이긴다.** 진이 쳐진 쪽은 부활한 유닛이
+다시 변신하러 나가다 출구에서 1초 간격으로 죽는다. 이 경쟁을 V17의 고정 규칙 두 개가 좌우한다.
+
+- V17의 변신 대기 유닛은 중앙 성소로 가는 최단 경로에서 배터리를 밟으면 자동으로 줍고, 짐이 있으면
+  먼저 적재하러 돌아가 몇 초를 잃는다.
+- V17 진치기 Hunter는 적 Hunter를 공격하지 않고, 추격 Hunter도 자기 스폰 7칸 밖의 적 Hunter는 무시한다.
+
+### 동작
+
+| 구성 요소 | 내용 |
+|---|---|
+| 역할 | V17 경제 + Hunter 4기 |
+| 변신 경로 | 중앙 성소로 갈 때 필드 배터리·특수 아이템 칸을 피해 A* (경로가 막히면 원래 경로) |
+| Hunter 0 | V17과 같은 적 본진 출구 진치기 |
+| Hunter 1 (출구 경비) | 우리 본진 출구에 서서, `guard_radius`(7칸) 안에 들어온 적 Hunter와 즉시 맞교환 |
+| 나머지 | V17 추격 |
+
+### 평가 (상대: V17)
+
+게임이 초기 조건에 민감해(리셋 시 1틱 어긋남만으로 같은 시드 결과가 뒤집힘) 변형당 96경기로 비교했다.
+
+| 변형 (64초 근사, 48시드 × 양 진영) | 승률 | 평균 점수차 |
+|---|---:|---:|
+| V17 거울전 | 50% | +0.0 |
+| V17 + Hunter 4기 | 62% | +15.3 |
+| **V18** | **75%** | **+24.7** |
+| V18 − 아이템 회피 변신 경로 | 53% | +2.5 |
+| V18 − 출구 경비 | 70% | +20.0 |
+
+본진 대기, 짐 든 채 변신, V17 방어 반경(7칸) 밖 진치기는 효과가 없어 넣지 않았다. 최종 420초 전체 경기
+(새 시드 48개 × 양 진영, 96경기)에서 **V18 대 V17은 75승 21패(78%), 평균 점수차 +24.9**였다. 원시 결과는
+`reports/gauntlet_v18_vs_v17_full/`에 있다.
+
+```bash
+./.venv/bin/python examples/gauntlet_heuristics.py --candidate strategic_v18 \
+    --opponents strategic_v17 --workers 18 --n-seeds 48
 ```
 
 ## V4 근접 변형군

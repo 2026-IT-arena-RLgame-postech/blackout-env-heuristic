@@ -18,6 +18,7 @@ from blackout_env.heuristics import (
     StrategicHeuristicV15,
     StrategicHeuristicV16,
     StrategicHeuristicV17,
+    StrategicHeuristicV18,
 )
 
 
@@ -728,3 +729,50 @@ def test_v17_camping_hunter_strikes_cargo_near_the_enemy_base_but_ignores_enemy_
     states[5, :2] = world(8, 3)
     policy.act({f"unit_{i}": o for i in range(5)})
     assert policy.plan["unit_0"] == ((18, 18), "patrol_defend")
+
+
+def test_v18_routes_sanctuary_walkers_around_field_batteries():
+    policy = StrategicHeuristicV18()
+    o = _v17_observation()
+    graphic = o["graphic"]
+    graphic[3, 3, 8] = 5 / 15  # a battery on the direct diagonal from (2, 2) toward the centre
+    policy._last_graphic = graphic
+    walkable = graphic[..., 1] < 0.5
+    captured = {}
+    original = StrategicHeuristicV17._navigate
+
+    def spy(self, name, state, states, target, kind, walkable, shape):
+        captured["walkable"] = walkable
+        return original(self, name, state, states, target, kind, walkable, shape)
+
+    StrategicHeuristicV17._navigate = spy
+    try:
+        policy._navigate("unit_1", o["agent_states"][1], o["agent_states"], (11, 11), "transform",
+                         walkable, (24, 24))
+        assert not captured["walkable"][3, 3]
+        policy._navigate("unit_1", o["agent_states"][1], o["agent_states"], (6, 6), "battery",
+                         walkable, (24, 24))
+        assert captured["walkable"][3, 3]  # only the race to the sanctuary detours
+    finally:
+        StrategicHeuristicV17._navigate = original
+
+
+def test_v18_exit_guard_trades_with_an_enemy_hunter_at_our_exit():
+    policy = StrategicHeuristicV18()
+    o = _v17_observation()
+    states = o["agent_states"]
+
+    def world(row, col):
+        return ((col + 0.5) * 2 / 24 - 1, 1 - (row + 0.5) * 2 / 24)
+
+    for row, cell in ((0, (18, 18)), (1, (9, 9))):  # camper (rank 0) and guard (rank 1)
+        states[row, :2] = world(*cell)
+        states[row, 9], states[row, 10] = 0, 1
+    states[5, :2] = world(6, 5)
+    states[5, 9], states[5, 10] = 0, 1  # V17's camper arriving at our exit
+    policy.act({f"unit_{i}": o for i in range(5)})
+    assert policy.plan["unit_0"][0] == (18, 18)
+    assert policy.plan["unit_1"] == ((6, 5), "hunt")
+    states[5, :2] = world(18, 5)  # far from our exit: the guard goes back to its post
+    policy.act({f"unit_{i}": o for i in range(5)})
+    assert policy.plan["unit_1"] == ((5, 5), "patrol_defend")
