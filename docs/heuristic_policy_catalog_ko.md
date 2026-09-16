@@ -45,6 +45,7 @@ StrategicHeuristicV15  ── Hunter를 포기하고 Carrier 1기의 고가 필�
 StrategicHeuristicV16  ── V10 director + storage siege / home guard / convoy rush 선택
 StrategicHeuristicV17  ── V6 이동 계층 위의 팀 단위 planner: Hunter 3기(1기 적 본진 출구 진치기 + 2기 추격)로 운반 차단
     └── StrategicHeuristicV18  ── V17 전용 카운터: 아이템을 피하는 변신 경로 + 우리 출구 경비 Hunter
+        └── StrategicHeuristicV19  ── V18 전용 카운터: 성소 소탕 + 성소 보초 Hunter + 가까운 성소 칸 경로
 
 V4PolicyFamily  ── V4의 작은 근접 파라미터 변형 (기본은 매치 단위, `resample_each_absorption=True`면 흡수 단위)
 HeuristicPolicyMixture ── 위 policy_id와 V4PolicyFamily를 함께 샘플링
@@ -231,6 +232,39 @@ V17 거울전은 **먼저 상대 본진 출구에 진치기 Hunter를 세운 쪽
 ./.venv/bin/python examples/gauntlet_heuristics.py --candidate strategic_v18 \
     --opponents strategic_v17 --workers 18 --n-seeds 48
 ```
+
+## V19: V18 전용 카운터 (2026-09-16)
+
+V18을 고정한 채 V18만 이기도록 만든 정책이다. mixture 기본 가중치에는 넣지 않았다.
+
+### V18 대 V18에서 관찰한 승부처
+
+V18의 변신 대기 유닛 4기는 한 덩어리로 중앙 성소에 간다. 상대가 먼저 변신하면 Hunter 하나가 덩어리 전체를
+처치하고, 그 팀은 Hunter를 하나도 못 만든 채 출구에 갇힌다. 90경기 거울전의 약 4분의 1이 이렇게 끝났고,
+전멸한 쪽은 전부 졌다. 반대로 전멸 없이 몇 틱 먼저 변신하는 것은 승패와 무관했다(15승 15패).
+
+### 동작
+
+| 구성 요소 | 내용 |
+|---|---|
+| 성소 소탕 | 모든 Hunter가 자기 자리로 가기 전에 성소 `sweep_radius`(9칸) 안의 적 Collector부터 처치 |
+| 성소 보초 | Hunter 하나(진치기·출구 경비 다음 순번)가 성소의 적 스폰 쪽에 상주. V18의 어떤 규칙도 그 위치의 Hunter를 공격하지 않으며, 교환으로 Hunter를 잃은 V18 유닛은 다시 변신하려면 보초 앞을 지나야 함 |
+| 변신 경로 | 경로상 가장 가까운 성소 칸으로. 아이템 회피 경로는 길이가 같을 때만 쓰고, 도중에 짐을 주우면 버리고 변신 |
+| 나머지 | V18과 동일(Hunter 4기, 진치기 1 + 출구 경비 1) |
+
+### 평가 (상대: V18)
+
+| 변형 (64초 근사, 64시드 × 양 진영) | 승률 | 평균 점수차 |
+|---|---:|---:|
+| V18 거울전 | 50% | +0.0 |
+| 가까운 성소 칸 경로만 | 48% | +5.0 |
+| + 성소 소탕 | 59–61% | +9~+14 |
+| **+ 성소 보초, 소탕 반경 9칸** | **66%** | **+20.1** |
+| 위 구성 − 출구 경비 | 55–57% | +7~+10 |
+
+대기 유닛을 서로 다른 성소 칸으로 분산(36%)하거나 적 Hunter를 보면 물러나게(20%) 하면 오히려 졌다.
+최종 420초 전체 경기(새 시드 64개 × 양 진영, 128경기)에서 **V19 대 V18은 92승 36패(72%), 평균 점수차
++25.7**이었다(보초 추가 전 구성은 77승 51패, +5.3). 원시 결과는 `reports/gauntlet_v19_vs_v18_full/`에 있다.
 
 ## V4 근접 변형군
 

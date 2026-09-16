@@ -19,6 +19,7 @@ from blackout_env.heuristics import (
     StrategicHeuristicV16,
     StrategicHeuristicV17,
     StrategicHeuristicV18,
+    StrategicHeuristicV19,
 )
 
 
@@ -776,3 +777,41 @@ def test_v18_exit_guard_trades_with_an_enemy_hunter_at_our_exit():
     states[5, :2] = world(18, 5)  # far from our exit: the guard goes back to its post
     policy.act({f"unit_{i}": o for i in range(5)})
     assert policy.plan["unit_1"] == ((5, 5), "patrol_defend")
+
+
+def test_v19_hunters_sweep_enemy_walkers_near_the_sanctuary_before_their_posts():
+    policy = StrategicHeuristicV19()
+    o = _v17_observation()
+    states = o["agent_states"]
+
+    def world(row, col):
+        return ((col + 0.5) * 2 / 24 - 1, 1 - (row + 0.5) * 2 / 24)
+
+    for row, cell in ((0, (21, 3)), (1, (10, 10)), (2, (12, 13))):
+        states[row, :2] = world(*cell)
+        states[row, 9], states[row, 10] = 0, 1
+    states[5, :2] = world(14, 14)  # enemy walker about to reach the sanctuary
+    policy.act({f"unit_{i}": o for i in range(5)})
+    assert policy.plan["unit_1"] == ((14, 14), "hunt")
+    assert policy.plan["unit_2"] == ((14, 14), "hunt")
+    assert policy.plan["unit_0"] == ((18, 18), "patrol_defend")  # >9 cells away: goes to camp
+
+
+def test_v19_sentry_holds_the_enemy_side_of_the_sanctuary():
+    policy = StrategicHeuristicV19(sanctuary_sweep=False)
+    o = _v17_observation()
+    states = o["agent_states"]
+
+    def world(row, col):
+        return ((col + 0.5) * 2 / 24 - 1, 1 - (row + 0.5) * 2 / 24)
+
+    for row, cell in ((0, (18, 18)), (1, (6, 6)), (2, (8, 8))):
+        states[row, :2] = world(*cell)
+        states[row, 9], states[row, 10] = 0, 1
+    policy.act({f"unit_{i}": o for i in range(5)})
+    post, kind = policy.plan["unit_2"]  # rank 2 = 1 + exit_guards
+    assert kind == "patrol_defend"
+    assert post[0] > 12 and post[1] > 12  # between the sanctuary and the enemy spawn (22, 22)
+    states[5, :2] = world(16, 15)
+    policy.act({f"unit_{i}": o for i in range(5)})
+    assert policy.plan["unit_2"] == ((16, 15), "hunt")

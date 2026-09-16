@@ -38,7 +38,7 @@ from blackout_env.heuristics import (
     StrategicHeuristicV7, StrategicHeuristicV8, StrategicHeuristicV9,
     StrategicHeuristicV10, StrategicHeuristicV11, StrategicHeuristicV12,
     StrategicHeuristicV13, StrategicHeuristicV14, StrategicHeuristicV15, StrategicHeuristicV16,
-    StrategicHeuristicV17, StrategicHeuristicV18, V4PolicyFamily,
+    StrategicHeuristicV17, StrategicHeuristicV18, StrategicHeuristicV19, V4PolicyFamily,
 )
 try:  # direct ``python examples/...`` execution
     from benchmark_heuristics import aggregate, play
@@ -66,6 +66,7 @@ POLICIES = {
     "v16": StrategicHeuristicV16,
     "v17": StrategicHeuristicV17,
     "v18": StrategicHeuristicV18,
+    "v19": StrategicHeuristicV19,
 }
 
 

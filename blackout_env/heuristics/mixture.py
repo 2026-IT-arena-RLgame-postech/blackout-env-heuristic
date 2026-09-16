@@ -24,6 +24,7 @@ from .counterplay_strategies import (
 )
 from .v17_planner import StrategicHeuristicV17
 from .v18_counter import StrategicHeuristicV18
+from .v19_counter import StrategicHeuristicV19
 
 
 @dataclass(frozen=True)
@@ -55,6 +56,7 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
     "strategic_v16": StrategicHeuristicV16,
     "strategic_v17": StrategicHeuristicV17,
     "strategic_v18": StrategicHeuristicV18,
+    "strategic_v19": StrategicHeuristicV19,
 }
 
 
