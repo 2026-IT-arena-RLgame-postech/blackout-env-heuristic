@@ -67,6 +67,13 @@ from blackout_env.env.blackout_env import BlackOutEnv
 from blackout_env.env.constants import N_AGENTS, N_TEAM_A, team_a_agents, team_b_agents
 from blackout_env.env.my_obs_preprocessor import MyObsPreprocessor
 from blackout_env.env.obs_preprocessor import load_semantic_config
+from blackout_env.env.team_frame import (
+    canonical_obs,
+    mirror_action_idx,
+    mirror_agent_states,
+    mirror_direction_idx,
+    mirror_graphic,
+)
 from blackout_env.heuristics import HeuristicPolicyMixture
 from blackout_env.train.offline_dataset import load_dataset_into
 from blackout_env.model.modules import (
@@ -79,6 +86,7 @@ from blackout_env.model.modules import (
     quantile_huber_loss,
 )
 from blackout_env.model.my_model import ATTENTION_DEPTH, N_ATTENTION_HEADS, N_DISCRETE_ACTIONS, MyModel
+from blackout_env.model.action_mask import masked_greedy
 from blackout_env.model.my_policy import DIRECTION_VECTORS, direction_vector_to_idx
 from blackout_env.train.ema import ema_update
 from blackout_env.train.replay_buffer import (
@@ -222,6 +230,12 @@ class QMIXConfig:
     # of exactly those actions -- in Run 5 that meant reinforcing the wall-walking the blocked
     # penalty was trying to remove.
     bc_loss_alpha: float = 0.0
+    # Drop directions that walk into a wall from every greedy choice -- acting, collecting, and the
+    # Double-DQN bootstrap action (never from the Q of a stored action; see model/action_mask.py).
+    # A blocked unit re-picks the same wall-ward direction forever because the state it observes
+    # barely changes, which is why Run 6 spent ~25% of unit-ticks blocked against the heuristics'
+    # ~1.5%; masking measured 24.7% -> 0.6% on the same checkpoint.
+    action_masking: bool = True
     # Fixed share of every batch drawn from each replay source (indexed like
     # replay_buffer.SOURCE_NAMES: dataset, self_vs_heuristic, self_play). When set, buffer_a/b hold
     # only the static dataset and are never written after loading, and each on-policy source with a
@@ -669,7 +683,11 @@ class QMIXTrainer:
         action below rather than ema_net's greedy Q.
         """
         obs_a, obs_b = obs[self.team_a_agents[0]], obs[self.team_b_agents[0]]
-        graphic, team_state, agent_states = self._to_batch(obs_a, obs_b)
+        # Team B acts on the canonical (mirrored) view the network is trained on -- see
+        # _mirror_batch / blackout_env.env.team_frame. Its own units land in rows 0-4 there,
+        # in ascending physical order, so `greedy[1]` still lines up slot-for-slot with
+        # team_b_agents; only the chosen compass index has to be reflected back to world.
+        graphic, team_state, agent_states = self._to_batch(obs_a, canonical_obs(obs_b))
 
         q_online, *_ = self.net(graphic, team_state, agent_states, n_quantiles=self.cfg.n_quantiles)  # [2,10,8]
         q_ema, *_ = self.ema_net(graphic, team_state, agent_states, n_quantiles=self.cfg.n_quantiles)
@@ -679,7 +697,10 @@ class QMIXTrainer:
         q_values[opponent_idx] = q_ema[opponent_idx]
 
         own_q = _own_team_rows(q_values, agent_states)  # [2, N_TEAM, 8]
-        greedy = own_q.argmax(dim=-1).cpu().numpy()  # [2, N_TEAM]
+        greedy = (
+            masked_greedy(own_q, graphic, agent_states) if self.cfg.action_masking else own_q.argmax(dim=-1)
+        ).cpu().numpy()  # [2, N_TEAM]
+        greedy[1] = mirror_direction_idx(greedy[1])  # canonical -> world, team B only
 
         # Explore branch: this episode's heuristic-mixture action (guided toward objectives,
         # not a uniform-random compass walk -- see conversation), snapped to the discrete
@@ -930,6 +951,24 @@ class QMIXTrainer:
             "demo": batch["demo"],  # [b] bool, BC target
         }
 
+    @staticmethod
+    def _mirror_batch(batch: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+        """
+        Maps a team-B stream batch into the canonical (team-A-looking) frame -- see
+        blackout_env.env.team_frame. Stored transitions stay in raw world coordinates; the
+        reflection is applied here, per sampled batch, so the network only ever sees one
+        orientation and the two streams' data reinforce each other instead of splitting the
+        network's capacity across two mirrored versions of the same task.
+        """
+        mirrored = dict(batch)
+        for field in ("graphic", "boot_graphic", "future_graphic"):
+            mirrored[field] = mirror_graphic(batch[field])
+        for field in ("agent_states", "boot_agent_states", "future_agent_states"):
+            mirrored[field] = mirror_agent_states(batch[field])
+        for field in ("actions", "action_window"):
+            mirrored[field] = mirror_action_idx(batch[field])
+        return mirrored
+
     def _merge_stream_batches(self, batch_a: dict[str, np.ndarray], batch_b: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
         """Concatenates two streams' sampled batches along dim 0 for one shared forward pass."""
         return {field: np.concatenate([batch_a[field], batch_b[field]], axis=0) for field in self._MERGE_FIELDS}
@@ -951,7 +990,8 @@ class QMIXTrainer:
         """
         if self.cfg.batch_source_fracs is None:
             main = self.buffer_a if stream == 0 else self.buffer_b
-            return self._sample_batch(main, batch_size, n_step, gamma, beta), [(main, batch_size)]
+            batch = self._sample_batch(main, batch_size, n_step, gamma, beta)
+            return (batch if stream == 0 else self._mirror_batch(batch)), [(main, batch_size)]
 
         min_rows = max(n_step, self.cfg.spr_k) + 1
         usable = [(buf, self.cfg.batch_source_fracs[src]) for src, buf in self._stream_buffers(stream) if len(buf) > min_rows]
@@ -966,7 +1006,7 @@ class QMIXTrainer:
         batches = [self._sample_batch(buf, q, n_step, gamma, beta, normalize=False) for buf, q in parts]
         batch = {field: np.concatenate([b[field] for b in batches], axis=0) for field in batches[0]}
         batch["is_weights"] = batch["is_weights"] / batch["is_weights"].max()
-        return batch, parts
+        return (batch if stream == 0 else self._mirror_batch(batch)), parts
 
     def _log_source_stats(self, merged: dict[str, np.ndarray], td_error_np: np.ndarray) -> None:
         """Splits buffer composition and this batch's return/TD-error by transition origin
@@ -1073,7 +1113,12 @@ class QMIXTrainer:
             boot_q_online, *_ = self.net(
                 t["boot_graphic"], t["boot_team_state"], t["boot_agent_states"], n_quantiles=self.cfg.n_quantiles
             )
-            boot_greedy = _own_team_rows(boot_q_online, t["boot_agent_states"]).argmax(dim=-1)  # [B, N_TEAM]
+            boot_own_q_online = _own_team_rows(boot_q_online, t["boot_agent_states"])  # [B, N_TEAM, A]
+            boot_greedy = (
+                masked_greedy(boot_own_q_online, t["boot_graphic"], t["boot_agent_states"])
+                if self.cfg.action_masking
+                else boot_own_q_online.argmax(dim=-1)
+            )  # [B, N_TEAM]
 
             _, boot_quantiles_target, _, _, boot_global_target = self.target_net(
                 t["boot_graphic"], t["boot_team_state"], t["boot_agent_states"], n_quantiles=self.cfg.n_quantiles

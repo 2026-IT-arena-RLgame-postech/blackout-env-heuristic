@@ -4,6 +4,13 @@ import numpy as np
 import torch
 
 from blackout_env.env.constants import unit_index
+from blackout_env.env.team_frame import (
+    canonical_obs,
+    canonical_unit_row,
+    is_team_b_view,
+    mirror_direction_idx,
+)
+from blackout_env.model.action_mask import masked_greedy
 from blackout_env.model.base import BaseModel
 from blackout_env.model.my_model import MyModel
 
@@ -43,13 +50,21 @@ class MyPolicy(BaseModel):
     from an argmax direction index to a continuous (dx, dy) vector.
     """
 
-    def __init__(self, net: MyModel, device: str | torch.device = "cpu") -> None:
+    def __init__(self, net: MyModel, device: str | torch.device = "cpu", mask_walls: bool = True) -> None:
         self._net = net
         self._device = torch.device(device)
+        # Keep in step with QMIXConfig.action_masking: a policy evaluated without the mask its
+        # targets were computed under is a different policy (see model/action_mask.py).
+        self._mask_walls = mask_walls
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         agents = list(obs.keys())
         shared_obs = obs[agents[0]]  # same graphic/team_state/agent_states for every agent here
+        # Team B is trained on -- and must therefore act on -- the mirrored view, where its own
+        # units sit in rows 0-4 (see blackout_env.env.team_frame). Team A's view is already
+        # canonical and passes through untouched.
+        team_b = is_team_b_view(shared_obs["agent_states"])
+        shared_obs = canonical_obs(shared_obs)
 
         graphic = (
             torch.tensor(shared_obs["graphic"], dtype=torch.float32, device=self._device)
@@ -66,6 +81,14 @@ class MyPolicy(BaseModel):
         with torch.no_grad():
             q_values, *_ = self._net(graphic, team_state, agent_states)  # [1, N_UNITS, 8]
 
-        best_direction = q_values.squeeze(0).argmax(dim=-1).cpu().numpy()  # [N_UNITS]
+        if self._mask_walls:
+            best_direction = masked_greedy(q_values, graphic, agent_states).squeeze(0).cpu().numpy()
+        else:
+            best_direction = q_values.squeeze(0).argmax(dim=-1).cpu().numpy()  # [N_UNITS]
+        if team_b:
+            best_direction = mirror_direction_idx(best_direction)  # canonical -> world
 
-        return {agent: DIRECTION_VECTORS[best_direction[unit_index(agent)]] for agent in agents}
+        return {
+            agent: DIRECTION_VECTORS[best_direction[canonical_unit_row(unit_index(agent), team_b)]]
+            for agent in agents
+        }
