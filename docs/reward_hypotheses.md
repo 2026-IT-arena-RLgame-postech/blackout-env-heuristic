@@ -6,6 +6,8 @@ Run 5(`checkpoints/offline/20260915-155519_23899`, 200k 스텝)가 절반을 넘
 텐서보드에서 나왔다. 검증이 진행되면 각 가설의 **상태**를 갱신할 것.
 
 리워드 구조 자체의 설계 의도는 `../reward_proposal.md`, 런별 기록은 `offline_pretrain_runs.md` 참고.
+휴리스틱 실험으로 측정한 게임 역학(경기가 첫 1분에 결정됨, 약탈·사망 규모, 차단 전술, Ψ 위험도의 클래스
+미구분 등)은 `heuristic_findings_for_reward_20260916.md` 참고.
 
 ---
 
@@ -364,8 +366,9 @@ Unity 확인 결과(`ItemObject`, `BuffItemEffect`, `LevelDirector.OnAbsorption`
   `BuffItemEffect`의 주석도 "흡수 포함 모든 퇴장에서 사라진다"고 명시한다.
 - 배터리는 정반대다. 흡수가 점수를 **확정**한다(`ScoreItemEffect`: `case ItemExitReason.Absorbed: // 잠금`).
 
-따라서 **특수 아이템의 가치는 흡수 직후 최대, 흡수 직전 최소**이고, 흡수 주기(기본 120초)에 따라 선형에 가깝게
-감소한다. 배터리에는 이런 시간 의존성이 없다.
+따라서 **특수 아이템의 가치는 흡수 직후 최대, 흡수 직전 최소**이고, 흡수 주기에 따라 선형에 가깝게
+감소한다. 배터리에는 이런 시간 의존성이 없다. (정정 2026-09-16: 흡수 주기는 C# 기본값 120초가 아니라
+`GameBalanceConfig.asset`의 **20초**다. `heuristic_findings_for_reward_20260916.md` §1, §4.5 참고.)
 
 - 특수 아이템은 중립 타일에만 스폰한다(`LevelDirector.FilterAvailableSpawnPos`).
 - 창고 타일 하나를 통째로 차지하고 병합되지 않으므로(`MaxItemAmount: 1`), **배터리 용량을 잡아먹는다** —
