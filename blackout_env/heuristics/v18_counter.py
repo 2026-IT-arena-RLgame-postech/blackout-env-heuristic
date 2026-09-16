@@ -24,7 +24,7 @@ import math
 
 import numpy as np
 
-from .strategic import BATTERY, FIRST_SPECIAL, HUNTER, STORAGE_ALLY, STORAGE_ENEMY
+from .strategic import BATTERY, HUNTER, STORAGE_ALLY, STORAGE_ENEMY
 from .v17_planner import StrategicHeuristicV17
 
 
@@ -45,6 +45,13 @@ class StrategicHeuristicV18(StrategicHeuristicV17):
         self.guard_radius = float(guard_radius)
         self.avoid_pickup_en_route = bool(avoid_pickup_en_route)
         self._last_graphic: np.ndarray | None = None
+        self._detour_maps: dict[tuple, np.ndarray] = {}
+        self._detour_version: tuple[bytes, bytes] | None = None
+
+    def reset(self) -> None:
+        super().reset()
+        self._detour_maps.clear()
+        self._detour_version = None
 
     def act(self, obs):
         self._last_graphic = next(iter(obs.values()))["graphic"] if obs else None
@@ -78,17 +85,40 @@ class StrategicHeuristicV18(StrategicHeuristicV17):
 
     # ------------------------------------------------------------------ opening race
 
+    def _field_items(self, graphic) -> np.ndarray:
+        """Batteries and special items lying outside every storage (computed once per tick)."""
+        return self._per_tick("field_items", graphic, lambda g: (
+            (g[..., BATTERY] > 1e-5) | self._special_mask(g)
+        ) & (g[..., STORAGE_ALLY] < 0.5) & (g[..., STORAGE_ENEMY] < 0.5))
+
+    def _item_free_walkable(self, walkable, graphic, open_cells) -> np.ndarray:
+        detour = walkable & ~self._field_items(graphic)
+        for cell in open_cells:
+            detour[cell] = walkable[cell]
+        return detour
+
+    def _item_free_distance_map(self, walkable, graphic, start, open_cells) -> np.ndarray:
+        """Distance map over ``_item_free_walkable``, memoised until the field items move.
+
+        Walkers cross a cell every few ticks, so most ticks reuse the previous map.
+        """
+        version = (self._field_items(graphic).tobytes(), walkable.tobytes())
+        if version != self._detour_version or len(self._detour_maps) > 512:
+            self._detour_version = version
+            self._detour_maps.clear()
+        key = (start, open_cells)
+        field = self._detour_maps.get(key)
+        if field is None:
+            field = self._distance_map(self._item_free_walkable(walkable, graphic, open_cells), start)
+            self._detour_maps[key] = field
+        return field
+
     def _navigate(self, name, state, states, target, kind, walkable, shape):
         if kind == "transform" and self.avoid_pickup_en_route and self._last_graphic is not None:
-            graphic = self._last_graphic
-            field_items = (
-                (graphic[..., BATTERY] > 1e-5) | np.any(graphic[..., FIRST_SPECIAL:] > 0.5, axis=-1)
-            ) & (graphic[..., STORAGE_ALLY] < 0.5) & (graphic[..., STORAGE_ENEMY] < 0.5)
-            detour = walkable & ~field_items
             pos = self._to_pixel(state[:2], shape)
-            detour[pos] = walkable[pos]
             if target is not None:
-                detour[target] = walkable[target]
-                if np.isfinite(self._distance_map(detour, pos)[target]):
-                    walkable = detour
+                open_cells = (pos, target)
+                field = self._item_free_distance_map(walkable, self._last_graphic, pos, open_cells)
+                if np.isfinite(field[target]):
+                    walkable = self._item_free_walkable(walkable, self._last_graphic, open_cells)
         return super()._navigate(name, state, states, target, kind, walkable, shape)

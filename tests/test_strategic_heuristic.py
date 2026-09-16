@@ -686,6 +686,34 @@ def _v17_observation():
     return {"graphic": graphic, "team_state": np.array([0, 0, 1, 1], np.float32), "agent_states": states}
 
 
+def test_v17_batched_store_scan_and_pixels_match_the_per_cell_reference():
+    policy = StrategicHeuristicV17()
+    rng = np.random.default_rng(7)
+    for trial in range(40):
+        o = _v17_observation()
+        graphic = o["graphic"]
+        storage = (graphic[..., 6] > 0.5) | (graphic[..., 7] > 0.5)
+        graphic[..., 8] = np.where(storage, rng.integers(0, 11, (24, 24)) / 15, 0).astype(np.float32)
+        graphic[..., 9:] = (storage[..., None] & (rng.random((24, 24, 4)) < 0.2)).astype(np.float32)
+        policy._tick = trial
+        for channel in (6, 7):
+            protected = np.zeros((24, 24), dtype=bool)
+            special = np.any(graphic[..., 9:] > 0.5, axis=-1)
+            for store in policy._stores(graphic, channel, protected):
+                amounts = [int(round(float(graphic[y, x, 8]) * 15.0)) for y, x in store.cells]
+                plain = [a for a, (y, x) in zip(amounts, store.cells) if not special[y, x]]
+                assert store.battery == float(sum(amounts))
+                assert store.specials == len(amounts) - len(plain)
+                assert store.free_battery_capacity == sum(10 - a for a in plain)
+                assert store.free_empty_tiles == sum(a == 0 for a in plain)
+            cells = [c for s in StrategicHeuristicV17._components(graphic[..., channel] > 0.5) for c in s]
+            assert policy._store_flags[channel] == (
+                any(graphic[y, x, 9] > 0.5 for y, x in cells), any(graphic[y, x, 10] > 0.5 for y, x in cells))
+    states = rng.uniform(-1.05, 1.05, (10, 12)).astype(np.float32)
+    assert StrategicHeuristicV17._state_pixels(states, (24, 24)) == [
+        StrategicHeuristicV17._to_pixel(row[:2], (24, 24)) for row in states]
+
+
 def test_v17_base_is_the_4x4_corner_square_around_spawn_and_camp_faces_the_centre():
     base = StrategicHeuristicV17._base_mask((22, 22), (24, 24))
     assert base.sum() == 16 and base[19, 19] and base[22, 22] and not base[18, 22]

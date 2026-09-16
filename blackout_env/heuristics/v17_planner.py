@@ -94,6 +94,11 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         self.hunter_mode = hunter_mode
         self.camp_engage_radius = float(camp_engage_radius)
         self._storage_fields: dict[tuple[str, int], np.ndarray] = {}
+        # Per-tick derived masks and per-episode component indices; see _per_tick/_components_index.
+        self._tick_cache: dict[str, tuple[int, np.ndarray, object]] = {}
+        self._cell_index: dict[int, tuple] = {}
+        self._store_flags: dict[int, tuple[bool, bool]] = {}  # storage channel -> (buff, debuff)
+        self._base_masks: dict[tuple, np.ndarray] = {}
         self.role_assignments: dict[str, str] = {}
         self.plan: dict[str, tuple[tuple[int, int] | None, str]] = {}
 
@@ -101,41 +106,81 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         super().reset()
         self._role_of.clear()
         self._storage_fields.clear()
+        self._tick_cache.clear()
+        self._cell_index.clear()
         self.role_assignments.clear()
         self.plan.clear()
 
     # ------------------------------------------------------------------ observation model
 
-    def _parse_unit(self, name, row, state, shape) -> _Unit:
-        slots = state[3:9]
-        slot = 1 + int(np.argmax(slots[1:])) if float(np.max(slots[1:])) > 1e-5 else 0
+    def _parse_unit(self, name, row, state, shape, pos=None) -> _Unit:
+        items = state[4:9].tolist()  # item slots 1..5; slot 0 (state[3]) means empty-handed
+        peak = max(items)
+        slot = 1 + items.index(peak) if peak > 1e-5 else 0
         return _Unit(
-            name=name, row=row, pos=self._to_pixel(state[:2], shape), cls=self._class_id(state),
-            slot=slot, amount=float(state[4]) * 15.0 if slot == 1 else 0.0,
+            name=name, row=row, pos=self._to_pixel(state[:2], shape) if pos is None else pos,
+            cls=self._class_id(state), slot=slot, amount=items[0] * 15.0 if slot == 1 else 0.0,
         )
 
+    @staticmethod
+    def _state_pixels(states, shape) -> list[tuple[int, int]]:
+        """``_to_pixel`` for every row at once (same float32 rounding, one array allocation)."""
+        h, w = shape
+        pixels = np.array(
+            [((1.0 - y) * 0.5 * h - 0.5, (x + 1.0) * 0.5 * w - 0.5)
+             for x, y in states[:, :2].tolist()], dtype=np.float32).tolist()
+        return [(min(h - 1, max(0, int(round(py)))), min(w - 1, max(0, int(round(px)))))
+                for py, px in pixels]
+
+    def _per_tick(self, name, graphic, build):
+        """Memoise ``build(graphic)`` for the current decision tick (read-only results)."""
+        entry = self._tick_cache.get(name)
+        if entry is not None and entry[0] == self._tick and entry[1] is graphic:
+            return entry[2]
+        value = build(graphic)
+        self._tick_cache[name] = (self._tick, graphic, value)
+        return value
+
+    def _special_mask(self, graphic) -> np.ndarray:
+        return self._per_tick(
+            "special", graphic, lambda g: np.any(g[..., FIRST_SPECIAL:] > 0.5, axis=-1))
+
     def _stores(self, graphic, channel, protected_mask) -> list[_Store]:
-        stores = []
-        special = np.any(graphic[..., FIRST_SPECIAL:] > 0.5, axis=-1)
-        for cells in self._cached_components(graphic[..., channel] > 0.5):
-            battery = 0.0
-            capacity = 0
-            empty = 0
-            specials = 0
-            for y, x in cells:
-                amount = int(round(float(graphic[y, x, BATTERY]) * 15.0))
-                battery += amount
-                if special[y, x]:
-                    specials += 1
-                    continue
-                capacity += 10 - amount
-                empty += int(amount == 0)
-            stores.append(_Store(
-                cells=cells, center=self._component_center(cells),
-                protected=bool(protected_mask[cells[0]]), battery=battery, specials=specials,
-                free_battery_capacity=capacity, free_empty_tiles=empty,
-            ))
-        return stores
+        components = self._cached_components(graphic[..., channel] > 0.5)
+        if not components:
+            self._store_flags[channel] = (False, False)
+            return []
+        ys, xs, starts, centers = self._components_index(components)
+        block = graphic[ys, xs]  # every storage cell of this team, all channels
+        # round() and rint() both round half to even; all sums below are small integers.
+        amounts = np.rint(block[:, BATTERY].astype(np.float64) * 15.0)
+        is_special = (block[:, FIRST_SPECIAL:] > 0.5).any(axis=1)
+        plain = ~is_special
+        battery = np.add.reduceat(amounts, starts).tolist()
+        specials = np.add.reduceat(is_special.astype(np.int64), starts).tolist()
+        capacity = np.add.reduceat(np.where(plain, 10.0 - amounts, 0.0), starts).tolist()
+        empty = np.add.reduceat((plain & (amounts == 0.0)).astype(np.int64), starts).tolist()
+        self._store_flags[channel] = (
+            bool((block[:, BUFF_SPEED] > 0.5).any()), bool((block[:, DEBUFF_SPEED] > 0.5).any()))
+        return [
+            _Store(cells=cells, center=centers[k], protected=bool(protected_mask[cells[0]]),
+                   battery=battery[k], specials=specials[k],
+                   free_battery_capacity=int(capacity[k]), free_empty_tiles=empty[k])
+            for k, cells in enumerate(components)
+        ]
+
+    def _components_index(self, components):
+        """Concatenated cell indices, component start offsets and centres (episode cache)."""
+        entry = self._cell_index.get(id(components))
+        if entry is None or entry[0] is not components:
+            cells = [c for component in components for c in component]
+            ys = np.fromiter((c[0] for c in cells), dtype=np.intp, count=len(cells))
+            xs = np.fromiter((c[1] for c in cells), dtype=np.intp, count=len(cells))
+            starts = np.cumsum([0] + [len(c) for c in components[:-1]]).astype(np.intp)
+            centers = [self._component_center(c) for c in components]
+            entry = (components, ys, xs, starts, centers)
+            self._cell_index[id(components)] = entry
+        return entry[1:]
 
     def _store_field(self, walkable, team: str, index: int, store: _Store) -> np.ndarray:
         """Path length from every cell to the nearest cell of a (static) storage component."""
@@ -173,12 +218,15 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
 
         ally_spawn = self._nearest_pixel(graphic[..., SPAWN_ALLY] > 0.5, (0, 0))
         enemy_spawn = self._nearest_pixel(graphic[..., SPAWN_ENEMY] > 0.5, (0, 0))
-        own = [self._parse_unit(n, row_for[n], states[row_for[n]], shape) for n in controlled]
+        pixels = self._state_pixels(states, shape)
+        own = [self._parse_unit(n, row_for[n], states[row_for[n]], shape, pixels[row_for[n]])
+               for n in controlled]
         enemies = []
-        for row in range(len(states)):
-            if states[row, 2] < 0:
-                unit = self._parse_unit(None, row, states[row], shape)
-                unit.in_base = bool(self._base_mask(enemy_spawn, shape)[unit.pos])
+        enemy_base = self._cached_base_mask(enemy_spawn, shape)
+        for row, side in enumerate(states[:, 2].tolist()):
+            if side < 0:
+                unit = self._parse_unit(None, row, states[row], shape, pixels[row])
+                unit.in_base = bool(enemy_base[unit.pos])
                 enemies.append(unit)
 
         ctx = {
@@ -192,14 +240,18 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             "remaining": max(0.0, time_left * MATCH_SECONDS),
             "lead": (float(team_state[0]) - float(team_state[1])) * 100.0,
         }
-        ctx["own_buff"] = any(graphic[y, x, BUFF_SPEED] > 0.5 for s in ctx["ally_stores"] for y, x in s.cells)
-        ctx["own_slowed"] = any(graphic[y, x, DEBUFF_SPEED] > 0.5 for s in ctx["enemy_stores"] for y, x in s.cells)
-        ctx["enemy_buff"] = any(graphic[y, x, BUFF_SPEED] > 0.5 for s in ctx["enemy_stores"] for y, x in s.cells)
-        ctx["enemy_slowed"] = any(graphic[y, x, DEBUFF_SPEED] > 0.5 for s in ctx["ally_stores"] for y, x in s.cells)
-        ctx["field_value"] = float(sum(
-            amount for y, x, amount in self._battery_pixels(graphic)
-            if graphic[y, x, STORAGE_ALLY] < 0.5 and graphic[y, x, STORAGE_ENEMY] < 0.5
-        ))
+        # Speed effects are the items sitting in each team's storages (set by _stores).
+        ctx["own_buff"] = self._store_flags[STORAGE_ALLY][0]
+        ctx["own_slowed"] = self._store_flags[STORAGE_ENEMY][1]
+        ctx["enemy_buff"] = self._store_flags[STORAGE_ENEMY][0]
+        ctx["enemy_slowed"] = self._store_flags[STORAGE_ALLY][1]
+        pixels = self._battery_pixels(graphic)
+        field: list[bool] = []
+        if pixels:
+            outside = (graphic[..., STORAGE_ALLY] < 0.5) & (graphic[..., STORAGE_ENEMY] < 0.5)
+            field = outside[[p[0] for p in pixels], [p[1] for p in pixels]].tolist()
+        # Summed one by one in scan order, as before, so the float total is unchanged.
+        ctx["field_value"] = float(sum(p[2] for p, keep in zip(pixels, field) if keep))
 
         self._update_roles(ctx)
         plan = self._plan(ctx)
@@ -212,6 +264,14 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         return actions
 
     # ------------------------------------------------------------------ helpers
+
+    def _cached_base_mask(self, spawn, shape) -> np.ndarray:
+        key = (spawn, tuple(shape))
+        mask = self._base_masks.get(key)
+        if mask is None:
+            mask = self._base_masks[key] = self._base_mask(spawn, shape)
+            mask.flags.writeable = False
+        return mask
 
     @staticmethod
     def _base_mask(spawn, shape) -> np.ndarray:
@@ -237,7 +297,7 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         if cached is not None:
             return cached
         shape, walkable = ctx["shape"], ctx["walkable"]
-        base = self._base_mask(ctx["enemy_spawn"], shape)
+        base = self._cached_base_mask(ctx["enemy_spawn"], shape)
         frontier = []
         for y, x in zip(*np.nonzero(walkable & ~base)):
             y, x = int(y), int(x)
@@ -369,7 +429,7 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
                 continue
             if unit.cls == COLLECTOR and role in ("carrier", "hunter"):
                 channel = SITE_CARRIER if role == "carrier" else SITE_HUNTER
-                target = self._nearest_component_center(graphic[..., channel] > 0.5, unit.pos)
+                target = self._nearest_site_center(graphic, channel, unit.pos)
                 plan[unit.name] = (target, "transform")
                 continue
             economic.append(unit)
@@ -382,6 +442,17 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
                 if plan[unit.name][1] == "hunt":
                     claimed.add(plan[unit.name][0])
         return plan
+
+    def _nearest_site_center(self, graphic, channel, origin):
+        """``_nearest_component_center`` over the episode component cache (sites are static)."""
+        components = self._cached_components(graphic[..., channel] > 0.5)
+        if not components:
+            return None
+        component = min(
+            components,
+            key=lambda c: min((p[0] - origin[0]) ** 2 + (p[1] - origin[1]) ** 2 for p in c),
+        )
+        return self._component_center(component)
 
     def _deposit_plan(self, ctx, unit, reserved_tiles):
         walkable = ctx["walkable"]
@@ -445,19 +516,48 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
                 continue
             tasks.append(((y, x), "special", float(channel), 1.0 if graphic[y, x, STORAGE_ENEMY] > 0.5 else 0.0))
 
+        # Everything that does not depend on the unit is computed once per task.
+        task_ys = [target[0] for target, _, _, _ in tasks]
+        task_xs = [target[1] for target, _, _, _ in tasks]
+        home = depot[task_ys, task_xs].tolist() if depot is not None and tasks else None
+        enemy_speeds = [self._speed(ctx, e.cls, enemy=True) for e in enemy_collectors]
+        hunter_danger, carrier_danger, contest = [], [], []
+        for target, kind, _, _ in tasks:
+            # Danger at the pickup point: enemy Hunters kill everything we have; for a
+            # Carrier any enemy contact is lethal.
+            danger = 0.0
+            for hunter in enemy_hunters:
+                separation = math.dist(target, hunter.pos)
+                if separation < 4.0:
+                    danger = max(danger, (4.0 - separation) / 4.0)
+            hunter_danger.append(danger)
+            for enemy in enemy_collectors:
+                separation = math.dist(target, enemy.pos)
+                if separation < 2.5:
+                    danger = max(danger, (2.5 - separation) / 2.5)
+            carrier_danger.append(danger)
+            # Contest: an enemy much closer to a field battery will usually take it first.
+            fastest = math.inf
+            if kind == "battery":
+                for enemy, enemy_speed in zip(enemy_collectors, enemy_speeds):
+                    fastest = min(fastest, math.dist(target, enemy.pos) / enemy_speed)
+            contest.append(fastest)
+
         pairs = []
         for unit in units:
             speed = self._speed(ctx, unit.cls)
             field = self._cached_distance_map(walkable, unit.pos)
+            distances = field[task_ys, task_xs].tolist() if tasks else []
+            dangers = carrier_danger if unit.cls == CARRIER else hunter_danger
             old = self._memory.get(unit.name)
             old_target = old.target if old is not None else None
             for task_index, (target, kind, value, extra) in enumerate(tasks):
-                distance = float(field[target])
-                if not np.isfinite(distance):
+                distance = distances[task_index]
+                if not math.isfinite(distance):
                     continue
                 t_pick = distance / speed
-                t_home = float(depot[target]) / speed if depot is not None else 10.0
-                if not np.isfinite(t_home):
+                t_home = home[task_index] / speed if home is not None else 10.0
+                if not math.isfinite(t_home):
                     t_home = 10.0
                 if kind == "battery":
                     gain = value
@@ -476,26 +576,9 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
                         gain += weight * max(0.0, ctx["absorb"] - t_pick)
                     if unit.cls == CARRIER:
                         gain *= 0.8
-                # Danger at the pickup point: enemy Hunters kill everything we have; for a
-                # Carrier any enemy contact is lethal.
-                danger = 0.0
-                for hunter in enemy_hunters:
-                    separation = math.dist(target, hunter.pos)
-                    if separation < 4.0:
-                        danger = max(danger, (4.0 - separation) / 4.0)
-                if unit.cls == CARRIER:
-                    for enemy in enemy_collectors:
-                        separation = math.dist(target, enemy.pos)
-                        if separation < 2.5:
-                            danger = max(danger, (2.5 - separation) / 2.5)
-                gain *= 1.0 - 0.6 * danger
-                # Contest: an enemy much closer to a field battery will usually take it first.
-                if kind == "battery":
-                    for enemy in enemy_collectors:
-                        enemy_time = math.dist(target, enemy.pos) / self._speed(ctx, enemy.cls, enemy=True)
-                        if enemy_time + 1.0 < t_pick:
-                            gain *= 0.75
-                            break
+                gain *= 1.0 - 0.6 * dangers[task_index]
+                if contest[task_index] + 1.0 < t_pick:
+                    gain *= 0.75
                 score = gain / (t_pick + t_home + 1.0)
                 if old_target == target:
                     score *= 1.12

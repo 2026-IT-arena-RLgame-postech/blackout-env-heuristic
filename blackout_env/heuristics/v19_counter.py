@@ -29,7 +29,7 @@ import math
 
 import numpy as np
 
-from .strategic import BATTERY, COLLECTOR, FIRST_SPECIAL, HUNTER, SITE_HUNTER, STORAGE_ALLY, STORAGE_ENEMY
+from .strategic import COLLECTOR, HUNTER, SITE_HUNTER
 from .v18_counter import StrategicHeuristicV18
 
 
@@ -62,9 +62,12 @@ class StrategicHeuristicV19(StrategicHeuristicV18):
         super().reset()
         self._walker_detour.clear()
 
+    def _sanctuary(self, ctx):
+        return self._per_tick("sanctuary", ctx["graphic"], self._sanctuary_of)
+
     @staticmethod
-    def _sanctuary(ctx):
-        tiles = [(int(y), int(x)) for y, x in zip(*np.nonzero(ctx["graphic"][..., SITE_HUNTER] > 0.5))]
+    def _sanctuary_of(graphic):
+        tiles = [(int(y), int(x)) for y, x in zip(*np.nonzero(graphic[..., SITE_HUNTER] > 0.5))]
         if not tiles:
             return tiles, None
         centre = (sum(t[0] for t in tiles) / len(tiles), sum(t[1] for t in tiles) / len(tiles))
@@ -111,8 +114,13 @@ class StrategicHeuristicV19(StrategicHeuristicV18):
         norm = math.hypot(*direction) or 1.0
         post = (centre[0] + direction[0] / norm * self.sentry_offset,
                 centre[1] + direction[1] / norm * self.sentry_offset)
-        cell = min(zip(*np.nonzero(ctx["walkable"])), key=lambda c: math.dist(c, post))
-        return (int(cell[0]), int(cell[1])), "patrol_defend"
+        # Walls are static within a match, so the nearest walkable cell to a post is too.
+        key = ("sentry_post", post)
+        cell = self._static_masks.get(key)
+        if cell is None:
+            cell = min(zip(*np.nonzero(ctx["walkable"])), key=lambda c: math.dist(c, post))
+            cell = self._static_masks[key] = (int(cell[0]), int(cell[1]))
+        return cell, "patrol_defend"
 
     # ------------------------------------------------------------------ walkers
 
@@ -138,11 +146,6 @@ class StrategicHeuristicV19(StrategicHeuristicV18):
         self._role_of = roles
         self.role_assignments = {u.name: roles[i] for i, u in enumerate(own)}
 
-    @staticmethod
-    def _item_mask(graphic):
-        return ((graphic[..., BATTERY] > 1e-5) | np.any(graphic[..., FIRST_SPECIAL:] > 0.5, axis=-1)) & (
-            graphic[..., STORAGE_ALLY] < 0.5) & (graphic[..., STORAGE_ENEMY] < 0.5)
-
     def _plan(self, ctx):
         plan = super()._plan(ctx)
         if not self.nearest_tile:
@@ -151,7 +154,6 @@ class StrategicHeuristicV19(StrategicHeuristicV18):
         if not tiles:
             return plan
         walkable = ctx["walkable"]
-        items = self._item_mask(ctx["graphic"])
         for i, unit in enumerate(ctx["own"]):
             if unit.cls != COLLECTOR or self._role_of.get(i) != "hunter":
                 continue
@@ -161,11 +163,8 @@ class StrategicHeuristicV19(StrategicHeuristicV18):
             direct_tile = min(tiles, key=lambda t: float(direct[t]))
             if not np.isfinite(direct[direct_tile]):
                 continue
-            detour_walkable = walkable & ~items
-            detour_walkable[unit.pos] = walkable[unit.pos]
-            for tile in tiles:
-                detour_walkable[tile] = walkable[tile]
-            detour = self._distance_map(detour_walkable, unit.pos)
+            detour = self._item_free_distance_map(
+                walkable, ctx["graphic"], unit.pos, (unit.pos, *tiles))
             detour_tile = min(tiles, key=lambda t: float(detour[t]))
             use_detour = float(detour[detour_tile]) <= float(direct[direct_tile]) + 1e-6
             self._walker_detour[unit.name] = use_detour
@@ -175,7 +174,7 @@ class StrategicHeuristicV19(StrategicHeuristicV18):
     def _navigate(self, name, state, states, target, kind, walkable, shape):
         if kind == "transform" and self._last_graphic is not None and name in self._walker_detour:
             if self._walker_detour[name]:
-                walkable = walkable & ~self._item_mask(self._last_graphic)
+                walkable = walkable & ~self._field_items(self._last_graphic)
                 walkable[self._to_pixel(state[:2], shape)] = True
                 if target is not None:
                     walkable[target] = True
