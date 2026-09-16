@@ -1232,9 +1232,47 @@ class QMIXTrainer:
                     # greedy policy is, compared against the reward scale of a single move.
                     "q_action_margin": (top2[..., 0] - top2[..., 1]).mean().item(),
                     "q_action_range": (own_q_values.max(dim=-1).values - own_q_values.min(dim=-1).values).mean().item(),
+                    **self._quantile_diagnostics(q_tot_online, tau, target),
                 }
 
         return total_loss, td_error.cpu().numpy()
+
+    @staticmethod
+    def _quantile_diagnostics(
+        q_tot_online: torch.Tensor, tau: torch.Tensor, target: torch.Tensor
+    ) -> dict[str, float]:
+        """
+        Shape of the learned return distribution, not just its mean.
+
+        q_value/mean alone cannot tell "the agent expects -1 with confidence" from "the agent has
+        no idea and the quantiles are smeared over a huge range", and in Run 5 the mean fell for
+        200k steps with no way to see which of those was happening. The spread also says whether
+        IQN is doing anything at all: a collapsed distribution means the tau input is being
+        ignored and the head has degenerated into a plain scalar Q.
+
+        crossing_frac is the standard IQN health check -- the quantile function must be
+        non-decreasing in tau, and nothing in the loss enforces that, so a rising crossing rate
+        means the head is fitting quantiles that contradict each other.
+
+        q_tot_online/target: [B, Q] quantile values; tau: [B, Q] the fractions they were drawn at.
+        """
+        order = tau.argsort(dim=1)
+        sorted_q = q_tot_online.gather(1, order)  # quantile values in increasing-tau order
+        n = sorted_q.shape[1]
+        low, mid, high = sorted_q[:, n // 10], sorted_q[:, n // 2], sorted_q[:, -(n // 10) - 1]
+        spread = (high - low).clamp_min(1e-6)
+        return {
+            "iqn_spread_p10_p90": (high - low).mean().item(),
+            "iqn_std": q_tot_online.std(dim=1).mean().item(),
+            "iqn_median": mid.mean().item(),
+            # >0: a long upper tail (a few optimistic outcomes); <0: a long lower tail.
+            "iqn_skew": ((high + low - 2 * mid) / spread).mean().item(),
+            "iqn_crossing_frac": (sorted_q.diff(dim=1) < 0).float().mean().item(),
+            "iqn_target_spread": (
+                target.gather(1, target.argsort(dim=1))[:, -(target.shape[1] // 10) - 1]
+                - target.gather(1, target.argsort(dim=1))[:, target.shape[1] // 10]
+            ).mean().item(),
+        }
 
     def train_step(self) -> float | None:
         if len(self.buffer_a) < self._train_start_size or len(self.buffer_b) < self._train_start_size:
@@ -1323,6 +1361,21 @@ class QMIXTrainer:
                         "std": self._last_q_std,
                         "action_margin": self._last_diagnostics["q_action_margin"],
                         "action_range": self._last_diagnostics["q_action_range"],
+                    },
+                    self.train_step_count,
+                )
+                # Return-distribution shape (see _quantile_diagnostics): whether the mean above is
+                # a confident estimate or a smear, whether IQN still varies with tau at all, and
+                # whether its quantiles have started crossing.
+                self.tb.scalars(
+                    "iqn",
+                    {
+                        "spread_p10_p90": self._last_diagnostics["iqn_spread_p10_p90"],
+                        "std": self._last_diagnostics["iqn_std"],
+                        "median": self._last_diagnostics["iqn_median"],
+                        "skew": self._last_diagnostics["iqn_skew"],
+                        "crossing_frac": self._last_diagnostics["iqn_crossing_frac"],
+                        "target_spread": self._last_diagnostics["iqn_target_spread"],
                     },
                     self.train_step_count,
                 )
