@@ -246,6 +246,62 @@ def test_policy_mixture_resamples_when_unity_episode_time_resets():
     assert mixture.current_sample != initial
 
 
+def _absorb(policy, o):
+    """Tick once near the end of an absorption window, then once right after it fires."""
+    o["team_state"][3] = 0.01
+    policy.act({f"unit_{i}": o for i in range(5)})
+    o["team_state"][3] = 1.0
+    policy.act({f"unit_{i}": o for i in range(5)})
+
+
+def test_policy_mixture_absorption_retunes_in_place_for_every_policy():
+    from blackout_env.heuristics import POLICY_REGISTRY, make_heuristic
+
+    for policy_id in POLICY_REGISTRY:
+        mixture = HeuristicPolicyMixture(seed=11, weights={policy_id: 1.0})
+        o = _observation()
+        mixture.act({f"unit_{i}": o for i in range(5)})
+        running = mixture._policy
+        before = mixture.current_sample
+        _absorb(mixture, o)
+        after = mixture.current_sample
+        assert mixture._policy is running, policy_id  # episode state survives
+        assert after.policy_id == before.policy_id
+        assert after.policy_seed != before.policy_seed
+        assert after.parameters["use_specialists"] == before.parameters["use_specialists"]
+        inner = running._policy if policy_id == "strategic_v4_near" else running
+        params = {k: v for k, v in after.parameters.items() if k != "profile"}
+        fresh = type(inner)(**params)
+        for name in params:
+            assert getattr(inner, name) == getattr(fresh, name), (policy_id, name)
+
+
+def test_policy_mixture_keeps_respec_cooldown_across_absorption():
+    mixture = HeuristicPolicyMixture(seed=3, weights={"strategic_v8": 1.0})
+    o = _observation()
+    mixture.act({f"unit_{i}": o for i in range(5)})
+    mixture._policy._hunter_cooldown = 500
+    _absorb(mixture, o)
+    assert mixture._policy._hunter_cooldown >= 498
+
+
+def test_v4_family_absorption_resample_keeps_running_policy():
+    family = V4PolicyFamily(seed=4, resample_each_absorption=True)
+    o = _observation()
+    family.act({f"unit_{i}": o for i in range(5)})
+    running = family._policy
+    before = family.current_sample
+    _absorb(family, o)
+    assert family._policy is running
+    assert family.current_sample.policy_seed != before.policy_seed
+    assert running.replan_interval == family.current_sample.parameters["replan_interval"]
+    o["team_state"][2] = 0.2
+    family.act({f"unit_{i}": o for i in range(5)})
+    o["team_state"][2] = 1.0
+    family.act({f"unit_{i}": o for i in range(5)})
+    assert family._policy is not running  # a real match reset still starts clean
+
+
 def test_v4_family_exact_profile_matches_v4_and_is_reproducible():
     first = V4PolicyFamily(seed=99, profile_weights={"exact": 1.0})
     second = V4PolicyFamily(seed=99, profile_weights={"exact": 1.0})

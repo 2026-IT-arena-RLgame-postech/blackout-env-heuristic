@@ -20,7 +20,9 @@ import numpy as np
 
 from .dynamic_roles import StrategicHeuristicV7
 from .phase_strategies import StrategicHeuristicV10, StrategicHeuristicV11
-from .strategic import BATTERY, CARRIER, HUNTER, STORAGE_ALLY, STORAGE_ENEMY
+from .strategic import (
+    ABSORPTION_INTERVAL_SECONDS, BATTERY, CARRIER, HUNTER, STORAGE_ALLY, STORAGE_ENEMY,
+)
 
 
 class StrategicHeuristicV13(StrategicHeuristicV11):
@@ -275,7 +277,7 @@ class StrategicHeuristicV16(StrategicHeuristicV10):
                 return super()._assign_economic_tasks(
                     names, row_for, states, graphic, team_state, walkable
                 )
-            absorption_seconds = max(0.0, float(team_state[3]) * 20.0)
+            absorption_seconds = max(0.0, float(team_state[3]) * ABSORPTION_INTERVAL_SECONDS)
             pairs: list[tuple[float, str, int]] = []
             for name in names:
                 state = states[row_for[name]]

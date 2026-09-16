@@ -8,7 +8,7 @@ import numpy as np
 
 from .advanced import StrategicHeuristicV2
 from .strategic import (
-    BATTERY, CARRIER, COLLECTOR, FIRST_SPECIAL, HUNTER, SPAWN_ALLY,
+    ABSORPTION_INTERVAL_SECONDS, BATTERY, CARRIER, COLLECTOR, FIRST_SPECIAL, HUNTER, SPAWN_ALLY,
     STORAGE_ALLY, WALL,
 )
 
@@ -83,7 +83,7 @@ class StrategicHeuristicV3(StrategicHeuristicV2):
         )
         unit_class = self._class_id(state)
         speed = 6.0 if unit_class == CARRIER else 4.0
-        seconds_to_absorption = max(0.0, float(team_state[3]) * 20.0)
+        seconds_to_absorption = max(0.0, float(team_state[3]) * ABSORPTION_INTERVAL_SECONDS)
         enemy_states = states[states[:, 2] < 0]
 
         def cost(component):

@@ -25,6 +25,11 @@ SPAWN_ALLY, SPAWN_ENEMY, STORAGE_ALLY, STORAGE_ENEMY, BATTERY = 4, 5, 6, 7, 8
 FIRST_SPECIAL = 9
 COLLECTOR, HUNTER, CARRIER = 0, 1, 2
 
+# team_state[3] is 1 - AbsorptionTimer.Ratio (MapObsAgent.cs), i.e. normalized by the absorption
+# interval.  The observation does not carry the interval itself, so it must match
+# GameBalanceConfig.asset's AbsorptionInterval.
+ABSORPTION_INTERVAL_SECONDS = 20.0
+
 
 @dataclass
 class _UnitMemory:
@@ -85,6 +90,20 @@ class StrategicHeuristic(BaseModel):
         self._special_scan.clear()
         self._tick = 0
         self._last_time_left = None
+
+    def retune(self, **parameters) -> None:
+        """Change constructor parameters mid-match while keeping all episode state.
+
+        Paths, escape timers, role assignments, strategy modes and caches survive; only the
+        named knobs change.  A throwaway instance is built so every value goes through the
+        constructor's own clamping.  Only for parameters stored under their own name and not
+        derived into other attributes (e.g. not V16's ``siege_raid_slots``).
+        """
+        template = type(self)(**parameters)
+        for name in parameters:
+            if not hasattr(self, name):
+                raise ValueError(f"{type(self).__name__} has no retunable attribute {name!r}")
+            setattr(self, name, getattr(template, name))
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         if not obs:

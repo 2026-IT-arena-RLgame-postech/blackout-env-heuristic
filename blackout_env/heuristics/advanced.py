@@ -15,6 +15,7 @@ import numpy as np
 
 from . import _native
 from .strategic import (
+    ABSORPTION_INTERVAL_SECONDS,
     BATTERY,
     CARRIER,
     COLLECTOR,
@@ -129,7 +130,7 @@ class StrategicHeuristicV2(StrategicHeuristic):
             (self._to_pixel(s[:2], graphic.shape[:2]), self._class_id(s))
             for s in enemy_states
         ]
-        absorption_seconds = max(0.0, float(team_state[3]) * 20.0)
+        absorption_seconds = max(0.0, float(team_state[3]) * ABSORPTION_INTERVAL_SECONDS)
         gap_points = max(0.0, (1.0 - float(team_state[0])) * 100.0)
         pairs: list[tuple[float, str, int]] = []
 

@@ -56,15 +56,36 @@ class V4PolicyFamily(BaseModel):
         # False reproduces the original once-per-match cadence (tournament/benchmark scripts
         # rely on one stable profile per match for their per-match reporting). True resamples
         # a fresh nearby profile at every absorption instead, for extra BC/offline-RL sample
-        # diversity within a single ~600s match -- see HeuristicPolicyMixture, which turns this
+        # diversity within a single 420s match -- see HeuristicPolicyMixture, which turns this
         # on for its training-data role.
         self.resample_each_absorption = bool(resample_each_absorption)
         self.current_sample: V4FamilySample | None = None
         self._policy: StrategicHeuristicV4 | None = None
-        self._last_boundary_value: float | None = None
+        self._last_time_left: float | None = None
+        self._last_absorption: float | None = None
         self.reset()
 
     def reset(self) -> V4FamilySample:
+        """Start a new match: fresh profile and a fresh V4 with no episode state."""
+        sample = self._draw_sample()
+        self._policy = StrategicHeuristicV4(**sample.parameters)
+        self.current_sample = sample
+        self._last_time_left = None
+        self._last_absorption = None
+        return sample
+
+    def resample_parameters(self) -> V4FamilySample:
+        """Draw a new profile but keep the running V4's paths, roles and caches."""
+        return self.adopt_sample(self._draw_sample())
+
+    def adopt_sample(self, sample: V4FamilySample) -> V4FamilySample:
+        """Apply an externally drawn sample (see HeuristicPolicyMixture) in place."""
+        assert self._policy is not None
+        self._policy.retune(**sample.parameters)
+        self.current_sample = sample
+        return sample
+
+    def _draw_sample(self) -> V4FamilySample:
         profiles = tuple(self.profile_weights)
         probabilities = np.asarray([self.profile_weights[p] for p in profiles], np.float64)
         probabilities /= probabilities.sum()
@@ -101,26 +122,25 @@ class V4PolicyFamily(BaseModel):
                 "protected_storage_bonus": float(rng.uniform(6.5, 7.5)),
             }
 
-        self._policy = StrategicHeuristicV4(**parameters)
-        self.current_sample = V4FamilySample(
+        return V4FamilySample(
             policy_id="strategic_v4_near", profile=profile,
             policy_seed=policy_seed, parameters=parameters,
         )
-        self._last_boundary_value = None
-        return self.current_sample
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         assert self._policy is not None
         if obs:
             team_state = next(iter(obs.values()))["team_state"]
-            if self.resample_each_absorption:
+            # episode_time_left only jumps upward at a match reset.
+            time_left = float(team_state[2])
+            if self._last_time_left is not None and time_left > self._last_time_left + 0.25:
+                self.reset()
+            elif self.resample_each_absorption:
                 # absorption_time_left counts down each tick and snaps back up the tick it
                 # fires (see qmix_trainer.collect_step) -- a tiny epsilon catches exactly that.
-                boundary_value, epsilon = float(team_state[3]), 1e-6
-            else:
-                # episode_time_left only jumps once per ~600s match reset.
-                boundary_value, epsilon = float(team_state[2]), 0.25
-            if self._last_boundary_value is not None and boundary_value > self._last_boundary_value + epsilon:
-                self.reset()
-            self._last_boundary_value = boundary_value
+                absorption_left = float(team_state[3])
+                if self._last_absorption is not None and absorption_left > self._last_absorption + 1e-6:
+                    self.resample_parameters()
+                self._last_absorption = absorption_left
+            self._last_time_left = time_left
         return self._policy.act(obs)

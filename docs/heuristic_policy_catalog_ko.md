@@ -11,13 +11,16 @@
 - 역할 배정 다양성은 `strategic_v7`, 의도적인 역할 리셋 궤적은 `strategic_v9`에서 얻는다.
 - `strategic_v5`, `strategic_v6`, `strategic_v8`은 성능 최적점이 아니라 각각 공격적 요격,
   저정체 위험 회피, 보수적 역할 리셋이라는 희귀 상태 분포를 제공한다.
-- 한 매치(~600초) 안에서는 `policy_id`(어떤 버전인지)를 바꾸거나 action noise를 넣지 않는다.
+- 한 매치(420초) 안에서는 `policy_id`(어떤 버전인지)를 바꾸거나 action noise를 넣지 않는다.
   `HeuristicPolicyMixture`는 매치 시작 시 `policy_id`를 한 번만 고른다.
 - 다만 세부 파라미터(작은 근접 변형)는 기본적으로(`resample_each_absorption=True`) 흡수
-  경계(absorption boundary, qmix_trainer가 말하는 이 게임의 실제 "에피소드" 경계, ~120초)마다
+  경계(absorption boundary, qmix_trainer가 말하는 이 게임의 실제 "에피소드" 경계, 20초)마다
   다시 샘플링한다 — 같은 `policy_id`를 유지한 채 V4-near 스타일의 좁은 구름 안에서만 값을 바꿔,
   기준 정책은 그대로 두고 BC/offline RL 샘플 다양성을 매치당 여러 번 확보한다. 매치 시작 시
   최초 1회 샘플링도 이 메커니즘의 특수 경우다.
+- 흡수 경계의 재샘플링은 실행 중인 정책 인스턴스의 파라미터만 제자리에서 바꾼다(`retune()`).
+  경로·탈출 타이머·역할 배정·전략 모드·respec 쿨다운·캐시는 경계를 넘어 유지된다. 역할 체계 자체를
+  바꾸는 `use_specialists`는 매치 단위로 고정한다.
 - 기존 버전은 삭제하거나 새 의미로 덮어쓰지 않는다. 새 전략은 새 `policy_id`로 추가한다.
 
 ## 정책 계보
@@ -159,34 +162,41 @@ teacher = V4PolicyFamily(
 `HeuristicPolicyMixture`의 기본 분포는 다음과 같다. 입력 가중치는 합이 1일 필요가 없으며 내부에서
 정규화된다. 0은 허용되지만 음수와 전체 합 0은 허용되지 않는다.
 
-2026-09-15에 `reports/heuristic_tournament_all17_targeted_replication_round2_20260915/`의
-leave-one-pair-out Bradley-Terry Elo 적합(정책당 200게임 이상, Elo 표준오차 약 19-24)을 근거로
-재조정했다. 예전 가중치는 토너먼트가 없던 시절 행동 카테고리 추정만으로 정한 것이었는데, 실측
-Elo와 크게 어긋나는 경우가 몇 있었다 — 특히 `v1`/`v2`가 실제로는 가장 약한 두 정책이었고,
-`v7`/`v8`/`v9`/`v12`는 반대로 v4 기준선보다 훨씬 강했다. `v8`은 v7과 Elo가 거의 같지만 respec
-트리거가 거의 발동하지 않아 대부분 게임이 v7과 구분되지 않으므로 비중을 크게 올리지 않았고,
-`v16`은 기반인 v10보다도 Elo가 낮아 오히려 비중을 낮췄다. `v4`/`v4_near`는 순위와 무관하게 실전
-기준/평가 정책이라는 이유로 여전히 가장 높은 비중을 유지한다.
+2026-09-15에 `reports/heuristic_draw_census_20260915_130356/elo_diagnostics_corrected/`의
+leave-one-pair-out Bradley-Terry Elo 적합(v4-near 제외 16정책 라운드로빈, 쌍당 10경기, Elo 표준오차
+약 28-39)을 근거로 재조정했다. 이 적합은 초반 결판 경기를 0-0 무승부로 기록하던 `BlackOutEnv` reset
+누수(commit 0f48f95)를 고친 뒤 다시 돌린 것이다. 그 전의
+`reports/heuristic_tournament_all17_targeted_replication_round2_20260915/` 적합은 경기 수는 많았지만
+약 27%가 그 가짜 무승부여서 실제 패배가 반승으로 숨어 있었다. 이후의 보호 스폰 창고 가드 수정(주로
+v14, 그리고 v16/v12/v1/v2에 영향)은 아직 반영되지 않았으므로 재레이팅이 필요하다.
 
-| policy_id | 기본 가중치 | Elo (round2) | 데이터 내 역할 |
+조정 원칙은 round2 기준 1차 조정과 같다.
+
+- `v4`/`v4_near`는 순위와 무관하게 실전 기준/평가 정책이므로 가장 높은 비중을 유지한다.
+- 수정된 순위에서 1·2위로 올라온 `v13`/`v11`과 바로 뒤의 `v12`/`v6`은 비중을 올렸다.
+- 무승부가 패배로 바로잡히자 하위권으로 떨어진 `v14`/`v5`는 `v1`/`v2`와 함께 대조군 최소치로 낮췄다.
+- `v8`은 순위가 높지만 respec 트리거가 거의 발동하지 않아 대부분 게임이 v7과 구분되지 않으므로 낮게 둔다.
+- `v16`은 여전히 기반인 v10보다 Elo가 낮아 낮게 둔다.
+
+| policy_id | 기본 가중치 | Elo (corrected, 풀 평균 1500 대비) | 데이터 내 역할 |
 |---|---:|---:|---|
-| `strategic_v1` | 2% | -123 | 단순 기준 행동 (가장 약함, 대조군으로만 유지) |
-| `strategic_v2` | 3% | -66 | 전역 경제 배정 (2번째로 약함) |
-| `strategic_v3` | 8% | +22 | 안전 적재 |
-| `strategic_v4` | 16% | +5 | 주 교사 정책 (순위와 무관하게 유지) |
-| `strategic_v4_near` | 13% | +11 | V4 주변 조밀한 변형 |
-| `strategic_v5` | 2% | -16 | 공격적 예측 요격 (의도적으로 약함) |
-| `strategic_v6` | 7% | +21 | 위험 회피·저정체 경로 |
-| `strategic_v7` | 9% | +54 | 동적 역할 배분 (전체 1위) |
-| `strategic_v8` | 3% | +52 | 보수적 역할 리셋 대조군 (respec 희귀해 v7과 대부분 중복) |
-| `strategic_v9` | 6% | +33 | 실제 역할 리셋 trajectory |
-| `strategic_v10` | 7% | +20 | 국면별 역할/목표 전환 |
-| `strategic_v11` | 4% | -2 | 흡수 직전 다중-unit 약탈 |
-| `strategic_v12` | 6% | +42 | 리드 보존·창고 방어 (전체 3위) |
-| `strategic_v13` | 3% | -1 | 지속 공성 약탈 |
-| `strategic_v14` | 4% | +8 | 약탈 대응 홈 수비 (v4보다 강함) |
-| `strategic_v15` | 2% | -44 | Carrier 처리량 러시 (실제로 약함) |
-| `strategic_v16` | 3% | -17 | V10 기반 조건부 공성·수비·수송 전환 (기반 V10보다 약함) |
+| `strategic_v1` | 2% | -237 | 단순 기준 행동 (가장 약함, 대조군으로만 유지) |
+| `strategic_v2` | 2% | -68 | 전역 경제 배정 |
+| `strategic_v3` | 7% | +62 | 안전 적재 |
+| `strategic_v4` | 16% | +60 | 주 교사 정책 (순위와 무관하게 유지) |
+| `strategic_v4_near` | 13% | — | V4 주변 조밀한 변형 (토너먼트 미포함) |
+| `strategic_v5` | 2% | -166 | 공격적 예측 요격 (직접 대전에서 약함) |
+| `strategic_v6` | 7% | +72 | 위험 회피·저정체 경로 |
+| `strategic_v7` | 6% | +50 | 동적 역할 배분 |
+| `strategic_v8` | 3% | +60 | 보수적 역할 리셋 대조군 (respec 희귀해 v7과 대부분 중복) |
+| `strategic_v9` | 6% | +60 | 실제 역할 리셋 trajectory |
+| `strategic_v10` | 7% | +64 | 국면별 역할/목표 전환 |
+| `strategic_v11` | 7% | +84 | 흡수 직전 다중-unit 약탈 (2위) |
+| `strategic_v12` | 7% | +79 | 리드 보존·창고 방어 (3위) |
+| `strategic_v13` | 7% | +103 | 지속 공성 약탈 (1위) |
+| `strategic_v14` | 2% | -171 | 약탈 대응 홈 수비 (가드 수정 전 수치) |
+| `strategic_v15` | 3% | -13 | Carrier 처리량 러시 |
+| `strategic_v16` | 3% | -37 | V10 기반 조건부 공성·수비·수송 전환 (기반 V10보다 약함) |
 
 ```python
 from blackout_env import HeuristicPolicyMixture
@@ -207,7 +217,7 @@ actions = teacher.act(observations)
 첫 transition 전에 provenance를 기록할 수 있도록 명시적 `reset()`을 권장한다.
 
 `resample_each_absorption=True`(기본값)이면 `act()`가 흡수 경계(`team_state[3]`가 증가하는 tick)도
-감지해 `policy_id`는 그대로 둔 채 파라미터만 다시 샘플링한다 — `current_sample.policy_seed`와
+감지해 `policy_id`와 정책 인스턴스는 그대로 둔 채 파라미터만 다시 샘플링해 제자리에서 적용한다 — `current_sample.policy_seed`와
 `parameters`가 흡수마다 바뀔 수 있으므로, 흡수 단위로 provenance를 남기려면 매 흡수 경계 직후
 `current_sample`을 다시 읽어야 한다.
 
@@ -298,7 +308,7 @@ teacher = make_heuristic("strategic_v9")
 `perturb=True`이면 일반 정책에 다음 파라미터를 샘플링한다 (기본은 흡수 단위 재샘플링,
 `resample_each_absorption=False`면 매치 단위).
 
-- `use_specialists`: 92% 확률로 true
+- `use_specialists`: 92% 확률로 true (역할 체계를 바꾸므로 흡수 재샘플링과 무관하게 매치 단위로 고정)
 - `replan_interval`: 8–13틱
 - `threat_radius`: 0.135–0.185
 - V5 추가: `intercept_margin_seconds` 0.20–0.40,
@@ -471,7 +481,7 @@ cd /Users/mac/project/26rl/blackout-env
 
 완료 시 `reports/heuristic_tournament_20260913/win_rate_heatmap.png`에 히트맵을 저장하고,
 동일 폴더에 재분석 가능한 `pair_results.csv`, `tournament.json`도 함께 저장한다. 기본 전체 정책군은
-13개이므로 78개 비대각 쌍 × 5 seed × 양 진영 = 780경기다. `--policies v4 v7 v10 v11 v12`처럼
+17개이므로 136개 비대각 쌍 × 5 seed × 양 진영 = 1,360경기다. `--policies v4 v7 v10 v11 v12`처럼
 부분군을 먼저 확인한 뒤 전체를 돌릴 수도 있다.
 
 ## 재현성과 성능 주의사항

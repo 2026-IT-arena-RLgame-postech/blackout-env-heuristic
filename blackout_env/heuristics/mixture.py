@@ -72,11 +72,14 @@ class HeuristicPolicyMixture(BaseModel):
     dataset still covers several strategies and navigation styles.  Within a match, by
     default (``resample_each_absorption``) the small numeric perturbation around that same
     strategy is redrawn at every absorption boundary (this game's natural episode boundary,
-    see qmix_trainer's module docstring) instead of staying fixed for the whole ~600s match,
+    see qmix_trainer's module docstring) instead of staying fixed for the whole 420s match,
     the same way V4PolicyFamily stays a "near V4" policy while sampling a fresh nearby point
     each time -- more local coverage per match for BC/offline-RL, without ever swapping to a
-    behaviourally different heuristic mid-match.  ``current_sample`` is deliberately public
-    so collectors can persist provenance with every trajectory.
+    behaviourally different heuristic mid-match.  The redraw retunes the running policy in
+    place, so its paths, role assignments, strategy mode and respec state carry across the
+    boundary; ``use_specialists`` is structural (it switches the role scheme) and stays fixed
+    for the match.  ``current_sample`` is deliberately public so collectors can persist
+    provenance with every trajectory.
     """
 
     def __init__(
@@ -142,6 +145,7 @@ class HeuristicPolicyMixture(BaseModel):
         self._policy_id: str | None = None
         self._last_time_left: float | None = None
         self._last_absorption: float | None = None
+        self._match_use_specialists: bool | None = None
         self.reset()
 
     def reset(self) -> PolicySample:
@@ -152,14 +156,15 @@ class HeuristicPolicyMixture(BaseModel):
         self._policy_id = str(self._rng.choice(names, p=probabilities))
         self._last_time_left = None
         self._last_absorption = None
-        return self._resample_variation()
+        return self._resample_variation(new_match=True)
 
-    def _resample_variation(self) -> PolicySample:
+    def _resample_variation(self, *, new_match: bool = False) -> PolicySample:
         """Redraw the bounded parameter cloud around the match's already-chosen policy_id.
 
-        Called once from reset() and, while resample_each_absorption is set, again at every
-        absorption boundary -- policy_id itself never changes here, only its nearby numeric
-        knobs do.
+        Called once from reset() (``new_match``: builds a fresh policy) and, while
+        resample_each_absorption is set, again at every absorption boundary -- there
+        policy_id never changes and the running policy is retuned in place, keeping its
+        episode state.
         """
         policy_id = self._policy_id
         assert policy_id is not None
@@ -176,10 +181,19 @@ class HeuristicPolicyMixture(BaseModel):
                 "profile": family.current_sample.profile,
                 **family.current_sample.parameters,
             }
-            self._policy = family
+            if new_match:
+                self._policy = family
+            else:
+                # The fresh family only served as the sampler for this seed's profile.
+                assert isinstance(self._policy, V4PolicyFamily)
+                self._policy.adopt_sample(family.current_sample)
         elif self.perturb:
+            # Always consume the draw so the rest of the stream is identical either way.
+            use_specialists = bool(episode_rng.random() >= 0.08)
+            if new_match:
+                self._match_use_specialists = use_specialists
             parameters = {
-                "use_specialists": bool(episode_rng.random() >= 0.08),
+                "use_specialists": self._match_use_specialists,
                 "replan_interval": int(episode_rng.integers(8, 14)),
                 "threat_radius": float(episode_rng.uniform(0.135, 0.185)),
             }
@@ -239,7 +253,10 @@ class HeuristicPolicyMixture(BaseModel):
                 "threat_radius": 0.16,
             }
         if policy_id != "strategic_v4_near":
-            self._policy = make_heuristic(policy_id, **parameters)
+            if new_match:
+                self._policy = make_heuristic(policy_id, **parameters)
+            else:
+                self._policy.retune(**parameters)
         self.current_sample = PolicySample(policy_id, policy_seed, parameters)
         return self.current_sample
 
