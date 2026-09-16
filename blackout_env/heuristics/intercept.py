@@ -81,16 +81,21 @@ class StrategicHeuristicV5(StrategicHeuristicV4):
         states: np.ndarray,
         graphic: np.ndarray,
     ) -> tuple[int, int] | None:
+        # Every exit below this point returns None without cargo to intercept, so skip the
+        # distance map and route search entirely on the (common) ticks with none.
+        if not any(enemy[2] < 0 and self._is_holding(enemy) for enemy in states):
+            return None
         walkable = graphic[..., WALL] < 0.5
         hunter_pixel = self._to_pixel(hunter[:2], graphic.shape[:2])
-        hunter_distances = self._distance_map(walkable, hunter_pixel)
+        # Static-map episode caches: same values as the uncached helpers, computed once.
+        hunter_distances = self._cached_distance_map(walkable, hunter_pixel)
         storage_centers = [
             self._component_center(component)
-            for component in self._components(graphic[..., STORAGE_ENEMY] > 0.5)
+            for component in self._cached_components(graphic[..., STORAGE_ENEMY] > 0.5)
         ]
         if not storage_centers:
             return None
-        protected = self._protected_enemy_storage_mask(graphic)
+        protected = self._cached_protected_enemy_storage_mask(graphic)
         enemy_spawn = self._nearest_pixel(graphic[..., SPAWN_ENEMY] > 0.5, hunter_pixel)
         hunter_cells_per_tick = 6.0 / 50.0
         margin_ticks = self.intercept_margin_seconds * 50.0
@@ -111,7 +116,7 @@ class StrategicHeuristicV5(StrategicHeuristicV4):
             )
             routes = []
             for storage in storage_centers:
-                path = self._astar(walkable, enemy_pixel, storage)
+                path = self._cached_astar(walkable, enemy_pixel, storage)
                 if path:
                     heading = np.asarray(path[min(2, len(path) - 1)], dtype=np.float32) - enemy_pixel
                     alignment = 0.0

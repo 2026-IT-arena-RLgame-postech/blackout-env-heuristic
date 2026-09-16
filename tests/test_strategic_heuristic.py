@@ -526,6 +526,35 @@ def test_v6_cargo_path_detours_around_hunter_risk():
     assert abs(float(action[1])) > 0.2  # leaves the direct horizontal collision corridor
 
 
+def test_v6_numba_risk_astar_matches_python_paths_exactly():
+    from blackout_env.heuristics import _native
+
+    if not _native.NUMBA_AVAILABLE:
+        return
+    rng = np.random.default_rng(1)
+    policy = StrategicHeuristicV6()
+    yy, xx = np.indices((24, 24), dtype=np.float32)
+    for trial in range(200):
+        walkable = rng.random((24, 24)) > rng.uniform(0.05, 0.4)
+        risk = np.zeros((24, 24), np.float32)
+        for _ in range(rng.integers(0, 6)):
+            ey, ex = rng.uniform(0, 24, 2)
+            risk += np.exp(-np.sqrt((yy - ey) ** 2 + (xx - ex) ** 2) / 3.0).astype(np.float32)
+        if trial % 3 == 0:
+            risk[rng.random((24, 24)) < 0.2] = np.float32(0.15)  # the narrow-penalty threshold
+        policy.risk_weight = float(rng.uniform(0.5, 4.2))
+        policy._active_risk = risk
+        start = tuple(int(v) for v in rng.integers(0, 24, 2))
+        goal = tuple(int(v) for v in rng.integers(0, 24, 2))
+        fast = policy._astar(walkable, start, goal)
+        _native.NUMBA_AVAILABLE = False
+        try:
+            slow = policy._astar(walkable, start, goal)
+        finally:
+            _native.NUMBA_AVAILABLE = True
+        assert fast == slow, (trial, start, goal)
+
+
 def test_v7_delays_hunter_and_respects_distinct_specialist_quotas():
     policy = StrategicHeuristicV7(
         hunter_activation_time=0.4, hunter_activation_field_battery=0.0
