@@ -5,14 +5,16 @@ from .ffn_block import SwiGLUBlock
 
 
 class GraphicEncoder(nn.Module):
-    def __init__(self, hidden_size : int = 256, in_channels : int = 13) -> None:
+    def __init__(self, hidden_size : int = 256, in_channels : int = 17) -> None:
         super(GraphicEncoder, self).__init__()
 
         self.hidden_size = hidden_size
 
-        # graphic : [24, 24, 13] = [H, W, C] from MyObsPreprocessor.preprocess_team_graphics
-        # (8 base one-hot + 1 battery scalar + 4 item one-hot; no unit channels — units are
-        # carried by agent_states instead)
+        # graphic : [24, 24, 17] = [H, W, C] — 13 channels from
+        # MyObsPreprocessor.preprocess_team_graphics (8 base one-hot + 1 battery scalar +
+        # 4 item one-hot) plus the 4 unit-occupancy channels MyModel.forward rasterizes from
+        # agent_states (model/unit_channels.py). Units used to reach the network only as
+        # agent_states coordinate rows, leaving this encoder unable to place them on the map.
         #
         # Sized down from an earlier 64/128/256-channel version (ImageNet-backbone-scale) after
         # observing grad_norm/graphic_encoder collapse ~7 orders of magnitude within a few

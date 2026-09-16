@@ -234,8 +234,11 @@ class QMIXConfig:
     # Double-DQN bootstrap action (never from the Q of a stored action; see model/action_mask.py).
     # A blocked unit re-picks the same wall-ward direction forever because the state it observes
     # barely changes, which is why Run 6 spent ~25% of unit-ticks blocked against the heuristics'
-    # ~1.5%; masking measured 24.7% -> 0.6% on the same checkpoint.
-    action_masking: bool = True
+    # ~1.5%; masking measured 24.7% -> 0.6% on the same checkpoint but moved the score margin not
+    # at all. Off by default: the wall channel is in the observation, so avoiding walls is
+    # something the net should learn -- a hand-written mask hides whether it did. Turn it on to
+    # take the blocked-penalty term out of the return, or as a fallback if blocking persists.
+    action_masking: bool = False
     # Fixed share of every batch drawn from each replay source (indexed like
     # replay_buffer.SOURCE_NAMES: dataset, self_vs_heuristic, self_play). When set, buffer_a/b hold
     # only the static dataset and are never written after loading, and each on-policy source with a

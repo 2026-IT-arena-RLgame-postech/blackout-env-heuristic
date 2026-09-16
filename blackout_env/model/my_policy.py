@@ -50,7 +50,7 @@ class MyPolicy(BaseModel):
     from an argmax direction index to a continuous (dx, dy) vector.
     """
 
-    def __init__(self, net: MyModel, device: str | torch.device = "cpu", mask_walls: bool = True) -> None:
+    def __init__(self, net: MyModel, device: str | torch.device = "cpu", mask_walls: bool = False) -> None:
         self._net = net
         self._device = torch.device(device)
         # Keep in step with QMIXConfig.action_masking: a policy evaluated without the mask its

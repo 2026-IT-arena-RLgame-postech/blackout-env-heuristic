@@ -10,6 +10,7 @@ from blackout_env.model.modules import (
     VectorEncoder,
     build_grid_position_ids,
 )
+from blackout_env.model.unit_channels import unit_channels
 
 N_QUANTILES_DEFAULT = 32  # quantile samples used when the caller doesn't ask for a specific count
 
@@ -194,6 +195,10 @@ class MyModel(nn.Module):
                            token, used as QMixer's hypernetwork input.
         """
         B = graphic.shape[0]
+        # Units are absent from the env's graphic channels, so paint them in here (ally/enemy
+        # counts + carried battery) -- derived from agent_states, which every caller already
+        # passes, so no stored observation has to change. See model/unit_channels.py.
+        graphic = torch.cat((graphic, unit_channels(agent_states, graphic.shape[-2], graphic.shape[-1])), dim=1)
         vis_tokens = self.graphic_encoder(graphic)                   # [B, 36, hidden]
         vec_tokens = self.vector_encoder(agent_states, team_state)   # [B, 11, hidden]
         vec_tokens = vec_tokens + self.vec_slot_emb(self.vec_slot_ids)[None, :, :]
