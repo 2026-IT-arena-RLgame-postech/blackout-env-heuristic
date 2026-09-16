@@ -152,3 +152,42 @@ def test_real_map_is_symmetric_under_the_mirror(row_index):
     assert np.array_equal(mirrored[..., WALL] > 0.5, graphic[..., WALL] > 0.5)
     assert np.array_equal(mirrored[..., SPAWN_ALLY] > 0.5, graphic[..., SPAWN_ENEMY] > 0.5)
     assert np.array_equal(mirrored[..., STORAGE_ALLY] > 0.5, graphic[..., STORAGE_ENEMY] > 0.5)
+
+
+def test_mirrored_stream_keeps_its_buffer_indices():
+    """Priorities are written back by index, so mirroring must not touch (or reorder) them."""
+    import numpy as np
+
+    from blackout_env.train.qmix_trainer import QMIXConfig, QMIXTrainer
+    from blackout_env.train.replay_buffer import SOURCE_DATASET
+
+    trainer = QMIXTrainer(
+        env=None,
+        config=QMIXConfig(buffer_capacity=512, device="cpu", tb_log_dir=None, batch_size=8, spr_k=3),
+    )
+    rng = np.random.default_rng(0)
+    shapes = (trainer.buffer_b.graphic.shape[1:], trainer.buffer_b.team_state.shape[1:],
+              trainer.buffer_b.agent_states.shape[1:])
+    for i in range(200):
+        states = rng.uniform(-1, 1, size=shapes[2]).astype(np.float32)
+        states[:5, 2], states[5:, 2] = -1.0, 1.0  # team B view
+        trainer.buffer_b.push(
+            rng.random(shapes[0]).astype(np.float32), rng.random(shapes[1]).astype(np.float32),
+            states, rng.integers(0, 8, size=10), float(rng.normal()), bool(i % 53 == 52),
+            source=SOURCE_DATASET, demo=True,
+        )
+
+    raw = trainer._sample_batch(trainer.buffer_b, 8, n_step=3, gamma=0.99, beta=0.4)
+    mirrored = trainer._mirror_batch(raw)
+    assert np.array_equal(mirrored["indices"], raw["indices"])
+    assert np.array_equal(mirrored["is_weights"], raw["is_weights"])
+    assert np.array_equal(mirrored["source"], raw["source"])
+    assert np.array_equal(mirrored["demo"], raw["demo"])
+    assert np.array_equal(mirrored["n_step_return"], raw["n_step_return"])
+    # and the observation really did change, so the test above is not vacuous
+    assert not np.array_equal(mirrored["graphic"], raw["graphic"])
+
+    batch, parts = trainer._sample_stream(1, 8, n_step=3, gamma=0.99, beta=0.4)
+    assert sum(n for _, n in parts) == 8
+    assert batch["graphic"].shape[0] == 8
+    assert bool((batch["agent_states"][:, 0, 2] > 0).all())  # own team leads after mirroring
