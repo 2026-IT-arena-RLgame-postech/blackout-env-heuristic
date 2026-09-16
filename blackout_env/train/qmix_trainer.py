@@ -76,6 +76,7 @@ from blackout_env.env.team_frame import (
     mirror_graphic,
 )
 from blackout_env.heuristics import HeuristicPolicyMixture
+from blackout_env.train.input_reliance import input_reliance_probe
 from blackout_env.train.offline_dataset import load_dataset_into
 from blackout_env.model.modules import (
     AttentionLayers,
@@ -1471,6 +1472,16 @@ class QMIXTrainer:
                     self.train_step_count,
                 )
                 self._log_source_stats(merged, td_error_np)
+                # Whether Q reads the map at all, and whether SPR has collapsed -- the pair that
+                # explained every run's first 7-10k steps of a dead graphic encoder (see
+                # train/input_reliance.py). The online net is in train mode here; no dropout or
+                # batch-norm in MyModel, so eval() is not needed for a faithful probe.
+                with _maybe_autocast(self.device, self.cfg.amp_dtype):
+                    probe = input_reliance_probe(
+                        self.net, tensors["graphic"], tensors["team_state"], tensors["agent_states"],
+                        _own_team_rows, seed=self.train_step_count,
+                    )
+                self.tb.scalars("probe", probe, self.train_step_count)
                 # Monotonicity "clamp pressure" (see clamp_pressure_stats docstring): how hard
                 # each mixer hypernetwork's raw (pre-abs) output is being pushed negative by
                 # gradient descent, i.e. how much the QMIX non-negative-weight constraint is
