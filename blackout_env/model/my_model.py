@@ -22,6 +22,8 @@ N_SPR_CLS_TOKENS = 1  # dedicated learned query token for the SPR aux loss -- se
 N_DISCRETE_ACTIONS = 8  # 8 compass directions, see my_policy.py:DIRECTION_VECTORS
 N_ATTENTION_HEADS = 8
 ATTENTION_DEPTH = 4
+# RoPE frequency base, sized for a 6x6 grid rather than a text sequence -- see RotaryEmbedding2D.
+ROPE_BASE = 10.0
 
 # Token-type ids for the trunk sequence: which tokens are "graphic", "unit", "global"
 # (team_state), or the dedicated SPR CLS token — see MyModel's token_type_emb.
@@ -47,10 +49,13 @@ class MyModel(nn.Module):
     three things before attention:
       - a learned token-type embedding (graphic / unit / global), added to every token, so
         attention can tell which "kind" of token it's looking at;
-      - 2D RoPE applied only to the 36 graphic tokens (unit/global tokens get row=col=0,
-        which is a no-op rotation — see RotaryEmbedding2D), so attention can additionally
-        tell *where in the 6x6 map* a graphic token came from, and reason about relative
-        spatial offsets between them;
+      - 2D RoPE over half of each head's dims (the other half is left unrotated for
+        content-based matching — see apply_rope), so attention can tell *where in the 6x6 map*
+        a token sits and reason about relative spatial offsets. Vision tokens get their grid
+        cell, unit tokens their real (fractional) position, and team_state/spr_cls the grid
+        centre. Unit tokens used to get row=col=0 like the other non-grid tokens, which left
+        attention no positional way to connect a unit to the vision tokens covering the ground
+        it stands on -- it had to decode raw coordinates out of token content instead;
       - a learned per-slot identity embedding (vec_slot_emb) over the 10 unit tokens + 1
         team_state token, added to vec_tokens before the type embedding. Without this, two
         units with identical agent_states (e.g. stacked at the same spawn point) are
@@ -127,9 +132,9 @@ class MyModel(nn.Module):
         spr_cls_ids = torch.arange(N_SPR_CLS_TOKENS, dtype=torch.long)
         self.register_buffer("spr_cls_ids", spr_cls_ids, persistent=False)
 
-        # Per-slot identity embedding for the 10 unit tokens + 1 team_state token: unit tokens
-        # get no positional signal from RoPE (row=col=0, a no-op -- see class docstring) and
-        # token_type_emb only tells attention "this is *a* unit token", identical for all 10.
+        # Per-slot identity embedding for the 10 unit tokens + 1 team_state token. RoPE now
+        # gives unit tokens their map position, but two units standing on the same spot still
+        # share it, and token_type_emb only says "this is *a* unit token", identical for all 10.
         # Two units with identical agent_states rows (e.g. stacked at the same spawn point)
         # therefore produced byte-identical Q-values and thus always chose the same action --
         # a self-reinforcing lockstep with no way to break symmetry, since self-attention is
@@ -140,18 +145,17 @@ class MyModel(nn.Module):
         vec_slot_ids = torch.arange(n_vector_tokens, dtype=torch.long)
         self.register_buffer("vec_slot_ids", vec_slot_ids, persistent=False)
 
-        # 2D RoPE cos/sin for the trunk sequence, precomputed once (deterministic given the
-        # fixed grid size + token layout above, so there's no need to recompute it per call).
-        # n_extra_tokens covers every non-spatial token (unit + team_state + spr_cls) -- all
-        # get row=col=0 (no-op rotation, see build_grid_position_ids), spr_cls included since
-        # it has no spatial position of its own either.
+        # 2D RoPE grid coordinates for the trunk sequence. The vision tokens' coordinates are
+        # fixed, and team_state/spr_cls sit at the grid centre (see build_grid_position_ids);
+        # the 10 unit tokens' rows get overwritten per sample in forward() with where those
+        # units actually stand, so attention can match a unit against the vision tokens around
+        # it by position instead of having to decode raw coordinates out of token content.
         head_dim = hidden_size // N_ATTENTION_HEADS
-        rope = RotaryEmbedding2D(head_dim)
+        self.rope = RotaryEmbedding2D(head_dim, base=ROPE_BASE)
         n_extra_tokens = n_vector_tokens + N_SPR_CLS_TOKENS
         row_ids, col_ids = build_grid_position_ids(GRID_H, GRID_W, n_extra_tokens)
-        rope_cos, rope_sin = rope(row_ids, col_ids)
-        self.register_buffer("rope_cos", rope_cos, persistent=False)
-        self.register_buffer("rope_sin", rope_sin, persistent=False)
+        self.register_buffer("rope_row_ids", row_ids, persistent=False)
+        self.register_buffer("rope_col_ids", col_ids, persistent=False)
 
         # auxiliary vision representation head (e.g. for a self-predictive/SPR-style aux loss)
         self.spr_head = SwiGLUBlock(hidden_size, hidden_size * 3, hidden_size)
@@ -160,6 +164,29 @@ class MyModel(nn.Module):
         # doesn't need a hand-tuned [Vmin, Vmax] that would need re-tuning whenever the
         # reward balance changes (see reward_config.json) — see modules/iqn_head.py.
         self.q_head = IQNHead(hidden_size, n_actions, n_cos=64)
+
+    def _token_grid_positions(self, agent_states: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Per-sample (row, col) RoPE coordinates for the whole trunk sequence, [B, T] each.
+
+        Everything but the unit tokens is fixed. Unit tokens take their real position, mapped
+        from the env's normalized [-1, 1] coordinates into the 6x6 *token* grid and left
+        fractional -- a unit three quarters of the way across a token's footprint gets an angle
+        three quarters of the way to the next token's. Mapping into token coordinates rather
+        than the 24x24 map grid also keeps the fastest RoPE pair under one full turn across the
+        map; feeding it tile indices (0-23) would wrap it ~3.7 times and alias distinct
+        positions onto the same angle.
+        """
+        batch = agent_states.shape[0]
+        row_ids = self.rope_row_ids.unsqueeze(0).expand(batch, -1).clone()
+        col_ids = self.rope_col_ids.unsqueeze(0).expand(batch, -1).clone()
+
+        x, y = agent_states[..., 0], agent_states[..., 1]  # [B, N_UNITS], normalized [-1, 1]
+        unit_rows = ((1.0 - y) * 0.5 * GRID_H - 0.5).clamp(0.0, GRID_H - 1.0)
+        unit_cols = ((x + 1.0) * 0.5 * GRID_W - 0.5).clamp(0.0, GRID_W - 1.0)
+        row_ids[:, N_VISION_TOKENS : N_VISION_TOKENS + N_UNITS] = unit_rows
+        col_ids[:, N_VISION_TOKENS : N_VISION_TOKENS + N_UNITS] = unit_cols
+        return row_ids, col_ids
 
     def forward(
         self,
@@ -211,7 +238,9 @@ class MyModel(nn.Module):
         tokens_in = torch.cat((vis_tokens, vec_tokens, spr_cls_tok), dim=1)  # [B, 48, hidden]
         tokens_in = tokens_in + self.token_type_emb(self.token_type_ids)[None, :, :]
 
-        tokens_out = self.attention(tokens_in, rope=(self.rope_cos, self.rope_sin))
+        row_ids, col_ids = self._token_grid_positions(agent_states)  # [B, T] each
+        rope_cos, rope_sin = self.rope(row_ids, col_ids)
+        tokens_out = self.attention(tokens_in, rope=(rope_cos, rope_sin))
 
         unit_out = tokens_out[:, N_VISION_TOKENS : N_VISION_TOKENS + N_UNITS, :]
         global_out = tokens_out[:, N_VISION_TOKENS + N_UNITS, :]  # the single TYPE_GLOBAL (team_state) token
