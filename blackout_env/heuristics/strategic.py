@@ -40,6 +40,8 @@ class _UnitMemory:
     stuck_ticks: int = 0
     replan_in: int = 0
     recent_positions: list[np.ndarray] = field(default_factory=list)
+    # recent_steps[i] = distance from recent_positions[i] to recent_positions[i + 1].
+    recent_steps: list[float] = field(default_factory=list)
     escape_ticks: int = 0
     escape_action: np.ndarray | None = None
     arrival_key: tuple[tuple[int, int], str] | None = None
@@ -277,7 +279,9 @@ class StrategicHeuristic(BaseModel):
         mem = self._memory.get(name)
         if mem is None:
             mem = self._memory[name] = _UnitMemory()
-        pos_float = self._to_pixel_float(state[:2], shape)
+        # np.float32 scalars, exactly the elements _to_pixel_float would put in its array.
+        pos_float = (np.float32((1.0 - float(state[1])) * 0.5 * shape[0] - 0.5),
+                     np.float32((float(state[0]) + 1.0) * 0.5 * shape[1] - 0.5))
         pos = (min(shape[0] - 1, max(0, round(pos_float[0]))),
                min(shape[1] - 1, max(0, round(pos_float[1]))))
         target_distance = math.hypot(target[0] - pos_float[0], target[1] - pos_float[1])
@@ -303,6 +307,7 @@ class StrategicHeuristic(BaseModel):
             mem.target, mem.target_kind = target, kind
             mem.path.clear()
             mem.recent_positions.clear()
+            mem.recent_steps.clear()
             mem.stuck_ticks = 0
 
             # Pickup/deposit/transform should change observation state almost immediately.
@@ -334,23 +339,26 @@ class StrategicHeuristic(BaseModel):
         # Differences are taken on the float32 arrays (as the scalar code did) and only then
         # converted, so every hypot/sum below sees the same values.
         position = state[:2].copy()  # read-only from here on, shared by both histories
-        if mem.last_pos is not None and math.hypot(*(position - mem.last_pos).tolist()) < 2e-4:
+        step = None if mem.last_pos is None else math.hypot(*(position - mem.last_pos).tolist())
+        if step is not None and step < 2e-4:
             mem.stuck_ticks += 1
         else:
             mem.stuck_ticks = 0
         mem.last_pos = position
         mem.replan_in -= 1
+        if mem.recent_positions:  # its last entry is the previous last_pos
+            mem.recent_steps.append(step)
         mem.recent_positions.append(position)
         if len(mem.recent_positions) > 24:
             mem.recent_positions.pop(0)
+            mem.recent_steps.pop(0)
 
         # Detect short limit cycles as well as complete immobility.  A unit oscillating over
         # the same boundary does move every tick, so the old last-position test never fired.
         oscillating = False
         if len(mem.recent_positions) >= 16:
-            window = np.array(mem.recent_positions[-16:])
-            net = math.hypot(*(window[-1] - window[0]).tolist())
-            travelled = sum(math.hypot(dy, dx) for dy, dx in (window[1:] - window[:-1]).tolist())
+            net = math.hypot(*(mem.recent_positions[-1] - mem.recent_positions[-16]).tolist())
+            travelled = sum(mem.recent_steps[-15:])  # oldest first, as the pairwise sum was
             oscillating = net < 0.012 and travelled > 0.045
 
         moving_target = kind == "hunt"
@@ -413,6 +421,7 @@ class StrategicHeuristic(BaseModel):
             mem.escape_ticks = 6
             mem.stuck_ticks = 0
             mem.recent_positions.clear()
+            mem.recent_steps.clear()
         norm = float(np.sqrt(delta.dot(delta)))
         if norm < 1e-6:
             return np.zeros(2, dtype=np.float32)
