@@ -35,6 +35,7 @@ from blackout_env.env.blackout_env import BlackOutEnv
 from blackout_env.env.constants import TEAM_A_INDICES, TEAM_B_INDICES, team_a_agents, team_b_agents
 from blackout_env.model.base import BaseModel
 from blackout_env.model.my_policy import direction_vector_to_idx
+from blackout_env.train.objective_monitor import ObjectiveMonitor, aggregate_objectives
 from blackout_env.train.replay_buffer import SOURCE_SELF_PLAY, SOURCE_SELF_VS_HEURISTIC, SequentialReplayBuffer
 from blackout_env.train.reward_shaping import blocked_penalty_adjustment
 
@@ -67,6 +68,8 @@ def play_and_collect(
 
     rows_a: dict[str, list] = {f: [] for f in _FIELDS}
     rows_b: dict[str, list] = {f: [] for f in _FIELDS}
+
+    objectives_a, objectives_b = ObjectiveMonitor(), ObjectiveMonitor()
 
     obs, _ = env.reset(seed=seed)
     prev_absorption_time_left = float(obs[team_a_names[0]]["team_state"][ABSORPTION_IDX])
@@ -109,6 +112,8 @@ def play_and_collect(
         full_direction_idx = np.concatenate([dir_a, dir_b]).astype(np.int64)
 
         shared_a, shared_b = obs[team_a_names[0]], obs[team_b_names[0]]
+        objectives_a.observe(shared_a["graphic"], shared_a["agent_states"], list(TEAM_A_INDICES))
+        objectives_b.observe(shared_b["graphic"], shared_b["agent_states"], list(TEAM_B_INDICES))
         next_obs, rewards, terminations, _, infos = env.step(env_actions)
         if infos:
             final_info = next(iter(infos.values()))
@@ -167,6 +172,9 @@ def play_and_collect(
         "blocked_unit_ticks": (blocked_a, blocked_b),
         "abs_score_diff_sum": float(np.abs(score_diff).sum()),
         "psi_saturated_ticks": int((psi_slope < PSI_SATURATED_SLOPE).sum()),
+        # Per-side scoring pipeline (pickups/deliveries/approach rates) -- the breakdown that
+        # located Run 6's actual bottleneck; see train/objective_monitor.py.
+        "objectives": (objectives_a.counts, objectives_b.counts),
     }
     return t_a, t_b, match_info
 
@@ -191,6 +199,7 @@ def _new_phase_totals() -> dict[str, float]:
         ticks=0, matches=0, wins=0, losses=0, draws=0, margin=0.0,
         candidate_env_reward=0.0, other_env_reward=0.0, candidate_terminal_reward=0.0,
         candidate_blocked=0, other_blocked=0, abs_score_diff=0.0, psi_saturated=0,
+        candidate_objectives=[], other_objectives=[],
     )
 
 
@@ -213,13 +222,18 @@ def _accumulate(totals: dict[str, float], info: dict, candidate_team: int) -> No
     totals["other_blocked"] += info["blocked_unit_ticks"][other]
     totals["abs_score_diff"] += info["abs_score_diff_sum"]
     totals["psi_saturated"] += info["psi_saturated_ticks"]
+    totals["candidate_objectives"].append(info["objectives"][candidate_team])
+    totals["other_objectives"].append(info["objectives"][other])
 
 
 def _phase_metrics(totals: dict[str, float], penalty_per_unit: float) -> dict[str, float]:
     ticks = max(1, totals["ticks"])
     matches = max(1, totals["matches"])
     n_team_units = len(TEAM_A_INDICES)
+    objectives = aggregate_objectives(totals["candidate_objectives"], "candidate_")
+    objectives.update(aggregate_objectives(totals["other_objectives"], "opponent_"))
     return {
+        **objectives,
         "win_rate": totals["wins"] / matches,
         "loss_rate": totals["losses"] / matches,
         "draw_rate": totals["draws"] / matches,

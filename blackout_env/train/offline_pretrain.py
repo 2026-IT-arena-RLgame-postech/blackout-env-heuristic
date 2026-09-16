@@ -334,7 +334,19 @@ def main() -> None:
             f"loss_rate={metrics['loss_rate']:.2f} draw_rate={metrics['draw_rate']:.2f} "
             f"mean_margin={metrics['mean_margin']:.2f} "
             f"candidate_idle/1k={metrics['candidate_idle_per_1000_ticks']:.1f} "
-            f"candidate_blocked/1k={metrics['candidate_blocked_per_1000_ticks']:.1f}"
+            f"candidate_blocked/1k={metrics['candidate_blocked_per_1000_ticks']:.1f}\n"
+            # Scoring pipeline next to the heuristic's own numbers from the same matches -- the
+            # approach/pickup gap is what Run 6's post-mortem pinned the loss on (see
+            # train/objective_monitor.py), so it belongs in the console line, not only in TB.
+            f"           objectives (candidate vs opponent): "
+            f"approach_battery={metrics['candidate_approach_battery']:+.4f}/{metrics['opponent_approach_battery']:+.4f} "
+            f"pickups/1k={metrics['candidate_pickups_per_1000_ticks']:.1f}/{metrics['opponent_pickups_per_1000_ticks']:.1f} "
+            f"deliveries/1k={metrics['candidate_deliveries_per_1000_ticks']:.1f}/{metrics['opponent_deliveries_per_1000_ticks']:.1f} "
+            f"cargo_lost/1k={metrics['candidate_cargo_lost_per_1000_ticks']:.1f}/{metrics['opponent_cargo_lost_per_1000_ticks']:.1f} "
+            f"| by side: margin={metrics.get('as_team_a/mean_margin', float('nan')):.1f}/"
+            f"{metrics.get('as_team_b/mean_margin', float('nan')):.1f} "
+            f"blocked/1k={metrics.get('as_team_a/blocked_per_1000_ticks', float('nan')):.1f}/"
+            f"{metrics.get('as_team_b/blocked_per_1000_ticks', float('nan')):.1f}"
         )
 
     n_eval_windows = max(1, args.steps // args.eval_interval) if args.eval_interval > 0 else 0
@@ -373,7 +385,11 @@ def main() -> None:
                 f"{stats['self_vs_heuristic/draw_rate']:.2f} margin={stats['self_vs_heuristic/mean_margin']:.1f} "
                 f"env_r/tick={stats['self_vs_heuristic/candidate_env_reward_per_tick']:.5f} "
                 f"penalty/tick={stats['self_vs_heuristic/candidate_blocked_penalty_per_tick']:.5f} "
-                f"psi_saturated={stats['self_vs_heuristic/psi_saturated_frac']:.2f}"
+                f"psi_saturated={stats['self_vs_heuristic/psi_saturated_frac']:.2f} "
+                f"approach_battery={stats['self_vs_heuristic/candidate_approach_battery']:+.4f}"
+                f"/{stats['self_vs_heuristic/opponent_approach_battery']:+.4f} "
+                f"cargo_lost/1k={stats['self_vs_heuristic/candidate_cargo_lost_per_1000_ticks']:.1f}"
+                f"/{stats['self_vs_heuristic/opponent_cargo_lost_per_1000_ticks']:.1f}"
             )
         print(
             f"[offline] onpolicy collect @ step {step}: "

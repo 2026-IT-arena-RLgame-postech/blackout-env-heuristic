@@ -17,9 +17,10 @@ from dataclasses import dataclass
 import numpy as np
 
 from blackout_env.env.blackout_env import BlackOutEnv
-from blackout_env.env.constants import team_a_agents, team_b_agents
+from blackout_env.env.constants import team_a_agents, team_b_agents, unit_index
 from blackout_env.model.base import BaseModel
 from blackout_env.train.movement_monitor import FailureRuns, MovementMonitor, aggregate
+from blackout_env.train.objective_monitor import ObjectiveCounts, ObjectiveMonitor, aggregate_objectives
 
 
 @dataclass
@@ -30,6 +31,9 @@ class EvalMatch:
     steps: int
     candidate_failures: FailureRuns
     opponent_failures: FailureRuns
+    candidate_team: int  # 0 = the candidate played team A this match, 1 = team B
+    candidate_objectives: ObjectiveCounts
+    opponent_objectives: ObjectiveCounts
 
 
 def play_eval_match(
@@ -55,8 +59,12 @@ def play_eval_match(
     candidate_names = team_a_names if candidate_team == 0 else team_b_names
     opponent_names = team_b_names if candidate_team == 0 else team_a_names
 
+    candidate_rows = sorted(unit_index(a) for a in candidate_names)
+    opponent_rows = sorted(unit_index(a) for a in opponent_names)
+
     obs, _ = env.reset(seed=seed)
     candidate_monitor, opponent_monitor = MovementMonitor(), MovementMonitor()
+    candidate_objectives, opponent_objectives = ObjectiveMonitor(), ObjectiveMonitor()
     steps = 0
     final_info: dict = {}
     empty_obs_steps = 0
@@ -81,6 +89,13 @@ def play_eval_match(
         candidate_actions = candidate.act(candidate_obs) if candidate_obs else {}
         opponent_actions = opponent.act(opponent_obs) if opponent_obs else {}
         actions = {**candidate_actions, **opponent_actions}
+
+        if candidate_obs:
+            shared = candidate_obs[next(iter(candidate_obs))]
+            candidate_objectives.observe(shared["graphic"], shared["agent_states"], candidate_rows)
+        if opponent_obs:
+            shared = opponent_obs[next(iter(opponent_obs))]
+            opponent_objectives.observe(shared["graphic"], shared["agent_states"], opponent_rows)
 
         before = next(iter(obs.values()))["agent_states"].copy()
         next_obs, _, _, _, infos = env.step(actions)
@@ -110,6 +125,9 @@ def play_eval_match(
         steps=steps,
         candidate_failures=candidate_monitor.result,
         opponent_failures=opponent_monitor.result,
+        candidate_team=candidate_team,
+        candidate_objectives=candidate_objectives.counts,
+        opponent_objectives=opponent_objectives.counts,
     )
 
 
@@ -135,7 +153,7 @@ def run_periodic_eval(
     candidate_reliability = aggregate([m.candidate_failures for m in matches])
     opponent_reliability = aggregate([m.opponent_failures for m in matches])
 
-    return {
+    stats = {
         "win_rate": wins / len(matches),
         "loss_rate": losses / len(matches),
         "draw_rate": draws / len(matches),
@@ -146,3 +164,20 @@ def run_periodic_eval(
         "opponent_idle_per_1000_ticks": opponent_reliability["idle_6s"]["per_1000_unit_ticks"],
         "opponent_blocked_per_1000_ticks": opponent_reliability["blocked_0.24s"]["per_1000_unit_ticks"],
     }
+    # Scoring pipeline for both sides, so the heuristic is a baseline measured in the same
+    # matches -- see objective_monitor.py for why approach_battery is the number to watch.
+    stats.update(aggregate_objectives([m.candidate_objectives for m in matches], "candidate_"))
+    stats.update(aggregate_objectives([m.opponent_objectives for m in matches], "opponent_"))
+
+    # Per-side split: the observation pipeline used to hand team B a differently-oriented view
+    # of the same task (docs/run6_diagnosis_20260916.md §5), which showed up as team A blocking
+    # 30.2% of unit-ticks against team B's 18.9%. Keep watching for a gap after the fix.
+    for team, label in ((0, "as_team_a"), (1, "as_team_b")):
+        side = [m for m in matches if m.candidate_team == team]
+        if not side:
+            continue
+        side_reliability = aggregate([m.candidate_failures for m in side])
+        stats[f"{label}/mean_margin"] = float(np.mean([(m.candidate_score - m.opponent_score) * 100 for m in side]))
+        stats[f"{label}/blocked_per_1000_ticks"] = side_reliability["blocked_0.24s"]["per_1000_unit_ticks"]
+        stats.update(aggregate_objectives([m.candidate_objectives for m in side], f"{label}/"))
+    return stats
