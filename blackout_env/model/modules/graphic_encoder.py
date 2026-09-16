@@ -1,28 +1,27 @@
-import torch
 from torch import nn
 
-from blackout_env.model.unit_channels import N_UNIT_CHANNELS, UNIT_GRID_SCALE, UNIT_STEM_CHANNELS
+from blackout_env.model.derived_obs import N_DERIVED_MAP_CHANNELS
 
 from .bottleneck_block import BottleNeckBlock
 from .ffn_block import SwiGLUBlock
 
 
 class GraphicEncoder(nn.Module):
-    def __init__(self, hidden_size : int = 256, in_channels : int = 13 + UNIT_STEM_CHANNELS) -> None:
+    def __init__(self, hidden_size : int = 256, in_channels : int = 13 + N_DERIVED_MAP_CHANNELS) -> None:
         super(GraphicEncoder, self).__init__()
 
         self.hidden_size = hidden_size
 
-        # graphic : [24, 24, 13] = [H, W, C] from MyObsPreprocessor.preprocess_team_graphics
-        # (8 base one-hot + 1 battery scalar + 4 item one-hot), concatenated here with 8 channels
-        # of unit occupancy. Units used to reach the network only as agent_states coordinate
-        # rows, leaving this encoder unable to place them on the map at all.
+        # graphic : [24, 24, 19] = [H, W, C] -- 13 channels from
+        # MyObsPreprocessor.preprocess_team_graphics (8 base one-hot + 1 battery scalar + 4 item
+        # one-hot) plus the 6 MyModel.forward derives (4 unit occupancy + storage free capacity +
+        # fetchable battery; see model/derived_obs.py for why each is not learnable from the
+        # other channels).
         #
-        # The unit stem takes the 4 occupancy channels MyModel.forward rasterizes at 4x map
-        # resolution (96x96, see model/unit_channels.py) and folds each 4x4 block into one map
-        # cell with a learned stride-4 conv. Drawing units straight onto 24x24 would round every
-        # unit to its tile, and the stack below then pools 24x24 to 6x6 tokens, so sub-tile
-        # position would be gone twice over before attention sees anything.
+        # Units are drawn straight onto the map grid. An earlier version rasterized them at 4x
+        # and folded that back with a stride-4 stem to keep sub-tile position; that is now
+        # carried where it is actually used -- on the unit's own token, as a walkability patch
+        # plus its offset within its tile (derived_obs.local_wall_features).
         #
         # Sized down from an earlier 64/128/256-channel version (ImageNet-backbone-scale) after
         # observing grad_norm/graphic_encoder collapse ~7 orders of magnitude within a few
@@ -36,12 +35,7 @@ class GraphicEncoder(nn.Module):
         # a block per stage is a bet that a smaller encoder is easier for training to actually
         # rely on (less to get lost in) rather than a capacity increase being what's missing.
         # to be flipped by setting tensor format
-        # in -> [B, 24, 24, 13] = [B, H, W, C] + [B, 4, 96, 96] unit occupancy
-        self.unit_stem = nn.Sequential(
-            nn.Conv2d(N_UNIT_CHANNELS, UNIT_STEM_CHANNELS, kernel_size=UNIT_GRID_SCALE, stride=UNIT_GRID_SCALE),
-            nn.SiLU(inplace=True),
-        )  # [B, 4, 96, 96] -> [B, 8, 24, 24]
-
+        # in -> [B, 19, 24, 24] = [B, C, H, W]
         self.pre_conv = nn.Sequential(
             nn.Conv2d(in_channels, 32, kernel_size=5, stride=1, padding=2), # -> [B, 32, 24, 24]
             nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1) # -> [B, 64, 12, 12]
@@ -61,9 +55,9 @@ class GraphicEncoder(nn.Module):
         self.tokenize_ffn = SwiGLUBlock(128, 512, self.hidden_size)
 
 
-    def forward(self, graphic, unit_map):
-        """graphic: [B, 13, 24, 24] env channels; unit_map: [B, 4, 96, 96] unit occupancy."""
-        x = self.pre_conv(torch.cat((graphic, self.unit_stem(unit_map)), dim=1))
+    def forward(self, graphic):
+        """graphic: [B, 19, 24, 24] -- env channels with the derived ones already appended."""
+        x = self.pre_conv(graphic)
         x = self.conv64(x)
         x = self.pool(x)
         x = self.conv128(x)

@@ -1,0 +1,223 @@
+"""Derived observation features: unit occupancy, storage capacity, fetchable batteries, wall patch."""
+
+from __future__ import annotations
+
+import numpy as np
+import torch
+
+from blackout_env.env.team_frame import mirror_agent_states, mirror_graphic
+from blackout_env.heuristics.strategic import StrategicHeuristic
+from blackout_env.model.derived_obs import (
+    BATTERY,
+    MAX_ITEM_AMOUNT,
+    N_DERIVED_MAP_CHANNELS,
+    N_PATCH_FEATURES,
+    STORAGE_ALLY,
+    STORAGE_ENEMY,
+    WALL,
+    derived_map_channels,
+    fetchable_battery,
+    local_wall_features,
+    storage_free_capacity,
+    unit_channels,
+)
+
+H = W = 24
+N_UNITS, N_COLS = 10, 12
+ALLY, ENEMY, ALLY_CARGO, ENEMY_CARGO = 0, 1, 2, 3
+FIRST_SPECIAL = 9
+
+
+def _graphic() -> torch.Tensor:
+    return torch.zeros(1, 13, H, W)
+
+
+def _states(cells: list[tuple[float, float]]) -> torch.Tensor:
+    """agent_states placing each unit at a (row, col) that may be fractional."""
+    states = torch.zeros(1, N_UNITS, N_COLS)
+    for i, (row, col) in enumerate(cells):
+        states[0, i, 0] = (col + 0.5) * 2.0 / W - 1.0
+        states[0, i, 1] = 1.0 - (row + 0.5) * 2.0 / H
+    states[0, :5, 2] = 1.0
+    states[0, 5:, 2] = -1.0
+    return states
+
+
+# ---------------------------------------------------------------- unit occupancy
+
+
+def test_units_land_on_their_own_cells_and_stack():
+    cells = [(2, 3), (10, 10), (23, 0), (0, 23), (5, 5)] * 2
+    channels = unit_channels(_states(cells), H, W)[0]
+    assert channels.shape == (4, H, W)
+    for unit, (row, col) in enumerate(cells):
+        assert channels[ALLY if unit < 5 else ENEMY, row, col] >= 1.0
+
+    stacked = unit_channels(_states([(4, 4)] * N_UNITS), H, W)[0]
+    assert stacked[ALLY, 4, 4] == 5.0 and stacked[ENEMY, 4, 4] == 5.0
+
+
+def test_cargo_channels_follow_the_battery_column():
+    states = _states([(6, 6)] * N_UNITS)
+    states[0, 1, 4] = 0.5
+    states[0, 6, 4] = 0.25
+    channels = unit_channels(states, H, W)[0]
+    assert channels[ALLY_CARGO, 6, 6] == 0.5
+    assert channels[ENEMY_CARGO, 6, 6] == 0.25
+
+
+# ---------------------------------------------------------------- storage capacity
+
+
+def test_component_capacity_is_summed_over_the_whole_blob():
+    graphic = _graphic()
+    for col in (5, 6, 7):  # one 3-tile component
+        graphic[0, STORAGE_ALLY, 5, col] = 1.0
+    graphic[0, BATTERY, 5, 5] = 10 / 15  # full
+    graphic[0, BATTERY, 5, 6] = 4 / 15   # 6 free
+
+    capacity = storage_free_capacity(graphic)[0, 0]
+    expected = (0 + 6 + 10) / MAX_ITEM_AMOUNT
+    for col in (5, 6, 7):
+        assert abs(float(capacity[5, col]) - expected) < 1e-5
+    assert float(capacity[5, 8]) == 0.0  # off storage
+
+
+def test_separate_components_do_not_pool_their_capacity():
+    graphic = _graphic()
+    graphic[0, STORAGE_ALLY, 5, 5] = 1.0
+    graphic[0, BATTERY, 5, 5] = 10 / 15  # full component
+    graphic[0, STORAGE_ALLY, 18, 18] = 1.0  # a separate, empty one
+
+    capacity = storage_free_capacity(graphic)[0, 0]
+    assert float(capacity[5, 5]) == 0.0
+    assert abs(float(capacity[18, 18]) - 1.0) < 1e-5
+
+
+def test_components_touching_only_at_a_corner_stay_separate():
+    """4-connectivity, matching StrategicHeuristic._components."""
+    graphic = _graphic()
+    graphic[0, STORAGE_ALLY, 5, 5] = 1.0
+    graphic[0, STORAGE_ALLY, 6, 6] = 1.0
+    graphic[0, BATTERY, 5, 5] = 10 / 15
+    capacity = storage_free_capacity(graphic)[0, 0]
+    assert float(capacity[5, 5]) == 0.0
+    assert abs(float(capacity[6, 6]) - 1.0) < 1e-5
+
+
+def test_a_special_item_blocks_its_tile_for_batteries():
+    graphic = _graphic()
+    for col in (5, 6):
+        graphic[0, STORAGE_ALLY, 5, col] = 1.0
+    graphic[0, FIRST_SPECIAL, 5, 6] = 1.0  # tile blocked by a special
+    assert abs(float(storage_free_capacity(graphic)[0, 0, 5, 5]) - 1.0) < 1e-5
+
+
+def test_capacity_matches_the_heuristic_on_random_maps():
+    """The network should get exactly the number StrategicHeuristic._storage_target computes."""
+    rng = np.random.default_rng(0)
+    for _ in range(20):
+        graphic = _graphic()
+        mask = rng.random((H, W)) < 0.06
+        graphic[0, STORAGE_ALLY] = torch.tensor(mask, dtype=torch.float32)
+        amounts = np.where(mask & (rng.random((H, W)) < 0.5), rng.integers(1, 11, (H, W)), 0)
+        graphic[0, BATTERY] = torch.tensor(amounts / 15.0, dtype=torch.float32)
+
+        capacity = storage_free_capacity(graphic)[0, 0].numpy()
+        numpy_graphic = graphic[0].permute(1, 2, 0).numpy()
+        for component in StrategicHeuristic._components(mask):
+            expected = sum(max(0, 10 - int(round(numpy_graphic[y, x, BATTERY] * 15))) for y, x in component)
+            for y, x in component:
+                assert abs(capacity[y, x] * MAX_ITEM_AMOUNT - expected) < 1e-3
+
+
+# ---------------------------------------------------------------- fetchable battery
+
+
+def test_own_storage_batteries_are_not_fetchable_but_enemy_ones_are():
+    graphic = _graphic()
+    graphic[0, BATTERY, 5, 5] = 0.4   # loose
+    graphic[0, BATTERY, 6, 6] = 0.4
+    graphic[0, STORAGE_ALLY, 6, 6] = 1.0   # banked: Unity refuses a pickup from your own region
+    graphic[0, BATTERY, 7, 7] = 0.4
+    graphic[0, STORAGE_ENEMY, 7, 7] = 1.0  # stealable
+
+    fetchable = fetchable_battery(graphic)[0, 0]
+    assert abs(float(fetchable[5, 5]) - 0.4) < 1e-6
+    assert float(fetchable[6, 6]) == 0.0
+    assert abs(float(fetchable[7, 7]) - 0.4) < 1e-6
+
+
+# ---------------------------------------------------------------- wall patch
+
+
+def test_wall_patch_reads_the_eight_neighbours():
+    graphic = _graphic()
+    graphic[0, WALL, 10, 11] = 1.0  # east of the unit
+    features = local_wall_features(graphic, _states([(10, 10)] * N_UNITS))[0, 0]
+    assert features.shape == (N_PATCH_FEATURES,)
+    patch = features[:9].reshape(3, 3)
+    assert float(patch[1, 2]) == 1.0  # east blocked
+    assert float(patch[1, 1]) == 0.0  # the unit's own cell
+    assert float(patch[0, 1]) == 0.0  # north open
+
+
+def test_outside_the_map_counts_as_blocked():
+    patch = local_wall_features(_graphic(), _states([(0, 0)] * N_UNITS))[0, 0][:9].reshape(3, 3)
+    assert float(patch[0, 0]) == 1.0 and float(patch[0, 1]) == 1.0  # north row is off-map
+    assert float(patch[1, 0]) == 1.0                                # west is off-map
+    assert float(patch[2, 2]) == 0.0                                # south-east is inside
+
+
+def test_sub_tile_offset_is_what_rounding_to_a_cell_drops():
+    states = _states([(10.4, 10.0)] * N_UNITS)  # 0.4 of a tile below its cell centre
+    features = local_wall_features(_graphic(), states)[0, 0]
+    assert abs(float(features[9]) - 0.4) < 1e-4   # row offset
+    assert abs(float(features[10]) - 0.0) < 1e-4  # col offset
+    assert -0.5 <= float(features[9]) <= 0.5
+
+
+def test_every_unit_gets_a_patch_including_the_enemy():
+    graphic = _graphic()
+    graphic[0, WALL, 3, 3] = 1.0
+    features = local_wall_features(graphic, _states([(3, 2)] * N_UNITS))
+    assert features.shape == (1, N_UNITS, N_PATCH_FEATURES)
+    for unit in range(N_UNITS):
+        assert float(features[0, unit, :9].reshape(3, 3)[1, 2]) == 1.0
+
+
+# ---------------------------------------------------------------- frame consistency / wiring
+
+
+def test_derived_channels_commute_with_the_team_mirror():
+    rng = np.random.default_rng(1)
+    graphic = _graphic()
+    graphic[0, STORAGE_ALLY, 5, 5] = 1.0
+    graphic[0, STORAGE_ENEMY, 18, 18] = 1.0
+    graphic[0, BATTERY, 5, 5] = 0.3
+    graphic[0, BATTERY, 12, 4] = 0.5
+    states = _states([(int(r), int(c)) for r, c in rng.integers(0, H, size=(N_UNITS, 2))])
+
+    numpy_graphic = graphic[0].permute(1, 2, 0).numpy()
+    mirrored_graphic = torch.tensor(mirror_graphic(numpy_graphic)).permute(2, 0, 1).unsqueeze(0)
+    mirrored_states = torch.tensor(mirror_agent_states(states[0].numpy())).unsqueeze(0)
+
+    direct = derived_map_channels(mirrored_graphic, mirrored_states)[0]
+    via_mirror = torch.tensor(
+        mirror_graphic(derived_map_channels(graphic, states)[0].permute(1, 2, 0).numpy())
+    ).permute(2, 0, 1)
+    # the mirror swaps which team is "ally", so compare the frame-invariant sums
+    assert torch.allclose(direct[ALLY] + direct[ENEMY], via_mirror[ALLY] + via_mirror[ENEMY])
+
+
+def test_model_forward_takes_the_env_channel_count():
+    from blackout_env.model.my_model import MyModel
+
+    net = MyModel(hidden_size=128)
+    q_values, quantiles, _, _, _ = net(
+        torch.zeros(2, 13, H, W), torch.zeros(2, 4), _states([(3, 3)] * N_UNITS).expand(2, -1, -1),
+        n_quantiles=4,
+    )
+    assert q_values.shape == (2, N_UNITS, 8)
+    assert quantiles.shape == (2, N_UNITS, 4, 8)
+    assert net.graphic_encoder.pre_conv[0].in_channels == 13 + N_DERIVED_MAP_CHANNELS
