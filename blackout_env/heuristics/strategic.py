@@ -274,10 +274,12 @@ class StrategicHeuristic(BaseModel):
     ) -> np.ndarray:
         if target is None:
             return np.zeros(2, dtype=np.float32)
-        mem = self._memory.setdefault(name, _UnitMemory())
+        mem = self._memory.get(name)
+        if mem is None:
+            mem = self._memory[name] = _UnitMemory()
         pos_float = self._to_pixel_float(state[:2], shape)
-        pos = (int(np.clip(round(pos_float[0]), 0, shape[0] - 1)),
-               int(np.clip(round(pos_float[1]), 0, shape[1] - 1)))
+        pos = (min(shape[0] - 1, max(0, round(pos_float[0]))),
+               min(shape[1] - 1, max(0, round(pos_float[1]))))
         target_distance = math.hypot(target[0] - pos_float[0], target[1] - pos_float[1])
 
         # Escape actions must take precedence over the arrival dead-zone; otherwise a unit
@@ -329,15 +331,16 @@ class StrategicHeuristic(BaseModel):
         mem.arrival_key = None
         mem.arrival_ticks = 0
 
-        if mem.last_pos is not None and math.hypot(
-            float(state[0] - mem.last_pos[0]), float(state[1] - mem.last_pos[1])
-        ) < 2e-4:
+        # Differences are taken on the float32 arrays (as the scalar code did) and only then
+        # converted, so every hypot/sum below sees the same values.
+        position = state[:2].copy()  # read-only from here on, shared by both histories
+        if mem.last_pos is not None and math.hypot(*(position - mem.last_pos).tolist()) < 2e-4:
             mem.stuck_ticks += 1
         else:
             mem.stuck_ticks = 0
-        mem.last_pos = state[:2].copy()
+        mem.last_pos = position
         mem.replan_in -= 1
-        mem.recent_positions.append(state[:2].copy())
+        mem.recent_positions.append(position)
         if len(mem.recent_positions) > 24:
             mem.recent_positions.pop(0)
 
@@ -345,12 +348,9 @@ class StrategicHeuristic(BaseModel):
         # the same boundary does move every tick, so the old last-position test never fired.
         oscillating = False
         if len(mem.recent_positions) >= 16:
-            delta_net = mem.recent_positions[-1] - mem.recent_positions[-16]
-            net = math.hypot(float(delta_net[0]), float(delta_net[1]))
-            travelled = sum(
-                math.hypot(float(b[0] - a[0]), float(b[1] - a[1]))
-                for a, b in zip(mem.recent_positions[-16:-1], mem.recent_positions[-15:])
-            )
+            window = np.array(mem.recent_positions[-16:])
+            net = math.hypot(*(window[-1] - window[0]).tolist())
+            travelled = sum(math.hypot(dy, dx) for dy, dx in (window[1:] - window[:-1]).tolist())
             oscillating = net < 0.012 and travelled > 0.045
 
         moving_target = kind == "hunt"
@@ -397,7 +397,7 @@ class StrategicHeuristic(BaseModel):
                 if not dangerous:
                     continue
                 away = state[:2] - enemy[:2]
-                distance = float(np.linalg.norm(away))
+                distance = float(np.sqrt(away.dot(away)))  # np.linalg.norm without its overhead
                 if 1e-5 < distance < self.threat_radius:
                     # normalized-coordinate repulsion converted to x/y action orientation.
                     delta += (away / distance) * ((self.threat_radius - distance) / self.threat_radius) * 9.0
@@ -407,13 +407,13 @@ class StrategicHeuristic(BaseModel):
             # cycles.  One-tick nudges were immediately cancelled by the next path action.
             sign = -1.0 if unit_index(name) % 2 else 1.0
             escape = np.array([-delta[1] * sign, delta[0] * sign], dtype=np.float32)
-            if float(np.linalg.norm(escape)) < 1e-6:
+            if float(np.sqrt(escape.dot(escape))) < 1e-6:
                 escape = np.array([sign, 0.0], dtype=np.float32)
-            mem.escape_action = escape / max(float(np.linalg.norm(escape)), 1e-6)
+            mem.escape_action = escape / max(float(np.sqrt(escape.dot(escape))), 1e-6)
             mem.escape_ticks = 6
             mem.stuck_ticks = 0
             mem.recent_positions.clear()
-        norm = float(np.linalg.norm(delta))
+        norm = float(np.sqrt(delta.dot(delta)))
         if norm < 1e-6:
             return np.zeros(2, dtype=np.float32)
         return (delta / norm).astype(np.float32)
@@ -426,9 +426,11 @@ class StrategicHeuristic(BaseModel):
 
     @classmethod
     def _to_pixel(cls, position: np.ndarray, shape: tuple[int, int]) -> tuple[int, int]:
-        p = cls._to_pixel_float(position, shape)
-        return (min(shape[0] - 1, max(0, int(round(float(p[0]))))),
-                min(shape[1] - 1, max(0, int(round(float(p[1]))))))
+        # Same float32 rounding as _to_pixel_float, without building the array.
+        h, w = shape
+        y = float(np.float32((1.0 - float(position[1])) * 0.5 * h - 0.5))
+        x = float(np.float32((float(position[0]) + 1.0) * 0.5 * w - 0.5))
+        return (min(h - 1, max(0, int(round(y)))), min(w - 1, max(0, int(round(x)))))
 
     def _cached_protected_ally_storage_mask(self, graphic: np.ndarray) -> np.ndarray:
         cached = self._static_masks.get("protected_ally_storage")
