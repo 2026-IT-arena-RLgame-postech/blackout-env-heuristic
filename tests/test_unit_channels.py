@@ -71,6 +71,40 @@ def test_mirroring_the_state_mirrors_the_channels():
     assert torch.allclose(direct[ALLY_CARGO] + direct[ENEMY_CARGO], via_graphic[ALLY_CARGO] + via_graphic[ENEMY_CARGO])
 
 
+def test_sub_tile_positions_stay_distinguishable_at_4x():
+    """The whole point of the 4x grid: two units in one map tile must not collapse."""
+    from blackout_env.model.unit_channels import UNIT_GRID_SCALE
+
+    fine = H * UNIT_GRID_SCALE
+    # both inside map tile (5, 5), at opposite corners of it
+    near = torch.zeros(1, N_UNITS, N_COLS)
+    near[0, :, 2] = 1.0
+    near[0, 0, 0] = (5 * UNIT_GRID_SCALE + 0.5) * 2.0 / fine - 1.0
+    near[0, 0, 1] = 1.0 - (5 * UNIT_GRID_SCALE + 0.5) * 2.0 / fine
+    far = near.clone()
+    far[0, 0, 0] = (5 * UNIT_GRID_SCALE + 3.5) * 2.0 / fine - 1.0
+    far[0, 0, 1] = 1.0 - (5 * UNIT_GRID_SCALE + 3.5) * 2.0 / fine
+
+    fine_a = unit_channels(near, fine, fine)[0, ALLY]
+    fine_b = unit_channels(far, fine, fine)[0, ALLY]
+    assert not torch.equal(fine_a, fine_b)
+
+    coarse_a = unit_channels(near, H, W)[0, ALLY]
+    coarse_b = unit_channels(far, H, W)[0, ALLY]
+    assert torch.equal(coarse_a, coarse_b)  # what painting straight onto 24x24 would lose
+
+
+def test_graphic_encoder_folds_the_fine_grid_back_to_map_cells():
+    from blackout_env.model.modules import GraphicEncoder
+    from blackout_env.model.unit_channels import UNIT_GRID_SCALE
+
+    encoder = GraphicEncoder(hidden_size=64)
+    unit_map = unit_channels(_states([(3, 3)] * N_UNITS), H * UNIT_GRID_SCALE, W * UNIT_GRID_SCALE)
+    assert unit_map.shape == (1, N_UNIT_CHANNELS, 96, 96)
+    assert encoder.unit_stem(unit_map).shape == (1, 8, H, W)
+    assert encoder(torch.zeros(1, 13, H, W), unit_map).shape == (1, 36, 64)
+
+
 def test_model_forward_accepts_the_env_channel_count():
     from blackout_env.model.my_model import MyModel
 

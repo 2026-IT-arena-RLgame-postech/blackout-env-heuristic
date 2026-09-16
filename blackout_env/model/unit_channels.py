@@ -18,6 +18,10 @@ unit-ticks, a unit with another unit in its target cell moved every time), so tw
 cell is a real state worth distinguishing. Ally/enemy comes from agent_states' team-sign column,
 so this works unchanged in the canonical team frame (blackout_env.env.team_frame).
 
+They are drawn at UNIT_GRID_SCALE times the map resolution and compressed back to map cells by
+GraphicEncoder's learned stride-4 stem, so sub-tile position survives as channel content rather
+than being rounded to a tile before the network ever sees it.
+
 Computed on the fly from agent_states rather than stored: they are a pure function of data the
 replay buffer already holds, so nothing has to be re-collected and the 30GB dataset does not
 grow. Because they are derived after the team-frame mirroring, they are automatically in
@@ -29,6 +33,13 @@ from __future__ import annotations
 import torch
 
 N_UNIT_CHANNELS = 4
+# Units are rasterized at 4x the map grid (96x96 for a 24x24 map) and folded back down by a
+# stride-4 conv in GraphicEncoder. Painting them straight onto 24x24 would quantize every unit
+# to its tile and throw away where inside the tile it stands, and the encoder then pools 24x24
+# down to 6x6 tokens, so a whole 4x4 tile block ends up in one token. At 4x, sub-tile offsets
+# survive as channel content instead of being rounded away before the network sees them.
+UNIT_GRID_SCALE = 4
+UNIT_STEM_CHANNELS = 8  # what the stride-4 conv emits per map cell
 TEAM_SIGN_COL = 2
 BATTERY_COL = 4  # agent_states: [pos_x, pos_y, team, item_none, item_battery, ...]
 
