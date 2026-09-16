@@ -34,6 +34,7 @@ from blackout_env.heuristics import RecommendedStrategicHeuristic
 from blackout_env.model.action_mask import DIR_CELL
 from blackout_env.model.my_policy import DIRECTION_VECTORS, MyPolicy, direction_vector_to_idx
 from blackout_env.train.objective_monitor import ObjectiveCounts, ObjectiveMonitor, aggregate_objectives
+from blackout_env.train.stall_monitor import StallMonitor, aggregate_stalls
 from blackout_env.train.qmix_trainer import QMIXConfig, QMIXTrainer
 
 WALL = 1
@@ -57,6 +58,7 @@ class MatchRecord:
         self.moving_ahead: Counter = Counter()
         self.objectives = ObjectiveMonitor()
         self.opponent_objectives = ObjectiveMonitor()
+        self.stalls = StallMonitor()
         self.final_margin = 0.0
 
 
@@ -103,6 +105,10 @@ def play(env, policy: MyPolicy, opponent, seed: int, swap: bool) -> MatchRecord:
 
         if next_obs and q_rows:
             after = next(iter(next_obs.values()))["agent_states"]
+            shared = candidate_obs[next(iter(candidate_obs))]
+            record.stalls.observe(shared["graphic"], before, after, actions_for_stalls := {
+                agent: actions[agent] for agent in q_rows
+            }, {agent: unit_index(agent) for agent in actions_for_stalls})
             height, width = graphic.shape[:2]
             walls = graphic[..., WALL] > 0.5
             cells = {row: _cell(before[row, :2], height, width) for row in range(before.shape[0])}
@@ -208,13 +214,28 @@ def report_objectives(records: list[MatchRecord]) -> None:
               f"approach_battery={stats['approach_battery']:+.4f}  pickups/1k={stats['pickups_per_1000_ticks']:.2f}")
 
 
+def report_stalls(records: list[MatchRecord]) -> None:
+    print("\n=== why a unit is standing still (see train/stall_monitor.py) ===")
+    stats = aggregate_stalls([r.stalls.counts for r in records])
+    labels = {
+        "idle_on_storage_per_1000": "empty-handed, parked on a storage tile",
+        "cargo_wait_full_per_1000": "carrying, at a storage that cannot take it",
+        "cargo_wait_full_spawn_frac": "  ...of those, at the spawn storage",
+        "cargo_wait_avoidable_frac": "  ...of those, another storage had room",
+        "blocked_per_1000": "failed moves into a wall",
+        "corner_block_frac": "  ...of those, a sidestep would have cleared it",
+    }
+    for key, label in labels.items():
+        print(f"  {label:48s} {stats[key]:8.3f}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--build", type=Path, default=Path("build/mac/BlackOut.app"))
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--seeds", type=int, nargs="+", default=[101, 202, 303, 404, 505])
-    parser.add_argument("--report", nargs="+", default=["all"], choices=["all", "time", "blocked", "objectives"])
+    parser.add_argument("--report", nargs="+", default=["all"], choices=["all", "time", "blocked", "objectives", "stalls"])
     parser.add_argument("--gui", action="store_true", help="show the Unity window (slower, real-time by default)")
     parser.add_argument("--time-scale", type=float, default=None, help="default: 1.0 with --gui, else 20.0")
     parser.add_argument("--mask-walls", action="store_true", help="evaluate with wall-ward actions masked out")
@@ -248,6 +269,8 @@ def main() -> int:
         report_blocked(records)
     if wanted & {"all", "objectives"}:
         report_objectives(records)
+    if wanted & {"all", "stalls"}:
+        report_stalls(records)
     return 0
 
 

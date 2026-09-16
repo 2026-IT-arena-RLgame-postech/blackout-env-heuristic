@@ -15,8 +15,10 @@ makes the heuristic a live baseline in the same match rather than a number from 
 
 Definitions
 -----------
-approach_battery  mean per-tick *decrease* in grid distance to the nearest loose battery, over
-                  ticks where the unit carries nothing (positive = closing in)
+approach_battery  mean per-tick *decrease* in grid distance to the nearest FETCHABLE battery --
+                  loose on the floor or sitting in the enemy's storage, but not one already
+                  banked in own storage -- over ticks where the unit carries nothing
+                  (positive = closing in)
 approach_storage  same toward the nearest own storage tile, over ticks where it carries a battery
 pickups           no-cargo -> cargo transitions
 deliveries        cargo -> no-cargo within 1.5 cells of own storage
@@ -35,6 +37,7 @@ import numpy as np
 
 BATTERY_CHANNEL = 8
 STORAGE_ALLY_CHANNEL = 6
+STORAGE_ENEMY_CHANNEL = 7
 CARGO_COL = 4  # agent_states: [pos_x, pos_y, team, item_none, item_battery, ...]
 DELIVERY_RADIUS = 1.5  # cells; a unit standing on/next to its storage when the cargo disappears
 
@@ -91,7 +94,13 @@ class ObjectiveMonitor:
         """
         height, width = graphic.shape[:2]
         unit_cells = _cells(agent_states[rows, :2], height, width)
-        battery_cells = np.argwhere(graphic[..., BATTERY_CHANNEL] > 1e-3).astype(np.float64)
+        # A battery already banked in OWN storage is not something to go and fetch -- the
+        # heuristics skip exactly those tiles (advanced.py: `if graphic[y, x, STORAGE_ALLY] >
+        # 0.5: continue`) while still treating the enemy's stored batteries as steal targets.
+        # Counting them made "distance to the nearest battery" small for a unit loitering on its
+        # own storage, which is the behaviour this metric exists to catch.
+        fetchable = (graphic[..., BATTERY_CHANNEL] > 1e-3) & (graphic[..., STORAGE_ALLY_CHANNEL] <= 0.5)
+        battery_cells = np.argwhere(fetchable).astype(np.float64)
         storage_cells = np.argwhere(graphic[..., STORAGE_ALLY_CHANNEL] > 0.5).astype(np.float64)
         d_battery = _nearest(battery_cells, unit_cells)
         d_storage = _nearest(storage_cells, unit_cells)

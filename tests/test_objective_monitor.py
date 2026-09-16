@@ -7,6 +7,7 @@ import numpy as np
 from blackout_env.train.objective_monitor import (
     BATTERY_CHANNEL,
     STORAGE_ALLY_CHANNEL,
+    STORAGE_ENEMY_CHANNEL,
     CARGO_COL,
     ObjectiveMonitor,
     aggregate_objectives,
@@ -99,3 +100,23 @@ def test_no_batteries_on_the_map_is_not_an_error():
     counts = _run([([(5, 5)] * 5, [0.0] * 5)] * 3, graphic).counts
     assert counts.summary("")["approach_battery"] == 0.0
     assert counts.unit_ticks == 15
+
+
+def test_batteries_banked_in_own_storage_are_not_targets():
+    """A unit loitering on its own storage must not read as 'close to a battery'."""
+    graphic = _graphic(batteries=[(5, 5), (18, 18)], storages=[(5, 5)])  # one banked, one loose
+    monitor = ObjectiveMonitor()
+    monitor.observe(graphic, _states([(5, 6)] * 5 + [(0, 0)] * 5, [0.0] * 5), ROWS)
+    monitor.observe(graphic, _states([(5, 7)] * 5 + [(0, 0)] * 5, [0.0] * 5), ROWS)
+    # moving away from the banked pile and toward the loose one counts as approaching
+    assert monitor.counts.summary("")["approach_battery"] > 0
+
+
+def test_enemy_storage_batteries_stay_targets():
+    """Stealing is a real objective -- the heuristics chase enemy-stored batteries."""
+    graphic = _graphic(batteries=[(9, 9)], storages=[])
+    graphic[9, 9, STORAGE_ENEMY_CHANNEL] = 1.0
+    monitor = ObjectiveMonitor()
+    for col in (5, 6, 7):
+        monitor.observe(graphic, _states([(9, col)] * 5 + [(0, 0)] * 5, [0.0] * 5), ROWS)
+    assert monitor.counts.summary("")["approach_battery"] > 0

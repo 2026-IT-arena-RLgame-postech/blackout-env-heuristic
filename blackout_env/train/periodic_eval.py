@@ -21,6 +21,7 @@ from blackout_env.env.constants import team_a_agents, team_b_agents, unit_index
 from blackout_env.model.base import BaseModel
 from blackout_env.train.movement_monitor import FailureRuns, MovementMonitor, aggregate
 from blackout_env.train.objective_monitor import ObjectiveCounts, ObjectiveMonitor, aggregate_objectives
+from blackout_env.train.stall_monitor import StallCounts, StallMonitor, aggregate_stalls
 
 
 @dataclass
@@ -34,6 +35,7 @@ class EvalMatch:
     candidate_team: int  # 0 = the candidate played team A this match, 1 = team B
     candidate_objectives: ObjectiveCounts
     opponent_objectives: ObjectiveCounts
+    candidate_stalls: StallCounts
 
 
 def play_eval_match(
@@ -65,6 +67,8 @@ def play_eval_match(
     obs, _ = env.reset(seed=seed)
     candidate_monitor, opponent_monitor = MovementMonitor(), MovementMonitor()
     candidate_objectives, opponent_objectives = ObjectiveMonitor(), ObjectiveMonitor()
+    candidate_stalls = StallMonitor()
+    candidate_rows_by_agent = {a: unit_index(a) for a in candidate_names}
     steps = 0
     final_info: dict = {}
     empty_obs_steps = 0
@@ -105,6 +109,12 @@ def play_eval_match(
             after = next(iter(next_obs.values()))["agent_states"]
             candidate_monitor.observe(candidate_names, before, after, candidate_actions)
             opponent_monitor.observe(opponent_names, before, after, opponent_actions)
+            if candidate_obs and candidate_actions:
+                shared = candidate_obs[next(iter(candidate_obs))]
+                candidate_stalls.observe(
+                    shared["graphic"], before, after, candidate_actions,
+                    {a: candidate_rows_by_agent[a] for a in candidate_actions},
+                )
         obs = next_obs
         steps += 1
 
@@ -128,6 +138,7 @@ def play_eval_match(
         candidate_team=candidate_team,
         candidate_objectives=candidate_objectives.counts,
         opponent_objectives=opponent_objectives.counts,
+        candidate_stalls=candidate_stalls.counts,
     )
 
 
@@ -167,6 +178,8 @@ def run_periodic_eval(
     # Scoring pipeline for both sides, so the heuristic is a baseline measured in the same
     # matches -- see objective_monitor.py for why approach_battery is the number to watch.
     stats.update(aggregate_objectives([m.candidate_objectives for m in matches], "candidate_"))
+    # Why a unit is standing still, split three ways -- see train/stall_monitor.py.
+    stats.update(aggregate_stalls([m.candidate_stalls for m in matches], "stall/"))
     stats.update(aggregate_objectives([m.opponent_objectives for m in matches], "opponent_"))
 
     # Per-side split: the observation pipeline used to hand team B a differently-oriented view
