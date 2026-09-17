@@ -92,6 +92,18 @@ class RewardV2Config:
     travel_cap_seconds: float = 10.0
 
 
+# Fitted 2026-09-17 by examples/fit_reward_v2.py (coordinate search, 2 sweeps) on 120 recorded
+# heuristic matches: maximises how well confirmed diff + V_A - V_B at 5-30 s correlates with the
+# 64 s score difference (mean r 0.49 -> 0.76; at 10 s r 0.71 / AUC 0.88, where the displayed score
+# has r 0.05 / AUC 0.57 and the old Unity Psi r 0.08). Held-out V17 variants: rank correlation of
+# win rate with value at 10 s +0.71 (displayed score -0.31). exit_value sits at its grid edge and
+# Hunter vs exit value trade off along a flat ridge -- small sample, refit on more matches.
+FITTED_20260917 = RewardV2Config(
+    steal_hazard=0.3, carry_hazard=0.3, lambda_rho=0.8, hunt_beta=0.8,
+    exit_value=30.0, class_value=(0.0, 15.0, 3.0), travel_value=1.5,
+)
+
+
 # ---------------------------------------------------------------------------------------- geometry
 
 

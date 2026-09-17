@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import math
 from collections import defaultdict
 from pathlib import Path
@@ -180,8 +181,12 @@ def main() -> None:
     parser.add_argument("--e2-ticks", type=int, default=60000)
     parser.add_argument("--e2-start", type=int, default=0)
     parser.add_argument("--only", choices=["e1", "e2"])
+    parser.add_argument("--config", type=Path, help="RewardV2Config json (e.g. from fit_reward_v2.py --save)")
     args = parser.parse_args()
     cfg = RewardV2Config()
+    if args.config:
+        raw = json.loads(args.config.read_text())
+        cfg = RewardV2Config(**{**raw, "class_value": tuple(raw["class_value"])})
     path = args.dataset_dir / "buffer_a.npz"
     if args.only in (None, "e1"):
         e1(path, args.e1_samples, cfg, np.random.default_rng(0))

@@ -177,20 +177,20 @@ def objective(matches: list[dict], cfg: RewardV2Config) -> float:
     return float(np.nanmean([rows["r"][k] for k, s in enumerate(SECONDS) if 5 <= s <= 30]))
 
 
-def coordinate_search(matches: list[dict], cfg: RewardV2Config) -> RewardV2Config:
+def coordinate_search(matches: list[dict], cfg: RewardV2Config, sweeps: int = 1) -> RewardV2Config:
     grid = {
-        "steal_hazard": [0.05, 0.14, 0.3, 0.6],
-        "carry_hazard": [0.05, 0.14, 0.3, 0.6],
-        "lambda_rho": [0.2, 0.5, 0.8],
-        "hunt_beta": [0.2, 0.5, 0.8],
-        "exit_value": [0.0, 5.0, 15.0, 30.0],
-        "travel_value": [0.0, 0.5, 1.5],
-        "hunter_value": [0.0, 6.0, 15.0, 30.0],
-        "carrier_value": [0.0, 3.0, 10.0],
+        "steal_hazard": [0.05, 0.3],
+        "carry_hazard": [0.05, 0.3],
+        "lambda_rho": [0.2, 0.8],
+        "hunt_beta": [0.2, 0.8],
+        "exit_value": [0.0, 15.0, 30.0],
+        "travel_value": [0.0, 1.5],
+        "hunter_value": [0.0, 15.0, 30.0, 50.0],
+        "carrier_value": [0.0, 10.0],
     }
     best = objective(matches, cfg)
     print(f"\nfit: start objective {best:.4f}")
-    for sweep in range(2):
+    for sweep in range(sweeps):
         for name, values in grid.items():
             for v in values:
                 if name == "hunter_value":
@@ -211,6 +211,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", type=Path, default=Path("reports/value_matches"))
     parser.add_argument("--fit", action="store_true")
+    parser.add_argument("--save", type=Path, help="write the fitted RewardV2Config as json")
     args = parser.parse_args()
 
     diverse = load_suite(args.root, "diverse")
@@ -220,7 +221,9 @@ def main() -> None:
 
     configs = {"v2 default": RewardV2Config()}
     if args.fit:
-        configs["v2 fitted"] = coordinate_search(diverse, RewardV2Config())
+        configs["v2 fitted"] = coordinate_search(diverse, RewardV2Config(), sweeps=2)
+        if args.save:
+            args.save.write_text(json.dumps(asdict(configs["v2 fitted"]), indent=2) + "\n")
 
     displayed = np.stack([(m["team_state"][:, 0] - m["team_state"][:, 1]) * TARGET_SCORE for m in diverse])
     results = {"displayed score diff": e3(diverse, displayed, ""), "old Psi": e3(diverse, old_psi(diverse), "")}
