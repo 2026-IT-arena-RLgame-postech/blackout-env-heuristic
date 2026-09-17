@@ -59,6 +59,38 @@ lr/weight_decay/reset 강도는 아직 실험 안 해봄 — spr_loss_weight부�
 
 ---
 
+## Run 13 계획 (실행 전, 2026-09-17) — BC는 가우시안, Q 커버리지는 균등 무작위로 역할을 나눈다
+
+Run 12 ablation(아래): BC 강도 가중치(D3)가 편성을 무너뜨렸고, 무작위 행동을 뺀 깨끗한 데이터(D1)는 Q를 뾰족하게
+만들어(행동 간 범위 5.3–5.8 대 3.6–3.8) 배달·창고 다양성을 조금 잃었다. 가우시안 ±45° 노이즈는 균등 노이즈가 주던
+"모든 방향을 한 번씩 본다"는 역할을 못 했다. 이번에는 두 노이즈의 역할을 바꾼다.
+
+| # | 변경 (12b 설정 기준: BC 가중치 없음, mixture 온폴리시, eval V4) |
+|---|---|
+| E1 | **BC 데이터 = 가우시안 노이즈**: `heuristic_mixv8_bcgauss20_20260917`, 스트림당 80만 행, 휴리스틱 방향을 N(0, 20°) 회전(원래 방향 74%, 옆 방향 각 13%). 시연으로 복제된다 — 라벨이 휴리스틱 방향 중심으로 퍼져 경계에서 계단 라벨 대신 부드러운 분포를 학습하고, 약간 벗어난 상태에서의 회복도 포함한다 |
+| E2 | **Q 데이터 = 균등 무작위**: `heuristic_mixv8_quniform50_20260917`, 20만 행, 유닛 행동의 50%가 균등 무작위, `--no-demo`(BC 제외). 12c(100만 행 × 10%)와 무작위 행동 총량이 같다 |
+
+```
+python -m blackout_env.train.collect_heuristic_dataset_parallel --build build/mac/BlackOut.app --steps 800000 \
+  --workers 18 --noise-mode gaussian --noise-sigma-deg 20 --seed-offset 2000 --out datasets/heuristic_mixv8_bcgauss20_20260917
+python -m blackout_env.train.collect_heuristic_dataset_parallel --build build/mac/BlackOut.app --steps 200000 \
+  --workers 18 --noise-frac 0.5 --no-demo --seed-offset 3000 --out datasets/heuristic_mixv8_quniform50_20260917
+
+python -m blackout_env.train.offline_pretrain --dataset-dir datasets/heuristic_mixv8_bcgauss20_20260917 \
+  --q-dataset-dir datasets/heuristic_mixv8_quniform50_20260917 --onpolicy-opponent mixture \
+  --reward v2-fitted --steps 200000 --device mps --compile --spr-loss-weight 5.0 --encoder-weight-decay 1e-4 \
+  --bc-loss-alpha 1.0 --blocked-penalty 0.02 --onpolicy-self-vs-heuristic-frac 0.3 \
+  --onpolicy-self-play-frac 0 --reset-warmup-steps 2000 --eval-interval 10000
+```
+
+mixv7(bc, qnoise, uniform10)은 수집 후 휴지통으로.
+
+**봐야 할 값**: 30k에서 12b/12c와 같은 10경기 측정(`scratchpad onstate_probe` 절차, V4 상대 시드 21–25) — 편성, 배달,
+스폰 창고 비율, `q_value/action_range`(12c 3.75 수준이면 E2가 커버리지를 준 것), 벽 옆 반전. 이후 10k마다 eval(V4)과
+온폴리시 `vs_top`/`vs_rest`. 80k에서 Run 11 재측정값(−74~−77)보다 나은지로 계속 여부를 정한다.
+
+---
+
 ## Run 12 계획 (실행 전, 2026-09-17) — 누구를 따라 하고 누구와 싸우는가
 
 Run 11은 리워드 v2로 Hunter 방해(짐 든 적 처치 3–9배)를 배웠지만 수거가 줄어 점수차는 Run 10과 같았다. 이번에는
