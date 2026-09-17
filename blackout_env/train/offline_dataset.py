@@ -50,6 +50,7 @@ def load_dataset_into(
     penalty_per_unit: float = 0.0,
     reward_v2=None,
     annotate_workers: int = 8,
+    drop_dead: bool = False,
 ) -> int:
     """Replays every saved transition through .push(), in original order. This re-derives
     priorities exactly the way collection itself did (freshly pushed = max priority) rather
@@ -68,6 +69,10 @@ def load_dataset_into(
     terminal outcome + confirmed score change, with the team potential stored alongside for the
     n-step return to shape with the learner's gamma (see train/reward_v2.annotate_sequence). The
     blocked penalty is still added on top.
+
+    drop_dead: skip every training segment that starts with no battery left anywhere (see
+    train/dead_segments.py), moving each shortened match's outcome onto its new last row.
+    Returns the number of rows pushed.
     """
     data = np.load(npz_path)
     # NpzFile.__getitem__ re-reads and re-decompresses the whole member array from the zip on
@@ -83,9 +88,23 @@ def load_dataset_into(
 
         annotated = annotate_dataset(npz_path, reward_v2, workers=annotate_workers)
         reward, done, potential, terminal = annotated["reward"], annotated["done"], annotated["potential"], annotated["terminal"]
+    keep = np.ones(n, dtype=bool)
+    if drop_dead:
+        from blackout_env.train.dead_segments import batteries_in_play, drop_dead_segments
+        from blackout_env.train.reward_v2 import TERMINAL_REWARD, match_ends
+
+        ends = match_ends(arrays["team_state"])
+        if reward_v2 is not None:
+            outcome = annotated["outcome"]
+        else:
+            outcome = np.where(ends & done, np.clip(np.rint(reward / TERMINAL_REWARD), -1, 1) * TERMINAL_REWARD, 0.0)
+            terminal = ends.copy()
+            done = done | ends
+        batteries = np.concatenate([batteries_in_play(arrays["graphic"][i : i + 65536], arrays["agent_states"][i : i + 65536]) for i in range(0, n, 65536)])
+        reward, done, terminal, keep = drop_dead_segments(reward, done, terminal, batteries, ends, outcome)
     if team_indices is not None and penalty_per_unit != 0.0:
         reward = reward + blocked_penalty_adjustment(arrays["agent_states"], done, team_indices, penalty_per_unit)
-    for i in range(n):
+    for i in np.flatnonzero(keep):
         buffer.push(
             arrays["graphic"][i],
             arrays["team_state"][i],
@@ -96,7 +115,7 @@ def load_dataset_into(
             potential=float(potential[i]),
             terminal=bool(terminal[i]),
         )
-    return n
+    return int(keep.sum())
 
 
 def merge_shards(shard_paths: list[Path], out_path: Path) -> int:

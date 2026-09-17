@@ -37,6 +37,7 @@ from blackout_env.model.base import BaseModel
 from blackout_env.model.my_policy import direction_vector_to_idx
 from blackout_env.train.objective_monitor import ObjectiveMonitor, aggregate_objectives
 from blackout_env.train.replay_buffer import SOURCE_SELF_PLAY, SOURCE_SELF_VS_HEURISTIC, SequentialReplayBuffer
+from blackout_env.train.dead_segments import batteries_in_play
 from blackout_env.train.reward_shaping import blocked_penalty_adjustment
 
 ABSORPTION_IDX = 3  # matches qmix_trainer.ABSORPTION_IDX -- team_state row layout
@@ -55,6 +56,7 @@ def play_and_collect(
     seed: int,
     penalty_per_unit: float,
     reward_v2=None,
+    stop_when_exhausted: bool = True,
 ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], dict[str, float]]:
     """
     Plays one full match with team_a_policy/team_b_policy controlling their respective teams
@@ -63,6 +65,11 @@ def play_and_collect(
     per-field schema (one row per tick), reward already including the blocked-tick penalty.
     match_info carries the physical outcome (winner: 0=team A, 1=team B, -1=draw, final scores)
     for diagnostics.
+
+    stop_when_exhausted: end the match at the first absorption after which no battery is left
+    anywhere (train/dead_segments.py) -- the result can no longer change, so the rest of a 420 s
+    match (most of it) would only be dropped at training time. The outcome is decided by the
+    scores at that point and added to the last row like Unity's own +-1 per agent.
     """
     team_a_names = team_a_agents()
     team_b_names = team_b_agents()
@@ -136,6 +143,17 @@ def play_and_collect(
             rows_a[f].append(v)
         for f, v in zip(_FIELDS, (shared_b["graphic"], shared_b["team_state"], shared_b["agent_states"], full_direction_idx, reward_b, buffer_done)):
             rows_b[f].append(v)
+
+        if stop_when_exhausted and absorption_fired and not done and team_a_names[0] in next_obs:
+            view = next_obs[team_a_names[0]]
+            if batteries_in_play(view["graphic"][None], view["agent_states"][None])[0] == 0:
+                score_0, score_1 = float(view["team_state"][0]), float(view["team_state"][1])
+                sign = 0.0 if abs(score_0 - score_1) < 1e-6 else (1.0 if score_0 > score_1 else -1.0)
+                rows_a["reward"][-1] += sign * len(team_a_names)
+                rows_b["reward"][-1] -= sign * len(team_b_names)
+                terminal_reward = (sign * len(team_a_names), -sign * len(team_b_names))
+                final_info = {"winner": -1 if sign == 0 else (0 if sign > 0 else 1), "score_0": score_0, "score_1": score_1}
+                break
 
         obs = next_obs
 
@@ -272,6 +290,7 @@ def collect_onpolicy_data(
     seed_start: int,
     max_matches: int = 50,
     reward_v2=None,
+    stop_when_exhausted: bool = True,
 ) -> dict[str, float]:
     """
     Plays self-vs-heuristic matches (candidate vs heuristic, side swapped every match for
@@ -295,7 +314,7 @@ def collect_onpolicy_data(
     swap = False
     while svh["ticks"] < target_ticks_self_vs_heuristic and svh["matches"] < max_matches:
         team_a_policy, team_b_policy = (heuristic, candidate) if swap else (candidate, heuristic)
-        t_a, t_b, info = play_and_collect(env, team_a_policy, team_b_policy, seed, penalty_per_unit, reward_v2)
+        t_a, t_b, info = play_and_collect(env, team_a_policy, team_b_policy, seed, penalty_per_unit, reward_v2, stop_when_exhausted)
         buffer_a, buffer_b = buffers[SOURCE_SELF_VS_HEURISTIC]
         _push(buffer_a, t_a, SOURCE_SELF_VS_HEURISTIC, demo=swap)  # team A is the heuristic when swapped
         _push(buffer_b, t_b, SOURCE_SELF_VS_HEURISTIC, demo=not swap)
@@ -309,7 +328,7 @@ def collect_onpolicy_data(
         )
 
     while sp["ticks"] < target_ticks_self_play and sp["matches"] < max_matches:
-        t_a, t_b, info = play_and_collect(env, candidate, candidate, seed, penalty_per_unit, reward_v2)
+        t_a, t_b, info = play_and_collect(env, candidate, candidate, seed, penalty_per_unit, reward_v2, stop_when_exhausted)
         buffer_a, buffer_b = buffers[SOURCE_SELF_PLAY]
         _push(buffer_a, t_a, SOURCE_SELF_PLAY, demo=False)
         _push(buffer_b, t_b, SOURCE_SELF_PLAY, demo=False)

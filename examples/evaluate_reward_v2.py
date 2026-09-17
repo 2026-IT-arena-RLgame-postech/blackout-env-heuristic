@@ -120,7 +120,7 @@ def e2(path: Path, ticks: int, cfg: RewardV2Config, start: int) -> None:
     before, after = slice_potentials(P, slice(0, ticks - 1)), slice_potentials(P, slice(1, ticks))
     per_unit, team = shaped_rewards(before, after, 1.0)
     score = score_reward(before, after)
-    reset = T[1:, 2] > T[:-1, 2] + 0.5
+    reset = T[1:, 2] > T[:-1, 2] + 1e-4  # any rise: early-ended matches reset from wherever they were
     per_unit[reset] = 0
     team = np.where(reset, 0, team)
     score = np.where(reset, 0, score)

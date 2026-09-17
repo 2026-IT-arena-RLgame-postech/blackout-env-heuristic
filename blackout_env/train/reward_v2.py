@@ -462,8 +462,9 @@ TERMINAL_REWARD = 5.0
 
 def match_ends(team_state: np.ndarray) -> np.ndarray:
     """[T] True on the last transition of each match in a sequential block: the next row's episode
-    time jumps back up (a reset), and the block's final row."""
-    return np.r_[team_state[1:, 2] > team_state[:-1, 2] + 0.5, True]
+    time goes back up (it only ever falls within a match; a match that ends early at the target
+    score resets from wherever it was, so no large-jump threshold), and the block's final row."""
+    return np.r_[team_state[1:, 2] > team_state[:-1, 2] + 1e-4, True]
 
 
 def annotate_sequence(
@@ -501,6 +502,7 @@ def annotate_sequence(
     finished = terminal & done
     outcome = np.where(finished, np.clip(np.rint(stored_reward / TERMINAL_REWARD), -1, 1), 0.0)
     return {
+        "outcome": (outcome * TERMINAL_REWARD).astype(np.float32),
         "reward": (outcome * TERMINAL_REWARD + score / points_per_reward).astype(np.float32),
         "potential": ((value[:, 0] - value[:, 1]) / points_per_reward).astype(np.float32),
         "terminal": terminal,
@@ -533,7 +535,7 @@ def annotate_dataset(path, cfg: RewardV2Config, points_per_reward: float = POINT
     from blackout_env.train.offline_dataset import npz_member_memmap
 
     path = Path(path)
-    key = hashlib.sha1(json.dumps({**asdict(cfg), "ppr": points_per_reward, "v": 1}, sort_keys=True).encode()).hexdigest()[:10]
+    key = hashlib.sha1(json.dumps({**asdict(cfg), "ppr": points_per_reward, "v": 2}, sort_keys=True).encode()).hexdigest()[:10]
     cache = path.parent / f"reward_v2_{key}_{path.stem}.npz"
     if cache.exists():
         z = np.load(cache)

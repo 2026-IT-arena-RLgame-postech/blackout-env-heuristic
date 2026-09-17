@@ -176,6 +176,13 @@ def main() -> None:
     )
     parser.add_argument("--reward-workers", type=int, default=8, help="processes for annotating the dataset with reward v2")
     parser.add_argument(
+        "--keep-exhausted",
+        action="store_true",
+        help="Keep training segments that start with no battery left anywhere (dropped by default: the "
+        "result can no longer change -- 73.6%% of heuristic_mixv5 rows; see train/dead_segments.py). "
+        "On-policy matches also stop at that point unless this is set.",
+    )
+    parser.add_argument(
         "--blocked-penalty",
         type=float,
         default=0.0,
@@ -325,8 +332,11 @@ def main() -> None:
 
     print(f"[offline] loading dataset from {dataset_dir} ...")
     print(f"[offline] reward={args.reward}" + (f" {reward_v2_cfg}" if reward_v2_cfg else ""))
-    load_dataset_into(trainer.buffer_a, dataset_dir / "buffer_a.npz", TEAM_A_INDICES, args.blocked_penalty, reward_v2_cfg, args.reward_workers)
-    load_dataset_into(trainer.buffer_b, dataset_dir / "buffer_b.npz", TEAM_B_INDICES, args.blocked_penalty, reward_v2_cfg, args.reward_workers)
+    drop_dead = not args.keep_exhausted
+    kept_a = load_dataset_into(trainer.buffer_a, dataset_dir / "buffer_a.npz", TEAM_A_INDICES, args.blocked_penalty, reward_v2_cfg, args.reward_workers, drop_dead)
+    kept_b = load_dataset_into(trainer.buffer_b, dataset_dir / "buffer_b.npz", TEAM_B_INDICES, args.blocked_penalty, reward_v2_cfg, args.reward_workers, drop_dead)
+    print(f"[offline] kept {kept_a}/{n_a} (a) and {kept_b}/{n_b} (b) rows"
+          + (" after dropping segments with no battery left" if drop_dead else ""))
     print(f"[offline] loaded buffer_a={len(trainer.buffer_a)}, buffer_b={len(trainer.buffer_b)} transitions"
           f" (blocked_penalty={args.blocked_penalty})")
 
@@ -398,6 +408,7 @@ def main() -> None:
                 seed_start=10_000 + step,
                 max_matches=args.onpolicy_max_matches,
                 reward_v2=reward_v2_cfg,
+                stop_when_exhausted=not args.keep_exhausted,
             )
         finally:
             trainer.net.train()
