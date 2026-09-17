@@ -178,13 +178,11 @@ def test_outside_the_map_counts_as_blocked():
     assert abs(float(patch[4, 4])) < 1e-4        # one tile south-east is inside
 
 
-def test_in_tile_phase_is_periodic():
-    at_centre = local_wall_features(_graphic(), _states([(10.0, 7.0)] * N_UNITS))[0, 0, 25:]
-    assert torch.allclose(at_centre, torch.tensor([0.0, 1.0, 0.0, 1.0]), atol=1e-5)
-    at_boundary = local_wall_features(_graphic(), _states([(10.5, 7.0)] * N_UNITS))[0, 0, 25:]
-    assert abs(float(at_boundary[1]) + 1.0) < 1e-5  # cos = -1 at the tile edge
-    row = local_wall_features(_graphic(), _states([(10.4, 7.0)] * N_UNITS))[0, 0, 25:27]
-    assert torch.allclose(row, torch.tensor([np.sin(2 * np.pi * 0.4), np.cos(2 * np.pi * 0.4)], dtype=torch.float32), atol=1e-4)
+def test_there_is_no_in_tile_position_feature():
+    """Only walkability: a unit moving through open ground must see nothing change at all."""
+    features = [local_wall_features(_graphic(), _states([(10.0 + d, 12.0 + d)] * N_UNITS))[0, 0] for d in (0.0, 0.24, 0.49)]
+    assert features[0].shape == (N_PATCH_FEATURES,) == (25,)
+    assert all(torch.equal(f, features[0]) for f in features)
 
 
 def test_features_are_continuous_across_a_tile_boundary():
@@ -199,8 +197,8 @@ def test_features_are_continuous_across_a_tile_boundary():
         for d in (1e-3, 1e-2):
             before = local_wall_features(graphic, _states([(row - d, col - d)] * N_UNITS))[0, 0]
             after = local_wall_features(graphic, _states([(row + d, col + d)] * N_UNITS))[0, 0]
-            # bilinear: at most 4 * slope(1 per tile) * 2d per sample; phase: 2*pi*2d
-            assert float((after - before).abs().max()) <= 2 * np.pi * 2 * d + 1e-4, (row, col, d)
+            # bilinear, slope <= 1 per tile along each axis; the move is 2d along both
+            assert float((after - before).abs().max()) <= 2 * 2 * d + 1e-4, (row, col, d)
 
 
 def test_every_unit_gets_a_patch_including_the_enemy():

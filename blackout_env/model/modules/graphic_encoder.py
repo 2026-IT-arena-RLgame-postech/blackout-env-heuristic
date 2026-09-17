@@ -21,7 +21,7 @@ class GraphicEncoder(nn.Module):
         # Units are drawn straight onto the map grid. An earlier version rasterized them at 4x
         # and folded that back with a stride-4 stem to keep sub-tile position; that is now
         # carried where it is actually used -- on the unit's own token, as walkability sampled
-        # around its true position plus its in-tile phase (derived_obs.local_wall_features).
+        # around its true position (derived_obs.local_wall_features).
         #
         # Sized down from an earlier 64/128/256-channel version (ImageNet-backbone-scale) after
         # observing grad_norm/graphic_encoder collapse ~7 orders of magnitude within a few

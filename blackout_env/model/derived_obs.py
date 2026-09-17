@@ -47,8 +47,15 @@ wall patch          97.5% of the final checkpoint's failed moves were into a wal
                     computing these features from the unmoved position removed it (0.2%). The
                     offset alone accounted for most of it (19.3% -> 4.1% when frozen).
                     So walkability is now sampled bilinearly at fixed offsets around the true
-                    position, and the in-tile position is encoded as sin/cos of the tile phase,
-                    which is identical at +0.5 and -0.5.
+                    position.
+
+                    There is deliberately no in-tile position feature. A sin/cos tile phase (the
+                    first continuous replacement for the offset) turns a full cycle every tile,
+                    so a Hunter moving 0.24 tiles per decision swung it by 1.10 on average per
+                    tick (range [-1, 1]) -- three times the old offset's churn -- while in open
+                    ground where it swings most, position within a tile decides nothing. Where it
+                    does matter, near walls, the bilinear samples already carry it (at most 0.31
+                    change per Hunter tick), and the raw pos columns stay on the token.
 """
 
 from __future__ import annotations
@@ -62,7 +69,7 @@ N_UNIT_CHANNELS = 4
 N_DERIVED_MAP_CHANNELS = N_UNIT_CHANNELS + 2  # + storage free capacity + fetchable battery
 PATCH = 5  # wall samples per side, PATCH_SPACING tiles apart, centred on the unit's true position
 PATCH_SPACING = 0.5
-N_PATCH_FEATURES = PATCH * PATCH + 4  # + sin/cos of the in-tile phase, for row and col
+N_PATCH_FEATURES = PATCH * PATCH
 
 VOID, WALL = 0, 1
 STORAGE_ALLY, STORAGE_ENEMY, BATTERY = 6, 7, 8
@@ -172,14 +179,11 @@ def derived_map_channels(graphic: torch.Tensor, agent_states: torch.Tensor) -> t
 
 def local_wall_features(graphic: torch.Tensor, agent_states: torch.Tensor) -> torch.Tensor:
     """
-    [B, N_UNITS, N_PATCH_FEATURES] appended to each unit's agent_states row, all continuous in the
-    unit's position (see the module docstring for why that matters):
-
-      - PATCH x PATCH walkability samples (1 = blocked, off-map counts as blocked), taken
-        PATCH_SPACING tiles apart around the unit's true position, row-major from the north-west,
-        each bilinearly interpolated between the four surrounding tile centres;
-      - sin and cos of 2*pi*(position in tile units), for row then col -- the in-tile phase,
-        which is the same at either side of a tile boundary.
+    [B, N_UNITS, N_PATCH_FEATURES] appended to each unit's agent_states row: PATCH x PATCH
+    walkability samples (1 = blocked, off-map counts as blocked), taken PATCH_SPACING tiles apart
+    around the unit's true position, row-major from the north-west, each bilinearly interpolated
+    between the four surrounding tile centres -- continuous in the unit's position (see the module
+    docstring for why that matters, and why there is no in-tile position feature).
 
     Computed for all ten units, not just own team: the frame is symmetric that way, and where an
     enemy is pinned against geometry is as informative as where you are.
@@ -213,13 +217,9 @@ def local_wall_features(graphic: torch.Tensor, agent_states: torch.Tensor) -> to
     def at(rows: torch.Tensor, cols: torch.Tensor) -> torch.Tensor:
         return flat.gather(1, (rows * padded_w + cols).reshape(batch, -1)).view_as(fr)
 
-    patch = (
+    return (
         at(r0, c0) * (1 - fr) * (1 - fc)
         + at(r0, c0 + 1) * (1 - fr) * fc
         + at(r0 + 1, c0) * fr * (1 - fc)
         + at(r0 + 1, c0 + 1) * fr * fc
     ).reshape(batch, n_units, PATCH * PATCH)
-
-    phase_row, phase_col = 2.0 * math.pi * row, 2.0 * math.pi * col
-    phase = torch.stack([phase_row.sin(), phase_row.cos(), phase_col.sin(), phase_col.cos()], dim=-1)
-    return torch.cat([patch, phase], dim=-1)
