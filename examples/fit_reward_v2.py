@@ -179,14 +179,18 @@ def objective(matches: list[dict], cfg: RewardV2Config) -> float:
 
 def coordinate_search(matches: list[dict], cfg: RewardV2Config, sweeps: int = 1) -> RewardV2Config:
     grid = {
-        "steal_hazard": [0.05, 0.3],
-        "carry_hazard": [0.05, 0.3],
-        "lambda_rho": [0.2, 0.8],
-        "hunt_beta": [0.2, 0.8],
-        "exit_value": [0.0, 15.0, 30.0],
-        "travel_value": [0.0, 1.5],
-        "hunter_value": [0.0, 15.0, 30.0, 50.0],
-        "carrier_value": [0.0, 10.0],
+        "steal_hazard": [0.05, 0.14, 0.3, 0.6],
+        "carry_hazard": [0.05, 0.14, 0.3, 0.6],
+        "lambda_rho": [0.2, 0.5, 0.8, 0.95],
+        "lambda_length": [6.0, 12.0, 24.0],
+        "hunt_beta": [0.2, 0.5, 0.8, 0.95],
+        "hunt_length": [2.0, 4.0, 8.0],
+        "exit_value": [0.0, 15.0, 30.0, 45.0, 60.0],
+        "exit_length": [2.0, 3.0, 5.0],
+        "travel_value": [0.0, 0.5, 1.5, 3.0],
+        "travel_cap_seconds": [5.0, 10.0, 20.0],
+        "hunter_value": [0.0, 10.0, 15.0, 20.0, 30.0, 50.0],
+        "carrier_value": [0.0, 3.0, 10.0],
     }
     best = objective(matches, cfg)
     print(f"\nfit: start objective {best:.4f}")
@@ -212,6 +216,8 @@ def main() -> None:
     parser.add_argument("--root", type=Path, default=Path("reports/value_matches"))
     parser.add_argument("--fit", action="store_true")
     parser.add_argument("--save", type=Path, help="write the fitted RewardV2Config as json")
+    parser.add_argument("--sweeps", type=int, default=2)
+    parser.add_argument("--from-fitted", action="store_true", help="start the search from reward_v2.FITTED_20260917")
     args = parser.parse_args()
 
     diverse = load_suite(args.root, "diverse")
@@ -221,7 +227,10 @@ def main() -> None:
 
     configs = {"v2 default": RewardV2Config()}
     if args.fit:
-        configs["v2 fitted"] = coordinate_search(diverse, RewardV2Config(), sweeps=2)
+        from blackout_env.train.reward_v2 import FITTED_20260917
+
+        configs["v2 fitted (previous)"] = FITTED_20260917
+        configs["v2 fitted"] = coordinate_search(diverse, FITTED_20260917 if args.from_fitted else RewardV2Config(), sweeps=args.sweeps)
         if args.save:
             args.save.write_text(json.dumps(asdict(configs["v2 fitted"]), indent=2) + "\n")
 
