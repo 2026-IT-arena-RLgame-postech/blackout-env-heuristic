@@ -241,6 +241,10 @@ class QMIXConfig:
     # something the net should learn -- a hand-written mask hides whether it did. Turn it on to
     # take the blocked-penalty term out of the return, or as a fallback if blocking persists.
     action_masking: bool = False
+    # "v2": the buffers hold reward v2 (train/reward_v2.py) -- terminal + confirmed score change as
+    # the reward and the team potential alongside, shaped inside the n-step return with the
+    # current gamma. "unity": the stored reward already carries Unity's own shaping.
+    reward_mode: str = "unity"
     # Fixed share of every batch drawn from each replay source (indexed like
     # replay_buffer.SOURCE_NAMES: dataset, self_vs_heuristic, self_play). When set, buffer_a/b hold
     # only the static dataset and are never written after loading, and each on-policy source with a
@@ -962,8 +966,11 @@ class QMIXTrainer:
         batch = buffer.sample(batch_size, window=window, beta=beta, normalize=normalize)
         indices = batch["indices"]
 
+        v2 = self.cfg.reward_mode == "v2"
         n_step_return, bootstrap_idx, not_done, gamma_eff = compute_n_step_return(
-            buffer.reward, buffer.done, indices, buffer.capacity, n_step, gamma
+            buffer.reward, buffer.done, indices, buffer.capacity, n_step, gamma,
+            potential_full=buffer.potential if v2 else None,
+            terminal_full=buffer.terminal if v2 else None,
         )
 
         offsets_future = np.arange(1, self.cfg.spr_k + 1)

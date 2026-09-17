@@ -452,3 +452,98 @@ def shaped_rewards(before: Potentials, after: Potentials, gamma: float) -> tuple
     unassigned = np.where(~assigned & ~own, enemy_delta, 0.0).sum(1, keepdims=True)
     per_unit = np.where(own, per_unit - unassigned / N_TEAM, 0.0)
     return per_unit.astype(np.float32), per_unit.sum(1).astype(np.float32)
+
+
+# ---------------------------------------------------------------------------------------- training data
+
+POINTS_PER_REWARD = 20.0  # 20 battery points = reward 1.0; a win/loss stays +-5 (five agents x +-1)
+TERMINAL_REWARD = 5.0
+
+
+def match_ends(team_state: np.ndarray) -> np.ndarray:
+    """[T] True on the last transition of each match in a sequential block: the next row's episode
+    time jumps back up (a reset), and the block's final row."""
+    return np.r_[team_state[1:, 2] > team_state[:-1, 2] + 0.5, True]
+
+
+def annotate_sequence(
+    graphic: np.ndarray,
+    agent_states: np.ndarray,
+    team_state: np.ndarray,
+    stored_reward: np.ndarray,
+    done: np.ndarray,
+    cfg: RewardV2Config,
+    points_per_reward: float = POINTS_PER_REWARD,
+    chunk: int = 2048,
+) -> dict[str, np.ndarray]:
+    """
+    Rewrites one team stream's sequential transitions for reward v2. Returns, per row:
+
+      reward     terminal outcome (+-5, recovered from the sign of the stored reward on the last
+                 row of a finished match, where Unity's +-1 per agent dominates its shaping) plus
+                 the change in confirmed score difference to the next row, in reward units
+      potential  V_own - V_enemy of the row's state, in reward units -- the shaping itself is
+                 gamma * potential[next] - potential[this], applied inside the n-step return
+                 (compute_n_step_return) with the learner's own gamma
+      terminal   the row ends a match: the next row belongs to another match, so its potential
+                 must not be bootstrapped (an absorption `done` still bootstraps it)
+      done       the stored `done`, also forced on every match end -- shards of a parallel
+                 collection are concatenated, and a shard can end mid-match
+    """
+    parts = [compute_potentials(graphic[i : i + chunk], agent_states[i : i + chunk], team_state[i : i + chunk], cfg)
+             for i in range(0, len(graphic), chunk)]
+    value = np.concatenate([p.team_value() for p in parts])
+    confirmed = np.concatenate([p.confirmed for p in parts])
+    terminal = match_ends(team_state)
+    diff = confirmed[:, 0] - confirmed[:, 1]
+    score = np.r_[diff[1:] - diff[:-1], 0.0]
+    score[terminal] = 0.0
+    finished = terminal & done
+    outcome = np.where(finished, np.clip(np.rint(stored_reward / TERMINAL_REWARD), -1, 1), 0.0)
+    return {
+        "reward": (outcome * TERMINAL_REWARD + score / points_per_reward).astype(np.float32),
+        "potential": ((value[:, 0] - value[:, 1]) / points_per_reward).astype(np.float32),
+        "terminal": terminal,
+        "done": done | terminal,
+    }
+
+
+def _annotate_npz_range(args) -> tuple[int, dict[str, np.ndarray]]:
+    from blackout_env.train.offline_dataset import npz_member_memmap
+
+    path, start, stop, cfg, points_per_reward, overlap = args
+    lo, hi = start, min(stop + overlap, len(npz_member_memmap(path, "done")))
+    arrays = {f: np.asarray(npz_member_memmap(path, f)[lo:hi]) for f in ("graphic", "agent_states", "team_state", "reward", "done")}
+    arrays["graphic"] = arrays["graphic"].astype(np.float32)
+    out = annotate_sequence(arrays["graphic"], arrays["agent_states"], arrays["team_state"], arrays["reward"], arrays["done"], cfg, points_per_reward)
+    keep = stop - start
+    return start, {k: v[:keep] for k, v in out.items()}
+
+
+def annotate_dataset(path, cfg: RewardV2Config, points_per_reward: float = POINTS_PER_REWARD, workers: int = 8, block: int = 50_000) -> dict[str, np.ndarray]:
+    """annotate_sequence over a whole stored stream (.npz), in parallel blocks, cached next to it
+    as reward_v2_<hash>_<stem>.npz. Blocks overlap by one row so each block's last score change and
+    match-end test see the following row."""
+    import hashlib
+    import json
+    from concurrent.futures import ProcessPoolExecutor
+    from dataclasses import asdict
+    from pathlib import Path
+
+    from blackout_env.train.offline_dataset import npz_member_memmap
+
+    path = Path(path)
+    key = hashlib.sha1(json.dumps({**asdict(cfg), "ppr": points_per_reward, "v": 1}, sort_keys=True).encode()).hexdigest()[:10]
+    cache = path.parent / f"reward_v2_{key}_{path.stem}.npz"
+    if cache.exists():
+        z = np.load(cache)
+        return {k: z[k] for k in z.files}
+    n = len(npz_member_memmap(path, "done"))
+    tasks = [(str(path), s, min(s + block, n), cfg, points_per_reward, 1) for s in range(0, n, block)]
+    results: dict[int, dict[str, np.ndarray]] = {}
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        for start, part in pool.map(_annotate_npz_range, tasks):
+            results[start] = part
+    merged = {k: np.concatenate([results[s][k] for s in sorted(results)]) for k in results[0]}
+    np.savez(cache, **merged)
+    return merged

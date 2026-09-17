@@ -17,10 +17,19 @@ def compute_n_step_return(
     capacity: int,
     n_step: int,
     gamma: float,
+    potential_full: np.ndarray | None = None,
+    terminal_full: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Per-sample n-step return, truncated at the first `done` within the window (no bootstrap
     past an episode end).
+
+    With potential_full (reward v2), potential-based shaping gamma*P(s') - P(s) is added for every
+    step taken, which telescopes to gamma**steps * P(bootstrap) - P(anchor): shaped with the same
+    gamma the target uses, so it stays policy-invariant whatever the annealing schedule is doing.
+    The bootstrap potential is kept at an absorption `done` (the next row is the same match, and
+    the potential stands in for the value the cut discards) and dropped only when the truncating
+    row is `terminal` (a match end: the next row is another match).
 
     Returns
     -------
@@ -35,6 +44,7 @@ def compute_n_step_return(
     discount = np.ones(B, dtype=np.float32)
     steps_taken = np.zeros(B, dtype=np.int64)
     active = np.ones(B, dtype=bool)
+    ended_match = np.zeros(B, dtype=bool)
 
     for k in range(n_step):
         idx = (anchor_idx + k) % capacity
@@ -44,12 +54,17 @@ def compute_n_step_return(
         returns += np.where(active, discount * r, 0.0)
         steps_taken += active.astype(np.int64)
         discount = np.where(active, discount * gamma, discount)
+        if terminal_full is not None:
+            ended_match |= active & terminal_full[idx]
         active = active & (~d)
 
     bootstrap_idx = (anchor_idx + steps_taken) % capacity
     gamma_eff = gamma ** steps_taken.astype(np.float32)
     not_done = active.astype(np.float32)
-    return returns, bootstrap_idx, not_done, gamma_eff
+    if potential_full is not None:
+        next_potential = np.where(ended_match, 0.0, potential_full[bootstrap_idx])
+        returns = returns + gamma_eff * next_potential - potential_full[anchor_idx % capacity]
+    return returns.astype(np.float32), bootstrap_idx, not_done, gamma_eff
 
 
 def compute_spr_valid_mask(

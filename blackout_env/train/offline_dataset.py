@@ -21,6 +21,21 @@ from blackout_env.train.reward_shaping import blocked_penalty_adjustment
 FIELDS = ("graphic", "team_state", "agent_states", "actions", "reward", "done")
 
 
+def npz_member_memmap(path: Path, name: str) -> np.memmap:
+    """Memory-map one array of an uncompressed .npz (np.savez) without loading the whole file."""
+    import zipfile
+
+    info = zipfile.ZipFile(path).getinfo(name + ".npy")
+    with open(path, "rb") as f:
+        f.seek(info.header_offset)
+        local = f.read(30)
+        f.seek(info.header_offset + 30 + int.from_bytes(local[26:28], "little") + int.from_bytes(local[28:30], "little"))
+        version = np.lib.format.read_magic(f)
+        shape, fortran, dtype = np.lib.format._read_array_header(f, version)
+        offset = f.tell()
+    return np.memmap(path, dtype=dtype, mode="r", shape=shape, offset=offset, order="F" if fortran else "C")
+
+
 def save_buffer(buffer: SequentialReplayBuffer, path: Path) -> None:
     """Dumps the first len(buffer) entries (chronological order -- callers never let a
     collection run exceed capacity, so there's no ring wraparound to unscramble here)."""
@@ -33,6 +48,8 @@ def load_dataset_into(
     npz_path: Path,
     team_indices: tuple[int, ...] | None = None,
     penalty_per_unit: float = 0.0,
+    reward_v2=None,
+    annotate_workers: int = 8,
 ) -> int:
     """Replays every saved transition through .push(), in original order. This re-derives
     priorities exactly the way collection itself did (freshly pushed = max priority) rather
@@ -46,6 +63,11 @@ def load_dataset_into(
     reward -- see that function's docstring. Off by default (both existing callers of this
     function, qmix_trainer.py's --seed-dataset-dir and older scripts, keep their exact prior
     behavior unless they opt in); offline_pretrain.py passes real values explicitly.
+
+    reward_v2: a RewardV2Config replaces the stored (Unity-shaped) reward with reward v2 --
+    terminal outcome + confirmed score change, with the team potential stored alongside for the
+    n-step return to shape with the learner's gamma (see train/reward_v2.annotate_sequence). The
+    blocked penalty is still added on top.
     """
     data = np.load(npz_path)
     # NpzFile.__getitem__ re-reads and re-decompresses the whole member array from the zip on
@@ -53,9 +75,16 @@ def load_dataset_into(
     # multi-GB array once per transition. Load each field into memory exactly once instead.
     arrays = {field: data[field] for field in FIELDS}
     n = arrays["graphic"].shape[0]
-    reward = arrays["reward"]
+    reward, done = arrays["reward"], arrays["done"]
+    potential = np.zeros(n, dtype=np.float32)
+    terminal = done
+    if reward_v2 is not None:
+        from blackout_env.train.reward_v2 import annotate_dataset
+
+        annotated = annotate_dataset(npz_path, reward_v2, workers=annotate_workers)
+        reward, done, potential, terminal = annotated["reward"], annotated["done"], annotated["potential"], annotated["terminal"]
     if team_indices is not None and penalty_per_unit != 0.0:
-        reward = reward + blocked_penalty_adjustment(arrays["agent_states"], arrays["done"], team_indices, penalty_per_unit)
+        reward = reward + blocked_penalty_adjustment(arrays["agent_states"], done, team_indices, penalty_per_unit)
     for i in range(n):
         buffer.push(
             arrays["graphic"][i],
@@ -63,7 +92,9 @@ def load_dataset_into(
             arrays["agent_states"][i],
             arrays["actions"][i],
             float(reward[i]),
-            bool(arrays["done"][i]),
+            bool(done[i]),
+            potential=float(potential[i]),
+            terminal=bool(terminal[i]),
         )
     return n
 

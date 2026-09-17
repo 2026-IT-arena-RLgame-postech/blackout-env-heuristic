@@ -49,7 +49,7 @@ from blackout_env.env.blackout_env import BlackOutEnv
 from blackout_env.env.constants import TEAM_A_INDICES, TEAM_B_INDICES
 from blackout_env.heuristics import RecommendedStrategicHeuristic
 from blackout_env.model.my_policy import MyPolicy
-from blackout_env.train.offline_dataset import load_dataset_into
+from blackout_env.train.offline_dataset import load_dataset_into, npz_member_memmap
 from blackout_env.train.onpolicy_collect import collect_onpolicy_data
 from blackout_env.train.periodic_eval import run_periodic_eval
 from blackout_env.train.qmix_trainer import QMIXConfig, QMIXTrainer, default_run_dir
@@ -166,6 +166,15 @@ def main() -> None:
     parser.add_argument("--eval-seeds", type=int, nargs="+", default=[101, 202, 303], help="Each seed is played both non-swapped and swapped")
     parser.add_argument("--eval-time-scale", type=float, default=100.0, help="Unity time scale for eval matches (headless, so fast by default)")
     parser.add_argument("--eval-graphics", action="store_true", help="Show the Unity window during eval matches (default: headless)")
+    parser.add_argument(
+        "--reward",
+        choices=["unity", "v2", "v2-fitted"],
+        default="unity",
+        help="unity: the stored reward, shaped by Unity. v2: reward v2 (train/reward_v2.py) rebuilt from "
+        "observations for both the dataset (cached next to it) and on-policy data, with the design "
+        "weights; v2-fitted: the same with reward_v2.FITTED_20260917. See docs/reward_v2_design.md.",
+    )
+    parser.add_argument("--reward-workers", type=int, default=8, help="processes for annotating the dataset with reward v2")
     parser.add_argument(
         "--blocked-penalty",
         type=float,
@@ -288,9 +297,15 @@ def main() -> None:
     # buffer_capacity has to be known before QMIXTrainer() builds buffer_a/buffer_b, so peek at
     # the dataset's size first (cheap -- .npz headers only, no full array load) rather than
     # loading twice.
-    n_a = np.load(dataset_dir / "buffer_a.npz")["graphic"].shape[0]
-    n_b = np.load(dataset_dir / "buffer_b.npz")["graphic"].shape[0]
+    n_a = len(npz_member_memmap(dataset_dir / "buffer_a.npz", "done"))
+    n_b = len(npz_member_memmap(dataset_dir / "buffer_b.npz", "done"))
     config_kwargs["buffer_capacity"] = max(n_a, n_b)
+    reward_v2_cfg = None
+    if args.reward != "unity":
+        from blackout_env.train.reward_v2 import FITTED_20260917, RewardV2Config
+
+        reward_v2_cfg = FITTED_20260917 if args.reward == "v2-fitted" else RewardV2Config()
+        config_kwargs["reward_mode"] = "v2"
 
     config = QMIXConfig(**config_kwargs)
     trainer = QMIXTrainer(env=None, config=config)
@@ -309,8 +324,9 @@ def main() -> None:
         print(f"[offline] resumed from {args.resume} at train_step_count={trainer.train_step_count}")
 
     print(f"[offline] loading dataset from {dataset_dir} ...")
-    load_dataset_into(trainer.buffer_a, dataset_dir / "buffer_a.npz", TEAM_A_INDICES, args.blocked_penalty)
-    load_dataset_into(trainer.buffer_b, dataset_dir / "buffer_b.npz", TEAM_B_INDICES, args.blocked_penalty)
+    print(f"[offline] reward={args.reward}" + (f" {reward_v2_cfg}" if reward_v2_cfg else ""))
+    load_dataset_into(trainer.buffer_a, dataset_dir / "buffer_a.npz", TEAM_A_INDICES, args.blocked_penalty, reward_v2_cfg, args.reward_workers)
+    load_dataset_into(trainer.buffer_b, dataset_dir / "buffer_b.npz", TEAM_B_INDICES, args.blocked_penalty, reward_v2_cfg, args.reward_workers)
     print(f"[offline] loaded buffer_a={len(trainer.buffer_a)}, buffer_b={len(trainer.buffer_b)} transitions"
           f" (blocked_penalty={args.blocked_penalty})")
 
@@ -381,6 +397,7 @@ def main() -> None:
                 args.blocked_penalty,
                 seed_start=10_000 + step,
                 max_matches=args.onpolicy_max_matches,
+                reward_v2=reward_v2_cfg,
             )
         finally:
             trainer.net.train()

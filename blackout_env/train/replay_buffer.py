@@ -73,6 +73,12 @@ class SequentialReplayBuffer:
         self.actions = np.zeros((self.capacity, n_units), dtype=np.int64)  # all n_units, physical order
         self.reward = np.zeros((self.capacity,), dtype=np.float32)
         self.done = np.zeros((self.capacity,), dtype=np.bool_)
+        # Reward v2 (train/reward_v2.py): the state's team potential, shaped inside the n-step
+        # return with the learner's gamma, and whether this row ends a match (unlike an
+        # absorption `done`, the next row's potential must then not be bootstrapped). Zero /
+        # equal to `done` for the Unity-shaped reward.
+        self.potential = np.zeros((self.capacity,), dtype=np.float32)
+        self.terminal = np.zeros((self.capacity,), dtype=np.bool_)
         self.source = np.zeros((self.capacity,), dtype=np.int8)
         # Whether this stream's own-team actions came from a heuristic (behavior-cloning target)
         # rather than from the net being trained.
@@ -98,6 +104,8 @@ class SequentialReplayBuffer:
         done: bool,
         source: int = SOURCE_DATASET,
         demo: bool = True,
+        potential: float = 0.0,
+        terminal: bool | None = None,
     ) -> None:
         i = self._pos
         if self._size == self.capacity:
@@ -108,6 +116,8 @@ class SequentialReplayBuffer:
         self.actions[i] = actions
         self.reward[i] = reward
         self.done[i] = done
+        self.potential[i] = potential
+        self.terminal[i] = done if terminal is None else terminal
         self.source[i] = source
         self.demo[i] = demo
         self.source_counts[source] += 1

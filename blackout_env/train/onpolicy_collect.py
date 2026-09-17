@@ -54,6 +54,7 @@ def play_and_collect(
     team_b_policy: BaseModel,
     seed: int,
     penalty_per_unit: float,
+    reward_v2=None,
 ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], dict[str, float]]:
     """
     Plays one full match with team_a_policy/team_b_policy controlling their respective teams
@@ -154,6 +155,14 @@ def play_and_collect(
             reward=env_reward + penalty,
             done=done_arr,
         )
+        if reward_v2 is not None:
+            from blackout_env.train.reward_v2 import annotate_sequence
+
+            # one match per call: its last row is the match end
+            annotated = annotate_sequence(transitions["graphic"], agent_states, transitions["team_state"],
+                                          env_reward, done_arr, reward_v2)
+            transitions.update(reward=annotated["reward"] + penalty, done=annotated["done"],
+                               potential=annotated["potential"], terminal=annotated["terminal"])
         return transitions, float(env_reward.sum()), blocked_unit_ticks
 
     t_a, env_reward_a, blocked_a = _finalize(rows_a, TEAM_A_INDICES)
@@ -191,6 +200,8 @@ def _push(buffer: SequentialReplayBuffer, transitions: dict[str, np.ndarray], so
             bool(transitions["done"][i]),
             source,
             demo,
+            potential=float(transitions["potential"][i]) if "potential" in transitions else 0.0,
+            terminal=bool(transitions["terminal"][i]) if "terminal" in transitions else None,
         )
 
 
@@ -260,6 +271,7 @@ def collect_onpolicy_data(
     penalty_per_unit: float,
     seed_start: int,
     max_matches: int = 50,
+    reward_v2=None,
 ) -> dict[str, float]:
     """
     Plays self-vs-heuristic matches (candidate vs heuristic, side swapped every match for
@@ -283,7 +295,7 @@ def collect_onpolicy_data(
     swap = False
     while svh["ticks"] < target_ticks_self_vs_heuristic and svh["matches"] < max_matches:
         team_a_policy, team_b_policy = (heuristic, candidate) if swap else (candidate, heuristic)
-        t_a, t_b, info = play_and_collect(env, team_a_policy, team_b_policy, seed, penalty_per_unit)
+        t_a, t_b, info = play_and_collect(env, team_a_policy, team_b_policy, seed, penalty_per_unit, reward_v2)
         buffer_a, buffer_b = buffers[SOURCE_SELF_VS_HEURISTIC]
         _push(buffer_a, t_a, SOURCE_SELF_VS_HEURISTIC, demo=swap)  # team A is the heuristic when swapped
         _push(buffer_b, t_b, SOURCE_SELF_VS_HEURISTIC, demo=not swap)
@@ -297,7 +309,7 @@ def collect_onpolicy_data(
         )
 
     while sp["ticks"] < target_ticks_self_play and sp["matches"] < max_matches:
-        t_a, t_b, info = play_and_collect(env, candidate, candidate, seed, penalty_per_unit)
+        t_a, t_b, info = play_and_collect(env, candidate, candidate, seed, penalty_per_unit, reward_v2)
         buffer_a, buffer_b = buffers[SOURCE_SELF_PLAY]
         _push(buffer_a, t_a, SOURCE_SELF_PLAY, demo=False)
         _push(buffer_b, t_b, SOURCE_SELF_PLAY, demo=False)
