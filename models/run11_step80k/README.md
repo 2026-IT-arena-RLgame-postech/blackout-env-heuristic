@@ -38,20 +38,34 @@
    git clone -b run11-80k https://github.com/cucumbersaurus/blackout.git
    cd blackout-env && git lfs pull
    ```
-2. 파이썬 환경: 저장소 `README.md`의 "Local Installation"(Python 3.10, `mlagents-envs`는 `--no-deps`).
-3. Unity 빌드(Unity 6000.4.11f1, macOS): `blackout`의 `CIBuild.BuildBlackOutMac`.
+2. 파이썬 환경: 저장소 `README.md`의 "Local Installation"(Python 3.10, `mlagents-envs==1.1.0`는 `--no-deps`) 뒤에
+   `pip install ".[fast]" torch tensorboard "protobuf>=3.6,<3.21" "grpcio>=1.11.0,<=1.48.2"`(uv면 `uv pip install`,
+   `uv sync`/`uv add`는 쓰지 않는다 — 저장소 README 참고). 동작 확인한 버전: Python 3.10.12, torch 2.14.0(MPS),
+   numba 0.67.0(휴리스틱 가속, 없으면 느린 경로), protobuf 3.20.3, grpcio 1.48.2, tensorboard 2.20.0.
+   protobuf/grpcio가 이보다 새 버전이면 Unity gRPC 연결이 조용히 깨진다.
+3. Unity 빌드(Unity 6000.4.11f1, macOS): `blackout-env`에서
    ```
-   /Applications/Unity/Hub/Editor/6000.4.11f1/Unity.app/Contents/MacOS/Unity -batchmode -quit \
-     -projectPath ../blackout -executeMethod CIBuild.BuildBlackOutMac -logFile build/mac_build.log
+   models/run11_step80k/run11_pipeline.sh build      # ../blackout -> build/mac/BlackOut.app
    ```
-   출력 경로가 `Assets/Editor/CIBuild.cs`의 `locationPathName`에 절대경로로 박혀 있다 — 자기 경로의
-   `blackout-env/build/mac/BlackOut.app`으로 바꾼 뒤 빌드한다. 평가만 할 거면 이 빌드와 체크포인트로 충분하다.
-4. 학습 재현: `collect`(디스크 57GB) → `train`. 학습은 스트림당 100만 행을 메모리에 올린다 — RAM 48GB(M5 Pro)에서
-   스왑과 함께 동작했다. MPS 대신 CUDA면 `train` 단계의 `--device`를 바꾼다.
+   Unity 경로가 다르면 `UNITY=/path/to/Unity`. 새로 받은 프로젝트도 첫 임포트 포함 약 2분(M5 Pro).
+4. 학습 재현: `collect`(디스크 57GB, 18 워커) → `train`. 학습은 스트림당 100만 행을 메모리에 올린다 — RAM 48GB(M5 Pro)에서
+   스왑과 함께 동작했다. CUDA면 `DEVICE=cuda`, 코어가 적으면 `COLLECT_WORKERS=`로 줄인다.
+   학습은 시드를 고정하지 않아 같은 명령이라도 체크포인트가 달라진다 — Run 11 안에서도 체크포인트 간 Elo가
+   ±100 넘게 오르내렸으니, 재학습 후에는 `elo` 단계로 상위 체크포인트를 고른다.
+
+## 재현 점검 (2026-09-18)
+
+GitHub에서 두 브랜치를 새로 받아 파이프라인을 작게 돌려 확인했다:
+LFS 체크포인트 해시 일치 · `build`(새 클론, 2분, 150MB) · `collect`(4천 행) · `train`(300스텝, eval과 V4 온폴리시
+수집 포함, `final.pt` 저장) · `elo`(Run 11 체크포인트) · `measure`(80k: V4 상대 8경기 −72.5, 배달 70, 스폰 창고 47%).
+점검에서 고친 것: `offline_pretrain --help` 오류(`%` 미이스케이프), Unity 빌드 출력 경로 하드코딩, 빌드 경로 상대경로 처리.
+GUI 단계(`gui`/`selfplay`/`vs`)는 같은 스크립트를 창 모드로 돌리는 것이라 창 없이 확인한 경로와 같다.
+파이썬 환경 설치는 이 점검에 포함하지 않았다(기존 환경 사용).
 
 ## 재현 / 평가
 
 ```
+models/run11_step80k/run11_pipeline.sh build      # Unity 빌드
 models/run11_step80k/run11_pipeline.sh collect    # 데이터 (약 6분, 57GB)
 models/run11_step80k/run11_pipeline.sh train      # 학습 (약 3시간, 80k는 step_80000.pt)
 models/run11_step80k/run11_pipeline.sh gui        # V4 상대 GUI
