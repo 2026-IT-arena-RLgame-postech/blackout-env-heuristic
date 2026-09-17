@@ -9,14 +9,20 @@ steps across keeps being sent back. The centre is the control: nothing in the ob
 change discontinuously there.
 
 --freeze recomputes the unit's local wall features from its ORIGINAL position (the other inputs
-still see the moved one), attributing any boundary excess to those features. On Run 9 40k
-(3x3-around-the-rounded-cell patch + [-0.5, 0.5] offset):
+still see the moved one), attributing any boundary excess to those features.
+
+--heuristic POLICY_ID asks a heuristic instead of a checkpoint, on the same states, to see whether
+the demonstrations themselves turn around at boundaries. A fresh instance answers every state, so
+its stuck/oscillation bookkeeping starts empty -- the same memoryless question the Q-network gets.
+
+On Run 9 40k (3x3-around-the-rounded-cell patch + [-0.5, 0.5] offset):
 
     Hunters   boundary 19.3%  centre 0.2%   (frozen: 0.2% / 0.2%)
     others    boundary  9.5%  centre 0.8%   (frozen: 1.0% / 0.6%)
 
 Usage:
     python examples/probe_boundary_chatter.py --checkpoint <ckpt.pt> --dataset-dir datasets/<name>
+    python examples/probe_boundary_chatter.py --heuristic strategic_v17 --dataset-dir datasets/<name>
 """
 
 from __future__ import annotations
@@ -30,7 +36,10 @@ import numpy as np
 import torch
 
 import blackout_env.model.my_model as my_model
+from blackout_env.env.constants import team_a_agents, unit_index
+from blackout_env.heuristics import make_heuristic
 from blackout_env.model.derived_obs import local_wall_features
+from blackout_env.model.my_policy import direction_vector_to_idx
 
 H = W = 24
 CELL = 2.0 / W
@@ -52,7 +61,9 @@ def npz_member_memmap(path: Path, name: str) -> np.memmap:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--checkpoint", type=Path, required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--checkpoint", type=Path)
+    source.add_argument("--heuristic", help="policy id from heuristics.POLICY_REGISTRY, e.g. strategic_v4")
     parser.add_argument("--dataset-dir", type=Path, required=True)
     parser.add_argument("--hidden-size", type=int, default=128)
     parser.add_argument("--samples", type=int, default=300, help="dataset states with at least one own Hunter")
@@ -70,9 +81,10 @@ def main() -> None:
     team_state = torch.tensor(np.asarray(npz_member_memmap(path, "team_state")[idx]), dtype=torch.float32)
     states = torch.tensor(np.asarray(states_mm[idx]), dtype=torch.float32)
 
-    model = my_model.MyModel(hidden_size=args.hidden_size)
-    model.load_state_dict(torch.load(args.checkpoint, map_location="cpu", weights_only=True)["policy_state"])
-    model.eval()
+    if args.checkpoint is not None:
+        model = my_model.MyModel(hidden_size=args.hidden_size)
+        model.load_state_dict(torch.load(args.checkpoint, map_location="cpu", weights_only=True)["policy_state"])
+        model.eval()
     angles = torch.arange(8) * math.pi / 4
     direction = torch.stack([torch.cos(angles), torch.sin(angles)], 1)  # (dx, dy) in obs x/y
 
@@ -122,7 +134,18 @@ def main() -> None:
             my_model.local_wall_features = original
         return torch.cat(out)[torch.arange(len(moved)), units].argmax(-1)
 
-    a_low, a_high = greedy(low_t), greedy(high_t)
+    agent_for_row = {unit_index(a): a for a in team_a_agents()}
+
+    def heuristic_actions(moved: torch.Tensor) -> torch.Tensor:
+        out = []
+        for i in range(len(moved)):
+            view = {"graphic": g_t[i].permute(1, 2, 0).numpy(), "agent_states": moved[i].numpy(), "team_state": t_t[i].numpy()}
+            actions = make_heuristic(args.heuristic).act({a: view for a in agent_for_row.values()})
+            out.append(int(direction_vector_to_idx(np.asarray(actions[agent_for_row[int(units[i])]])[None])[0]))
+        return torch.tensor(out)
+
+    choose = heuristic_actions if args.heuristic else greedy
+    a_low, a_high = choose(low_t), choose(high_t)
     trapped = ((direction[a_low, axes] > 0.1) & (direction[a_high, axes] < -0.1)).numpy()
     changed = (a_low != a_high).numpy()
     for who, mask in (("hunter", hunters), ("non-hunter", ~hunters)):
@@ -130,7 +153,8 @@ def main() -> None:
         for kind in ("boundary", "centre"):
             m = mask & (kinds == kind)
             parts.append(f"{kind}: trapped={trapped[m].mean():.3f} action_changed={changed[m].mean():.3f} (n={m.sum()})")
-        print(f"{'frozen ' if args.freeze else ''}{who:10s} " + " | ".join(parts))
+        label = args.heuristic or ("frozen " if args.freeze else "")
+        print(f"{label} {who:10s} " + " | ".join(parts))
 
 
 if __name__ == "__main__":
