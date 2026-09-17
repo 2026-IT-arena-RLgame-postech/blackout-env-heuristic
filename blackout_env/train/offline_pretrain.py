@@ -228,7 +228,7 @@ def main() -> None:
     parser.add_argument(
         "--onpolicy-max-matches",
         type=int,
-        default=50,
+        default=200,
         help="Safety cap on matches played per phase (self-vs-heuristic, self-play) per window, "
         "in case matches turn out much shorter than expected and the target tick count would "
         "otherwise take unboundedly many matches to reach.",

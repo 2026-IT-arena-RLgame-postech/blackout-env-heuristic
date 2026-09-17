@@ -47,6 +47,13 @@ def main() -> None:
     parser.add_argument("--heuristic-seed-a", type=int, default=0)
     parser.add_argument("--heuristic-seed-b", type=int, default=1)
     parser.add_argument(
+        "--keep-exhausted",
+        action="store_true",
+        help="Play every match to its Unity end. By default a match ends at the first absorption "
+        "after which no battery is left anywhere (~73% of a heuristic match's rows, which "
+        "offline_pretrain drops anyway), with the outcome decided by the scores at that point.",
+    )
+    parser.add_argument(
         "--no-unity-shaping",
         action="store_true",
         help="Launch Unity with -noRewardShaping (~2.2x faster Unity steps). The saved reward then "
@@ -69,6 +76,7 @@ def main() -> None:
         buffer_capacity=args.steps,
         heuristic_fill_frac=1.0,  # stay in phase 1 for the entire run (see module docstring)
         heuristic_bootstrap_noise_frac=args.noise_frac,
+        stop_when_exhausted=not args.keep_exhausted,
         heuristic_seed_a=args.heuristic_seed_a,
         heuristic_seed_b=args.heuristic_seed_b,
         tb_log_dir=None,  # this is a data-collection run, not a training run -- nothing to plot
@@ -84,14 +92,15 @@ def main() -> None:
                 elapsed = time.time() - t0
                 print(
                     f"[collect] step {step}/{args.steps} "
-                    f"({step / elapsed:.1f} steps/s, buffer_a={len(trainer.buffer_a)}, buffer_b={len(trainer.buffer_b)})"
+                    f"({step / elapsed:.1f} steps/s, buffer_a={len(trainer.buffer_a)}, buffer_b={len(trainer.buffer_b)}, "
+                    f"matches={trainer._episode_count}, ended at exhaustion={trainer.exhausted_stops})"
                 )
     finally:
         env.close()
 
     save_buffer(trainer.buffer_a, out_dir / "buffer_a.npz")
     save_buffer(trainer.buffer_b, out_dir / "buffer_b.npz")
-    write_collection_info(out_dir, unity_shaping=not args.no_unity_shaping)
+    write_collection_info(out_dir, unity_shaping=not args.no_unity_shaping, stop_when_exhausted=not args.keep_exhausted)
     print(f"[collect] saved {len(trainer.buffer_a)} transitions/stream to {out_dir}")
     print(
         f"[collect] next: python -m blackout_env.train.offline_pretrain "

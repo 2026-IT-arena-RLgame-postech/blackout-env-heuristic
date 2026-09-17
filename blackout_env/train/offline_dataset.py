@@ -123,10 +123,12 @@ def load_dataset_into(
 COLLECTION_INFO = "collection.json"
 
 
-def write_collection_info(out_dir: Path, unity_shaping: bool) -> None:
+def write_collection_info(out_dir: Path, unity_shaping: bool, stop_when_exhausted: bool = False) -> None:
     """Records how a dataset was collected. unity_shaping=False (-noRewardShaping) means its
-    reward column has no Unity potential shaping, so it only suits --reward v2/v2-fitted."""
-    (Path(out_dir) / COLLECTION_INFO).write_text(json.dumps({"unity_shaping": unity_shaping}) + "\n")
+    reward column has no Unity potential shaping, so it only suits --reward v2/v2-fitted.
+    stop_when_exhausted: matches were cut at battery exhaustion (QMIXConfig.stop_when_exhausted)."""
+    info = {"unity_shaping": unity_shaping, "stop_when_exhausted": stop_when_exhausted}
+    (Path(out_dir) / COLLECTION_INFO).write_text(json.dumps(info) + "\n")
 
 
 def dataset_has_unity_shaping(dataset_dir: Path) -> bool:
@@ -138,12 +140,18 @@ def dataset_has_unity_shaping(dataset_dir: Path) -> bool:
 def merge_shards(shard_paths: list[Path], out_path: Path) -> int:
     """Concatenates same-schema .npz shards (e.g. one per parallel collection worker) into one
     dataset file, in the given order. Returns the merged transition count."""
-    arrays: dict[str, list[np.ndarray]] = {field: [] for field in FIELDS}
-    for p in shard_paths:
-        data = np.load(p)
-        for field in FIELDS:
-            arrays[field].append(data[field])
-    merged = {field: np.concatenate(arrays[field], axis=0) for field in FIELDS}
+    # Memory-mapped shards copied into one preallocated array per field: the peak is the merged
+    # dataset once (~30 GB of graphic per stream for 1M rows), not the shards plus their concatenation.
+    sizes = [len(npz_member_memmap(p, "done")) for p in shard_paths]
+    total = sum(sizes)
+    merged = {}
+    for field in FIELDS:
+        first = npz_member_memmap(shard_paths[0], field)
+        merged[field] = np.empty((total, *first.shape[1:]), dtype=first.dtype)
+        start = 0
+        for p, n in zip(shard_paths, sizes):
+            merged[field][start : start + n] = npz_member_memmap(p, field)
+            start += n
     out_path.parent.mkdir(parents=True, exist_ok=True)
     np.savez(out_path, **merged)
-    return merged["graphic"].shape[0]
+    return total

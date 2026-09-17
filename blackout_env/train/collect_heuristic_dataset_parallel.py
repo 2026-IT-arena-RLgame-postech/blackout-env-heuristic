@@ -44,6 +44,8 @@ def main() -> None:
     )
     parser.add_argument("--no-unity-shaping", action="store_true",
                         help="See collect_heuristic_dataset.py --no-unity-shaping")
+    parser.add_argument("--keep-exhausted", action="store_true",
+                        help="See collect_heuristic_dataset.py --keep-exhausted")
     args = parser.parse_args()
 
     if args.workers < 1:
@@ -76,7 +78,7 @@ def main() -> None:
             "--out", str(shard_dir),
             "--heuristic-seed-a", str(2 * i),
             "--heuristic-seed-b", str(2 * i + 1),
-        ] + (["--no-unity-shaping"] if args.no_unity_shaping else [])
+        ] + (["--no-unity-shaping"] if args.no_unity_shaping else []) + (["--keep-exhausted"] if args.keep_exhausted else [])
         print(f"[parallel] launching worker {i}: {worker_steps} steps, seeds ({2*i},{2*i+1}), log -> {log_path}")
         procs.append(subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT))
 
@@ -100,7 +102,7 @@ def main() -> None:
 
     n_a = merge_shards([d / "buffer_a.npz" for d in shard_dirs], out_dir / "buffer_a.npz")
     n_b = merge_shards([d / "buffer_b.npz" for d in shard_dirs], out_dir / "buffer_b.npz")
-    write_collection_info(out_dir, unity_shaping=not args.no_unity_shaping)
+    write_collection_info(out_dir, unity_shaping=not args.no_unity_shaping, stop_when_exhausted=not args.keep_exhausted)
     print(f"[parallel] merged {n_a} (stream a) / {n_b} (stream b) transitions -> {out_dir}")
 
     if not args.keep_shards:

@@ -91,6 +91,7 @@ from blackout_env.model.my_model import ATTENTION_DEPTH, N_ATTENTION_HEADS, N_DI
 from blackout_env.model.action_mask import masked_greedy
 from blackout_env.model.my_policy import DIRECTION_VECTORS, direction_vector_to_idx
 from blackout_env.train.ema import ema_update
+from blackout_env.train.dead_segments import batteries_in_play
 from blackout_env.train.replay_buffer import (
     SOURCE_DATASET,
     SOURCE_NAMES,
@@ -147,6 +148,11 @@ class QMIXConfig:
     # collect_heuristic_dataset.py script, which drives this same method to build an offline
     # dataset outside of any online run.
     heuristic_bootstrap_noise_frac: float = 0.0
+    # End the Unity match at the first absorption after which no battery is left anywhere
+    # (train/dead_segments.py): the result is fixed from there, and the rest of the match would
+    # only be dropped at training time. The outcome is decided by the scores at that point and
+    # added to the last row as Unity's own +-1 per agent. Used by collect_heuristic_dataset.py.
+    stop_when_exhausted: bool = False
 
     # ---- Heuristic-opponent mixing (phase 2 only, on top of the bootstrap above) ----
     # Phase 2's self-play opponent is otherwise always ema_net (see module docstring) -- two
@@ -566,6 +572,7 @@ class QMIXTrainer:
         self._episode_wins_online = 0
         self._episode_wins_opponent = 0
         self._episode_draws = 0
+        self.exhausted_stops = 0  # matches ended early by cfg.stop_when_exhausted
         # Same online win tally, split by what kind of opponent this episode had (see
         # heuristic_opponent_frac) -- lets win_rate_selfplay's "online" figure be checked
         # against a real, fully-executing heuristic instead of only ever ema_net (a slow copy
@@ -832,8 +839,21 @@ class QMIXTrainer:
         self._prev_absorption_time_left = absorption_time_left
         buffer_done = done or absorption_fired
 
+        exhausted_winner = None
+        if self.cfg.stop_when_exhausted and absorption_fired and not done:
+            view = next_obs[self.team_a_agents[0]]
+            if batteries_in_play(view["graphic"][None], view["agent_states"][None])[0] == 0:
+                score_a, score_b = float(view["team_state"][0]), float(view["team_state"][1])
+                exhausted_winner = -1 if abs(score_a - score_b) < 1e-6 else (0 if score_a > score_b else 1)
+
         reward_a = sum(rewards[a] for a in self.team_a_agents)
         reward_b = sum(rewards[a] for a in self.team_b_agents)
+        if exhausted_winner is not None:
+            sign = 0.0 if exhausted_winner == -1 else (1.0 if exhausted_winner == 0 else -1.0)
+            reward_a += sign * len(self.team_a_agents)
+            reward_b -= sign * len(self.team_b_agents)
+            done, infos = True, {self.team_a_agents[0]: {"winner": exhausted_winner}}
+            self.exhausted_stops += 1
         self._episode_return_a += reward_a
         self._episode_return_b += reward_b
 
