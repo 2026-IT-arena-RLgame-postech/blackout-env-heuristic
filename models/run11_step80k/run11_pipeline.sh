@@ -37,7 +37,7 @@ shift || true
 case $stage in
   build)
     $UNITY -batchmode -quit -projectPath ../blackout -executeMethod CIBuild.BuildBlackOutMac \
-      -buildPath $BUILD -logFile build/mac_build.log
+      -buildPath ${BUILD:A} -logFile ${BUILD:A:h:h}/mac_build.log
     ;;
   collect)
     # Run 11 collected with the collector's then-default --noise-frac 0.1; the default is 0 now.
