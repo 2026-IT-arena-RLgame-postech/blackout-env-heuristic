@@ -172,7 +172,7 @@ def main() -> None:
         default="unity",
         help="unity: the stored reward, shaped by Unity. v2: reward v2 (train/reward_v2.py) rebuilt from "
         "observations for both the dataset (cached next to it) and on-policy data, with the design "
-        "weights; v2-fitted: the same with reward_v2.FITTED_20260917. See docs/reward_v2_design.md.",
+        "weights; v2-fitted: the same with reward_v2.FITTED_20260917B. See docs/reward_v2_design.md.",
     )
     parser.add_argument("--reward-workers", type=int, default=8, help="processes for annotating the dataset with reward v2")
     parser.add_argument(
@@ -312,9 +312,9 @@ def main() -> None:
     config_kwargs["buffer_capacity"] = max(n_a, n_b)
     reward_v2_cfg = None
     if args.reward != "unity":
-        from blackout_env.train.reward_v2 import FITTED_20260917, RewardV2Config
+        from blackout_env.train.reward_v2 import FITTED_20260917B, RewardV2Config
 
-        reward_v2_cfg = FITTED_20260917 if args.reward == "v2-fitted" else RewardV2Config()
+        reward_v2_cfg = FITTED_20260917B if args.reward == "v2-fitted" else RewardV2Config()
         config_kwargs["reward_mode"] = "v2"
 
     config = QMIXConfig(**config_kwargs)

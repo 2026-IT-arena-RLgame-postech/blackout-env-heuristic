@@ -103,6 +103,15 @@ FITTED_20260917 = RewardV2Config(
     exit_value=30.0, class_value=(0.0, 15.0, 3.0), travel_value=1.5,
 )
 
+# Refit on 1,000 diverse matches (800 fit / 200 held out; reports/value_matches_20260917b). The search
+# ended at hunt_beta 0.95 and exit_value 30; both were pulled back (docs/reward_v2_design.md P2 refit):
+# beta 0.8 costs nothing held out and keeps a kill's net credit, exit 15 costs nothing held out and
+# stops an all-camping lineup (45% win) from valuing as high as the mixed one (97%).
+FITTED_20260917B = RewardV2Config(
+    steal_hazard=0.6, carry_hazard=0.6, lambda_rho=0.8, lambda_length=6.0, hunt_beta=0.8, hunt_length=8.0,
+    exit_value=15.0, exit_length=5.0, class_value=(0.0, 15.0, 10.0), travel_value=1.5, travel_cap_seconds=5.0,
+)
+
 
 # ---------------------------------------------------------------------------------------- geometry
 

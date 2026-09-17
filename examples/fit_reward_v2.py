@@ -11,7 +11,8 @@ E4  `matchups`: the candidate's mean X(t) should be positive exactly where it wi
 E5  `v17_variants`: the ordering of mean X(t) should follow the ordering of win rates
 
 --fit runs a coordinate search over RewardV2Config weights, maximising the mean E3 correlation over
-5-30 s on the diverse suite, and reports E3-E5 for the fitted config.
+5-30 s on the diverse suite, and reports E3-E5 for the fitted config. Every --holdout-every-th diverse
+match is left out of the search and E3 is reported on it separately, so overfitting shows as a gap.
 
 Usage:
     python examples/fit_reward_v2.py --root reports/value_matches [--fit]
@@ -217,28 +218,38 @@ def main() -> None:
     parser.add_argument("--fit", action="store_true")
     parser.add_argument("--save", type=Path, help="write the fitted RewardV2Config as json")
     parser.add_argument("--sweeps", type=int, default=2)
-    parser.add_argument("--from-fitted", action="store_true", help="start the search from reward_v2.FITTED_20260917")
+    parser.add_argument("--from-fitted", action="store_true", help="start the search from reward_v2.FITTED_20260917B")
+    parser.add_argument("--holdout-every", type=int, default=5, help="hold out every n-th diverse match (0: none)")
     args = parser.parse_args()
 
     diverse = load_suite(args.root, "diverse")
     matchups = load_suite(args.root, "matchups")
     variants = load_suite(args.root, "v17_variants")
     print(f"matches: diverse {len(diverse)}, matchups {len(matchups)}, v17_variants {len(variants)}")
+    k = args.holdout_every
+    holdout = [m for i, m in enumerate(diverse) if k and i % k == 0]
+    fit_set = [m for i, m in enumerate(diverse) if not (k and i % k == 0)]
+    print(f"diverse split: fit {len(fit_set)}, holdout {len(holdout)}")
 
     configs = {"v2 default": RewardV2Config()}
     if args.fit:
-        from blackout_env.train.reward_v2 import FITTED_20260917
+        from blackout_env.train.reward_v2 import FITTED_20260917B
 
-        configs["v2 fitted (previous)"] = FITTED_20260917
-        configs["v2 fitted"] = coordinate_search(diverse, FITTED_20260917 if args.from_fitted else RewardV2Config(), sweeps=args.sweeps)
+        configs["v2 fitted (previous)"] = FITTED_20260917B
+        configs["v2 fitted"] = coordinate_search(fit_set, FITTED_20260917B if args.from_fitted else RewardV2Config(), sweeps=args.sweeps)
         if args.save:
             args.save.write_text(json.dumps(asdict(configs["v2 fitted"]), indent=2) + "\n")
 
-    displayed = np.stack([(m["team_state"][:, 0] - m["team_state"][:, 1]) * TARGET_SCORE for m in diverse])
-    results = {"displayed score diff": e3(diverse, displayed, ""), "old Psi": e3(diverse, old_psi(diverse), "")}
-    for name, cfg in configs.items():
-        results[name] = e3(diverse, value_x(diverse, cfg), name)
-    print_e3(results)
+    for split, ms in (("fit set", fit_set), ("holdout", holdout)):
+        if not ms:
+            continue
+        displayed = np.stack([(m["team_state"][:, 0] - m["team_state"][:, 1]) * TARGET_SCORE for m in ms])
+        results = {"displayed score diff": e3(ms, displayed, ""), "old Psi": e3(ms, old_psi(ms), "")}
+        for name, cfg in configs.items():
+            results[name] = e3(ms, value_x(ms, cfg), name)
+        print(f"\n----- diverse {split} ({len(ms)} matches) -----")
+        print_e3(results)
+        print("  objective (mean r 5-30 s): " + ", ".join(f"{n} {objective(ms, c):.4f}" for n, c in configs.items()))
 
     expected = {"v17-vs-v1..16": 0.94, "v18-vs-v17": 0.78, "v19-vs-v18": 0.72}
     expected_variants = {"quota0-mixed": 0.50, "quota1-mixed": 0.66, "quota2-mixed": 0.86, "quota3-mixed": 0.96, "quota3-hunt": 0.86, "quota3-camp": 0.53}
