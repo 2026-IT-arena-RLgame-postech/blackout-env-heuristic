@@ -6,5 +6,6 @@ build/
 .venv/
 .env
 *.pt
+!models/**/*.pt
 runs/
 checkpoints/
