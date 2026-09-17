@@ -11,6 +11,8 @@ Used by:
 
 from __future__ import annotations
 
+import json
+
 from pathlib import Path
 
 import numpy as np
@@ -116,6 +118,21 @@ def load_dataset_into(
             terminal=bool(terminal[i]),
         )
     return int(keep.sum())
+
+
+COLLECTION_INFO = "collection.json"
+
+
+def write_collection_info(out_dir: Path, unity_shaping: bool) -> None:
+    """Records how a dataset was collected. unity_shaping=False (-noRewardShaping) means its
+    reward column has no Unity potential shaping, so it only suits --reward v2/v2-fitted."""
+    (Path(out_dir) / COLLECTION_INFO).write_text(json.dumps({"unity_shaping": unity_shaping}) + "\n")
+
+
+def dataset_has_unity_shaping(dataset_dir: Path) -> bool:
+    """Datasets from before the marker existed were always collected with shaping on."""
+    path = Path(dataset_dir) / COLLECTION_INFO
+    return not path.exists() or bool(json.loads(path.read_text()).get("unity_shaping", True))
 
 
 def merge_shards(shard_paths: list[Path], out_path: Path) -> int:

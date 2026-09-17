@@ -36,7 +36,7 @@ _ENV = None
 def _init_worker(build: str, time_scale: float) -> None:
     global _ENV
     _ENV = BlackOutEnv(build, time_scale=time_scale, no_graphics=True,
-                       additional_args=["-logFile", "/dev/null"])
+                       additional_args=["-logFile", "/dev/null"], unity_shaping=False)
     # See gauntlet_heuristics.py: without an explicit close the worker never exits.
     mp_util.Finalize(_ENV, _ENV.close, exitpriority=10)
 

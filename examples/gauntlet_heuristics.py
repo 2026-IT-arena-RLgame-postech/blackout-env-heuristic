@@ -39,7 +39,7 @@ _ENV = None
 def _init_worker(build: str, time_scale: float) -> None:
     global _ENV
     _ENV = BlackOutEnv(build, time_scale=time_scale, no_graphics=True,
-                       additional_args=["-logFile", "/dev/null"])
+                       additional_args=["-logFile", "/dev/null"], unity_shaping=False)
     # Pool workers exit through os._exit(), so mlagents' atexit close never runs, and the
     # interpreter-exit join then blocks forever on the gRPC thread still waiting inside
     # Exchange() for our next message -- the worker, its Unity process and pool.shutdown()

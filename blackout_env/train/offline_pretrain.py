@@ -49,7 +49,7 @@ from blackout_env.env.blackout_env import BlackOutEnv
 from blackout_env.env.constants import TEAM_A_INDICES, TEAM_B_INDICES
 from blackout_env.heuristics import RecommendedStrategicHeuristic
 from blackout_env.model.my_policy import MyPolicy
-from blackout_env.train.offline_dataset import load_dataset_into, npz_member_memmap
+from blackout_env.train.offline_dataset import dataset_has_unity_shaping, load_dataset_into, npz_member_memmap
 from blackout_env.train.onpolicy_collect import collect_onpolicy_data
 from blackout_env.train.periodic_eval import run_periodic_eval
 from blackout_env.train.qmix_trainer import QMIXConfig, QMIXTrainer, default_run_dir
@@ -254,6 +254,9 @@ def main() -> None:
     sys.stdout.reconfigure(line_buffering=True)
 
     dataset_dir = Path(args.dataset_dir)
+    if args.reward == "unity" and not dataset_has_unity_shaping(dataset_dir):
+        raise SystemExit(f"{dataset_dir} was collected with --no-unity-shaping; its reward has no Unity "
+                         "shaping, so train on it with --reward v2 or v2-fitted")
 
     config_kwargs = dict(
         # Sized off the max shard length below, once loaded -- placeholder here, overwritten
@@ -349,7 +352,9 @@ def main() -> None:
     eval_opponent = RecommendedStrategicHeuristic()
     if args.eval_interval > 0:
         eval_env = BlackOutEnv(
-            str(args.eval_build), time_scale=args.eval_time_scale, no_graphics=not args.eval_graphics
+            str(args.eval_build), time_scale=args.eval_time_scale, no_graphics=not args.eval_graphics,
+            # v2 rewards are computed from observations, so Unity's shaping would be wasted work.
+            unity_shaping=args.reward == "unity",
         )
         print(f"[offline] periodic eval enabled: every {args.eval_interval} steps, "
               f"{len(args.eval_seeds) * 2} matches vs {type(eval_opponent).__name__}")

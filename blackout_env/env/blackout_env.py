@@ -160,6 +160,7 @@ class BlackOutEnv(ParallelEnv):
         no_graphics: bool = True,
         time_scale: float = 1.0,
         additional_args: list[str] | None = None,
+        unity_shaping: bool = True,
     ):
         """
         Parameters
@@ -185,6 +186,12 @@ class BlackOutEnv(ParallelEnv):
             20~100 is typical for headless builds; keep at 1 when using the Editor.
         additional_args : list[str] | None
             Optional command-line arguments forwarded to a launched Unity player.
+        unity_shaping : bool
+            False launches the player with -noRewardShaping: Unity skips its potential shaping
+            (Ψ and nav Φ) and the reward carries only fixed event rewards (all 0 by default).
+            Use it whenever the Unity reward is unused -- reward v2 computes its own from
+            observations, and evaluation or recording ignores rewards -- since computing the
+            potentials is per-tick path-search work in the player.
         """
         if base_port is None:
             base_port = find_free_port()
@@ -231,7 +238,7 @@ class BlackOutEnv(ParallelEnv):
             worker_id=worker_id,
             base_port=base_port,
             no_graphics=no_graphics,
-            additional_args=additional_args,
+            additional_args=list(additional_args or []) + ([] if unity_shaping else ["-noRewardShaping"]),
             side_channels=[self._seed_channel, self._engine_channel],
         )
         self._engine_channel.set_configuration_parameters(time_scale=time_scale)

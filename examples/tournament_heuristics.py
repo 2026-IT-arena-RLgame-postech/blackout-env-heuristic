@@ -74,7 +74,8 @@ def _run_pair(task: tuple[str, str, list[int], str, float]) -> dict[str, Any]:
     """Run all side-swapped games for one unordered pair in an isolated Unity process."""
     row_id, column_id, seeds, build, time_scale = task
     env = BlackOutEnv(
-        build, time_scale=time_scale, no_graphics=True, additional_args=["-logFile", "/dev/null"]
+        build, time_scale=time_scale, no_graphics=True, additional_args=["-logFile", "/dev/null"],
+        unity_shaping=False,
     )
     games = []
     try:

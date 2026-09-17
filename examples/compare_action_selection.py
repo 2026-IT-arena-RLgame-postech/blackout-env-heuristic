@@ -140,7 +140,7 @@ def main() -> int:
     opponent = RecommendedStrategicHeuristic()
 
     time_scale = args.time_scale if args.time_scale is not None else (1.0 if args.gui else 20.0)
-    env = BlackOutEnv(str(args.build), time_scale=time_scale, no_graphics=not args.gui)
+    env = BlackOutEnv(str(args.build), time_scale=time_scale, no_graphics=not args.gui, unity_shaping=False)
     summary = []
     try:
         for mode in args.modes:

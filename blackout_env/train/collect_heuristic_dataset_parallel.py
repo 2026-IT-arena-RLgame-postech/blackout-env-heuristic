@@ -24,7 +24,7 @@ import sys
 import time
 from pathlib import Path
 
-from blackout_env.train.offline_dataset import merge_shards
+from blackout_env.train.offline_dataset import merge_shards, write_collection_info
 
 
 def main() -> None:
@@ -42,6 +42,8 @@ def main() -> None:
         "deleting it -- shards are plain float32 .npz dumps, easily hundreds of MB each times "
         "--workers, so the default is to reclaim that disk once the merge succeeds.",
     )
+    parser.add_argument("--no-unity-shaping", action="store_true",
+                        help="See collect_heuristic_dataset.py --no-unity-shaping")
     args = parser.parse_args()
 
     if args.workers < 1:
@@ -74,7 +76,7 @@ def main() -> None:
             "--out", str(shard_dir),
             "--heuristic-seed-a", str(2 * i),
             "--heuristic-seed-b", str(2 * i + 1),
-        ]
+        ] + (["--no-unity-shaping"] if args.no_unity_shaping else [])
         print(f"[parallel] launching worker {i}: {worker_steps} steps, seeds ({2*i},{2*i+1}), log -> {log_path}")
         procs.append(subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT))
 
@@ -98,6 +100,7 @@ def main() -> None:
 
     n_a = merge_shards([d / "buffer_a.npz" for d in shard_dirs], out_dir / "buffer_a.npz")
     n_b = merge_shards([d / "buffer_b.npz" for d in shard_dirs], out_dir / "buffer_b.npz")
+    write_collection_info(out_dir, unity_shaping=not args.no_unity_shaping)
     print(f"[parallel] merged {n_a} (stream a) / {n_b} (stream b) transitions -> {out_dir}")
 
     if not args.keep_shards:

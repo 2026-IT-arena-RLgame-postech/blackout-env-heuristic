@@ -180,7 +180,7 @@ def main() -> int:
 
     env = BlackOutEnv(str(args.build), time_scale=args.time_scale,
                       no_graphics=not args.graphics,
-                      additional_args=["-logFile", "/dev/null"])
+                      additional_args=["-logFile", "/dev/null"], unity_shaping=False)
     games = []
     try:
         for seed in seeds:

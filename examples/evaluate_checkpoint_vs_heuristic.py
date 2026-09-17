@@ -39,7 +39,7 @@ def main() -> int:
     candidate = MyPolicy(trainer.net, device=args.device)
     opponent = RecommendedStrategicHeuristic()
 
-    env = BlackOutEnv(str(args.build), time_scale=args.time_scale, no_graphics=False)
+    env = BlackOutEnv(str(args.build), time_scale=args.time_scale, no_graphics=False, unity_shaping=False)
     results = []
     try:
         for seed in args.seeds:

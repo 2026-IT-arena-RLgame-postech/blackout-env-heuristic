@@ -48,8 +48,11 @@ lr/weight_decay/reset 강도는 아직 실험 안 해봄 — spr_loss_weight부�
 3. **처리량**
    - 휴리스틱 데이터 수집도 배터리가 소진되면 경기를 끝낸다(온폴리시는 이미 그렇게 함). 수집 시간의 대부분이
      버려질 구간이다.
-   - v2로 학습할 때 Unity 쉐이핑은 쓰지 않는다 — `IndividualNavPotentialCalculator`/`PotentialRewardCalculator`를
-     η=0이면 건너뛰는 가드를 C#에 넣고 재빌드, `reward_config.json`의 η를 0으로.
+   - ~~Unity 쉐이핑 건너뛰기~~ 완료(blackout `94fabbd`): η=0이면 Ψ/Φ 계산 자체를 건너뛰고, 실행 인자
+     `-noRewardShaping`이 η를 0으로 만든다(`BlackOutEnv(unity_shaping=False)`). 같은 빌드에서 V17 대 V17
+     1프로세스 기준 Unity 스텝 4.46 → 1.64 ms, 결정 194 → 431/s(2.2배). `reward_config.json`은 그대로 두고
+     인자로만 끈다 — v2 학습의 온폴리시/평가 env, 녹화·건틀릿·벤치마크 스크립트는 끔. 휴리스틱 수집은
+     `--no-unity-shaping`으로 끄고 `collection.json`에 기록되며, 그 데이터로 `--reward unity` 학습은 거부된다.
 4. **리워드 v2 열린 문제** — 필드가 살아 있을 때 빈손 적 처치의 팀 보상이 뚜렷한 양수가 아니다(부활한 적이 본진
    창고 옆에서 수거 가치를 얻음). 출구 봉쇄 가치는 진치기 포텐셜에 있다.
 5. **창고 위치 암기** (`examples/probe_storage_reliance.py`) — 창고 활성 규칙이 바뀐다는 소식이 있어 후순위.

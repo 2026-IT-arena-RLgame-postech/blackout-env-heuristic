@@ -24,7 +24,7 @@ import time
 from pathlib import Path
 
 from blackout_env.env.blackout_env import BlackOutEnv
-from blackout_env.train.offline_dataset import save_buffer
+from blackout_env.train.offline_dataset import save_buffer, write_collection_info
 from blackout_env.train.qmix_trainer import QMIXConfig, QMIXTrainer
 
 
@@ -46,6 +46,12 @@ def main() -> None:
     parser.add_argument("--graphics", action="store_true", help="Show the Unity window instead of headless")
     parser.add_argument("--heuristic-seed-a", type=int, default=0)
     parser.add_argument("--heuristic-seed-b", type=int, default=1)
+    parser.add_argument(
+        "--no-unity-shaping",
+        action="store_true",
+        help="Launch Unity with -noRewardShaping (~2.2x faster Unity steps). The saved reward then "
+        "has no potential shaping, so the dataset is only usable with offline_pretrain --reward v2.",
+    )
     args = parser.parse_args()
 
     out_dir = Path(args.out)
@@ -57,6 +63,7 @@ def main() -> None:
         map_h=24,
         time_scale=args.time_scale,
         no_graphics=not args.graphics,
+        unity_shaping=not args.no_unity_shaping,
     )
     config = QMIXConfig(
         buffer_capacity=args.steps,
@@ -84,6 +91,7 @@ def main() -> None:
 
     save_buffer(trainer.buffer_a, out_dir / "buffer_a.npz")
     save_buffer(trainer.buffer_b, out_dir / "buffer_b.npz")
+    write_collection_info(out_dir, unity_shaping=not args.no_unity_shaping)
     print(f"[collect] saved {len(trainer.buffer_a)} transitions/stream to {out_dir}")
     print(
         f"[collect] next: python -m blackout_env.train.offline_pretrain "
