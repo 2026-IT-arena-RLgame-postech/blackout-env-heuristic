@@ -68,16 +68,16 @@ Run 12 ablation(아래): BC 강도 가중치(D3)가 편성을 무너뜨렸고, �
 | # | 변경 (12b 설정 기준: BC 가중치 없음, mixture 온폴리시, eval V4) |
 |---|---|
 | E1 | **BC 데이터 = 가우시안 노이즈**: `heuristic_mixv8_bcgauss20_20260917`, 스트림당 80만 행, 휴리스틱 방향을 N(0, 20°) 회전(원래 방향 74%, 옆 방향 각 13%). 시연으로 복제된다 — 라벨이 휴리스틱 방향 중심으로 퍼져 경계에서 계단 라벨 대신 부드러운 분포를 학습하고, 약간 벗어난 상태에서의 회복도 포함한다 |
-| E2 | **Q 데이터 = 균등 무작위**: `heuristic_mixv8_quniform50_20260917`, 20만 행, 유닛 행동의 50%가 균등 무작위, `--no-demo`(BC 제외). 12c(100만 행 × 10%)와 무작위 행동 총량이 같다 |
+| E2 | **Q 데이터 = 균등 무작위**: `heuristic_mixv8_quniform20_20260917`, 20만 행, 유닛 행동의 20%가 균등 무작위, `--no-demo`(BC 제외). 처음엔 12c(100만 행 × 10%)와 총량을 맞춰 50%로 잡았으나 궤적이 휴리스틱 플레이에서 너무 멀어져 20%로 줄였다(무작위 행동 총량은 12c의 40%) |
 
 ```
 python -m blackout_env.train.collect_heuristic_dataset_parallel --build build/mac/BlackOut.app --steps 800000 \
   --workers 18 --noise-mode gaussian --noise-sigma-deg 20 --seed-offset 2000 --out datasets/heuristic_mixv8_bcgauss20_20260917
 python -m blackout_env.train.collect_heuristic_dataset_parallel --build build/mac/BlackOut.app --steps 200000 \
-  --workers 18 --noise-frac 0.5 --no-demo --seed-offset 3000 --out datasets/heuristic_mixv8_quniform50_20260917
+  --workers 18 --noise-frac 0.2 --no-demo --seed-offset 3000 --out datasets/heuristic_mixv8_quniform20_20260917
 
 python -m blackout_env.train.offline_pretrain --dataset-dir datasets/heuristic_mixv8_bcgauss20_20260917 \
-  --q-dataset-dir datasets/heuristic_mixv8_quniform50_20260917 --onpolicy-opponent mixture \
+  --q-dataset-dir datasets/heuristic_mixv8_quniform20_20260917 --onpolicy-opponent mixture \
   --reward v2-fitted --steps 200000 --device mps --compile --spr-loss-weight 5.0 --encoder-weight-decay 1e-4 \
   --bc-loss-alpha 1.0 --blocked-penalty 0.02 --onpolicy-self-vs-heuristic-frac 0.3 \
   --onpolicy-self-play-frac 0 --reset-warmup-steps 2000 --eval-interval 10000
