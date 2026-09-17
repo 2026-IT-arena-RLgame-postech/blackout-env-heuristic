@@ -83,6 +83,9 @@ class SequentialReplayBuffer:
         # Whether this stream's own-team actions came from a heuristic (behavior-cloning target)
         # rather than from the net being trained.
         self.demo = np.zeros((self.capacity,), dtype=np.bool_)
+        # Which heuristic played this stream's own team (train/policy_strength.POLICY_IDS index,
+        # -1 = the net or unrecorded): weights the row's behaviour-cloning term.
+        self.policy = np.full((self.capacity,), -1, dtype=np.int16)
         self.source_counts = np.zeros(len(SOURCE_NAMES), dtype=np.int64)
 
         self._sum_tree = SumSegmentTree(self.capacity)
@@ -106,6 +109,7 @@ class SequentialReplayBuffer:
         demo: bool = True,
         potential: float = 0.0,
         terminal: bool | None = None,
+        policy: int = -1,
     ) -> None:
         i = self._pos
         if self._size == self.capacity:
@@ -120,6 +124,7 @@ class SequentialReplayBuffer:
         self.terminal[i] = done if terminal is None else terminal
         self.source[i] = source
         self.demo[i] = demo
+        self.policy[i] = policy
         self.source_counts[source] += 1
 
         self._sum_tree[i] = self._max_priority ** self._per_alpha
@@ -225,6 +230,7 @@ class SequentialReplayBuffer:
             "done": self.done[indices],
             "source": self.source[indices],
             "demo": self.demo[indices],
+            "policy": self.policy[indices],
         }
 
     def update_priorities(self, indices: np.ndarray, priorities: np.ndarray) -> None:

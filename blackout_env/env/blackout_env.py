@@ -429,7 +429,10 @@ class BlackOutEnv(ParallelEnv):
                 and current_score_1 == 0.0
                 and not (previous_score_0 == 0.0 and previous_score_1 == 0.0)
             )
-            if current_time > previous_time + 0.25 or reset_to_zero:
+            # time_left only ever counts down within a match, so any rise is the reset. The old
+            # 0.25 threshold missed early decisive wins (time_left ~0.9 at the end) whenever the
+            # new match had already moved off (0, 0), reporting e.g. 0-2 as the final score.
+            if current_time > previous_time + 1e-4 or reset_to_zero:
                 self._latest_scalars = previous_scalars
         if any(terminations.values()) and self._latest_winner is None:
             # Winner is decided purely by final score, mirroring MatchManager.cs's own

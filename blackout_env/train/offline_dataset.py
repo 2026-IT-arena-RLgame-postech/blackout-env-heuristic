@@ -21,6 +21,8 @@ from blackout_env.train.replay_buffer import SequentialReplayBuffer
 from blackout_env.train.reward_shaping import blocked_penalty_adjustment
 
 FIELDS = ("graphic", "team_state", "agent_states", "actions", "reward", "done")
+# Written by newer collectors, absent from older datasets (loaded as -1 = unrecorded).
+OPTIONAL_FIELDS = ("policy",)
 
 
 def npz_member_memmap(path: Path, name: str) -> np.memmap:
@@ -42,7 +44,7 @@ def save_buffer(buffer: SequentialReplayBuffer, path: Path) -> None:
     """Dumps the first len(buffer) entries (chronological order -- callers never let a
     collection run exceed capacity, so there's no ring wraparound to unscramble here)."""
     n = len(buffer)
-    np.savez(path, **{field: getattr(buffer, field)[:n] for field in FIELDS})
+    np.savez(path, **{field: getattr(buffer, field)[:n] for field in FIELDS + OPTIONAL_FIELDS})
 
 
 def load_dataset_into(
@@ -53,6 +55,7 @@ def load_dataset_into(
     reward_v2=None,
     annotate_workers: int = 8,
     drop_dead: bool = False,
+    demo: bool | None = None,
 ) -> int:
     """Replays every saved transition through .push(), in original order. This re-derives
     priorities exactly the way collection itself did (freshly pushed = max priority) rather
@@ -75,13 +78,19 @@ def load_dataset_into(
     drop_dead: skip every training segment that starts with no battery left anywhere (see
     train/dead_segments.py), moving each shortened match's outcome onto its new last row.
     Returns the number of rows pushed.
+
+    demo: whether the rows are behaviour-cloning demonstrations; None reads it from the dataset's
+    collection.json ("demo", default True). The policy column, when present, is kept per row.
     """
+    if demo is None:
+        demo = dataset_is_demo(Path(npz_path).parent)
     data = np.load(npz_path)
     # NpzFile.__getitem__ re-reads and re-decompresses the whole member array from the zip on
     # every call (no caching) -- indexing it per-row inside the loop below would re-read each
     # multi-GB array once per transition. Load each field into memory exactly once instead.
     arrays = {field: data[field] for field in FIELDS}
     n = arrays["graphic"].shape[0]
+    policy = data["policy"] if "policy" in data.files else np.full(n, -1, dtype=np.int16)
     reward, done = arrays["reward"], arrays["done"]
     potential = np.zeros(n, dtype=np.float32)
     terminal = done
@@ -114,8 +123,10 @@ def load_dataset_into(
             arrays["actions"][i],
             float(reward[i]),
             bool(done[i]),
+            demo=demo,
             potential=float(potential[i]),
             terminal=bool(terminal[i]),
+            policy=int(policy[i]),
         )
     return int(keep.sum())
 
@@ -123,12 +134,18 @@ def load_dataset_into(
 COLLECTION_INFO = "collection.json"
 
 
-def write_collection_info(out_dir: Path, unity_shaping: bool, stop_when_exhausted: bool = False) -> None:
+def write_collection_info(out_dir: Path, unity_shaping: bool, stop_when_exhausted: bool = False, **extra) -> None:
     """Records how a dataset was collected. unity_shaping=False (-noRewardShaping) means its
     reward column has no Unity potential shaping, so it only suits --reward v2/v2-fitted.
-    stop_when_exhausted: matches were cut at battery exhaustion (QMIXConfig.stop_when_exhausted)."""
-    info = {"unity_shaping": unity_shaping, "stop_when_exhausted": stop_when_exhausted}
+    stop_when_exhausted: matches were cut at battery exhaustion (QMIXConfig.stop_when_exhausted).
+    extra: e.g. demo (rows are BC demonstrations), noise_mode, noise_frac, noise_sigma_deg."""
+    info = {"unity_shaping": unity_shaping, "stop_when_exhausted": stop_when_exhausted, **extra}
     (Path(out_dir) / COLLECTION_INFO).write_text(json.dumps(info) + "\n")
+
+
+def dataset_is_demo(dataset_dir: Path) -> bool:
+    path = Path(dataset_dir) / COLLECTION_INFO
+    return not path.exists() or bool(json.loads(path.read_text()).get("demo", True))
 
 
 def dataset_has_unity_shaping(dataset_dir: Path) -> bool:
@@ -142,10 +159,13 @@ def merge_shards(shard_paths: list[Path], out_path: Path) -> int:
     dataset file, in the given order. Returns the merged transition count."""
     # Memory-mapped shards copied into one preallocated array per field: the peak is the merged
     # dataset once (~30 GB of graphic per stream for 1M rows), not the shards plus their concatenation.
+    import zipfile
+
     sizes = [len(npz_member_memmap(p, "done")) for p in shard_paths]
     total = sum(sizes)
+    members = set(zipfile.ZipFile(shard_paths[0]).namelist())
     merged = {}
-    for field in FIELDS:
+    for field in FIELDS + tuple(f for f in OPTIONAL_FIELDS if f + ".npy" in members):
         first = npz_member_memmap(shard_paths[0], field)
         merged[field] = np.empty((total, *first.shape[1:]), dtype=first.dtype)
         start = 0

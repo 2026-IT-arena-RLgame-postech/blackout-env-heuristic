@@ -35,6 +35,7 @@ from blackout_env.env.blackout_env import BlackOutEnv
 from blackout_env.env.constants import TEAM_A_INDICES, TEAM_B_INDICES, team_a_agents, team_b_agents
 from blackout_env.model.base import BaseModel
 from blackout_env.model.my_policy import direction_vector_to_idx
+from blackout_env.train.policy_strength import policy_index
 from blackout_env.train.objective_monitor import ObjectiveMonitor, aggregate_objectives
 from blackout_env.train.replay_buffer import SOURCE_SELF_PLAY, SOURCE_SELF_VS_HEURISTIC, SequentialReplayBuffer
 from blackout_env.train.dead_segments import batteries_in_play
@@ -45,6 +46,9 @@ ABSORPTION_IDX = 3  # matches qmix_trainer.ABSORPTION_IDX -- team_state row layo
 # |diff| ~53 the slope drops below 0.25, i.e. score changes barely move the shaping reward.
 PSI_SCALE = 40.0
 PSI_SATURATED_SLOPE = 0.25
+
+# V17-V19: the Elo top tier, reported separately when the on-policy opponent is the mixture.
+TOP_TIER = ("strategic_v17", "strategic_v18", "strategic_v19")
 
 _FIELDS = ("graphic", "team_state", "agent_states", "actions", "reward", "done")
 
@@ -85,6 +89,8 @@ def play_and_collect(
         team_a_policy.reset()
     if team_b_policy is not team_a_policy and hasattr(team_b_policy, "reset"):
         team_b_policy.reset()
+    # A HeuristicPolicyMixture picks this match's policy in reset(); record it for BC weighting.
+    played = tuple(_played_policy_id(p) for p in (team_a_policy, team_b_policy))
     empty_obs_steps = 0
     final_info: dict = {}
     terminal_reward = (0.0, 0.0)
@@ -202,11 +208,18 @@ def play_and_collect(
         # Per-side scoring pipeline (pickups/deliveries/approach rates) -- the breakdown that
         # located Run 6's actual bottleneck; see train/objective_monitor.py.
         "objectives": (objectives_a.counts, objectives_b.counts),
+        "policy_id": played,
     }
     return t_a, t_b, match_info
 
 
-def _push(buffer: SequentialReplayBuffer, transitions: dict[str, np.ndarray], source: int, demo: bool) -> None:
+def _played_policy_id(policy) -> str | None:
+    sample = getattr(policy, "current_sample", None)
+    return sample.policy_id if sample is not None else None
+
+
+def _push(buffer: SequentialReplayBuffer, transitions: dict[str, np.ndarray], source: int, demo: bool, policy_id: str | None = None) -> None:
+    policy = policy_index(policy_id) if demo else -1
     n = transitions["graphic"].shape[0]
     for i in range(n):
         buffer.push(
@@ -220,6 +233,7 @@ def _push(buffer: SequentialReplayBuffer, transitions: dict[str, np.ndarray], so
             demo,
             potential=float(transitions["potential"][i]) if "potential" in transitions else 0.0,
             terminal=bool(transitions["terminal"][i]) if "terminal" in transitions else None,
+            policy=policy,
         )
 
 
@@ -316,9 +330,16 @@ def collect_onpolicy_data(
         team_a_policy, team_b_policy = (heuristic, candidate) if swap else (candidate, heuristic)
         t_a, t_b, info = play_and_collect(env, team_a_policy, team_b_policy, seed, penalty_per_unit, reward_v2, stop_when_exhausted)
         buffer_a, buffer_b = buffers[SOURCE_SELF_VS_HEURISTIC]
-        _push(buffer_a, t_a, SOURCE_SELF_VS_HEURISTIC, demo=swap)  # team A is the heuristic when swapped
-        _push(buffer_b, t_b, SOURCE_SELF_VS_HEURISTIC, demo=not swap)
+        _push(buffer_a, t_a, SOURCE_SELF_VS_HEURISTIC, demo=swap, policy_id=info["policy_id"][0])  # team A is the heuristic when swapped
+        _push(buffer_b, t_b, SOURCE_SELF_VS_HEURISTIC, demo=not swap, policy_id=info["policy_id"][1])
         _accumulate(svh, info, candidate_team=1 if swap else 0)
+        opponent_id = info["policy_id"][0 if swap else 1]
+        if opponent_id is not None:
+            scores = (info["score_0"], info["score_1"])
+            cand = 1 if swap else 0
+            tier = "top" if opponent_id in TOP_TIER else "rest"
+            svh[f"margin_vs_{tier}"] = svh.get(f"margin_vs_{tier}", 0.0) + scores[cand] - scores[1 - cand]
+            svh[f"matches_vs_{tier}"] = svh.get(f"matches_vs_{tier}", 0) + 1
         seed += 1
         swap = not swap
     if svh["ticks"] < target_ticks_self_vs_heuristic:
@@ -340,6 +361,9 @@ def collect_onpolicy_data(
             f"self-play ticks after {sp['matches']} matches (max_matches={max_matches})"
         )
 
+    for tier in ("top", "rest"):
+        if svh.get(f"matches_vs_{tier}"):
+            svh[f"mean_margin_vs_{tier}"] = svh[f"margin_vs_{tier}"] / svh[f"matches_vs_{tier}"]
     stats: dict[str, float] = {
         "self_vs_heuristic_ticks": svh["ticks"],
         "self_vs_heuristic_matches": svh["matches"],
@@ -350,4 +374,7 @@ def collect_onpolicy_data(
         if totals["matches"]:
             for key, value in _phase_metrics(totals, penalty_per_unit).items():
                 stats[f"{prefix}/{key}"] = value
+            for key in ("mean_margin_vs_top", "mean_margin_vs_rest", "matches_vs_top", "matches_vs_rest"):
+                if key in totals:
+                    stats[f"{prefix}/{key}"] = totals[key]
     return stats

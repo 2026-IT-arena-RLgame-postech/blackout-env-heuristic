@@ -47,9 +47,9 @@ import numpy as np
 
 from blackout_env.env.blackout_env import BlackOutEnv
 from blackout_env.env.constants import TEAM_A_INDICES, TEAM_B_INDICES
-from blackout_env.heuristics import RecommendedStrategicHeuristic
+from blackout_env.heuristics import HeuristicPolicyMixture, RecommendedStrategicHeuristic
 from blackout_env.model.my_policy import MyPolicy
-from blackout_env.train.offline_dataset import dataset_has_unity_shaping, load_dataset_into, npz_member_memmap
+from blackout_env.train.offline_dataset import dataset_has_unity_shaping, dataset_is_demo, load_dataset_into, npz_member_memmap
 from blackout_env.train.onpolicy_collect import collect_onpolicy_data
 from blackout_env.train.periodic_eval import run_periodic_eval
 from blackout_env.train.qmix_trainer import QMIXConfig, QMIXTrainer, default_run_dir
@@ -59,6 +59,26 @@ from blackout_env.train.replay_buffer import SOURCE_NAMES
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dataset-dir", required=True, help="Dir with buffer_a.npz/buffer_b.npz from collect_heuristic_dataset.py")
+    parser.add_argument(
+        "--q-dataset-dir",
+        help="Optional second dataset loaded into the same dataset buffers after --dataset-dir, e.g. a "
+        "Gaussian-perturbed collection (--noise-mode gaussian --no-demo) that widens Q's action "
+        "coverage without being cloned. Its collection.json decides whether rows are demonstrations.",
+    )
+    parser.add_argument(
+        "--bc-policy-weighting",
+        action="store_true",
+        help="Weight each demonstration's BC term by its heuristic's Elo strength "
+        "(train/policy_strength.py; mixture-weighted mean 1, rows without a recorded policy keep 1).",
+    )
+    parser.add_argument(
+        "--onpolicy-opponent",
+        choices=["mixture", "v4"],
+        default="v4",
+        help="Heuristic played against in on-policy collection. mixture: HeuristicPolicyMixture, a new "
+        "policy each match (the dataset's own mixture). Periodic eval always stays against V4.",
+    )
+    parser.add_argument("--onpolicy-opponent-seed", type=int, default=7777)
     parser.add_argument("--steps", type=int, required=True, help="Absolute train_step_count target (see module docstring re: --resume)")
     parser.add_argument(
         "--resume",
@@ -275,6 +295,7 @@ def main() -> None:
         config_kwargs["spr_loss_weight"] = args.spr_loss_weight
     if args.bc_loss_alpha is not None:
         config_kwargs["bc_loss_alpha"] = args.bc_loss_alpha
+    config_kwargs["bc_policy_weighting"] = args.bc_policy_weighting
     if args.encoder_lr is not None:
         config_kwargs["encoder_lr"] = args.encoder_lr
     if args.encoder_weight_decay is not None:
@@ -309,6 +330,12 @@ def main() -> None:
     # loading twice.
     n_a = len(npz_member_memmap(dataset_dir / "buffer_a.npz", "done"))
     n_b = len(npz_member_memmap(dataset_dir / "buffer_b.npz", "done"))
+    q_dataset_dir = Path(args.q_dataset_dir) if args.q_dataset_dir else None
+    if q_dataset_dir is not None:
+        n_a += len(npz_member_memmap(q_dataset_dir / "buffer_a.npz", "done"))
+        n_b += len(npz_member_memmap(q_dataset_dir / "buffer_b.npz", "done"))
+        if args.reward == "unity" and not dataset_has_unity_shaping(q_dataset_dir):
+            raise SystemExit(f"{q_dataset_dir} was collected with --no-unity-shaping; use --reward v2 or v2-fitted")
     config_kwargs["buffer_capacity"] = max(n_a, n_b)
     reward_v2_cfg = None
     if args.reward != "unity":
@@ -338,6 +365,11 @@ def main() -> None:
     drop_dead = not args.keep_exhausted
     kept_a = load_dataset_into(trainer.buffer_a, dataset_dir / "buffer_a.npz", TEAM_A_INDICES, args.blocked_penalty, reward_v2_cfg, args.reward_workers, drop_dead)
     kept_b = load_dataset_into(trainer.buffer_b, dataset_dir / "buffer_b.npz", TEAM_B_INDICES, args.blocked_penalty, reward_v2_cfg, args.reward_workers, drop_dead)
+    if q_dataset_dir is not None:
+        q_a = load_dataset_into(trainer.buffer_a, q_dataset_dir / "buffer_a.npz", TEAM_A_INDICES, args.blocked_penalty, reward_v2_cfg, args.reward_workers, drop_dead)
+        q_b = load_dataset_into(trainer.buffer_b, q_dataset_dir / "buffer_b.npz", TEAM_B_INDICES, args.blocked_penalty, reward_v2_cfg, args.reward_workers, drop_dead)
+        print(f"[offline] q dataset {q_dataset_dir}: kept {q_a} (a) / {q_b} (b) rows, demo={dataset_is_demo(q_dataset_dir)}")
+        kept_a, kept_b = kept_a + q_a, kept_b + q_b
     print(f"[offline] kept {kept_a}/{n_a} (a) and {kept_b}/{n_b} (b) rows"
           + (" after dropping segments with no battery left" if drop_dead else ""))
     print(f"[offline] loaded buffer_a={len(trainer.buffer_a)}, buffer_b={len(trainer.buffer_b)} transitions"
@@ -350,6 +382,9 @@ def main() -> None:
     # Unity at all, same as the rest of this script.
     eval_env: BlackOutEnv | None = None
     eval_opponent = RecommendedStrategicHeuristic()
+    onpolicy_opponent = (
+        HeuristicPolicyMixture(seed=args.onpolicy_opponent_seed) if args.onpolicy_opponent == "mixture" else eval_opponent
+    )
     if args.eval_interval > 0:
         eval_env = BlackOutEnv(
             str(args.eval_build), time_scale=args.eval_time_scale, no_graphics=not args.eval_graphics,
@@ -395,7 +430,7 @@ def main() -> None:
         print(
             f"[offline] on-policy data collection enabled: ~{target_svh_per_window} self-vs-heuristic "
             f"+ ~{target_sp_per_window} self-play ticks per eval window ({n_eval_windows} windows), "
-            f"blocked_penalty={args.blocked_penalty}"
+            f"blocked_penalty={args.blocked_penalty}, opponent={args.onpolicy_opponent}"
         )
 
     def collect_onpolicy(step: int) -> None:
@@ -406,7 +441,7 @@ def main() -> None:
                 eval_env,
                 trainer.onpolicy_buffers,
                 candidate,
-                eval_opponent,
+                onpolicy_opponent,
                 target_svh_per_window,
                 target_sp_per_window,
                 args.blocked_penalty,
@@ -423,7 +458,9 @@ def main() -> None:
             svh_summary = (
                 f" | svh W/L/D={stats['self_vs_heuristic/win_rate']:.2f}/{stats['self_vs_heuristic/loss_rate']:.2f}/"
                 f"{stats['self_vs_heuristic/draw_rate']:.2f} margin={stats['self_vs_heuristic/mean_margin']:.1f} "
-                f"env_r/tick={stats['self_vs_heuristic/candidate_env_reward_per_tick']:.5f} "
+                + "".join(f"vs_{t}={stats[f'self_vs_heuristic/mean_margin_vs_{t}']:.1f}/{stats[f'self_vs_heuristic/matches_vs_{t}']:.0f} "
+                          for t in ("top", "rest") if f"self_vs_heuristic/mean_margin_vs_{t}" in stats)
+                + f"env_r/tick={stats['self_vs_heuristic/candidate_env_reward_per_tick']:.5f} "
                 f"penalty/tick={stats['self_vs_heuristic/candidate_blocked_penalty_per_tick']:.5f} "
                 f"psi_saturated={stats['self_vs_heuristic/psi_saturated_frac']:.2f} "
                 f"approach_battery={stats['self_vs_heuristic/candidate_approach_battery']:+.4f}"

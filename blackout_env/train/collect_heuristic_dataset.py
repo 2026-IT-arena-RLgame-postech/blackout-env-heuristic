@@ -28,6 +28,11 @@ from blackout_env.train.offline_dataset import save_buffer, write_collection_inf
 from blackout_env.train.qmix_trainer import QMIXConfig, QMIXTrainer
 
 
+def collection_extra(args) -> dict:
+    return {"demo": not args.no_demo, "noise_mode": args.noise_mode, "noise_frac": args.noise_frac,
+            "noise_sigma_deg": args.noise_sigma_deg if args.noise_mode == "gaussian" else None}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--build", required=True, help="Path to the Unity build executable")
@@ -35,7 +40,7 @@ def main() -> None:
     parser.add_argument(
         "--noise-frac",
         type=float,
-        default=0.1,
+        default=0.0,
         help="Per-unit probability of a uniformly random compass direction instead of the "
         "heuristic's own choice (QMIXConfig.heuristic_bootstrap_noise_frac) -- widens the "
         "offline dataset's action coverage beyond exactly what the heuristics themselves "
@@ -46,6 +51,13 @@ def main() -> None:
     parser.add_argument("--graphics", action="store_true", help="Show the Unity window instead of headless")
     parser.add_argument("--heuristic-seed-a", type=int, default=0)
     parser.add_argument("--heuristic-seed-b", type=int, default=1)
+    parser.add_argument("--noise-mode", choices=["uniform", "gaussian"], default="uniform",
+                        help="uniform: --noise-frac of unit actions become a random direction. gaussian: every "
+                        "unit's heuristic heading is turned by N(0, --noise-sigma-deg) degrees, then snapped.")
+    parser.add_argument("--noise-sigma-deg", type=float, default=30.0)
+    parser.add_argument("--no-demo", action="store_true",
+                        help="Mark rows as not behaviour-cloning demonstrations (for a perturbed, Q-coverage-only "
+                        "dataset); recorded in collection.json and honoured by offline_pretrain.")
     parser.add_argument(
         "--keep-exhausted",
         action="store_true",
@@ -76,6 +88,9 @@ def main() -> None:
         buffer_capacity=args.steps,
         heuristic_fill_frac=1.0,  # stay in phase 1 for the entire run (see module docstring)
         heuristic_bootstrap_noise_frac=args.noise_frac,
+        heuristic_noise_mode=args.noise_mode,
+        heuristic_noise_sigma_deg=args.noise_sigma_deg,
+        heuristic_demo=not args.no_demo,
         stop_when_exhausted=not args.keep_exhausted,
         heuristic_seed_a=args.heuristic_seed_a,
         heuristic_seed_b=args.heuristic_seed_b,
@@ -100,7 +115,8 @@ def main() -> None:
 
     save_buffer(trainer.buffer_a, out_dir / "buffer_a.npz")
     save_buffer(trainer.buffer_b, out_dir / "buffer_b.npz")
-    write_collection_info(out_dir, unity_shaping=not args.no_unity_shaping, stop_when_exhausted=not args.keep_exhausted)
+    write_collection_info(out_dir, unity_shaping=not args.no_unity_shaping, stop_when_exhausted=not args.keep_exhausted,
+                          **collection_extra(args))
     print(f"[collect] saved {len(trainer.buffer_a)} transitions/stream to {out_dir}")
     print(
         f"[collect] next: python -m blackout_env.train.offline_pretrain "

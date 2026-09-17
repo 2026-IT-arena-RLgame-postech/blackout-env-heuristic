@@ -24,6 +24,7 @@ import sys
 import time
 from pathlib import Path
 
+from blackout_env.train.collect_heuristic_dataset import collection_extra
 from blackout_env.train.offline_dataset import merge_shards, write_collection_info
 
 
@@ -32,7 +33,12 @@ def main() -> None:
     parser.add_argument("--build", required=True, help="Path to the Unity build executable")
     parser.add_argument("--steps", type=int, required=True, help="Total env steps across all workers combined")
     parser.add_argument("--workers", type=int, default=8, help="Number of parallel Unity instances")
-    parser.add_argument("--noise-frac", type=float, default=0.1, help="See collect_heuristic_dataset.py --noise-frac")
+    parser.add_argument("--noise-frac", type=float, default=0.0, help="See collect_heuristic_dataset.py --noise-frac")
+    parser.add_argument("--noise-mode", choices=["uniform", "gaussian"], default="uniform")
+    parser.add_argument("--seed-offset", type=int, default=0,
+                        help="Added to every worker's heuristic seeds, so a second dataset doesn't replay the first's policy draws")
+    parser.add_argument("--noise-sigma-deg", type=float, default=30.0)
+    parser.add_argument("--no-demo", action="store_true", help="See collect_heuristic_dataset.py --no-demo")
     parser.add_argument("--out", required=True, help="Output directory for the merged buffer_a.npz/buffer_b.npz")
     parser.add_argument("--time-scale", type=float, default=20.0, help="Unity Time.timeScale")
     parser.add_argument(
@@ -76,9 +82,11 @@ def main() -> None:
             "--noise-frac", str(args.noise_frac),
             "--time-scale", str(args.time_scale),
             "--out", str(shard_dir),
-            "--heuristic-seed-a", str(2 * i),
-            "--heuristic-seed-b", str(2 * i + 1),
-        ] + (["--no-unity-shaping"] if args.no_unity_shaping else []) + (["--keep-exhausted"] if args.keep_exhausted else [])
+            "--heuristic-seed-a", str(args.seed_offset + 2 * i),
+            "--heuristic-seed-b", str(args.seed_offset + 2 * i + 1),
+            "--noise-mode", args.noise_mode,
+            "--noise-sigma-deg", str(args.noise_sigma_deg),
+        ] + (["--no-demo"] if args.no_demo else []) + (["--no-unity-shaping"] if args.no_unity_shaping else []) + (["--keep-exhausted"] if args.keep_exhausted else [])
         print(f"[parallel] launching worker {i}: {worker_steps} steps, seeds ({2*i},{2*i+1}), log -> {log_path}")
         procs.append(subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT))
 
@@ -102,7 +110,8 @@ def main() -> None:
 
     n_a = merge_shards([d / "buffer_a.npz" for d in shard_dirs], out_dir / "buffer_a.npz")
     n_b = merge_shards([d / "buffer_b.npz" for d in shard_dirs], out_dir / "buffer_b.npz")
-    write_collection_info(out_dir, unity_shaping=not args.no_unity_shaping, stop_when_exhausted=not args.keep_exhausted)
+    write_collection_info(out_dir, unity_shaping=not args.no_unity_shaping, stop_when_exhausted=not args.keep_exhausted,
+                          **collection_extra(args))
     print(f"[parallel] merged {n_a} (stream a) / {n_b} (stream b) transitions -> {out_dir}")
 
     if not args.keep_shards:

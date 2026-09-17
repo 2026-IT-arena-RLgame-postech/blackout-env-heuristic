@@ -92,6 +92,7 @@ from blackout_env.model.action_mask import masked_greedy
 from blackout_env.model.my_policy import DIRECTION_VECTORS, direction_vector_to_idx
 from blackout_env.train.ema import ema_update
 from blackout_env.train.dead_segments import batteries_in_play
+from blackout_env.train.policy_strength import POLICY_IDS, bc_weight_table, policy_index
 from blackout_env.train.replay_buffer import (
     SOURCE_DATASET,
     SOURCE_NAMES,
@@ -148,6 +149,15 @@ class QMIXConfig:
     # collect_heuristic_dataset.py script, which drives this same method to build an offline
     # dataset outside of any online run.
     heuristic_bootstrap_noise_frac: float = 0.0
+    # "uniform": with probability heuristic_bootstrap_noise_frac a unit takes a uniformly random
+    # compass direction (the old behaviour). "gaussian": every unit's heuristic heading is turned
+    # by N(0, heuristic_noise_sigma_deg) degrees before snapping to the 8 directions, so the
+    # executed action stays centred on the heuristic's (noise_frac is ignored).
+    heuristic_noise_mode: str = "uniform"
+    heuristic_noise_sigma_deg: float = 30.0
+    # Mark phase-1 heuristic rows as behaviour-cloning demonstrations. False for a dataset whose
+    # actions are deliberately perturbed (Q-coverage only, never cloned).
+    heuristic_demo: bool = True
     # End the Unity match at the first absorption after which no battery is left anywhere
     # (train/dead_segments.py): the result is fixed from there, and the rest of the match would
     # only be dropped at training time. The outcome is decided by the scores at that point and
@@ -238,6 +248,10 @@ class QMIXConfig:
     # of exactly those actions -- in Run 5 that meant reinforcing the wall-walking the blocked
     # penalty was trying to remove.
     bc_loss_alpha: float = 0.0
+    # Weight each demonstration's BC term by its demonstrator's strength
+    # (train/policy_strength.bc_weight_table: Elo expected score, mixture-weighted mean 1). Rows
+    # without a recorded policy keep weight 1.
+    bc_policy_weighting: bool = False
     # Drop directions that walk into a wall from every greedy choice -- acting, collecting, and the
     # Double-DQN bootstrap action (never from the Q of a stored action; see model/action_mask.py).
     # A blocked unit re-picks the same wall-ward direction forever because the state it observes
@@ -497,6 +511,10 @@ class QMIXTrainer:
         self._train_start_size = max(1, round(config.bootstrap_train_start_frac * self.buffer_a.capacity))
         self.heuristic_a = HeuristicPolicyMixture(seed=config.heuristic_seed_a)
         self.heuristic_b = HeuristicPolicyMixture(seed=config.heuristic_seed_b)
+        self._bc_policy_weight = (
+            bc_weight_table(self.heuristic_a.weights) if config.bc_policy_weighting
+            else np.ones(len(POLICY_IDS) + 1, dtype=np.float32)
+        )
         self._was_bootstrapping = True  # collect_step() flips this and logs the phase-1->2 transition once
         # env_step_count offset for epsilon() -- reset to the transition step so phase 2 always
         # starts exploring at eps_start instead of inheriting however far env_step_count already
@@ -679,10 +697,14 @@ class QMIXTrainer:
         output to the nearest of the 8 compass DIRECTION_VECTORS (see direction_vector_to_idx).
         Returns [N_TEAM] int array, in `agents` slot order.
         """
+        return direction_vector_to_idx(self._heuristic_vectors(obs, agents, heuristic))
+
+    @staticmethod
+    def _heuristic_vectors(obs: dict[str, dict[str, np.ndarray]], agents: list[str], heuristic) -> np.ndarray:
+        """[N_TEAM, 2] the heuristic's continuous (dx, dy) for one team, in `agents` slot order."""
         team_obs = {a: obs[a] for a in agents}
         heuristic_actions = heuristic.act(team_obs)
-        vectors = np.stack([heuristic_actions[a] for a in agents])  # [N_TEAM, 2]
-        return direction_vector_to_idx(vectors)
+        return np.stack([np.asarray(heuristic_actions[a], dtype=np.float64) for a in agents])
 
     def _pack_direction_idx(self, direction_idx: np.ndarray) -> tuple[dict[str, np.ndarray], np.ndarray]:
         """direction_idx: [2, N_TEAM] (team A row, team B row) -> (env_actions dict, full_direction_idx [10])."""
@@ -712,6 +734,16 @@ class QMIXTrainer:
         giving up "the trajectories still mostly look like competent play" the way pure random
         rollouts would.
         """
+        if self.cfg.heuristic_noise_mode == "gaussian":
+            vec_a = self._heuristic_vectors(obs, self.team_a_agents, self.heuristic_a)
+            vec_b = self._heuristic_vectors(obs, self.team_b_agents, self.heuristic_b)
+            vectors = np.stack([vec_a, vec_b])  # [2, N_TEAM, 2]
+            angle = np.arctan2(vectors[..., 1], vectors[..., 0])
+            angle = angle + np.deg2rad(self.cfg.heuristic_noise_sigma_deg) * np.random.randn(*angle.shape)
+            turned = np.stack([np.cos(angle), np.sin(angle)], axis=-1)
+            # a heuristic that returns a zero vector has no heading to perturb; keep its snap
+            turned = np.where(np.linalg.norm(vectors, axis=-1, keepdims=True) > 1e-6, turned, vectors)
+            return self._pack_direction_idx(direction_vector_to_idx(turned))
         dir_a = self._heuristic_direction_idx(obs, self.team_a_agents, self.heuristic_a)
         dir_b = self._heuristic_direction_idx(obs, self.team_b_agents, self.heuristic_b)
         direction_idx = np.stack([dir_a, dir_b])
@@ -793,6 +825,11 @@ class QMIXTrainer:
         self.heuristic_b.reset()
         return obs, info
 
+    @staticmethod
+    def _played_policy(mixture: HeuristicPolicyMixture) -> int:
+        sample = mixture.current_sample
+        return policy_index(sample.policy_id if sample is not None else None)
+
     def collect_step(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, dict[str, np.ndarray]]:
         bootstrapping = self._bootstrapping
         if self._was_bootstrapping and not bootstrapping:
@@ -861,14 +898,16 @@ class QMIXTrainer:
         # opponent's own stream is still a demonstration; the online side (and an ema_net
         # opponent) carries the net's own epsilon-mixed actions (see bc_loss_alpha).
         if bootstrapping:
-            source, demo_a, demo_b = SOURCE_DATASET, True, True
+            source, demo_a, demo_b = SOURCE_DATASET, self.cfg.heuristic_demo, self.cfg.heuristic_demo
         elif self._opponent_is_heuristic:
             source = SOURCE_SELF_VS_HEURISTIC
             demo_a, demo_b = not self._online_is_team_a, self._online_is_team_a
         else:
             source, demo_a, demo_b = SOURCE_SELF_PLAY, False, False
-        self.buffer_a.push(obs_a["graphic"], obs_a["team_state"], obs_a["agent_states"], full_direction_idx, reward_a, buffer_done, source, demo_a)
-        self.buffer_b.push(obs_b["graphic"], obs_b["team_state"], obs_b["agent_states"], full_direction_idx, reward_b, buffer_done, source, demo_b)
+        policy_a = self._played_policy(self.heuristic_a) if demo_a or bootstrapping else -1
+        policy_b = self._played_policy(self.heuristic_b) if demo_b or bootstrapping else -1
+        self.buffer_a.push(obs_a["graphic"], obs_a["team_state"], obs_a["agent_states"], full_direction_idx, reward_a, buffer_done, source, demo_a, policy=policy_a)
+        self.buffer_b.push(obs_b["graphic"], obs_b["team_state"], obs_b["agent_states"], full_direction_idx, reward_b, buffer_done, source, demo_b, policy=policy_b)
 
         self.env_step_count += 1
         if self.env_step_count % self.cfg.tb_log_interval == 0:
@@ -966,7 +1005,7 @@ class QMIXTrainer:
         "n_step_return", "not_done", "gamma_eff",
         "boot_graphic", "boot_team_state", "boot_agent_states",
         "future_graphic", "future_team_state", "future_agent_states",
-        "action_window", "valid_mask", "source", "demo",
+        "action_window", "valid_mask", "source", "demo", "bc_weight",
     )
 
     def _sample_batch(
@@ -1017,6 +1056,8 @@ class QMIXTrainer:
             "valid_mask": valid_mask,  # [b, K] bool
             "source": batch["source"],  # [b] int8
             "demo": batch["demo"],  # [b] bool, BC target
+            # [b] BC weight: demo * the demonstrator's strength weight (1 when unweighted)
+            "bc_weight": batch["demo"] * self._bc_policy_weight[batch["policy"]],
         }
 
     @staticmethod
@@ -1134,7 +1175,7 @@ class QMIXTrainer:
             "future_agent_states": batch["future_agent_states"],
             "action_window": torch.tensor(batch["action_window"], dtype=torch.long, device=self.device),  # [B, K, 10]
             "valid_mask": torch.tensor(batch["valid_mask"], dtype=torch.float32, device=self.device),  # [B, K]
-            "bc_mask": torch.tensor(batch["demo"], dtype=torch.float32, device=self.device),  # [B]
+            "bc_mask": torch.tensor(batch["bc_weight"], dtype=torch.float32, device=self.device),  # [B]
         }
 
     def _forward_and_loss(
