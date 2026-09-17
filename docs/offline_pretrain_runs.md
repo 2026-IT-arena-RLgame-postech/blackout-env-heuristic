@@ -59,6 +59,79 @@ lr/weight_decay/reset 강도는 아직 실험 안 해봄 — spr_loss_weight부�
 
 ---
 
+## Run 12 계획 (실행 전, 2026-09-17) — 누구를 따라 하고 누구와 싸우는가
+
+Run 11은 리워드 v2로 Hunter 방해(짐 든 적 처치 3–9배)를 배웠지만 수거가 줄어 점수차는 Run 10과 같았다. 이번에는
+데이터와 상대 쪽을 바꾼다. 관측·보상·모델 구조는 Run 11과 같다(체크포인트 호환 구조).
+
+### Run 11 final 측정 (`examples/measure_movement_and_storage.py`, V4 상대 8경기, `reports/movement_storage_20260917/`)
+
+방향 반전(직전 명령 방향과 135° 이상) 비율, 벽까지 칸 거리별:
+
+| | Hunter 벽 1 / 2 / 3 | 그 외 벽 1 / 2 / 3 | 스폰 창고 배달 비율 |
+|---|---|---|---|
+| Run 11 final | 57.7 / 52.8 / 16.2% | **36.5** / 16.7 / 0.1% | **51%** (55회) |
+| 같은 경기의 V4 | 34.5 / 54.5 / 18.2% | 13.0 / 16.1 / 7.3% | 27% (150회) |
+| V17 (V4 상대) | 24.8 / 22.4 / 22.2% | 17.4 / 10.3 / 7.4% | 32% (171회) |
+| Run 11 + 추론 관성 0.1 | 43.2 / 27.0 / 12.0% | 22.0 / 6.6 / 0.1% | 49% |
+| Run 11 + 추론 관성 0.3 | 20.9 / 20.2 / 5.5% | 16.8 / 4.1 / 0.1% | 53% |
+
+- **과한 반전은 벽 바로 옆 칸에 몰려 있다.** 비Hunter는 벽 2칸 이상에서 휴리스틱과 같거나 낮고, 벽 옆 칸에서만
+  2–3배다. GUI 관찰("벽 옆옆 칸 → 옆 칸 진입 시 진동")과 일치. 벽 샘플이 ±1칸까지만 보여 옆옆 칸에서는 벽이
+  안 보이다가 한 발 들어가면 켜지는 구조, 또는 막힘 페널티 회피가 후보. 이번 런에서는 바꾸지 않는다.
+- **추론 관성**(직전 방향의 Q가 최댓값보다 0.3 이내면 유지)은 재학습 없이 반전을 절반 이하로 줄인다. 점수차는
+  이 측정 당시 점수 기록 버그(아래)로 판단 불가.
+- **스폰 창고 편중**: 휴리스틱은 배달의 27–34%만 스폰 창고로 가는데 모델은 51%. 창고 채널을 읽지 않고 위치를
+  외운 것과 같은 뿌리. 이번 런에서는 바꾸지 않는다.
+- 측정 중 발견: eval 점수 기록이 조기 종료 경기에서 다음 경기의 0–2를 읽었다(`BlackOutEnv`의 시간 되돌아감
+  판정 0.25 → 1e-4로 수정, `583c5aa`). Run 11 final GUI의 0–1/0–2 경기가 이것이다. 학습 중 온폴리시 수집은
+  경기마다 자체 점수 추적이라 영향 없고, periodic eval 점수차는 일부 경기가 작게 찍혔을 수 있다.
+
+### 변경 (Run 11 대비, 모두 데이터·상대)
+
+| # | 변경 |
+|---|---|
+| D1 | **BC용 데이터셋에서 무작위 행동 제거.** `heuristic_mixv7_bc_20260917`(스트림당 80만 행, noise 0). Run 11까지는 유닛 행동의 10%가 균등 무작위였고 그것도 시연으로 복제됐다 |
+| D2 | **Q 추정용 데이터셋 별도.** `heuristic_mixv7_qnoise_20260917`(20만 행): 휴리스틱 방향을 N(0, 20°) 회전 후 8방향으로 스냅(원래 방향 74%, 옆 방향 각 13%, 90° 이상 0.1%). `--no-demo`라 BC 가중치 0, 같은 데이터셋 버퍼에 로드(`--q-dataset-dir`) |
+| D3 | **BC를 시연자 강도로 가중.** 행마다 정책 id 저장, Elo 기대 승률 기반 가중치(mixture 평균 1): V19 1.94, V17 1.65, V18 1.64, V12 0.87, V4 0.75, V3 0.63, V1 0.18 (`--bc-policy-weighting`) |
+| D4 | **온폴리시 상대를 mixture로.** 경기마다 정책을 새로 뽑는다(`--onpolicy-opponent mixture`, 시드 7777). V17–V19 상대와 나머지 상대 점수차를 따로 찍는다. **eval은 V4 고정.** 온폴리시 V4 쪽 시연도 이제 정책 가중치를 받는다 |
+
+### 실행
+
+```
+python -m blackout_env.train.collect_heuristic_dataset_parallel --build build/mac/BlackOut.app \
+  --steps 800000 --workers 18 --out datasets/heuristic_mixv7_bc_20260917
+python -m blackout_env.train.collect_heuristic_dataset_parallel --build build/mac/BlackOut.app \
+  --steps 200000 --workers 18 --noise-mode gaussian --noise-sigma-deg 20 --no-demo --seed-offset 1000 \
+  --out datasets/heuristic_mixv7_qnoise_20260917
+
+python -m blackout_env.train.offline_pretrain --dataset-dir datasets/heuristic_mixv7_bc_20260917 \
+  --q-dataset-dir datasets/heuristic_mixv7_qnoise_20260917 --bc-policy-weighting --onpolicy-opponent mixture \
+  --reward v2-fitted --steps 200000 --device mps --compile --spr-loss-weight 5.0 --encoder-weight-decay 1e-4 \
+  --bc-loss-alpha 1.0 --blocked-penalty 0.02 --onpolicy-self-vs-heuristic-frac 0.3 \
+  --onpolicy-self-play-frac 0 --reset-warmup-steps 2000 --eval-interval 10000
+```
+
+mixv6(Run 11, 균등 노이즈 10%)는 휴지통으로.
+
+### 봐야 할 값
+
+- **eval(V4) 점수차**: Run 11 −51~−81, Run 10과 같은 V4·시드라 직접 비교. 점수 기록 수정으로 이번 런은 조기 종료
+  경기 점수가 정확하다(이전 런 eval 값은 일부 과소평가됐을 수 있음).
+- **온폴리시 점수차는 Run 11과 직접 비교 불가**(상대가 V4 → mixture). `mean_margin_vs_top`(V17–V19)과
+  `mean_margin_vs_rest`를 따로 본다. 약한 정책 상대로 이기기 시작하는지가 첫 신호.
+- **BC 일치율**: 강한 정책 시연 쪽 argmax 일치가 오르는지(가중 BC의 직접 효과).
+- 경제(줍기·배달)와 짐 든 적 처치: Run 11의 "추격 늘고 수거 줄어 상쇄"가 V17식 편성으로 균형을 찾는지.
+- 끝나면 같은 측정 스크립트로 벽 옆 반전·스폰 창고 편중을 다시 잰다. 데이터 정리만으로 줄었는지 확인.
+
+### 조기 종료 기준
+
+- 즉시: NaN, 20k 이후 인코더 붕괴, Q가 Run 11 대비 10배.
+- 80k: eval 점수차가 Run 11 80k 범위(−51~−74) 안이고 온폴리시 `vs_rest`에서 승리가 없으면 중단 — 데이터·상대
+  문제가 아니었다. 다음은 벽 샘플 범위 확대(±2칸)와 창고 거리 특징(관측).
+
+---
+
 ## Run 11 계획 (실행 전, 2026-09-17) — 휴리스틱을 설명하는 보상으로 바꾸면 중반 붕괴가 사라지는가
 
 Run 10은 80k 이후 점수차 −37~−76, 온폴리시 −65~−72에서 무추세였고, GUI에서는 초반엔 괜찮다가 중반부터
