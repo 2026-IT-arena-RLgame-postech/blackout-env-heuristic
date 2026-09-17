@@ -71,17 +71,17 @@ Run 10은 80k 이후 점수차 −37~−76, 온폴리시 −65~−72에서 무�
 |---|---|---|---|
 | C1 | 유닛 특징에서 타일 내 위상(sin/cos) 제거, 5×5 보간 벽만(29 → 25열, 체크포인트 비호환) | 관측 | `48f8eda` |
 | C2 | **리워드 v2** `--reward v2-fitted`(`FITTED_20260917B`): 확정 점수 차 + 유닛별 포텐셜, n-step 안에서 학습기 γ로 쉐이핑. Unity 쉐이핑(Ψ, 네비·Hunter Φ)은 쓰지 않고 온폴리시/평가 env에서 끈다 | 보상 | `58a7184`, `eca9bb4`, `77b8099` |
-| C3 | 배터리가 모두 사라진 뒤의 구간 제거(데이터셋 행 26%만 남음, 온폴리시 경기는 소진 시 종료) | 데이터 | `db2b729` |
+| C3 | 배터리가 모두 사라진 뒤의 구간 제거. **수집 단계에서** 경기를 소진 시점에 끝내 새로 모은 `heuristic_mixv6_live_20260917`(스트림당 100만 행, 전부 살아 있는 구간 — mixv5 기준 약 3.7배), 온폴리시 경기도 소진 시 종료(창당 경기 상한 50 → 200) | 데이터 | `db2b729`, `0009fd7` |
 
 - 보상 스케일은 다시 맞추지 않는다. mixv5 6만 틱(살아 있는 구간)에서 틱당 보상 표준편차: Unity 0.050, v2 합
   0.065(쉐이핑 0.051, 점수 0.041), 종료 ±5는 같다. `--blocked-penalty 0.02`도 그대로 둔다.
-- 데이터는 스트림당 약 26만 행으로 준다. 200k 스텝이면 오프라인 행당 샘플 수가 약 3.8배가 된다(과적합 위험 →
-  아래 ⑤). 결과가 정해진 구간을 다시 모아 채우는 것은 수집기 조기 종료(다음 할 일 3) 이후.
+- 데이터 양은 Run 10과 같은 스트림당 100만 행이지만 전부 결과가 아직 정해지지 않은 구간이다. 행동 정책·mixture는
+  mixv5와 같고 Unity 쉐이핑도 켠 채 모았다(Run 11b `--reward unity`에 그대로 쓸 수 있다). 경기 수는 mixv5의 약 3.7배.
 - **세 변경을 한 런에 넣는다.** C1·C3은 단독으로도 근거가 분명한 수정이고(위상은 틱당 변화가 이전 오프셋의 3배,
   소진 구간은 학습할 결과가 없음), 판정 대상은 C2다. 귀속이 필요하면 같은 데이터로 `--reward unity`만 바꾼
-  Run 11b를 돌린다(재수집 불필요, mixv5는 Unity 쉐이핑이 들어 있다).
+  Run 11b를 돌린다(재수집 불필요).
 
-### 실행 전 추가할 것
+### 실행 전 추가할 것 (보류 — 이번 런은 GUI·프로브로 판정)
 
 - **진동 지표**(Run 9·10에서 GUI로만 판정했다): 평가·온폴리시 경기에서 유닛이 k틱 안에 직전 이동과 반대
   방향(내적 < −0.5)으로 움직인 비율 `reversal_per_1000`, 클래스별(Hunter/그 외). 휴리스틱 기준값을 같은
@@ -91,13 +91,16 @@ Run 10은 80k 이후 점수차 −37~−76, 온폴리시 −65~−72에서 무�
 ### 실행
 
 ```
-python -m blackout_env.train.offline_pretrain --dataset-dir datasets/heuristic_mixv5_hunterphi_20260916 \
+python -m blackout_env.train.collect_heuristic_dataset_parallel \
+  --build build/mac/BlackOut.app --steps 1000000 --workers 18 --out datasets/heuristic_mixv6_live_20260917
+
+python -m blackout_env.train.offline_pretrain --dataset-dir datasets/heuristic_mixv6_live_20260917 \
   --reward v2-fitted --steps 200000 --device mps --compile --spr-loss-weight 5.0 --encoder-weight-decay 1e-4 \
   --bc-loss-alpha 1.0 --blocked-penalty 0.02 --onpolicy-self-vs-heuristic-frac 0.3 \
   --onpolicy-self-play-frac 0 --reset-warmup-steps 2000 --eval-interval 10000
 ```
 
-Run 10과 같은 데이터셋·하이퍼파라미터에 `--reward v2-fitted`만 추가(C3은 기본값). 시작 시 v2 보상 캐시를
+Run 10과 같은 하이퍼파라미터에 `--reward v2-fitted`만 추가, 데이터셋은 새로 모은 mixv6(mixv5는 2026-09-17 휴지통으로). 시작 시 v2 보상 캐시를
 만든다(스트림당 1–2분, 한 번). 전원 연결·고성능 모드 확인. Run 10 속도 16.8스텝/초 → 80k 약 1.5시간, 200k 약
 3.5시간(온폴리시 수집은 쉐이핑이 빠져 더 빠르다). 200k 일정으로 켜고 필요한 시점에 끊는다.
 
@@ -107,7 +110,7 @@ Run 10 기준값: eval 점수차 10k −54, 40k −54, 80k −76. 온폴리시 4
 `cargo_lost/1k` 0.5/0.0). 프로브 @80k: Hunter 경계 갇힘 6.8%, 비Hunter 12.7%, 중앙 행동 변경 15–22%.
 
 **① 배선 (시작 ~ 10k)**
-- 로그: `kept …/1000000 rows`(약 26%), `reward=v2-fitted RewardV2Config(steal_hazard=0.6 …)`, 온폴리시 경기
+- 로그: `kept …/1000000 rows`(거의 100%), `reward=v2-fitted RewardV2Config(steal_hazard=0.6 …)`, 온폴리시 경기
   수가 상한 50에 걸리는지(소진 종료로 경기가 짧아진다 — 걸리면 창당 틱 목표 1.5만을 못 채운다).
 - `q_value/mean·std`가 Run 10과 같은 자릿수인지(보상 스케일이 비슷하므로 같아야 한다).
 - 초반 인코더 붕괴(매 런 7–10k): `probe/graphic_shuffle_dq`가 10k까지 살아나는지. 데이터가 줄어 더 길어질 수 있다.
@@ -129,7 +132,7 @@ Run 10 기준값: eval 점수차 10k −54, 40k −54, 80k −76. 온폴리시 4
 - 경기 흐름: 60초 시점 점수차(초반 러시 결과)와 최종 점수차를 분리해서 본다. 중반 붕괴가 사라지면 둘의 차이가 준다.
 
 **⑤ 과적합 (80k 이후)**
-- `batch_td_error/dataset`은 내려가는데 `batch_td_error/self_vs_heuristic`이 오르면 26만 행을 외우는 것이다
+- `batch_td_error/dataset`은 내려가는데 `batch_td_error/self_vs_heuristic`이 오르면 데이터셋을 외우는 것이다
   (온폴리시도 학습에 쓰이므로 엄밀한 보류 세트는 아니다 — 새로 들어온 창의 데이터에서 먼저 벌어진다).
 
 **GUI**: 40k 체크포인트(Hunter 추격·진동·중반 흐름).
