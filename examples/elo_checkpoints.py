@@ -34,8 +34,12 @@ _CHECKPOINTS: dict[str, str] = {}
 _POLICIES: dict = {}
 
 
-def _init_worker(build: str, time_scale: float, checkpoints: dict[str, str]) -> None:
-    global _ENV, _CHECKPOINTS
+_DEVICE = "cpu"
+
+
+def _init_worker(build: str, time_scale: float, checkpoints: dict[str, str], device: str = "cpu") -> None:
+    global _ENV, _CHECKPOINTS, _DEVICE
+    _DEVICE = device
     import torch
 
     from blackout_env import BlackOutEnv
@@ -55,10 +59,10 @@ def _player(name: str, seed: int):
             from blackout_env.model.my_policy import MyPolicy
             from blackout_env.train.qmix_trainer import QMIXConfig, QMIXTrainer
 
-            trainer = QMIXTrainer(env=None, config=QMIXConfig(buffer_capacity=1, device="cpu", tb_log_dir=None))
+            trainer = QMIXTrainer(env=None, config=QMIXConfig(buffer_capacity=1, device=_DEVICE, tb_log_dir=None))
             trainer.load(_CHECKPOINTS[name])
             trainer.net.eval()
-            _POLICIES[name] = MyPolicy(trainer.net, device="cpu")
+            _POLICIES[name] = MyPolicy(trainer.net, device=_DEVICE)
         return _POLICIES[name]
     return make_heuristic(name, seed=seed) if name == "strategic_v4_near" else make_heuristic(name)
 
@@ -143,7 +147,10 @@ def fit(free: list[str], fixed: dict[str, float], games: list[dict], prior_mean:
 def floored(free, fixed, games, min_games=6):
     """Checkpoints that have scored nothing in >= min_games against the weakest anchor: their absolute
     rating is only bounded by the prior, so more anchor games buy nothing."""
-    weakest = min(fixed, key=fixed.get)
+    anchors = {a: v for a, v in fixed.items() if a.startswith("strategic_")}
+    if not anchors:
+        return set()
+    weakest = min(anchors, key=anchors.get)
     out = set()
     for n in free:
         rows = [g for g in games if {g["a"], g["b"]} == {n, weakest}]
@@ -189,7 +196,9 @@ def choose(free, fixed, elo, cov, per_round, games_per_pair=2, skip_anchors=froz
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--checkpoints", nargs="+", required=True, help="label=path")
-    parser.add_argument("--anchors", nargs="+", default=DEFAULT_ANCHORS)
+    parser.add_argument("--anchors", nargs="*", default=DEFAULT_ANCHORS, help="heuristic anchors; pass none for checkpoints only")
+    parser.add_argument("--reference", help="checkpoint label pinned at --reference-elo (relative rating among checkpoints)")
+    parser.add_argument("--reference-elo", type=float, default=0.0)
     parser.add_argument("--target-se", type=float, default=50.0)
     parser.add_argument("--max-games", type=int, default=400)
     parser.add_argument("--pairs-per-round", type=int, default=9, help="each pair = 2 games (both sides)")
@@ -201,20 +210,31 @@ def main() -> None:
     parser.add_argument("--build", default="build/mac/BlackOut.app")
     parser.add_argument("--seed", type=int, default=20260918)
     parser.add_argument("--output", type=Path, default=Path("reports/elo_checkpoints"))
+    parser.add_argument("--device", default="cpu", help="inference device per worker; batch-1 CPU (1 thread) measured "
+                        "1.9 ms/act vs MPS 3.8 ms/act, so cpu is the default")
+    parser.add_argument("--resume", action="store_true", help="start from the games already in <output>/games.jsonl")
     args = parser.parse_args()
 
     from blackout_env.train.policy_strength import ELO_20260916
 
     checkpoints = dict(spec.split("=", 1) for spec in args.checkpoints)
-    free = list(checkpoints)
+    free = [c for c in checkpoints if c != args.reference]
     fixed = {a: float(ELO_20260916[a]) for a in args.anchors}
+    if args.reference:
+        fixed[args.reference] = args.reference_elo
+        args.prior_mean = args.reference_elo
     rng = np.random.default_rng(args.seed)
     args.output.mkdir(parents=True, exist_ok=True)
-    log = open(args.output / "games.jsonl", "a")
+    log_path = args.output / "games.jsonl"
     games: list[dict] = []
+    if args.resume and log_path.exists():
+        players = set(free) | set(fixed)
+        games = [g for g in map(json.loads, log_path.read_text().splitlines()) if g["a"] in players and g["b"] in players]
+        print(f"resumed {len(games)} games from {log_path}", flush=True)
+    log = open(log_path, "a")
     elo, cov = fit(free, fixed, games, args.prior_mean, args.prior_sd)
     with ProcessPoolExecutor(max_workers=args.workers, mp_context=mp.get_context("spawn"), initializer=_init_worker,
-                             initargs=(args.build, args.time_scale, checkpoints)) as pool:
+                             initargs=(args.build, args.time_scale, checkpoints, args.device)) as pool:
         round_no = 0
         while len(games) < args.max_games:
             se = np.sqrt(np.diag(cov))
@@ -246,9 +266,9 @@ def main() -> None:
     se = np.sqrt(np.diag(cov))
     low = floored(free, fixed, games)
     if low:
-        print(f"\nbelow the weakest anchor ({min(fixed, key=fixed.get)}) with no points scored: {sorted(low)} -- "
+        print(f"\nbelow the weakest anchor with no points scored: {sorted(low)} -- "
               "their absolute Elo is set by the prior; read only the differences")
-    print(f"\nfinal after {len(games)} games (anchors fixed: " + ", ".join(f"{a.replace('strategic_', '')} {v:.0f}" for a, v in fixed.items()) + ")")
+    print(f"\nfinal after {len(games)} games (fixed: " + ", ".join(f"{a.replace('strategic_', '')} {v:.0f}" for a, v in fixed.items()) + ")")
     for n, e, s in sorted(zip(free, elo, se), key=lambda x: -x[1]):
         print(f"  {n:12s} Elo {e:6.0f} ± {s:3.0f}")
     if len(free) > 1:
