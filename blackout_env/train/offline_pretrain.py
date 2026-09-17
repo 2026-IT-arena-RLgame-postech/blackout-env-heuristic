@@ -210,7 +210,7 @@ def main() -> None:
         "applied to both the static dataset (retroactively, at load time) and any on-policy data "
         "collected via --onpolicy-*-frac below. 'Blocked' = commanded movement, no actual "
         "displacement (walking into a wall/obstacle) -- see diagnose_stopping2.py's Run4 finding "
-        "of 41.66% blocked unit-ticks and docs/offline_pretrain_runs.md for why nothing in the "
+        "of 41.66%% blocked unit-ticks and docs/offline_pretrain_runs.md for why nothing in the "
         "actual game reward (reward_config.json) penalizes this directly. Default 0.0 (off, i.e. "
         "exact prior behavior); ~0.02 was the value discussed against this dataset's own reward "
         "scale (typical nonzero |reward| ~0.005, max single-tick nav-shaping ~0.08).",
