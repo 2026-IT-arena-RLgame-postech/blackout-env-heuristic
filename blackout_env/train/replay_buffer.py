@@ -86,6 +86,10 @@ class SequentialReplayBuffer:
         # Which heuristic played this stream's own team (train/policy_strength.POLICY_IDS index,
         # -1 = the net or unrecorded): weights the row's behaviour-cloning term.
         self.policy = np.full((self.capacity,), -1, dtype=np.int16)
+        # DAgger relabelling (train/onpolicy_collect.py): per unit, a bit mask of the compass
+        # directions a teacher labels correct in this state (bit i = DIRECTION_VECTORS[i], world
+        # frame, physical unit order like `actions`); 0 = no label.  Only rows the net played.
+        self.teach = np.zeros((self.capacity, n_units), dtype=np.uint8)
         self.source_counts = np.zeros(len(SOURCE_NAMES), dtype=np.int64)
 
         self._sum_tree = SumSegmentTree(self.capacity)
@@ -110,6 +114,7 @@ class SequentialReplayBuffer:
         potential: float = 0.0,
         terminal: bool | None = None,
         policy: int = -1,
+        teach: np.ndarray | None = None,
     ) -> None:
         i = self._pos
         if self._size == self.capacity:
@@ -125,6 +130,7 @@ class SequentialReplayBuffer:
         self.source[i] = source
         self.demo[i] = demo
         self.policy[i] = policy
+        self.teach[i] = 0 if teach is None else teach
         self.source_counts[source] += 1
 
         self._sum_tree[i] = self._max_priority ** self._per_alpha
@@ -231,6 +237,7 @@ class SequentialReplayBuffer:
             "source": self.source[indices],
             "demo": self.demo[indices],
             "policy": self.policy[indices],
+            "teach": self.teach[indices],
         }
 
     def update_priorities(self, indices: np.ndarray, priorities: np.ndarray) -> None:

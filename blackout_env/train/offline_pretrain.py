@@ -47,7 +47,7 @@ import numpy as np
 
 from blackout_env.env.blackout_env import BlackOutEnv
 from blackout_env.env.constants import TEAM_A_INDICES, TEAM_B_INDICES
-from blackout_env.heuristics import HeuristicPolicyMixture, RecommendedStrategicHeuristic
+from blackout_env.heuristics import HeuristicPolicyMixture, RecommendedStrategicHeuristic, StrategicHeuristicV4Teach
 from blackout_env.model.my_policy import MyPolicy
 from blackout_env.train.offline_dataset import dataset_has_unity_shaping, dataset_is_demo, load_dataset_into, npz_member_memmap
 from blackout_env.train.onpolicy_collect import collect_onpolicy_data
@@ -79,6 +79,16 @@ def main() -> None:
         "policy each match (the dataset's own mixture). Periodic eval always stays against V4.",
     )
     parser.add_argument("--onpolicy-opponent-seed", type=int, default=7777)
+    parser.add_argument(
+        "--dagger-teacher",
+        choices=["none", "v4-teach"],
+        default="none",
+        help="DAgger relabelling of on-policy data: the teacher labels every state the net plays in "
+        "on-policy collection (heuristics/teach.py) and those rows get a set-valued BC term "
+        "(QMIXConfig.dagger_weight). The heuristic side keeps its own demonstration BC. none = off.",
+    )
+    parser.add_argument("--dagger-weight", type=float, default=1.0,
+                        help="BC weight of a relabelled on-policy row relative to a demonstration row (1.0).")
     parser.add_argument("--steps", type=int, required=True, help="Absolute train_step_count target (see module docstring re: --resume)")
     parser.add_argument(
         "--resume",
@@ -296,6 +306,7 @@ def main() -> None:
     if args.bc_loss_alpha is not None:
         config_kwargs["bc_loss_alpha"] = args.bc_loss_alpha
     config_kwargs["bc_policy_weighting"] = args.bc_policy_weighting
+    config_kwargs["dagger_weight"] = args.dagger_weight
     if args.encoder_lr is not None:
         config_kwargs["encoder_lr"] = args.encoder_lr
     if args.encoder_weight_decay is not None:
@@ -430,7 +441,8 @@ def main() -> None:
         print(
             f"[offline] on-policy data collection enabled: ~{target_svh_per_window} self-vs-heuristic "
             f"+ ~{target_sp_per_window} self-play ticks per eval window ({n_eval_windows} windows), "
-            f"blocked_penalty={args.blocked_penalty}, opponent={args.onpolicy_opponent}"
+            f"blocked_penalty={args.blocked_penalty}, opponent={args.onpolicy_opponent}, "
+            f"dagger_teacher={args.dagger_teacher} (weight {args.dagger_weight})"
         )
 
     def collect_onpolicy(step: int) -> None:
@@ -449,6 +461,7 @@ def main() -> None:
                 max_matches=args.onpolicy_max_matches,
                 reward_v2=reward_v2_cfg,
                 stop_when_exhausted=not args.keep_exhausted,
+                make_teacher=StrategicHeuristicV4Teach if args.dagger_teacher == "v4-teach" else None,
             )
         finally:
             trainer.net.train()

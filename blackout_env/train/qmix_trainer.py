@@ -72,6 +72,7 @@ from blackout_env.env.team_frame import (
     canonical_obs,
     mirror_action_idx,
     mirror_agent_states,
+    mirror_direction_bits,
     mirror_direction_idx,
     mirror_graphic,
 )
@@ -252,6 +253,13 @@ class QMIXConfig:
     # (train/policy_strength.bc_weight_table: Elo expected score, mixture-weighted mean 1). Rows
     # without a recorded policy keep weight 1.
     bc_policy_weighting: bool = False
+    # DAgger relabelling: rows the net itself played in on-policy collection can carry a teacher's
+    # label (SequentialReplayBuffer.teach -- a set of correct compass directions per unit, see
+    # heuristics/teach.py).  Those rows get a set-valued BC term (cross-entropy against the
+    # uniform distribution over the labelled directions, averaged over labelled units) with this
+    # weight, inside the same TD3+BC rescale and bc_loss_alpha as demonstrations.  Without labels
+    # in the buffer this changes nothing.
+    dagger_weight: float = 1.0
     # Drop directions that walk into a wall from every greedy choice -- acting, collecting, and the
     # Double-DQN bootstrap action (never from the Q of a stored action; see model/action_mask.py).
     # A blocked unit re-picks the same wall-ward direction forever because the state it observes
@@ -515,6 +523,7 @@ class QMIXTrainer:
             bc_weight_table(self.heuristic_a.weights) if config.bc_policy_weighting
             else np.ones(len(POLICY_IDS) + 1, dtype=np.float32)
         )
+        self._direction_bit_shifts = torch.arange(8, device=self.device)  # teach bit i = compass direction i
         self._was_bootstrapping = True  # collect_step() flips this and logs the phase-1->2 transition once
         # env_step_count offset for epsilon() -- reset to the transition step so phase 2 always
         # starts exploring at eps_start instead of inheriting however far env_step_count already
@@ -1005,7 +1014,7 @@ class QMIXTrainer:
         "n_step_return", "not_done", "gamma_eff",
         "boot_graphic", "boot_team_state", "boot_agent_states",
         "future_graphic", "future_team_state", "future_agent_states",
-        "action_window", "valid_mask", "source", "demo", "bc_weight",
+        "action_window", "valid_mask", "source", "demo", "bc_weight", "teach",
     )
 
     def _sample_batch(
@@ -1058,6 +1067,7 @@ class QMIXTrainer:
             "demo": batch["demo"],  # [b] bool, BC target
             # [b] BC weight: demo * the demonstrator's strength weight (1 when unweighted)
             "bc_weight": batch["demo"] * self._bc_policy_weight[batch["policy"]],
+            "teach": batch["teach"],  # [b, 10] uint8 direction-set masks, 0 = no label
         }
 
     @staticmethod
@@ -1076,6 +1086,7 @@ class QMIXTrainer:
             mirrored[field] = mirror_agent_states(batch[field])
         for field in ("actions", "action_window"):
             mirrored[field] = mirror_action_idx(batch[field])
+        mirrored["teach"] = mirror_direction_bits(batch["teach"])
         return mirrored
 
     def _merge_stream_batches(self, batch_a: dict[str, np.ndarray], batch_b: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
@@ -1176,6 +1187,7 @@ class QMIXTrainer:
             "action_window": torch.tensor(batch["action_window"], dtype=torch.long, device=self.device),  # [B, K, 10]
             "valid_mask": torch.tensor(batch["valid_mask"], dtype=torch.float32, device=self.device),  # [B, K]
             "bc_mask": torch.tensor(batch["bc_weight"], dtype=torch.float32, device=self.device),  # [B]
+            "teach_bits": torch.tensor(batch["teach"].astype(np.int64), dtype=torch.long, device=self.device),  # [B, 10]
         }
 
     def _forward_and_loss(
@@ -1297,8 +1309,21 @@ class QMIXTrainer:
         ).view(own_actions.shape).mean(dim=1)  # [B]
         # Clone only demonstration transitions (see QMIXConfig.bc_loss_alpha). With every sample a
         # demonstration this reduces exactly to the unmasked loss; otherwise each cloned sample
-        # keeps the same weight and net-played samples contribute nothing.
-        bc_mask = t["bc_mask"]
+        # keeps the same weight and net-played samples contribute nothing...
+        demo_mask = bc_mask = t["bc_mask"]
+        # ...unless a relabelling teacher labelled them (QMIXConfig.dagger_weight): set-valued
+        # cross-entropy on the net's own rows, averaged over the units that carry a label.
+        teach_bits = _own_team_rows(t["teach_bits"].unsqueeze(-1), agent_states).squeeze(-1)  # [B, N_TEAM]
+        teach_set = ((teach_bits.unsqueeze(-1) >> self._direction_bit_shifts) & 1).float()  # [B, N_TEAM, 8]
+        teach_units = teach_set.sum(dim=-1)  # [B, N_TEAM], 0 = no label
+        labelled = (teach_units > 0).float()
+        n_labelled = labelled.sum(dim=1)  # [B]
+        teach_ce = -(teach_set / teach_units.clamp_min(1.0).unsqueeze(-1)
+                     * F.log_softmax(own_q_values.float(), dim=-1)).sum(dim=-1)  # [B, N_TEAM]
+        teach_raw = (teach_ce * labelled).sum(dim=1) / n_labelled.clamp_min(1.0)  # [B]
+        teach_rows = ((n_labelled > 0) & (bc_mask <= 0)).float()  # never on demonstrations
+        bc_loss_raw = torch.where(teach_rows > 0, teach_raw.to(bc_loss_raw.dtype), bc_loss_raw)
+        bc_mask = bc_mask + self.cfg.dagger_weight * teach_rows
         n_bc = bc_mask.sum().clamp_min(1.0)
         # TD3+BC-style adaptive rescale (Fujimoto & Gu 2021): match bc_loss's current magnitude
         # to iqn_loss's, THEN apply bc_loss_alpha -- so alpha is a dimensionless "how much BC
@@ -1328,7 +1353,10 @@ class QMIXTrainer:
                 # to see whether behavior cloning itself is actually converging.
                 top2 = own_q_values.topk(2, dim=-1).values
                 agreement = (own_q_values.argmax(dim=-1) == own_actions).float().mean(dim=1)  # [B]
-                n_model = (1.0 - bc_mask).sum()
+                n_demo = demo_mask.sum().clamp_min(1.0)
+                n_model = (1.0 - demo_mask).sum()
+                greedy_in_set = teach_set.gather(-1, own_q_values.argmax(dim=-1, keepdim=True)).squeeze(-1)  # [B, N_TEAM]
+                n_teach = teach_rows.sum()
                 self._last_diagnostics = {
                     "bc_raw": bc_raw_mean.item(),
                     "bc_scale": float(bc_scale),
@@ -1337,10 +1365,17 @@ class QMIXTrainer:
                     # with the actions the net itself took in net-played transitions -- the latter
                     # is just how consistent the net stays with its own recent behavior, not an
                     # imitation target.
-                    "bc_accuracy": ((agreement * bc_mask).sum() / n_bc).item(),
+                    "bc_accuracy": ((agreement * demo_mask).sum() / n_demo).item(),
                     "model_action_agreement": (
-                        ((agreement * (1.0 - bc_mask)).sum() / n_model).item() if n_model > 0 else None
+                        ((agreement * (1.0 - demo_mask)).sum() / n_model).item() if n_model > 0 else None
                     ),
+                    # DAgger rows: share of the batch, raw set cross-entropy, and how often the
+                    # greedy action is one of the teacher's correct directions (labelled units).
+                    "dagger_active_frac": teach_rows.mean().item(),
+                    "dagger_raw": ((teach_raw * teach_rows).sum() / n_teach).item() if n_teach > 0 else None,
+                    "dagger_accuracy": (
+                        ((greedy_in_set * labelled).sum(dim=1) / n_labelled.clamp_min(1.0) * teach_rows).sum() / n_teach
+                    ).item() if n_teach > 0 else None,
                     # Per-unit gap between the best and second-best action's Q: how decisive the
                     # greedy policy is, compared against the reward scale of a single move.
                     "q_action_margin": (top2[..., 0] - top2[..., 1]).mean().item(),
@@ -1509,6 +1544,9 @@ class QMIXTrainer:
                         "scale": self._last_diagnostics["bc_scale"],
                         "active_frac": self._last_diagnostics["bc_active_frac"],
                         "model_action_agreement": self._last_diagnostics["model_action_agreement"],
+                        "dagger_active_frac": self._last_diagnostics["dagger_active_frac"],
+                        "dagger_raw": self._last_diagnostics["dagger_raw"],
+                        "dagger_accuracy": self._last_diagnostics["dagger_accuracy"],
                     },
                     self.train_step_count,
                 )

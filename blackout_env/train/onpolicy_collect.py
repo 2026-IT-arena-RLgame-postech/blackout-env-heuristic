@@ -32,7 +32,7 @@ from __future__ import annotations
 import numpy as np
 
 from blackout_env.env.blackout_env import BlackOutEnv
-from blackout_env.env.constants import TEAM_A_INDICES, TEAM_B_INDICES, team_a_agents, team_b_agents
+from blackout_env.env.constants import TEAM_A_INDICES, TEAM_B_INDICES, team_a_agents, team_b_agents, unit_index
 from blackout_env.model.base import BaseModel
 from blackout_env.model.my_policy import direction_vector_to_idx
 from blackout_env.train.policy_strength import policy_index
@@ -61,6 +61,7 @@ def play_and_collect(
     penalty_per_unit: float,
     reward_v2=None,
     stop_when_exhausted: bool = True,
+    teachers: tuple[BaseModel | None, BaseModel | None] = (None, None),
 ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], dict[str, float]]:
     """
     Plays one full match with team_a_policy/team_b_policy controlling their respective teams
@@ -74,12 +75,19 @@ def play_and_collect(
     anywhere (train/dead_segments.py) -- the result can no longer change, so the rest of a 420 s
     match (most of it) would only be dropped at training time. The outcome is decided by the
     scores at that point and added to the last row like Unity's own +-1 per agent.
+
+    teachers: per team (A, B), an optional relabelling teacher with ``teach(obs)`` (e.g.
+    heuristics.StrategicHeuristicV4Teach) queried on that team's observation every recorded tick;
+    its label masks land in the transitions' ``teach`` field (bit i = compass direction i, world
+    frame, physical unit order), 0 where it has no label.  DAgger: pass one only for a team the
+    net plays -- the teacher never acts.
     """
     team_a_names = team_a_agents()
     team_b_names = team_b_agents()
 
     rows_a: dict[str, list] = {f: [] for f in _FIELDS}
     rows_b: dict[str, list] = {f: [] for f in _FIELDS}
+    teach_rows: tuple[list, list] = ([], [])
 
     objectives_a, objectives_b = ObjectiveMonitor(), ObjectiveMonitor()
 
@@ -89,6 +97,9 @@ def play_and_collect(
         team_a_policy.reset()
     if team_b_policy is not team_a_policy and hasattr(team_b_policy, "reset"):
         team_b_policy.reset()
+    for teacher in teachers:
+        if teacher is not None:
+            teacher.reset()
     # A HeuristicPolicyMixture picks this match's policy in reset(); record it for BC weighting.
     played = tuple(_played_policy_id(p) for p in (team_a_policy, team_b_policy))
     empty_obs_steps = 0
@@ -120,6 +131,13 @@ def play_and_collect(
             if infos:
                 final_info = next(iter(infos.values()))
             continue
+
+        for side, (teacher, side_obs) in enumerate(zip(teachers, (obs_a, obs_b))):
+            if teacher is not None:
+                bits = np.zeros(len(team_a_names) + len(team_b_names), dtype=np.uint8)
+                for name, mask in teacher.label_masks(side_obs).items():
+                    bits[unit_index(name)] = np.packbits(mask, bitorder="little")[0]
+                teach_rows[side].append(bits)
 
         dir_a = direction_vector_to_idx(np.stack([actions_a[a] for a in team_a_names]))
         dir_b = direction_vector_to_idx(np.stack([actions_b[a] for a in team_b_names]))
@@ -163,7 +181,7 @@ def play_and_collect(
 
         obs = next_obs
 
-    def _finalize(rows: dict[str, list], team_indices: tuple[int, ...]) -> tuple[dict[str, np.ndarray], float, int]:
+    def _finalize(rows: dict[str, list], team_indices: tuple[int, ...], teach: list) -> tuple[dict[str, np.ndarray], float, int]:
         agent_states = np.stack(rows["agent_states"])
         done_arr = np.array(rows["done"], dtype=np.bool_)
         env_reward = np.array(rows["reward"], dtype=np.float32)
@@ -179,6 +197,8 @@ def play_and_collect(
             reward=env_reward + penalty,
             done=done_arr,
         )
+        if teach:
+            transitions["teach"] = np.stack(teach)
         if reward_v2 is not None:
             from blackout_env.train.reward_v2 import annotate_sequence
 
@@ -189,8 +209,8 @@ def play_and_collect(
                                potential=annotated["potential"], terminal=annotated["terminal"])
         return transitions, float(env_reward.sum()), blocked_unit_ticks
 
-    t_a, env_reward_a, blocked_a = _finalize(rows_a, TEAM_A_INDICES)
-    t_b, env_reward_b, blocked_b = _finalize(rows_b, TEAM_B_INDICES)
+    t_a, env_reward_a, blocked_a = _finalize(rows_a, TEAM_A_INDICES, teach_rows[0])
+    t_b, env_reward_b, blocked_b = _finalize(rows_b, TEAM_B_INDICES, teach_rows[1])
 
     score_diff = (t_a["team_state"][:, 0] - t_a["team_state"][:, 1]) * 100.0  # team A's perspective
     psi_slope = 1.0 - np.tanh(score_diff / PSI_SCALE) ** 2
@@ -234,6 +254,7 @@ def _push(buffer: SequentialReplayBuffer, transitions: dict[str, np.ndarray], so
             potential=float(transitions["potential"][i]) if "potential" in transitions else 0.0,
             terminal=bool(transitions["terminal"][i]) if "terminal" in transitions else None,
             policy=policy,
+            teach=transitions["teach"][i] if "teach" in transitions else None,
         )
 
 
@@ -305,6 +326,7 @@ def collect_onpolicy_data(
     max_matches: int = 50,
     reward_v2=None,
     stop_when_exhausted: bool = True,
+    make_teacher=None,
 ) -> dict[str, float]:
     """
     Plays self-vs-heuristic matches (candidate vs heuristic, side swapped every match for
@@ -320,6 +342,10 @@ def collect_onpolicy_data(
     "self_play/<metric>" (outcome from the candidate's side, env reward vs blocked penalty vs
     terminal reward, and how much of the window sat in the saturated region of the Ψ tanh).
     In self-play "candidate" is team A.
+
+    make_teacher: optional zero-argument factory for a relabelling teacher (see play_and_collect);
+    every team the candidate plays gets its labels, the heuristic's team does not (it already
+    carries demonstration actions).
     """
     svh = _new_phase_totals()
     sp = _new_phase_totals()
@@ -328,7 +354,10 @@ def collect_onpolicy_data(
     swap = False
     while svh["ticks"] < target_ticks_self_vs_heuristic and svh["matches"] < max_matches:
         team_a_policy, team_b_policy = (heuristic, candidate) if swap else (candidate, heuristic)
-        t_a, t_b, info = play_and_collect(env, team_a_policy, team_b_policy, seed, penalty_per_unit, reward_v2, stop_when_exhausted)
+        teacher = make_teacher() if make_teacher is not None else None
+        teachers = (None, teacher) if swap else (teacher, None)
+        t_a, t_b, info = play_and_collect(env, team_a_policy, team_b_policy, seed, penalty_per_unit, reward_v2,
+                                          stop_when_exhausted, teachers)
         buffer_a, buffer_b = buffers[SOURCE_SELF_VS_HEURISTIC]
         _push(buffer_a, t_a, SOURCE_SELF_VS_HEURISTIC, demo=swap, policy_id=info["policy_id"][0])  # team A is the heuristic when swapped
         _push(buffer_b, t_b, SOURCE_SELF_VS_HEURISTIC, demo=not swap, policy_id=info["policy_id"][1])
@@ -349,7 +378,9 @@ def collect_onpolicy_data(
         )
 
     while sp["ticks"] < target_ticks_self_play and sp["matches"] < max_matches:
-        t_a, t_b, info = play_and_collect(env, candidate, candidate, seed, penalty_per_unit, reward_v2, stop_when_exhausted)
+        teachers = (make_teacher(), make_teacher()) if make_teacher is not None else (None, None)
+        t_a, t_b, info = play_and_collect(env, candidate, candidate, seed, penalty_per_unit, reward_v2,
+                                          stop_when_exhausted, teachers)
         buffer_a, buffer_b = buffers[SOURCE_SELF_PLAY]
         _push(buffer_a, t_a, SOURCE_SELF_PLAY, demo=False)
         _push(buffer_b, t_b, SOURCE_SELF_PLAY, demo=False)
