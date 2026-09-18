@@ -104,8 +104,41 @@ class StrategicHeuristicV2(StrategicHeuristic):
         team_state: np.ndarray,
         walkable: np.ndarray,
     ) -> dict[str, tuple[tuple[int, int], str]]:
+        tasks, pairs, _ = self._economic_candidates(names, row_for, states, graphic, team_state, walkable)
+
+        # Global greedy matching considers every unit-task pair together; unit ordering no
+        # longer gives the first Collector first refusal on every high-value battery.
+        pairs.sort(reverse=True, key=lambda p: p[0])
+        assigned_names: set[str] = set()
+        assigned_tasks: set[int] = set()
+        result: dict[str, tuple[tuple[int, int], str]] = {}
+        for _, name, task_idx in pairs:
+            if name in assigned_names or task_idx in assigned_tasks:
+                continue
+            target, kind, _ = tasks[task_idx]
+            result[name] = (target, kind)
+            assigned_names.add(name)
+            assigned_tasks.add(task_idx)
+            if len(assigned_names) == len(names):
+                break
+        return result
+
+    def _economic_candidates(
+        self,
+        names: list[str],
+        row_for: dict[str, int],
+        states: np.ndarray,
+        graphic: np.ndarray,
+        team_state: np.ndarray,
+        walkable: np.ndarray,
+    ) -> tuple[list[tuple[tuple[int, int], str, float]], list[tuple[float, str, int]], dict[tuple[str, int], float]]:
+        """Tasks, every feasible (value, name, task index) pair, and each pair's path distance.
+
+        Separate from the matching so a subclass can choose differently from the same values
+        (heuristics/teach.py claims tasks by arrival time instead of greedy matching)."""
+        distance_of: dict[tuple[str, int], float] = {}
         if not names:
-            return {}
+            return [], [], distance_of
 
         protected_enemy = self._cached_protected_enemy_storage_mask(graphic)
         tasks: list[tuple[tuple[int, int], str, float]] = []
@@ -123,7 +156,7 @@ class StrategicHeuristicV2(StrategicHeuristic):
                     continue
                 tasks.append(((y, x), "special", special_value.get(channel, 3.0)))
         if not tasks:
-            return {}
+            return tasks, [], distance_of
 
         enemy_states = states[states[:, 2] < 0]
         enemy_pixels = [
@@ -167,23 +200,8 @@ class StrategicHeuristicV2(StrategicHeuristic):
                 if old_target == target:
                     value += 1.5  # assignment hysteresis produces cleaner, less twitchy demos
                 pairs.append((value, name, task_idx))
-
-        # Global greedy matching considers every unit-task pair together; unit ordering no
-        # longer gives the first Collector first refusal on every high-value battery.
-        pairs.sort(reverse=True, key=lambda p: p[0])
-        assigned_names: set[str] = set()
-        assigned_tasks: set[int] = set()
-        result: dict[str, tuple[tuple[int, int], str]] = {}
-        for _, name, task_idx in pairs:
-            if name in assigned_names or task_idx in assigned_tasks:
-                continue
-            target, kind, _ = tasks[task_idx]
-            result[name] = (target, kind)
-            assigned_names.add(name)
-            assigned_tasks.add(task_idx)
-            if len(assigned_names) == len(names):
-                break
-        return result
+                distance_of[(name, task_idx)] = distance
+        return tasks, pairs, distance_of
 
     def _cached_distance_map(
         self, walkable: np.ndarray, start: tuple[int, int]
