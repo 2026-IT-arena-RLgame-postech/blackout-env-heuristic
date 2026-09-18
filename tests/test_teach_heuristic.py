@@ -146,3 +146,34 @@ def test_a_clearly_faster_teammate_takes_a_shared_best_task():
     s[1, :2] = ((12 + 0.5) / 12 - 1, 1 - (7 + 0.5) / 12)    # 5 tiles: 0.75 s later, inside the margin
     labels = StrategicHeuristicV4Teach().teach(_team(o))
     assert labels["unit_0"].target == labels["unit_1"].target == (12, 12)
+
+
+def _sanctuary_observation(classes, holding=()):
+    o = _observation(classes=classes)
+    g, s = o["graphic"], o["agent_states"]
+    g[..., 8] = 0
+    g[6, 20, 8] = 5 / 15            # something to collect
+    for i in range(5):              # Collectors on row 15, left to right; hunter sanctuary at (11-12, 11-12)
+        s[i, :2] = ((4 + 2 * i + 0.5) / 12 - 1, 1 - (15 + 0.5) / 12)
+    for i in holding:
+        s[i, 3], s[i, 4] = 0.0, 4 / 15
+    return o
+
+
+def test_composition_labels_send_the_nearest_empty_collectors_to_transform():
+    o = _sanctuary_observation(classes=(0, 0, 0, 0, 0))
+    labels = StrategicHeuristicV4Teach(target_hunters=2).teach(_team(o))
+    transform = sorted(n for n, l in labels.items() if l.kind == "transform")
+    assert transform == ["unit_3", "unit_4"]  # columns 10 and 12: closest to the sanctuary at 11-12
+    assert all(labels[n].valid for n in transform)
+    # holding cargo takes a unit out of the running: deposit first, like V4
+    o = _sanctuary_observation(classes=(0, 0, 0, 0, 0), holding=(4,))
+    labels = StrategicHeuristicV4Teach(target_hunters=2).teach(_team(o))
+    assert sorted(n for n, l in labels.items() if l.kind == "transform") == ["unit_2", "unit_3"]
+
+
+def test_composition_labels_stop_at_the_target_and_are_off_by_default():
+    o = _sanctuary_observation(classes=(1, 1, 0, 0, 0))  # two Hunters already
+    assert not any(l.kind == "transform" for l in StrategicHeuristicV4Teach(target_hunters=2).teach(_team(o)).values())
+    o = _sanctuary_observation(classes=(0, 0, 0, 0, 0))
+    assert not any(l.kind == "transform" for l in StrategicHeuristicV4Teach().teach(_team(o)).values())

@@ -39,6 +39,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import functools
 import sys
 import time
 from pathlib import Path
@@ -94,6 +95,11 @@ def main() -> None:
                         "margin = DQfD large-margin loss (QMIXConfig.dagger_loss).")
     parser.add_argument("--dagger-margin", type=float, default=0.5,
                         help="Q gap a labelled direction must hold over every other with --dagger-loss margin.")
+    parser.add_argument("--dagger-target-hunters", type=int, default=None,
+                        help="V4-teach composition labels: send the nearest empty Collectors to transform until the "
+                        "team has this many Hunters (default: no composition labels).")
+    parser.add_argument("--dagger-target-carriers", type=int, default=None,
+                        help="Same for the Carrier (at most 1 can be alive).")
     parser.add_argument("--steps", type=int, required=True, help="Absolute train_step_count target (see module docstring re: --resume)")
     parser.add_argument(
         "--resume",
@@ -450,7 +456,7 @@ def main() -> None:
             f"+ ~{target_sp_per_window} self-play ticks per eval window ({n_eval_windows} windows), "
             f"blocked_penalty={args.blocked_penalty}, opponent={args.onpolicy_opponent}, "
             f"dagger_teacher={args.dagger_teacher} (weight {args.dagger_weight}, loss {args.dagger_loss}, "
-            f"margin {args.dagger_margin})"
+            f"margin {args.dagger_margin}, target hunters/carriers {args.dagger_target_hunters}/{args.dagger_target_carriers})"
         )
 
     def collect_onpolicy(step: int) -> None:
@@ -469,7 +475,11 @@ def main() -> None:
                 max_matches=args.onpolicy_max_matches,
                 reward_v2=reward_v2_cfg,
                 stop_when_exhausted=not args.keep_exhausted,
-                make_teacher=StrategicHeuristicV4Teach if args.dagger_teacher == "v4-teach" else None,
+                make_teacher=(
+                    functools.partial(StrategicHeuristicV4Teach, target_hunters=args.dagger_target_hunters,
+                                      target_carriers=args.dagger_target_carriers)
+                    if args.dagger_teacher == "v4-teach" else None
+                ),
             )
         finally:
             trainer.net.train()

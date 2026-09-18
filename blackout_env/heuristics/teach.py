@@ -26,8 +26,12 @@ a second -- labels that would teach exactly the oscillation they are meant to cu
 function of the observation that also stays put while a unit follows it:
 
 * role is read from the unit's current class (Collector -> collector, Hunter -> hunter,
-  Carrier -> carrier), so no transformation is ever labelled: the learner owns the composition,
-  the teacher shows how to execute the role each unit already has;
+  Carrier -> carrier), so by default no transformation is labelled: the learner owns the
+  composition, the teacher shows how to execute the role each unit already has.  Opt-in
+  ``target_hunters`` / ``target_carriers`` add transform labels that fill the team up to a
+  composition from its *current* classes (_composition_goals), never from slots.  Run 15 (no
+  composition labels) and Run 14 moved alike with composition equalised; Run 14's 25-point lead
+  over it against V4 was its extra Hunters (2.0 vs 1.0), which it drifted into untaught;
 * each unit starts from its own best battery/steal/special under V4's value, and gives one up
   only when a teammate's *own* best includes it too and that teammate arrives at least
   ``EXCLUSION_MARGIN`` seconds earlier.  Coordination is one level deep on purpose: global
@@ -79,7 +83,7 @@ import numpy as np
 
 from ..env.constants import unit_index
 from .spread_deposit import StrategicHeuristicV4
-from .strategic import CARRIER, COLLECTOR, HUNTER, SPAWN_ENEMY, STORAGE_ALLY, WALL
+from .strategic import CARRIER, COLLECTOR, HUNTER, SITE_CARRIER, SITE_HUNTER, SPAWN_ENEMY, STORAGE_ALLY, WALL
 from .v17_planner import StrategicHeuristicV17
 
 N_DIRECTIONS = 8
@@ -126,8 +130,12 @@ def _invalid(goals: tuple[Goal, ...] = ()) -> TeachLabel:
 class StrategicHeuristicV4Teach(StrategicHeuristicV4):
     """V4's values as a memoryless, role-conditioned, motion-stable, set-valued action labeller."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, *, target_hunters: int | None = None, target_carriers: int | None = None, **kwargs):
+        """target_hunters / target_carriers: opt-in composition labels (see _composition_goals);
+        None leaves the composition entirely to the learner."""
         super().__init__(**kwargs)
+        self.target_hunters = target_hunters
+        self.target_carriers = target_carriers
         self._teach_distance_cache: dict[tuple[bytes, tuple[tuple[int, int], ...]], np.ndarray] = {}
         self._teach_walkable: np.ndarray | None = None
 
@@ -166,9 +174,11 @@ class StrategicHeuristicV4Teach(StrategicHeuristicV4):
         self._teach_walkable = move_walkable
         shape = graphic.shape[:2]
 
+        transforms = self._composition_goals(controlled, row_for, states, graphic, move_walkable)
         economic = [
             name for name in controlled
-            if not self._is_holding(states[row_for[name]]) and self._class_id(states[row_for[name]]) != HUNTER
+            if name not in transforms
+            and not self._is_holding(states[row_for[name]]) and self._class_id(states[row_for[name]]) != HUNTER
         ]
         claims = self._economic_goals(economic, row_for, states, graphic, team_state, walkable)
         reservations: set[tuple[int, int]] = {tile for goals in claims.values() for tiles, _ in goals for tile in tiles}
@@ -176,7 +186,9 @@ class StrategicHeuristicV4Teach(StrategicHeuristicV4):
         labels: dict[str, TeachLabel] = {}
         for name in controlled:
             state = states[row_for[name]]
-            if name in claims:
+            if name in transforms:
+                goals = transforms[name]
+            elif name in claims:
                 goals = claims[name]
             elif self._is_holding(state):
                 goals = self._storage_goals(graphic, state, states, team_state)
@@ -242,6 +254,49 @@ class StrategicHeuristicV4Teach(StrategicHeuristicV4):
             free = [(value, task) for value, task in scored if task not in taken]
             if free:
                 goals[name] = tuple(((tuple(tasks[task][0]),), tasks[task][1]) for task in best(free))
+        return goals
+
+    def _composition_goals(
+        self,
+        controlled: list[str],
+        row_for: dict[str, int],
+        states: np.ndarray,
+        graphic: np.ndarray,
+        walkable: np.ndarray,
+    ) -> dict[str, tuple[Goal, ...]]:
+        """Transform labels that fill the team up to target_carriers / target_hunters.
+
+        V4 decides roles by slot, which conflicts with whatever composition the learner chose.  This
+        reads the team's current classes instead: for each missing Carrier (the base sanctuary only
+        works while none is alive) and each missing Hunter, the empty Collector with the shortest
+        path to that sanctuary is sent there, closest first, ties by unit index.  Walking toward it
+        only shortens its own path, so the choice holds; a pickup on the way takes it out of the
+        running (cargo is deposited first, as in V4).  A surplus is never labelled -- a unit only
+        changes class back by dying."""
+        if not self.target_hunters and not self.target_carriers:
+            return {}
+        shape = graphic.shape[:2]
+        classes = {name: self._class_id(states[row_for[name]]) for name in controlled}
+        candidates = [
+            name for name in controlled
+            if classes[name] == COLLECTOR and not self._is_holding(states[row_for[name]])
+        ]
+        goals: dict[str, tuple[Goal, ...]] = {}
+        for role, channel, target in ((CARRIER, SITE_CARRIER, self.target_carriers), (HUNTER, SITE_HUNTER, self.target_hunters)):
+            missing = (target or 0) - sum(cls == role for cls in classes.values())
+            if missing <= 0 or not candidates:
+                continue
+            # the enemy's own sanctuary sits inside its base, where we cannot walk
+            tiles = tuple((int(y), int(x)) for y, x in np.argwhere((graphic[..., channel] > 0.5) & walkable))
+            if not tiles:
+                continue
+            distance = self._distance_to(walkable, tiles)
+            reach = {name: float(distance[self._to_pixel(states[row_for[name]][:2], shape)]) for name in candidates}
+            ranked = sorted((name for name in candidates if math.isfinite(reach[name])),
+                            key=lambda name: (reach[name], unit_index(name)))
+            for name in ranked[:missing]:
+                goals[name] = ((tiles, "transform"),)
+                candidates.remove(name)
         return goals
 
     def _storage_goals(
