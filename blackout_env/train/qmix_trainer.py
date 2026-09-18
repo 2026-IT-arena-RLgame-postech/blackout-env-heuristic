@@ -260,6 +260,12 @@ class QMIXConfig:
     # weight, inside the same TD3+BC rescale and bc_loss_alpha as demonstrations.  Without labels
     # in the buffer this changes nothing.
     dagger_weight: float = 1.0
+    # "ce": set-valued cross-entropy (Run 14; diverged -- see _forward_and_loss). "margin": DQfD
+    # large-margin loss, zero once a labelled direction's Q beats every other by dagger_margin.
+    # Run 11's natural best-vs-second gap is ~1.3 (q_value/action_margin), so 0.5 asks for a
+    # clear winner without stretching Q beyond its own scale.
+    dagger_loss: str = "ce"
+    dagger_margin: float = 0.5
     # Drop directions that walk into a wall from every greedy choice -- acting, collecting, and the
     # Double-DQN bootstrap action (never from the Q of a stored action; see model/action_mask.py).
     # A blocked unit re-picks the same wall-ward direction forever because the state it observes
@@ -373,6 +379,16 @@ def _uncompiled(module: nn.Module) -> nn.Module:
     in the GUI. Checkpoints therefore always go through the wrapped module, in both directions.
     """
     return getattr(module, "_orig_mod", module)
+
+
+def set_margin_loss(q: torch.Tensor, label_set: torch.Tensor, margin: float) -> torch.Tensor:
+    """DQfD-style large-margin loss for a *set* of correct actions: relu(best unlabelled Q + margin
+    - best labelled Q) over the last axis.  Zero once some labelled action leads every other by
+    `margin`; a row whose labels cover every action has nothing to beat and scores 0.  Rows with
+    no label are the caller's to mask (they score the best Q + margin + 1e9)."""
+    best_in = q.masked_fill(label_set <= 0, -1e9).amax(dim=-1)
+    best_out = q.masked_fill(label_set > 0, -1e9).amax(dim=-1)
+    return F.relu(best_out + margin - best_in)
 
 
 def _own_team_rows(tensor: torch.Tensor, agent_states: torch.Tensor) -> torch.Tensor:
@@ -1311,19 +1327,30 @@ class QMIXTrainer:
         # demonstration this reduces exactly to the unmasked loss; otherwise each cloned sample
         # keeps the same weight and net-played samples contribute nothing...
         demo_mask = bc_mask = t["bc_mask"]
-        # ...unless a relabelling teacher labelled them (QMIXConfig.dagger_weight): set-valued
-        # cross-entropy on the net's own rows, averaged over the units that carry a label.
+        # ...unless a relabelling teacher labelled them (QMIXConfig.dagger_*): a set-valued term on
+        # the net's own rows, averaged over the units that carry a label.
         teach_bits = _own_team_rows(t["teach_bits"].unsqueeze(-1), agent_states).squeeze(-1)  # [B, N_TEAM]
         teach_set = ((teach_bits.unsqueeze(-1) >> self._direction_bit_shifts) & 1).float()  # [B, N_TEAM, 8]
         teach_units = teach_set.sum(dim=-1)  # [B, N_TEAM], 0 = no label
         labelled = (teach_units > 0).float()
         n_labelled = labelled.sum(dim=1)  # [B]
-        teach_ce = -(teach_set / teach_units.clamp_min(1.0).unsqueeze(-1)
-                     * F.log_softmax(own_q_values.float(), dim=-1)).sum(dim=-1)  # [B, N_TEAM]
-        teach_raw = (teach_ce * labelled).sum(dim=1) / n_labelled.clamp_min(1.0)  # [B]
-        teach_rows = ((n_labelled > 0) & (bc_mask <= 0)).float()  # never on demonstrations
-        bc_loss_raw = torch.where(teach_rows > 0, teach_raw.to(bc_loss_raw.dtype), bc_loss_raw)
-        bc_mask = bc_mask + self.cfg.dagger_weight * teach_rows
+        q_own = own_q_values.float()
+        if self.cfg.dagger_loss == "margin":
+            # DQfD's large-margin loss (Hester et al. 2018) on the label set: zero once the best
+            # labelled direction beats every other by dagger_margin.  Cross-entropy on Q-values has
+            # no such floor: V4-teach labels are consistent enough to fit ~100%, so it kept pushing
+            # the action gaps apart, the max-Q bootstrap turned that into overestimation, and Run 14's
+            # q_value/mean went 1 -> 136 by 68k.
+            teach_unit = set_margin_loss(q_own, teach_set, self.cfg.dagger_margin)  # [B, N_TEAM]
+        else:
+            teach_unit = -(teach_set / teach_units.clamp_min(1.0).unsqueeze(-1)
+                           * F.log_softmax(q_own, dim=-1)).sum(dim=-1)  # [B, N_TEAM]
+        teach_unit = torch.where(labelled > 0, teach_unit, torch.zeros_like(teach_unit))
+        teach_raw = teach_unit.sum(dim=1) / n_labelled.clamp_min(1.0)  # [B]
+        teach_rows = ((n_labelled > 0) & (demo_mask <= 0)).float()  # never on demonstrations
+        demo_term = bc_loss_raw * demo_mask
+        dagger_term = (self.cfg.dagger_weight * teach_rows) * teach_raw.to(bc_loss_raw.dtype)
+        bc_mask = demo_mask + self.cfg.dagger_weight * teach_rows
         n_bc = bc_mask.sum().clamp_min(1.0)
         # TD3+BC-style adaptive rescale (Fujimoto & Gu 2021): match bc_loss's current magnitude
         # to iqn_loss's, THEN apply bc_loss_alpha -- so alpha is a dimensionless "how much BC
@@ -1332,12 +1359,17 @@ class QMIXTrainer:
         # doesn't transfer well here). detached on both sides: this is a scale correction, not a
         # gradient path, and no_grad avoids paying autograd bookkeeping on a ratio of scalars
         # that's immediately used only to rescale (not backprop through) bc_loss_raw.
+        # With the margin loss the scale reads demonstrations only: rows whose margin is met add 0,
+        # which would otherwise shrink the mean and inflate the scale on everything else.
         with torch.no_grad():
-            bc_raw_mean = (bc_loss_raw.detach() * bc_mask).sum() / n_bc
+            bc_raw_mean = (demo_term.detach() + dagger_term.detach()).sum() / n_bc
+            if self.cfg.dagger_loss == "margin":
+                n_demo_rows = demo_mask.sum()
+                bc_raw_mean = torch.where(n_demo_rows > 0, demo_term.detach().sum() / n_demo_rows.clamp_min(1e-6), bc_raw_mean)
             bc_scale = self.cfg.bc_loss_alpha * (
                 iqn_loss.detach().mean().clamp_min(1e-6) / bc_raw_mean.clamp_min(1e-6)
             )
-        bc_loss = bc_scale * bc_loss_raw * bc_mask
+        bc_loss = bc_scale * (demo_term + dagger_term)
 
         total_loss = is_weights * iqn_loss + self.cfg.spr_loss_weight * spr_loss + bc_loss  # [B]
 

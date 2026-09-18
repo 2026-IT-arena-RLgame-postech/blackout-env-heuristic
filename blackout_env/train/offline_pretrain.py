@@ -89,6 +89,11 @@ def main() -> None:
     )
     parser.add_argument("--dagger-weight", type=float, default=1.0,
                         help="BC weight of a relabelled on-policy row relative to a demonstration row (1.0).")
+    parser.add_argument("--dagger-loss", choices=["ce", "margin"], default="ce",
+                        help="Relabelled rows' BC term: ce = set-valued cross-entropy (Run 14, diverged); "
+                        "margin = DQfD large-margin loss (QMIXConfig.dagger_loss).")
+    parser.add_argument("--dagger-margin", type=float, default=0.5,
+                        help="Q gap a labelled direction must hold over every other with --dagger-loss margin.")
     parser.add_argument("--steps", type=int, required=True, help="Absolute train_step_count target (see module docstring re: --resume)")
     parser.add_argument(
         "--resume",
@@ -307,6 +312,8 @@ def main() -> None:
         config_kwargs["bc_loss_alpha"] = args.bc_loss_alpha
     config_kwargs["bc_policy_weighting"] = args.bc_policy_weighting
     config_kwargs["dagger_weight"] = args.dagger_weight
+    config_kwargs["dagger_loss"] = args.dagger_loss
+    config_kwargs["dagger_margin"] = args.dagger_margin
     if args.encoder_lr is not None:
         config_kwargs["encoder_lr"] = args.encoder_lr
     if args.encoder_weight_decay is not None:
@@ -442,7 +449,8 @@ def main() -> None:
             f"[offline] on-policy data collection enabled: ~{target_svh_per_window} self-vs-heuristic "
             f"+ ~{target_sp_per_window} self-play ticks per eval window ({n_eval_windows} windows), "
             f"blocked_penalty={args.blocked_penalty}, opponent={args.onpolicy_opponent}, "
-            f"dagger_teacher={args.dagger_teacher} (weight {args.dagger_weight})"
+            f"dagger_teacher={args.dagger_teacher} (weight {args.dagger_weight}, loss {args.dagger_loss}, "
+            f"margin {args.dagger_margin})"
         )
 
     def collect_onpolicy(step: int) -> None:
