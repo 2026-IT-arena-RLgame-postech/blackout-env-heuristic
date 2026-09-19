@@ -23,14 +23,16 @@ PettingZoo `ParallelEnv` 구현. `mlagents_envs.UnityEnvironment` 래퍼.
 
 ```python
 env = BlackOutEnv(
-    env_path="path/to/BlackOut.exe",   # None = Unity Editor에 연결
-    semantic_config_path="semantic_map_config.json",
-    map_w=96,            # 텍스처 가로 (Unity resolutionScale × mapWidth와 일치해야 함)
-    map_h=96,            # 텍스처 세로
+    env_path="path/to/BlackOut.app",   # None = Unity Editor에 연결
+    semantic_config_path=None, # None = 패키지에 포함된 기본 설정
+    map_w=24,            # 맵 격자 가로 (Unity 맵 크기와 일치해야 함)
+    map_h=24,            # 맵 격자 세로
     worker_id=0,         # base_port에 더해지는 오프셋
-    base_port=None,      # None이면 OS가 빈 포트 자동 선택 (병렬 훈련 권장)
+    base_port=None,      # None이면 OS가 빈 포트 자동 선택 (병렬 실행 권장)
     no_graphics=True,    # Unity 빌드에 --no-graphics 전달
-    time_scale=1.0,      # Unity Time.timeScale (헤드리스 빌드: 20~100 권장)
+    time_scale=1.0,      # Unity Time.timeScale (헤드리스: 20~100 권장)
+    additional_args=None,  # Unity 플레이어에 넘길 추가 명령줄 인자
+    unity_shaping=True,    # False면 -noRewardShaping: Unity 포텐셜 쉐이핑 계산을 건너뜀
 )
 ```
 
@@ -39,12 +41,14 @@ env = BlackOutEnv(
 | 파라미터 | 타입 | 기본값 | 설명 |
 |---|---|---|---|
 | `env_path` | `str \| None` | — | Unity 빌드 경로. `None`이면 에디터에 연결 |
-| `semantic_config_path` | `str \| Path` | — | `semantic_map_config.json` 경로 |
-| `map_w`, `map_h` | `int` | `96` | visual obs 텍스처 크기 |
+| `semantic_config_path` | `str \| Path \| None` | `None` | `semantic_map_config.json` 경로. `None`이면 패키지 기본값 |
+| `map_w`, `map_h` | `int` | `24` | 맵 격자 크기 |
 | `worker_id` | `int` | `0` | `base_port`가 지정된 경우에만 사용 |
 | `base_port` | `int \| None` | `None` | `None`이면 자동 포트 (Ray 등 병렬 환경에 권장) |
 | `no_graphics` | `bool` | `True` | Unity 빌드 전용. 에디터 연결 시 무시 |
 | `time_scale` | `float` | `1.0` | 에디터 연결 시 `1.0` 유지 |
+| `additional_args` | `list[str] \| None` | `None` | Unity 플레이어 추가 인자 |
+| `unity_shaping` | `bool` | `True` | `False`면 Unity 쪽 쉐이핑을 끈다(Python 리워드 v2로 학습·평가할 때). 스텝이 약 2배 빨라진다 |
 
 ### 메서드
 
@@ -65,7 +69,7 @@ obs, rewards, terminations, truncations, infos = env.step(actions)
 
 - `actions`: `dict[agent_name, float32[2]]`
 - `truncations`: 항상 `False` (모든 에피소드 종료는 termination)
-- `infos`: 매 스텝 `score_0`, `score_1`, `time_left` 포함. 에피소드 종료 스텝에만 `winner` 추가
+- `infos`: 매 스텝 `score_0`, `score_1`, `time_left`, `absorption_time_left` 포함. 에피소드 종료 스텝에만 `winner` 추가
 
 **infos 구조:**
 
@@ -74,6 +78,7 @@ obs, rewards, terminations, truncations, infos = env.step(actions)
 | `score_0` | `float` | 팀 A 점수 / 목표 점수 |
 | `score_1` | `float` | 팀 B 점수 / 목표 점수 |
 | `time_left` | `float` | 남은 시간 비율 (0~1) |
+| `absorption_time_left` | `float` | 다음 창고 흡수까지 남은 비율 (0~1) |
 | `winner` | `int` | 종료 스텝에만 존재. `0`=팀A, `1`=팀B, `-1`=무승부 |
 
 #### `close()`
@@ -295,7 +300,7 @@ b_obs = {k: v for k, v in obs.items() if team_of(k) == 1}
 from blackout_env import run_match, run_series
 ```
 
-### `run_match(env, model_a, model_b, swap_teams=False)`
+### `run_match(env, model_a, model_b, swap_teams=False, seed=None)`
 
 단일 에피소드 실행.
 
@@ -306,12 +311,13 @@ print(result.team_a_total_reward) # float
 print(result.episode_steps)       # int
 ```
 
+- `seed`: 지정하면 `env.reset(seed=...)`로 같은 배치를 재현하고 결과의 `seed`에 남긴다. `MatchResult`에는 최종 점수(`model_a_score`, `model_b_score`)도 있다.
 - `swap_teams=True`: model_a가 팀 B로 플레이. 페어니스를 위해 `run_series`가 내부에서 자동 스왑.
 - `winner`는 항상 model_a/model_b 기준으로 보고 (팀 스왑 여부 반영됨).
 
-### `run_series(env, model_a, model_b, n_matches=10)`
+### `run_series(env, model_a, model_b, n_matches=10, seeds=None)`
 
-N 경기 시리즈. 짝수 번째 경기마다 팀 스왑.
+N 경기 시리즈. 매 경기 진영을 바꾼다. `seeds`를 주면 경기마다 순서대로 쓴다.
 
 ```python
 series = run_series(env, model_a, model_b, n_matches=10)
@@ -389,3 +395,21 @@ class MyPolicy(nn.Module):
 
 `load_checkpoint`가 반환하는 `CheckpointModel`은 `graphic`을 `(B, H, W, C) → (B, C, H, W)`로
 자동 변환하고, `team_state`/`agent_states`는 배치 차원만 붙여 그대로 전달합니다.
+
+### `load_my_policy_checkpoint(checkpoint_path, device="cpu", **model_kwargs)`
+
+이 저장소의 QMIX 학습 체크포인트(`QMIXTrainer.save()` 형식, 예: `models/run11_step80k/step_80000.pt`)를
+`MyModel` + `MyPolicy`로 올려 `BaseModel`처럼 쓴다. `load_checkpoint`는 forward가 행동을 바로 내는 망을
+가정하므로 이 체크포인트에는 쓸 수 없다.
+
+```python
+from blackout_env import BlackOutEnv, StrategicHeuristicV4, load_my_policy_checkpoint, run_series
+
+policy = load_my_policy_checkpoint("models/run11_step80k/step_80000.pt")  # hidden_size는 체크포인트에서 읽음
+env = BlackOutEnv(env_path="build/mac/BlackOut.app", time_scale=20, unity_shaping=False)
+series = run_series(env, policy, StrategicHeuristicV4(), n_matches=4, seeds=[404, 404, 505, 505])
+```
+
+- `policy_state`(온라인 망)만 읽는다. 믹서·SPR·옵티마이저 상태는 학습용이라 무시한다.
+- 행동은 8방향 Q의 argmax다. IQN 분위수를 매 호출 새로 뽑으므로 Q가 거의 같은 행동 사이에서는 호출마다
+  선택이 바뀔 수 있다.

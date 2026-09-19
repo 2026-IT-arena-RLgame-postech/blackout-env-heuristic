@@ -4,9 +4,44 @@ PettingZoo Parallel environment wrapper for the BlackOut Unity ML-Agents game.
 
 ## Game Overview
 
-BlackOut is a 2-team competitive game. Each team controls 5 units on a procedurally generated 24×24 grid map, collecting **Batteries** and depositing them into storage to accumulate score. Every 20 seconds a **storage absorption** event permanently locks in battery score — but until then, enemies can raid your storage and steal items. First team to 100 points or the highest score after 7 minutes wins.
+BlackOut is a 2-team competitive game. Each team controls 5 units on a 24×24 grid map (fixed walls; the seed places storages, batteries and items), collecting **Batteries** and depositing them into storage to accumulate score. Every 20 seconds a **storage absorption** event permanently locks in battery score — but until then, enemies can raid your storage and steal items. First team to 100 points or the highest score after 7 minutes wins.
 
 For full game rules see [docs/gameplay_en.md](docs/gameplay_en.md) / [docs/gameplay_ko.md](docs/gameplay_ko.md).
+
+## Start here: the Run 11 80k checkpoint
+
+This branch (`run11-80k`) packages our strongest model so far and everything needed to rebuild,
+retrain and evaluate it. Clone it next to the Unity project's `run11-80k` branch:
+
+```bash
+git clone -b run11-80k https://github.com/cucumbersaurus/blackout-env.git
+git clone -b run11-80k https://github.com/cucumbersaurus/blackout.git
+cd blackout-env && git lfs pull        # fetches models/run11_step80k/step_80000.pt
+```
+
+| What | Where |
+|---|---|
+| Checkpoint, how it was trained, setup from scratch (KO) | [models/run11_step80k/README.md](models/run11_step80k/README.md) |
+| One script for every stage: `build` → `collect` → `train` → `gui` / `measure` / `elo` | [models/run11_step80k/run11_pipeline.sh](models/run11_step80k/run11_pipeline.sh) |
+| Baseline numbers, how to compare runs, known weaknesses, what was tried, next ideas (KO) | [docs/run11_research_baseline.md](docs/run11_research_baseline.md) |
+| Map of all docs | [docs/README.md](docs/README.md) |
+
+The parts worth understanding first are the three we changed most, not the network or the training
+loop (those are replaceable):
+
+| Area | Start with |
+|---|---|
+| **Observations (Unity ↔ Python)** — bit-packed 24×24 map + one shared state vector, instead of per-unit obs | Unity repo `Documentation/changes_since_team_version.md`, then [blackout_env/env/my_obs_preprocessor.py](blackout_env/env/my_obs_preprocessor.py) (docstring) and [docs/internals.md](docs/internals.md) |
+| **Reward model** — Python reward v2 (per-unit potentials, fitted weights) replacing Unity's Ψ/Φ shaping | [docs/reward_v2_design.md](docs/reward_v2_design.md) (요약 first), [blackout_env/train/reward_v2.py](blackout_env/train/reward_v2.py); Unity side: `Documentation/reward_shaping.md` |
+| **Heuristics** — V1–V19 rule-based policies: evaluation opponents and the demonstrators behind the training data | [docs/heuristic_policy_catalog_ko.md](docs/heuristic_policy_catalog_ko.md), [blackout_env/heuristics/](blackout_env/heuristics/) |
+
+```bash
+models/run11_step80k/run11_pipeline.sh build   # Unity player from ../blackout -> build/mac/BlackOut.app
+models/run11_step80k/run11_pipeline.sh gui     # watch the 80k checkpoint play V4
+```
+
+The rest of this README covers the environment itself: installation, the observation/action
+interface, and the competition API.
 
 ## Table of Contents
 
@@ -15,6 +50,7 @@ For full game rules see [docs/gameplay_en.md](docs/gameplay_en.md) / [docs/gamep
   - [Docker (GPU Training)](#docker-gpu-training)
 - [Usage](#usage)
 - [Training](#training)
+  - [Legacy online self-play trainer](#legacy-online-self-play-trainer)
   - [Multi-GPU / many-core training (experimental, unverified)](#multi-gpu--many-core-training-experimental-unverified)
 - [Observation Space](#observation-space)
 - [Competition](#competition)
@@ -25,6 +61,7 @@ For full game rules see [docs/gameplay_en.md](docs/gameplay_en.md) / [docs/gamep
   - [Step 3: Run a match](#step-3-run-a-match)
   - [Different architectures per team](#different-architectures-per-team)
   - [Implementing BaseModel directly (optional)](#implementing-basemodel-directly-optional)
+  - [Running this repo's QMIX checkpoints](#running-this-repos-qmix-checkpoints)
 - [Utilities](#utilities)
 
 ---
@@ -76,6 +113,9 @@ pip install "mlagents-envs==1.1.0" --no-deps
 pip install cloudpickle "grpcio>=1.11.0,<=1.48.2" "Pillow>=4.2.1" "protobuf>=3.6,<3.21" "pyyaml>=3.1.0" "gym>=0.21.0" "filelock>=3.4.0"
 pip install .
 ```
+
+Add the `fast` extra (`pip install ".[fast]"`) to get numba, which JIT-compiles the heuristic
+policies' distance maps; data collection and evaluation against heuristics are much slower without it.
 
 #### PyTorch
 
@@ -160,7 +200,8 @@ env = BlackOutEnv(
 
 `semantic_map_config.json` is the config file shared with Unity's StreamingAssets. A default copy is bundled with the package, so `semantic_config_path` is optional. Pass it explicitly only if you need to override the defaults.
 
-The config must include:
+`BlackOutEnv` itself only reads `n_items` and `n_classes`; the remaining keys are used by Unity
+and by the legacy `ObsPreprocessor`. The bundled file looks like:
 
 ```json
 {
@@ -213,68 +254,68 @@ obs, infos = env.reset()          # unseeded — random layout
 
 ## Training
 
-`blackout_env/train/qmix_trainer.py` trains a QMIX agent via self-play against an
-EMA-averaged copy of the current network (the EMA side stabilizes the opponent so it
-doesn't chase every gradient step; which physical team is "online" vs. EMA-controlled is
-re-randomized every episode, and training data is collected from both sides regardless).
+Run 11 was trained **offline**: heuristic matches are recorded to disk first, then a QMIX learner
+trains on that dataset while periodically playing V4 to add on-policy rows. The reward is
+recomputed in Python (reward v2, `blackout_env/train/reward_v2.py`), not taken from Unity.
 
 ```bash
-python -m blackout_env.train.qmix_trainer --build path/to/BlackOut.app --steps 1000000
+# 1. record heuristic matches (18 workers, ~6 min, ~57 GB for Run 11's 1M rows per stream)
+python -m blackout_env.train.collect_heuristic_dataset_parallel --build build/mac/BlackOut.app \
+    --steps 1000000 --workers 18 --noise-frac 0.1 --out datasets/my_dataset
+
+# 2. train (Run 11's exact flags live in run11_pipeline.sh's `train` stage)
+python -m blackout_env.train.offline_pretrain --dataset-dir datasets/my_dataset \
+    --eval-build build/mac/BlackOut.app --reward v2-fitted --steps 200000 --compile ...
 ```
 
-| Flag | Default | Description |
-|---|---|---|
-| `--build` | *(required)* | Path to the Unity standalone build executable (`.app` on macOS, `.x86_64` on Linux, `.exe` on Windows) |
-| `--steps` | `1000000` | Total env steps to train for |
-| `--time-scale` | `20.0` | Unity `Time.timeScale` — higher speeds up headless training; use `1` when watching with `--graphics` |
-| `--graphics` | off (headless) | Show the Unity window instead of running `--no-graphics` |
-| `--checkpoint-dir` | `checkpoints` | Directory to save `.pt` checkpoints to |
-| `--resume` | none | Checkpoint path to resume training from |
-| `--device` | `cpu` | `cpu` or `cuda` |
+`python -m blackout_env.train.offline_pretrain --help` documents every flag. Checkpoints go to
+`checkpoints/offline/<timestamp>/` (every 5k steps plus `final.pt`), TensorBoard logs to
+`runs/offline/<timestamp>/`. The easiest way to reproduce or vary Run 11 is
+`models/run11_step80k/run11_pipeline.sh`, whose settings can be overridden from the environment
+(`DATASET=`, `TRAIN_STEPS=`, `DEVICE=`, ...).
 
-Quick smoke test with the Unity window visible at real-time speed:
-
-```bash
-python -m blackout_env.train.qmix_trainer --build build/mac/BlackOut.app --steps 3000 --time-scale 1 --graphics
-```
+Code map: `offline_pretrain.py` (entry point and loop) → `qmix_trainer.py` (`QMIXConfig`, losses,
+BBF resets) → `model/my_model.py` (network). See [docs/internals.md](docs/internals.md).
 
 ### TensorBoard
 
-Training logs to `runs/` by default (see `--tb-log-dir`, or pass `--tb-log-dir ''` to disable).
-Requires `tensorboard` — see [TensorBoard install](#tensorboard-training-logs) above if you
-haven't installed it yet. While or after training, from the repo root:
+Requires `tensorboard` — see [TensorBoard install](#tensorboard-training-logs) above. From the
+repo root:
 
 ```bash
 tensorboard --logdir runs
 ```
 
-Then open the printed URL (usually `http://localhost:6006`). Point `--logdir` at
-`--checkpoint-dir`'s sibling `runs` folder if you passed a custom `--tb-log-dir`, or at the
-parent of several runs (e.g. `--logdir runs`) to compare multiple training runs side by side —
-TensorBoard treats each subdirectory under `--logdir` as a separate run.
+Each subdirectory under `--logdir` shows up as a separate run, so pointing it at `runs/offline`
+compares all offline runs side by side.
 
-What gets logged (tag prefix → contents, see `blackout_env/train/tb_logger.py`):
+Main tag groups for an offline run (see `train_step()` in `qmix_trainer.py` and
+`blackout_env/train/tb_logger.py`):
 
-| Tag prefix | Contents | X-axis |
-|---|---|---|
-| `loss/*` | `total`, `iqn`, `spr` | train step |
-| `grad_norm/*` | Pre-clip gradient L2 norm per network part (`graphic_encoder`, `vector_encoder`, `attention`, `token_type_emb`, `spr_head`, `q_head`, `dist_mixer`, `spr_predictor`) + `total_preclip` | train step |
-| `weight_norm/*` | Weight L2 norm, same per-part breakdown | train step |
-| `td_error/mean` | Mean absolute TD error over the batch | train step |
-| `schedule/*` | `epsilon`, `n_step`, `gamma`, `per_beta`, `lr` | train step |
-| `reward/step/*` | Per-team summed reward, this env step | env step |
-| `episode/return/*`, `episode/win_rate/*` | Per-team episode return and running win rate | env step |
-| `perf/steps_per_sec`, `perf/wall_time_s/*` | Throughput and the same env-step/select/train timing breakdown printed to console | env step |
-| `replay_buffer/*` | `size_a/b`, `max_priority_a/b` | env step |
+| Tag prefix | Contents |
+|---|---|
+| `eval/*` | Periodic matches vs V4: win rate, mean score margin, idle/blocked rates, objective counts, stall breakdown, per-side splits. Noisy: read trends |
+| `onpolicy/*` | Stats of the on-policy matches collected after each eval |
+| `loss/*`, `bc/*`, `iqn/*`, `q_value/*` | Loss terms (IQN, SPR, BC), BC diagnostics, quantile spread, Q statistics |
+| `grad_norm/*`, `weight_norm/*` | Per network part (`graphic_encoder`, `vector_encoder`, `attention_proj`, `attention_ffn`, `token_type_emb`, `spr_head`, `q_head`, `dist_mixer`, `spr_predictor`) |
+| `schedule/*` | `n_step`, `gamma`, `per_beta`, `lr`, ... |
+| `buffer_source_frac/*`, `buffer_rows/*`, `per_max_priority/*`, `batch_*` | Replay composition (dataset vs on-policy) and sampled-batch statistics |
+| `attention_logit_rms/*`, `mixer_clamp_pressure/*`, `probe/*`, `td_error/mean` | Model-health diagnostics ([docs/design/](docs/design/) explains how to read them) |
 
-Note: `reward/*` is the total per-team reward already summed on the Unity side (kill/death/item/
-potential-shaping/nav-shaping all folded together before it reaches Python) — there's no
-per-component reward breakdown here. Getting that would need a Unity-side change to transmit
-`RewardEventLog`-style itemized rewards to Python separately.
+### Legacy online self-play trainer
+
+`python -m blackout_env.train.qmix_trainer --build path/to/BlackOut.app --steps 1000000` still runs
+the original loop: self-play against an EMA copy of the network, with the reward summed on the
+Unity side. It predates reward v2, the blocked penalty and the offline pipeline, so it **cannot
+reproduce Run 11**; see `--help` and the `qmix_trainer.py` module docstring before using it.
 
 ### Multi-GPU / many-core training (experimental, unverified)
 
-> **⚠️ Status: implemented but not yet run on real hardware.** This was built and its
+> **⚠️ Status: implemented but not yet run on real hardware, and not part of Run 11.** Like the
+> legacy trainer above it learns from the Unity-side reward (no reward v2, no blocked penalty, no
+> exhausted-match stop), so its results aren't comparable with Run 11.
+>
+> **Original note:** This was built and its
 > multiprocessing wiring was smoke-tested (`--smoke-test`, a fake in-process env, no Unity/GPU)
 > on a machine with no CUDA GPU and no Unity build available. It has **never been run against a
 > real Unity build or a real GPU**, let alone the target 4-GPU box. Treat it as a starting point
@@ -361,7 +402,10 @@ scalar (not one-hot), and the rest are per-item one-hot masks:
 | 12 | item_4 (DebuffSize) | 0.0 / 1.0 |
 
 `ally`/`enemy` channels (4↔5, 6↔7) are already flipped to the observing agent's own team
-perspective — no extra work needed on the consumer side. Unit positions are **not** part of
+perspective. Only the channel *labels* are flipped: the grid, the unit row order and the action
+frame stay in world coordinates, so Team B sees the map from the opposite corner. `MyModel`
+mirrors Team B into Team A's frame first (`blackout_env/env/team_frame.py`) so one network plays
+both sides. Unit positions are **not** part of
 `graphic` — see `agent_states` below.
 
 ### `agent_states` row layout (`float32[10, 12]`)
@@ -378,8 +422,8 @@ the observing agent's own team perspective:
 
 ### `team_state` (`float32[4]`)
 
-`[own_score, opp_score, episode_time_left, absorption_time_left]` — the two scores are
-reordered per team so index 0 is always "my score"; the two time values (both in `[0, 1]`)
+`[own_score, opp_score, episode_time_left, absorption_time_left]` — the two scores are divided
+by the target score (100) and reordered per team so index 0 is always "my score"; the two time values (both in `[0, 1]`)
 are global and identical for both teams' observations.
 
 ### Items
@@ -429,6 +473,9 @@ team_state_size      = 4
 ### Action
 
 `float32[2]` — `(dx, dy)` in `[-1, 1]` per agent.
+
+(Our own model does not regress this directly: it scores 8 compass directions with a Q-network and
+sends the chosen unit vector — see `blackout_env/model/my_policy.py`.)
 
 ### Step 1: Define your policy (`policy.py`)
 
@@ -594,6 +641,19 @@ class MyModel(BaseModel):
 > `load_checkpoint`/`CheckpointModel` (`model/loader.py`) implements this exact pattern
 > internally. Only subclass `BaseModel` directly if you need custom preprocessing or
 > ensembling.
+
+### Running this repo's QMIX checkpoints
+
+Checkpoints written by our trainer (e.g. `models/run11_step80k/step_80000.pt`) are Q-networks, not
+action regressors, so load them with `load_my_policy_checkpoint` instead of `load_checkpoint`:
+
+```python
+from blackout_env import BlackOutEnv, StrategicHeuristicV4, load_my_policy_checkpoint, run_series
+
+policy = load_my_policy_checkpoint("models/run11_step80k/step_80000.pt")
+env = BlackOutEnv(env_path="build/mac/BlackOut.app", time_scale=20, unity_shaping=False)
+series = run_series(env, policy, StrategicHeuristicV4(), n_matches=2, seeds=[404, 404])
+```
 
 ---
 

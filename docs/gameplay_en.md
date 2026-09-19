@@ -2,7 +2,7 @@
 
 ## Overview
 
-BlackOut is a 2-team competitive game. Each team controls 5 units on a procedurally generated 24×24 grid map. The goal is to accumulate more **power** (score) than the opponent by collecting Batteries and depositing them into your team's storage before a **storage absorption** event permanently locks in the score.
+BlackOut is a 2-team competitive game. Each team controls 5 units on a 24×24 grid map. The goal is to accumulate more **power** (score) than the opponent by collecting Batteries and depositing them into your team's storage before a **storage absorption** event permanently locks in the score.
 
 ## Win Condition
 
@@ -16,7 +16,7 @@ The team with the higher score wins.
 
 ## Map
 
-The map is a 24×24 tile grid, procedurally generated each episode from a seed. It contains the following zones:
+The map is a 24×24 tile grid. The wall layout is the same every episode; the seed decides where the outer storages, batteries and special items go. It contains the following zones:
 
 ### Research Base
 Each team's spawn point. Enemies cannot enter. Contains one protected storage and a **base shrine** for Carrier transformation.
@@ -25,7 +25,7 @@ Each team's spawn point. Enemies cannot enter. Contains one protected storage an
 
 <img src="images/storage_blue.png" width="48"> <img src="images/storage_red.png" width="48">
 
-Items deposited here become **owned** by that team and apply their effects. Each team has **4 storage areas** — one inside the Research Base (protected) and 3 scattered across the open map (raidable).
+Items deposited here become **owned** by that team and apply their effects. Each team has **5 storage areas** — one inside the Research Base (protected) and 4 scattered across the open map (raidable). (`StorageCountPerTeam: 4` in `GameBalanceConfig.asset` counts the outer ones.)
 
 Items are stacked automatically on deposit using a priority order based on distance from the spawn point (farthest tiles first). An item is only deposited if it fits entirely; otherwise the unit passes through without depositing.
 

@@ -34,28 +34,9 @@ lr/weight_decay/reset 강도는 아직 실험 안 해봄 — spr_loss_weight부�
 
 ---
 
-## 다음 할 일 (2026-09-17 기록)
+## 다음 할 일
 
-1. **Run 11** — 세 변경이 준비돼 있다. 한 번에 넣으면 귀속이 섞이므로 필요하면 나눈다.
-   - 유닛 특징에서 타일 내 위상 제거(`48f8eda`, 5×5 보간 벽만).
-   - 리워드 v2: `offline_pretrain --reward v2-fitted` (`docs/reward_v2_design.md`).
-   - 배터리가 모두 사라진 뒤의 구간 제거(기본값, `--keep-exhausted`로 끔). mixv5 행의 73.6%가 빠진다.
-   - 확인: `examples/probe_boundary_chatter.py`로 경계 갇힘(Run 10 80k: Hunter 6.8% / 나머지 12.7%), 타일 중앙
-     행동 변경(Run 10 15–22%, 휴리스틱 0–4%).
-2. ~~리워드 v2 가중치 재조정~~ 완료: 1,840판 녹화 → `FITTED_20260917B`(`v2-fitted`가 이것을 씀). 보류 200판
-   목적함수 0.732 → 0.748, 결과는 `docs/reward_v2_design.md` P2 재조정.
-3. **처리량**
-   - 휴리스틱 데이터 수집도 배터리가 소진되면 경기를 끝낸다(온폴리시는 이미 그렇게 함). 수집 시간의 대부분이
-     버려질 구간이다.
-   - ~~Unity 쉐이핑 건너뛰기~~ 완료(blackout `94fabbd`): η=0이면 Ψ/Φ 계산 자체를 건너뛰고, 실행 인자
-     `-noRewardShaping`이 η를 0으로 만든다(`BlackOutEnv(unity_shaping=False)`). 같은 빌드에서 V17 대 V17
-     1프로세스 기준 Unity 스텝 4.46 → 1.64 ms, 결정 194 → 431/s(2.2배). `reward_config.json`은 그대로 두고
-     인자로만 끈다 — v2 학습의 온폴리시/평가 env, 녹화·건틀릿·벤치마크 스크립트는 끔. 휴리스틱 수집은
-     `--no-unity-shaping`으로 끄고 `collection.json`에 기록되며, 그 데이터로 `--reward unity` 학습은 거부된다.
-4. **리워드 v2 열린 문제** — 필드가 살아 있을 때 빈손 적 처치의 팀 보상이 뚜렷한 양수가 아니다(부활한 적이 본진
-   창고 옆에서 수거 가치를 얻음). 출구 봉쇄 가치는 진치기 포텐셜에 있다.
-5. **창고 위치 암기** (`examples/probe_storage_reliance.py`) — 창고 활성 규칙이 바뀐다는 소식이 있어 후순위.
-6. **특수 아이템 리워드(H10)** — 흡수 주기 20초 기준으로 다시 계산.
+Run 11 이후의 연구 후보와 비교 방법은 [`run11_research_baseline.md`](run11_research_baseline.md)로 옮겼다.
 
 ---
 
@@ -574,7 +555,7 @@ walkability 샘플 + 행·열 각각 sin/cos(2π·타일 좌표). 경계 ±d에�
 Run 7은 표현을 고쳤고(진영 정규화·유닛 채널·RoPE), 유닛이 오래 갇히지 않게 되고 짐을 더 오래 들게
 됐지만 득점은 그대로였다. 대신 GUI 관찰과 새 `train/stall_monitor.py`가 **정지의 이유를 셋으로 분리**했고,
 셋 다 "모델이 알 수 없는 정보"로 설명됐다. Run 8은 그 정보를 관측으로 준다. **리워드는 건드리지 않는다**
-(특수 아이템 리워드는 H10으로 미룸 — `docs/reward_hypotheses.md` §8).
+(특수 아이템 리워드는 H10으로 미룸 — `docs/archive/reward_hypotheses.md` §8).
 
 ### 실행
 
@@ -752,7 +733,7 @@ Hunter로 많이 바꾸고 배터리를 훨씬 잘 가져갔지만, Hunter가 �
 
 ## Run 7 계획 (실행 전, 2026-09-16) — 표현을 고쳤다, 배터리를 주우러 가는가
 
-Run 6 사후 진단(`docs/run6_diagnosis_20260916.md`)이 병목을 하나로 좁혔다: **짐이 없을 때 배터리 쪽으로
+Run 6 사후 진단(`docs/archive/run6_diagnosis_20260916.md`)이 병목을 하나로 좁혔다: **짐이 없을 때 배터리 쪽으로
 가지 않는다.** 이번 런의 변경은 전부 "모델이 지도 위의 목표와 자기 위치를 연결할 수 있게 한다"는 한 가지
 가설에 걸려 있고, 판정 지표도 그에 맞춰 하나로 정해 둔다.
 
@@ -852,7 +833,7 @@ BBF 리셋 40k, spr_k 5, 벽 마스킹 없음(`action_masking=False` — Run 6�
 - `eval/mean_margin` 3윈도우 이동평균이 −55보다 나쁨.
 
 그 경우 다음 후보는 **리워드**다: Φ가 팀 단위 배정이라 개별 유닛에게 "네가 저 배터리로 가라"는 신호가
-약할 수 있고(`docs/reward_hypotheses.md` H4/H7), Ψ 포화(틱의 27~43%)도 그대로다.
+약할 수 있고(`docs/archive/reward_hypotheses.md` H4/H7), Ψ 포화(틱의 27~43%)도 그대로다.
 
 ### 결과 해석 → 변경 연결
 
@@ -937,7 +918,7 @@ python -m blackout_env.train.offline_pretrain \
     --reset-warmup-steps 2000 --eval-interval 10000
 ```
 
-실행 전 확인: `.venv`의 protobuf가 `cpp`인지(`docs/perf_experiments_20260915.md`). 하이퍼파라미터는 Run 5와 같고
+실행 전 확인: `.venv`의 protobuf가 `cpp`인지(`docs/archive/perf_experiments_20260915.md`). 하이퍼파라미터는 Run 5와 같고
 셀프플레이 비율만 0이다.
 
 ### Run 5 대비 바뀐 것 (결과 해석의 연결 대상)
@@ -1023,7 +1004,7 @@ python -m blackout_env.train.offline_pretrain \
 | 온폴리시 막힘 비율 하락 | C7(자기 행동 모방 제거)가 1순위, C4(페널티가 행동 기인분만) | `bc/model_action_agreement`가 떨어지며 막힘이 줄면 C7. 막힘은 그대로인데 페널티만 줄면 C4 효과뿐 |
 | 점수차·경기 길이 개선 | 여러 변경의 합. 사전 확률은 C7, C1 순 | 이번 런 하나로는 분리 불가. 필요하면 C7만 되돌린 짧은 런(4만 스텝)으로 확인 |
 | 팀원이 같은 배터리로 몰리는 행동 감소 (GUI·롤아웃) | C1(Φ 팀 배정), C2·C3(데이터 분포) | 데이터셋에서 휴리스틱끼리 동시에 같은 배터리를 노리는 빈도를 먼저 재서 C2·C3 기여 분리 (H4 입증 방법 1) |
-| 아무것도 개선되지 않음 | 남은 가설: H2(이동 신호 묻힘), H3(tanh 포화), H1(γ 불일치), H6(크레딧 할당) | `q_value/action_margin`이 네비 쉐이핑 크기에 비해 노이즈 수준이면 H2, `psi_saturated_frac`이 높게 유지되면 H3 ([reward_hypotheses.md](reward_hypotheses.md)) |
+| 아무것도 개선되지 않음 | 남은 가설: H2(이동 신호 묻힘), H3(tanh 포화), H1(γ 불일치), H6(크레딧 할당) | `q_value/action_margin`이 네비 쉐이핑 크기에 비해 노이즈 수준이면 H2, `psi_saturated_frac`이 높게 유지되면 H3 ([reward_hypotheses.md](archive/reward_hypotheses.md)) |
 
 ### 해석할 때의 한계
 - 변경 8개가 한꺼번에 들어가서, 개선이 나와도 단일 원인으로 돌리기 어렵다.
@@ -1059,7 +1040,7 @@ python -m blackout_env.train.offline_pretrain \
   0.067 → 0.174로 완만히 증가, Ψ 포화 27~43%로 거의 불변.
 - 80~100k 조기 종료 기준은 모두 충족되지 않아(경기 길이 460 초과, Q 단조 하락 아님) 계획대로 완주했다.
 
-종료 후 진단과 그로부터 나온 코드 변경은 [run6_diagnosis_20260916.md](run6_diagnosis_20260916.md)에 있다.
+종료 후 진단과 그로부터 나온 코드 변경은 [run6_diagnosis_20260916.md](archive/run6_diagnosis_20260916.md)에 있다.
 
 ---
 
@@ -1092,7 +1073,7 @@ python -m blackout_env.train.offline_pretrain \
 - 셀프플레이: 매번 정확히 **10,501틱 / 1경기**. 시간 만료까지 풀타임이고, 경기 단위로 자르기 때문에 목표(약
   5,200틱)의 2배가 들어갔다.
 
-**이상 증상** (자세한 분석은 [reward_hypotheses.md](reward_hypotheses.md) §5, H8)
+**이상 증상** (자세한 분석은 [reward_hypotheses.md](archive/reward_hypotheses.md) §5, H8)
 - `q_value/mean`이 +0.77 → −3.3으로 거의 직선 하락하고 `q_value/std`는 0.19 → 6.5로 증가했다. Run 4는 40k
   이후 0.3~0.6에서 안정.
 - 10k 주입 직후마다 그래디언트가 튄다 (평상시의 약 7배, 130k~150k엔 11~15로 `grad_clip=10` 초과,
@@ -1191,7 +1172,7 @@ final.pt vs 휴리스틱 3매치를 직접 틱 단위로 재분석([movement_mon
   길게(30틱 이상 지속 15건) 이어지면서 전체 시간의 42%를 차지 — 인시던트 카운트가 심각성을 크게
   과소평가하고 있었음.
 
-**추가 진단 2: reward_proposal.md / 실제 C# 코드 대조** — `/Users/mac/project/26rl/reward_proposal.md`
+**추가 진단 2: reward_proposal.md / 실제 C# 코드 대조** — `docs/archive/reward_proposal.md`
 (1253줄, 확률 기반 potential shaping 설계안)와 `blackout/Assets/Project/Runtime/Scripts/ML/`의
 `PotentialRewardCalculator.cs`/`IndividualNavPotentialCalculator.cs`/`BlackOutEpisodeCoordinator.cs`를
 직접 대조. **결론: `reward_config.json`의 killReward/deathPenalty/teamScoreReward/itemRewards=0은
