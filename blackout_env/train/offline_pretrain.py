@@ -1,32 +1,35 @@
 """
-Standalone entry point: pure offline batch-RL pretraining on a fixed dataset collected by
-collect_heuristic_dataset.py. No Unity/BlackOutEnv process at all -- QMIXTrainer(env=None, ...)
-builds the exact same net/mixer/optimizer as the online trainer, and this script only ever
-calls train_step() (gradient updates against sampled batches) against buffers loaded straight
-from disk, never collect_step()/env.step().
+Training entry point used for Run 11: QMIX + IQN + SPR + BC on a fixed heuristic dataset
+collected by collect_heuristic_dataset(_parallel).py, optionally mixed with on-policy rows.
+QMIXTrainer(env=None, ...) builds the same net/mixer/optimizer as the legacy online trainer; this
+script loads the dataset straight into its buffers and only ever calls
+maybe_reset() + train_step(), never collect_step()/env.step(). Unity is started only for the
+periodic eval matches and on-policy collection (--eval-interval 0 disables both).
 
---steps is an ABSOLUTE target on trainer.train_step_count, same convention as qmix_trainer.py's
-own --steps/--resume: with --resume, the run continues from wherever the checkpoint left off and
-stops once train_step_count reaches --steps (so a second call with a larger --steps just does
-the remaining gradient steps, not another --steps from scratch).
+Loop per gradient step: env_step_count := train_step_count (so every QMIXConfig schedule counts
+gradient steps) -> maybe_reset() (BBF shrink-and-perturb + n-step/gamma re-anneal every
+--reset-interval, default steps//5) -> train_step(). Every --eval-interval steps: eval vs V4
+(RecommendedStrategicHeuristic) on --eval-seeds, then on-policy collection into the trainer's
+separate on-policy FIFO buffers, which supply a fixed share of every batch
+(--onpolicy-*-frac).
 
-The output checkpoint is written in the same format QMIXTrainer.save()/load() already use, so
-it plugs directly into the online trainer's --resume:
+--reward v2/v2-fitted recomputes the reward from observations in Python (train/reward_v2.py;
+the dataset's annotation is cached next to it), for both the dataset and on-policy rows.
+--blocked-penalty is added on top of either reward.
 
-    python -m blackout_env.train.qmix_trainer --build <build> --steps 1000000 \\
-        --resume <checkpoint_dir>/final.pt --skip-bootstrap --seed-dataset-dir datasets/run1
+--steps is an ABSOLUTE target on trainer.train_step_count: with --resume, the run continues from
+wherever the checkpoint left off and stops once train_step_count reaches --steps (so a second
+call with a larger --steps just does the remaining gradient steps, not another --steps from
+scratch). The replay buffers are never checkpointed; the dataset is reloaded and on-policy data
+is re-collected from the resumed policy.
 
---skip-bootstrap matters here: buffer_a/buffer_b start empty again in that online run (only net
-weights + optimizer state are checkpointed, not replay data), so without it phase 1 would
-re-trigger and spend its first heuristic_fill_frac*capacity steps re-collecting pure-heuristic
-data into a fresh buffer before the pretrained net gets to act at all -- exactly the redundant
-detour this two-stage pipeline (offline pretrain -> online fine-tune) is meant to skip.
---seed-dataset-dir (usually the same dataset this script just pretrained on) preloads that
-online run's buffers instead of leaving them empty, so early train_step() calls after the
-handoff still sample real data rather than starving until enough fresh online steps arrive --
-see qmix_trainer.py's own docstring on that flag for how the FIFO buffer phases it out.
+Checkpoints use QMIXTrainer.save()'s format (step_N.pt every --checkpoint-interval, final.pt).
+The command printed at the end, `python -m blackout_env.train.qmix_trainer ... --resume
+final.pt --skip-bootstrap --seed-dataset-dir ...`, is the LEGACY online fine-tuning handoff: that
+trainer uses Unity's reward only (no reward v2, no blocked penalty, no BC) and was not part of
+Run 11.
 
-Usage:
+Usage (Run 11's exact command is models/run11_step80k/run11_pipeline.sh train):
     python -m blackout_env.train.offline_pretrain \\
         --dataset-dir datasets/run1 --steps 200000 --checkpoint-dir checkpoints/offline_run1
 
@@ -57,6 +60,14 @@ from blackout_env.train.replay_buffer import SOURCE_NAMES
 
 
 def main() -> None:
+    """
+    Parse flags -> build QMIXConfig -> QMIXTrainer(env=None) (+ --resume) -> load the dataset(s)
+    into buffer_a/buffer_b (reward v2 annotation, dead-segment drop, blocked penalty) -> start the
+    Unity eval env if --eval-interval > 0 -> train until train_step_count == --steps, with eval
+    and on-policy collection every --eval-interval steps -> save final.pt. See the module
+    docstring for the loop's semantics.
+    """
+    # --- command line ---
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dataset-dir", required=True, help="Dir with buffer_a.npz/buffer_b.npz from collect_heuristic_dataset.py")
     parser.add_argument(
@@ -209,7 +220,7 @@ def main() -> None:
         help="Per-blocked-unit-tick reward penalty (see reward_shaping.blocked_penalty_adjustment) "
         "applied to both the static dataset (retroactively, at load time) and any on-policy data "
         "collected via --onpolicy-*-frac below. 'Blocked' = commanded movement, no actual "
-        "displacement (walking into a wall/obstacle) -- see diagnose_stopping2.py's Run4 finding "
+        "displacement (walking into a wall/obstacle) -- see the Run 4 finding "
         "of 41.66%% blocked unit-ticks and docs/offline_pretrain_runs.md for why nothing in the "
         "actual game reward (reward_config.json) penalizes this directly. Default 0.0 (off, i.e. "
         "exact prior behavior); ~0.02 was the value discussed against this dataset's own reward "
@@ -273,6 +284,7 @@ def main() -> None:
     # and the log can lag the real step count by tens of thousands of steps.
     sys.stdout.reconfigure(line_buffering=True)
 
+    # --- QMIXConfig from the flags ---
     dataset_dir = Path(args.dataset_dir)
     if args.reward == "unity" and not dataset_has_unity_shaping(dataset_dir):
         raise SystemExit(f"{dataset_dir} was collected with --no-unity-shaping; its reward has no Unity "
@@ -325,6 +337,7 @@ def main() -> None:
     else:
         config_kwargs["tb_log_dir"] = default_run_dir(base="runs/offline")
 
+    # --- buffer size (from the dataset headers) and reward mode ---
     # buffer_capacity has to be known before QMIXTrainer() builds buffer_a/buffer_b, so peek at
     # the dataset's size first (cheap -- .npz headers only, no full array load) rather than
     # loading twice.
@@ -344,6 +357,7 @@ def main() -> None:
         reward_v2_cfg = FITTED_20260917B if args.reward == "v2-fitted" else RewardV2Config()
         config_kwargs["reward_mode"] = "v2"
 
+    # --- trainer (no live env) and --resume ---
     config = QMIXConfig(**config_kwargs)
     trainer = QMIXTrainer(env=None, config=config)
     print(f"[offline] checkpoint_dir={config.checkpoint_dir}")
@@ -360,6 +374,8 @@ def main() -> None:
         trainer.load(Path(args.resume))
         print(f"[offline] resumed from {args.resume} at train_step_count={trainer.train_step_count}")
 
+    # --- dataset loading: one stream per team; reward v2 / dead-segment drop / blocked penalty
+    # are applied here, before push (see offline_dataset.load_dataset_into) ---
     print(f"[offline] loading dataset from {dataset_dir} ...")
     print(f"[offline] reward={args.reward}" + (f" {reward_v2_cfg}" if reward_v2_cfg else ""))
     drop_dead = not args.keep_exhausted
@@ -378,6 +394,7 @@ def main() -> None:
     ckpt_dir = Path(config.checkpoint_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
+    # --- periodic eval vs V4 (the only reason this script starts Unity, besides on-policy data) ---
     # Lazily started (only if eval is actually enabled) so --eval-interval 0 never touches
     # Unity at all, same as the rest of this script.
     eval_env: BlackOutEnv | None = None
@@ -422,6 +439,9 @@ def main() -> None:
             f"{metrics.get('as_team_b/blocked_per_1000_ticks', float('nan')):.1f}"
         )
 
+    # --- on-policy collection: per eval window, target_* ticks into trainer.onpolicy_buffers,
+    # sized so the whole run collects frac * (dataset rows per stream, before the dead-segment
+    # drop) per source; Run 11: 0.3 * 1M / 20 windows = 15k ticks ---
     n_eval_windows = max(1, args.steps // args.eval_interval) if args.eval_interval > 0 else 0
     target_svh_per_window = int(args.onpolicy_self_vs_heuristic_frac * config.buffer_capacity / max(1, n_eval_windows))
     target_sp_per_window = int(args.onpolicy_self_play_frac * config.buffer_capacity / max(1, n_eval_windows))
@@ -477,6 +497,7 @@ def main() -> None:
             + f"){svh_summary}"
         )
 
+    # --- training loop ---
     trainer._total_env_steps_hint = args.steps  # spans n_step/gamma/per_beta annealing over [0, steps]
     recent_losses: list[float] = []
     t0 = time.time()
@@ -525,6 +546,8 @@ def main() -> None:
             eval_env.close()
 
     trainer.save(ckpt_dir / "final.pt")
+    # Legacy hint: qmix_trainer's online fine-tuning trains on Unity's reward only (no reward v2,
+    # blocked penalty or BC), so it would not continue a Run 11-style run -- see module docstring.
     print(f"[offline] done. next:\n"
           f"  python -m blackout_env.train.qmix_trainer --build <build> --steps 1000000 "
           f"--resume {ckpt_dir / 'final.pt'} --skip-bootstrap --seed-dataset-dir {dataset_dir}")

@@ -1,4 +1,12 @@
-"""A tightly bounded family around the promoted V4 teacher policy."""
+"""V4-near (``strategic_v4_near``): a tightly bounded family around the V4 teacher policy.
+
+``V4PolicyFamily`` wraps one ``StrategicHeuristicV4`` and draws one of four parameter
+profiles (exact / balanced / responsive / cautious) for ``replan_interval``,
+``threat_radius`` and ``protected_storage_bonus``.  It adds no new strategy: its purpose is
+dense data around V4's decision boundaries.  HeuristicPolicyMixture samples it as its own
+policy_id (8% by default) and drives the redraws itself via ``adopt_sample``; used standalone
+(benchmark/tournament scripts) it keeps one profile per match.
+"""
 
 from __future__ import annotations
 
@@ -86,6 +94,7 @@ class V4PolicyFamily(BaseModel):
         return sample
 
     def _draw_sample(self) -> V4FamilySample:
+        """Draw a profile by ``profile_weights``, then its parameters from a fresh sub-seed."""
         profiles = tuple(self.profile_weights)
         probabilities = np.asarray([self.profile_weights[p] for p in profiles], np.float64)
         probabilities /= probabilities.sum()
@@ -128,6 +137,7 @@ class V4PolicyFamily(BaseModel):
         )
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
+        """Delegate to the wrapped V4, redrawing on a new match (and absorption if enabled)."""
         assert self._policy is not None
         if obs:
             team_state = next(iter(obs.values()))["team_state"]

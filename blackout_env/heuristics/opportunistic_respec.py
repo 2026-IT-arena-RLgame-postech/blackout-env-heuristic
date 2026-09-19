@@ -1,4 +1,9 @@
-"""Ninth-generation heuristic: an active strategic-death variation of V8."""
+"""V9 (``strategic_v9``, parent V8): an active strategic-death variation of V8.
+
+Same respec state machine as V8, only the gates are loosened (30 instead of 150 idle ticks,
+smaller score gap and field-battery minimums, shorter cooldown) so that Hunter -> death ->
+Collector trajectories actually appear in the data.  Plays about as well as V7.
+"""
 
 from __future__ import annotations
 

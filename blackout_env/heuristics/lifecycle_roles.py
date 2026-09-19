@@ -1,4 +1,12 @@
-"""Eighth-generation heuristic: deliberate death as a guarded role-respec mechanism."""
+"""V8 (``strategic_v8``, parent V7): deliberate death as a guarded role-respec mechanism.
+
+A specialist can only become a Collector again by dying.  When a Hunter has nothing worth
+hunting while the team trails and batteries remain, V8 sends it into the nearest enemy Hunter
+(Hunters kill each other on contact); the respawned Collector then stays a Collector for a
+cooldown so it does not immediately re-transform.  The gates are strict, so in practice the
+respec rarely fires and V8 plays almost like V7 (it shares one mixture budget with V7/V9/V12).
+V9 is the same machine with looser gates.
+"""
 
 from __future__ import annotations
 
@@ -63,6 +71,16 @@ class StrategicHeuristicV8(StrategicHeuristicV7):
         }
 
     def _update_roles(self, obs, sample) -> None:
+        """V7 roles, then advance the respec state machine.
+
+        States: normal -> respec (``_respec_local`` set, its Hunter seeks an enemy Hunter)
+        -> completed when that unit is observed as a Collector -> cooldown, during which V7's
+        Hunter commitment is masked.  A respec starts only when every gate holds: no
+        high-value enemy transport for ``respec_inactivity_ticks``, trailing by at least
+        ``respec_score_gap``, time_left >= ``respec_min_time_left``, field battery >=
+        ``respec_min_field_battery``, and both an own Hunter and an enemy Hunter outside its
+        base exist.  Gate counters go to ``respec_diagnostics``.
+        """
         super()._update_roles(obs, sample)
         states = sample["agent_states"]
         graphic = sample["graphic"]
@@ -164,6 +182,7 @@ class StrategicHeuristicV8(StrategicHeuristicV7):
     def _choose_target(
         self, role, state, states, graphic, reservations, local_index, team_state
     ):
+        """The respec Hunter targets the nearest enemy Hunter outside its base; with none, abort."""
         if local_index == self._respec_local and self._class_id(state) == HUNTER:
             pos = self._to_pixel(state[:2], graphic.shape[:2])
             enemy_spawn = self._nearest_pixel(graphic[..., SPAWN_ENEMY] > 0.5, pos)

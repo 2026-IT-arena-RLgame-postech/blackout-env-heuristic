@@ -1,4 +1,13 @@
-"""Seventh-generation heuristic: quota-aware, phase-sensitive role assignment."""
+"""V7 (``strategic_v7``, parent V4): quota-aware, phase-sensitive role assignment.
+
+V1-V6 fix roles by unit order (unit 0 Carrier, unit 1 Hunter), so a far-away unit may walk
+across the map to transform and the Hunter is made at kick-off whether or not it has prey.
+V7 assigns roles dynamically every tick: the Carrier role goes to the empty Collector with
+the shortest path to the Carrier sanctuary (at most one Carrier -- a game limit), and the
+Hunter is only committed once there is something to hunt (enemy cargo or a Carrier), the
+match is past ``hunter_activation_time``, or the field is running out of batteries.  The
+economy is V4's.  V8-V10, V12 and V14-V16 build on this role layer.
+"""
 
 from __future__ import annotations
 
@@ -53,9 +62,17 @@ class StrategicHeuristicV7(StrategicHeuristicV4):
         return super().act(obs)
 
     def _role(self, local_index: int) -> str:
+        """Role chosen by ``_update_roles`` this tick (``use_specialists`` is not consulted)."""
         return self._active_roles.get(local_index, "collector")
 
     def _update_roles(self, obs, sample) -> None:
+        """Recompute ``_active_roles`` for this tick.
+
+        An existing Carrier/Hunter keeps its role; otherwise the chosen assignee is kept for
+        the match, so a respawned specialist walks back to its sanctuary.  Hunter commitment is sticky: once any trigger fires (enemy
+        transport, time_left <= hunter_activation_time, field battery <= threshold) it stays
+        on for the match.  ``role_assignments`` (name -> role) is exposed for provenance.
+        """
         graphic = sample["graphic"]
         states = sample["agent_states"]
         team_state = sample["team_state"]
@@ -113,6 +130,7 @@ class StrategicHeuristicV7(StrategicHeuristicV4):
     def _best_transform_candidate(
         self, controlled, row_for, states, graphic, site_channel, *, excluded
     ) -> int | None:
+        """Local index of the empty Collector with the shortest path to ``site_channel``."""
         walkable = graphic[..., WALL] < 0.5
         site_pixels = list(zip(*np.nonzero(graphic[..., site_channel] > 0.5)))
         if not site_pixels:

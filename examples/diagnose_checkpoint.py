@@ -3,7 +3,7 @@ Why is a checkpoint losing? Plays it against a heuristic and reports where its g
 
 Three questions the aggregate eval numbers (win rate, margin, blocked rate) could not answer
 after Run 6, each of which took a separate ad-hoc script at the time -- see
-docs/run6_diagnosis_20260916.md:
+docs/archive/run6_diagnosis_20260916.md:
 
   time       when in a match do units start failing to move, and what do the Q-values look
              like at that moment (Run 6: 1.4% blocked in the first 50 ticks, 33% by tick 200,

@@ -1,6 +1,10 @@
 """
 Shared save/load helpers for the offline heuristic-dataset format (buffer_a.npz/buffer_b.npz):
-one .npz per team stream, holding exactly the fields SequentialReplayBuffer.push() takes.
+one uncompressed .npz per team stream, rows in collection order, holding FIELDS (+ "policy" from
+newer collectors). done marks absorption cuts and match ends, as collect_step() wrote it; reward
+is the Unity reward. potential/terminal/demo are not stored -- load_dataset_into derives them
+(reward v2 annotation, collection.json) when pushing into a SequentialReplayBuffer.
+collection.json next to the .npz files records how the dataset was collected.
 
 Used by:
   - collect_heuristic_dataset.py (write, one shard per process)
@@ -57,12 +61,16 @@ def load_dataset_into(
     drop_dead: bool = False,
     demo: bool | None = None,
 ) -> int:
-    """Replays every saved transition through .push(), in original order. This re-derives
+    """Replays every kept transition through .push(), in original order. This re-derives
     priorities exactly the way collection itself did (freshly pushed = max priority) rather
-    than trying to hand-restore the sum/min segment trees, and if npz_path holds more
+    than trying to hand-restore the PER sum tree, and if npz_path holds more
     transitions than `buffer`'s capacity, the ring buffer's own FIFO eviction naturally keeps
     only the most recent `capacity` of them -- no special-casing needed here for that case.
-    Returns the number of transitions loaded (pre-truncation, i.e. what npz_path held).
+    Returns the number of rows pushed (after drop_dead, before any ring eviction).
+
+    Order of operations: reward v2 annotation (replaces reward/done, adds potential/terminal)
+    -> dead-segment drop -> blocked penalty added -> push. Run 11 used all three
+    (v2-fitted, drop_dead, penalty 0.02).
 
     team_indices/penalty_per_unit: if given (team_indices non-None and penalty_per_unit != 0),
     retroactively folds reward_shaping.blocked_penalty_adjustment into every loaded transition's
@@ -77,7 +85,6 @@ def load_dataset_into(
 
     drop_dead: skip every training segment that starts with no battery left anywhere (see
     train/dead_segments.py), moving each shortened match's outcome onto its new last row.
-    Returns the number of rows pushed.
 
     demo: whether the rows are behaviour-cloning demonstrations; None reads it from the dataset's
     collection.json ("demo", default True). The policy column, when present, is kept per row.

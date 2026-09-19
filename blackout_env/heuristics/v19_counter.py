@@ -63,6 +63,7 @@ class StrategicHeuristicV19(StrategicHeuristicV18):
         self._walker_detour.clear()
 
     def _sanctuary(self, ctx):
+        """(Hunter-sanctuary tiles, their centroid), cached per tick."""
         return self._per_tick("sanctuary", ctx["graphic"], self._sanctuary_of)
 
     @staticmethod
@@ -76,6 +77,7 @@ class StrategicHeuristicV19(StrategicHeuristicV18):
     # ------------------------------------------------------------------ Hunters
 
     def _hunter_plan(self, ctx, hunter, claimed):
+        """Sweep first (any Hunter), then Hunter rank 1 + exit_guards is the sentry, else V18."""
         if self.sanctuary_sweep:
             target = self._sweep_target(ctx, hunter, self.sweep_radius, near_hunter=True)
             if target is not None:
@@ -103,6 +105,8 @@ class StrategicHeuristicV19(StrategicHeuristicV18):
         return None if best is None else best[1]
 
     def _sentry_plan(self, ctx, hunter):
+        """Kill Collectors within ``sentry_radius`` of the sanctuary, else stand at the walkable
+        cell nearest a point ``sentry_offset`` cells from its centre towards the enemy spawn."""
         target = self._sweep_target(ctx, hunter, self.sentry_radius, near_hunter=False)
         if target is not None:
             return target, "hunt"
@@ -125,6 +129,8 @@ class StrategicHeuristicV19(StrategicHeuristicV18):
     # ------------------------------------------------------------------ walkers
 
     def _update_roles(self, ctx) -> None:
+        """V17 roles, but a Hunter walker that picked up cargo keeps its assignment (the fresh
+        replacement V17 chose goes back to collecting) when ``transform_with_cargo``."""
         previous = dict(self._role_of)
         super()._update_roles(ctx)
         if not self.transform_with_cargo:
@@ -147,6 +153,8 @@ class StrategicHeuristicV19(StrategicHeuristicV18):
         self.role_assignments = {u.name: roles[i] for i, u in enumerate(own)}
 
     def _plan(self, ctx):
+        """Re-target Hunter walkers at the sanctuary tile nearest by path; take the item-free
+        route only when it is no longer than the direct one (remembered for _navigate)."""
         plan = super()._plan(ctx)
         if not self.nearest_tile:
             return plan
@@ -172,6 +180,7 @@ class StrategicHeuristicV19(StrategicHeuristicV18):
         return plan
 
     def _navigate(self, name, state, states, target, kind, walkable, shape):
+        """Execute the route choice made in ``_plan`` instead of V18's unconditional detour."""
         if kind == "transform" and self._last_graphic is not None and name in self._walker_detour:
             if self._walker_detour[name]:
                 walkable = walkable & ~self._field_items(self._last_graphic)

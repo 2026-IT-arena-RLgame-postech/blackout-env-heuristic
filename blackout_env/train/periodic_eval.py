@@ -8,6 +8,14 @@ the graphic_encoder gradient-vanishing issue that produced a "walks into walls, 
 agent -- see docs/offline_pretrain_runs.md) shows up as a spike in blocked/idle incidents within
 a few eval windows, instead of only being caught by a human watching a GUI match after the full
 (many-hour) run finishes.
+
+Flow (offline_pretrain.run_eval): at step 0 and every --eval-interval steps, wrap the live net in
+MyPolicy (eval mode), call run_periodic_eval against V4 (RecommendedStrategicHeuristic, fixed
+even when on-policy collection plays the mixture) on --eval-seeds (Run 11: 101/202/303), each seed
+from both sides = 6 matches, and log the returned scalars under eval/ in TensorBoard. With
+on-policy collection enabled, onpolicy_collect.collect_onpolicy_data runs right after on the same
+Unity env. Six matches is noisy (per-match margin SD ~10 points): read trends, not single
+windows (docs/run11_research_baseline.md).
 """
 
 from __future__ import annotations
@@ -26,10 +34,12 @@ from blackout_env.train.stall_monitor import StallCounts, StallMonitor, aggregat
 
 @dataclass
 class EvalMatch:
+    """One eval match, already re-indexed from physical teams to candidate vs opponent."""
+
     winner: int | None  # 0 = candidate, 1 = opponent, None = draw
-    candidate_score: float
+    candidate_score: float  # final score as Unity reports it (points / 100); x100 for points
     opponent_score: float
-    steps: int
+    steps: int  # env.step calls, including empty-obs ticks
     candidate_failures: FailureRuns
     opponent_failures: FailureRuns
     candidate_team: int  # 0 = the candidate played team A this match, 1 = team B
@@ -183,7 +193,7 @@ def run_periodic_eval(
     stats.update(aggregate_objectives([m.opponent_objectives for m in matches], "opponent_"))
 
     # Per-side split: the observation pipeline used to hand team B a differently-oriented view
-    # of the same task (docs/run6_diagnosis_20260916.md §5), which showed up as team A blocking
+    # of the same task (docs/archive/run6_diagnosis_20260916.md §5), which showed up as team A blocking
     # 30.2% of unit-ticks against team B's 18.9%. Keep watching for a gap after the fix.
     for team, label in ((0, "as_team_a"), (1, "as_team_b")):
         side = [m for m in matches if m.candidate_team == team]

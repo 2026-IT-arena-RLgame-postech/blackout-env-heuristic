@@ -1,4 +1,22 @@
-"""Paired, side-swapped heuristic benchmark with movement-failure diagnostics."""
+"""Paired, side-swapped heuristic benchmark with movement-failure diagnostics.
+
+Plays --candidate against --baseline on each map seed from both sides (spawn-side advantage
+cancels in the paired margin) and prints per-match results, W-L-D, mean and paired margins, and
+both sides' idle/blocked movement-failure rates (train/movement_monitor.py), plus respec and
+strategy-mode statistics for the versions that expose them. Exit code 0 only when the candidate
+has more wins than losses and a positive mean margin (a promotion gate).
+
+Flags: --candidate (default v4), --baseline (default v1), --seeds or --n-seeds/--seed-rng
+(at least 5 seeds), --time-scale (default 100), --graphics (show the window; headless by
+default), --build (default build/mac/BlackOut.app).
+
+Note: the --candidate/--baseline choices only cover v1-v12 and v4-near (v1 as baseline only);
+V13-V19 are not wired in here. For ratings across all versions use examples/elo_active.py.
+play() and aggregate() are reused by examples/tournament_heuristics.py.
+
+Usage:
+    python examples/benchmark_heuristics.py --candidate v9 --baseline v4 --seeds 101 202 303 404 505
+"""
 
 from __future__ import annotations
 

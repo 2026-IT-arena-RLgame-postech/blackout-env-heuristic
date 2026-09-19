@@ -2,16 +2,17 @@
 Run random-policy agents in the BlackOut environment.
 
 Usage:
-    python run_random.py                        # connect to Unity Editor (Play mode)
-    python run_random.py --build path/to/build  # standalone build
-    python run_random.py --episodes 3           # run multiple episodes
-    python run_random.py --time-scale 50        # speed up headless runs (real-time = 1.0)
-    python run_random.py --graphics             # show the Unity window (default: headless)
+    python examples/run_random.py                                 # connect to Unity Editor (Play mode)
+    python examples/run_random.py --build build/mac/BlackOut.app  # standalone build
+    python examples/run_random.py --episodes 3                    # run multiple episodes
+    python examples/run_random.py --time-scale 50                 # speed up headless runs (real-time = 1.0)
+    python examples/run_random.py --graphics                      # show the Unity window (default: headless)
+
+A smoke test of the env loop only: it prints each episode's step count and per-unit summed
+Unity reward.
 """
 
 import argparse
-
-import numpy as np
 
 from blackout_env import BlackOutEnv
 from random_policy import RandomPolicy
@@ -21,8 +22,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--build",
-        default=r"C:\Projects\blackout_rl\build\BlackOut.exe",
-        help="Path to the Unity build executable",
+        default=None,
+        help="Path to the Unity build (.app / .x86_64 / .exe); omit to attach to a running Unity Editor",
     )
     parser.add_argument("--episodes", type=int, default=1, help="Number of episodes to run")
     parser.add_argument(
@@ -54,11 +55,6 @@ def main():
         while env.agents:
             actions = policy.act(obs)
             obs, rewards, _, _, _ = env.step(actions)
-            np.set_printoptions(threshold=5000000, linewidth=500, suppress=False)
-            print("----------------1")
-            print(obs["unit_0"]["graphic"][:,:,1].shape)
-            print("----------------5")
-            print(obs["unit_5"]["graphic"][:,:,1].shape)
             for agent, reward in rewards.items():
                 total_rewards[agent] += reward
             steps += 1

@@ -32,6 +32,18 @@ from .rotary import apply_rope
 
 
 class GroupedQueryAttention(nn.Module):
+    """
+    Pre-norm multi-head self-attention with grouped K/V heads, optional 2D RoPE and XSA.
+
+    num_heads query heads share num_kv_heads K/V heads (num_heads // num_kv_heads queries per
+    group), which cuts K/V projection size without reducing the number of attention patterns.
+    In MyModel this is 8 query heads over 2 K/V heads (AttentionBlock passes num_heads // 4),
+    head_dim = d_model / 8.
+
+    The RMSNorm is applied to the input here, and the output is returned WITHOUT the residual
+    -- AttentionBlock adds it. x: [B, T, d_model] -> [B, T, d_model].
+    """
+
     def __init__(
         self,
         d_model: int,
@@ -84,7 +96,8 @@ class GroupedQueryAttention(nn.Module):
         # q: (B, num_heads, T, head_dim) / k, v: (B, num_kv_heads, T, head_dim)
 
         if rope is not None:
-            # rotate q/k only (standard RoPE) — cos/sin: [T, head_dim], broadcasts over (B, heads)
+            # rotate q/k only (standard RoPE) — cos/sin: [T, rope_dim] or per-sample
+            # [B, T, rope_dim] (MyModel passes the latter), broadcast over heads by apply_rope
             cos, sin = rope
             q = apply_rope(q, cos, sin)
             k = apply_rope(k, cos, sin)
@@ -123,6 +136,15 @@ class GroupedQueryAttention(nn.Module):
         return logits.pow(2).mean().sqrt().item()
 
     def _flash_gqa(self, q, k, v, attn_mask, is_causal):
+        """
+        SDPA over q (B, num_heads, T, d) and k/v (B, num_kv_heads, T, d) -> (B, num_heads, T, d).
+
+        First requests the Flash backend with native GQA broadcasting. If that call raises
+        (torch < 2.5 has no enable_gqa; some device/dtype combinations refuse the backend), the
+        fallback repeats K/V to the full head count and lets SDPA pick any backend. Both paths
+        compute the same attention up to kernel numerics. With torch 2.14 the first path does
+        not raise on CPU or MPS (fp32 and fp16), so the fallback is rarely taken in practice.
+        """
         try:
             # torch>=2.5: enable_gqa=True 이면 K/V를 미리 repeat 하지 않아도
             # SDPA가 내부적으로 broadcast 하여 Flash Attention 커널로 바로 전달
@@ -148,6 +170,12 @@ class GroupedQueryAttention(nn.Module):
 
 
 class AttentionBlock(nn.Module):
+    """
+    One pre-norm transformer block: x + GQA(x), then x + SwiGLU(x). Both sublayers normalize
+    their own input (RMSNorm inside GroupedQueryAttention / SwiGLUBlock), so the residual stream
+    itself is never normalized. K/V heads = num_heads // 4; FFN hidden width = 3 * d_model.
+    """
+
     def __init__(self, d_model: int, num_heads: int, exclusive: bool = True) -> None:
         super(AttentionBlock, self).__init__()
 
@@ -172,6 +200,13 @@ class AttentionBlock(nn.Module):
 
 
 class AttentionLayers(nn.Module):
+    """
+    `depth` AttentionBlocks applied in sequence, all fed the same RoPE cos/sin. MyModel uses
+    this as its trunk with no mask (every token attends to every other) and no final norm:
+    spr_head and IQNHead's value_head are SwiGLUBlocks that RMSNorm their own input, while
+    global_latent reaches the QMixer hypernetworks as the raw residual stream.
+    """
+
     def __init__(self, d_model: int, num_heads: int, depth: int, exclusive: bool = True) -> None:
         super(AttentionLayers, self).__init__()
 

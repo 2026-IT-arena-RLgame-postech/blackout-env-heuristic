@@ -1,4 +1,13 @@
-"""Fifth-generation heuristic: public-state predictive Hunter interception."""
+"""V5 (``strategic_v5``, parent V4): predictive Hunter interception from public state.
+
+V1-V4 Hunters chase an enemy's current position, which a same-speed Carrier simply outruns.
+V5's Hunter instead aims at a point on the enemy's likely route home: for every enemy holding
+cargo it plans A* routes to each enemy storage, weights the three shortest by how well they
+match the enemy's smoothed (EMA) velocity, and picks the route cell the Hunter can reach
+``intercept_margin_seconds`` before the enemy, valuing cargo, earliness and closeness.  With
+no feasible intercept it falls back to V4's Hunter.  Aggressive but weaker than V4 (Elo 1317,
+2% of the mixture); kept for its distinct combat states.
+"""
 
 from __future__ import annotations
 
@@ -43,6 +52,7 @@ class StrategicHeuristicV5(StrategicHeuristicV4):
         return super().act(obs)
 
     def _update_enemy_motion(self, states: np.ndarray) -> None:
+        """EMA of each enemy row's per-tick displacement; a jump > 0.2 (respawn) resets it."""
         for row, enemy in enumerate(states):
             if enemy[2] >= 0:
                 continue
@@ -67,6 +77,7 @@ class StrategicHeuristicV5(StrategicHeuristicV4):
         local_index: int,
         team_state: np.ndarray,
     ) -> tuple[tuple[int, int] | None, str]:
+        """A Hunter with a feasible cargo intercept goes there ("hunt"); otherwise V4."""
         if self._class_id(state) == HUNTER:
             intercept = self._best_cargo_intercept(state, states, graphic)
             if intercept is not None:
@@ -81,6 +92,13 @@ class StrategicHeuristicV5(StrategicHeuristicV4):
         states: np.ndarray,
         graphic: np.ndarray,
     ) -> tuple[int, int] | None:
+        """Best route cell to meet an enemy cargo holder, or None.
+
+        A cell qualifies when it is outside the enemy base, reachable, and the Hunter gets
+        there ``margin`` earlier than the enemy (times in 50 Hz physics ticks: 6 cells/s for
+        the Hunter, 4 or 6 for the enemy).  Score = route weight x cargo value x
+        exp(-0.018 x Hunter ticks) + 0.035 x time slack - 0.018 x Hunter distance.
+        """
         # Every exit below this point returns None without cargo to intercept, so skip the
         # distance map and route search entirely on the (common) ticks with none.
         if not any(enemy[2] < 0 and self._is_holding(enemy) for enemy in states):

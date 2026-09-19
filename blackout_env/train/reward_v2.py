@@ -1,53 +1,118 @@
 """
-Reward v2: per-unit potentials computed from observations (docs/reward_v2_design.md).
+Reward v2: the reward Run 11 trained on (`offline_pretrain --reward v2-fitted`), computed in Python
+from observations. Design, evidence and fitting history: docs/reward_v2_design.md (Korean, 요약 at
+the top). Units are battery points unless noted; POINTS_PER_REWARD = 20 points make 1.0 reward.
 
-Every quantity is in battery points and is a pure function of one observation (graphic,
-agent_states, team_state) from one team's perspective, batched, so it can be evaluated on stored
-data, on hypothetical one-step moves, and inside n-step returns with the learner's own gamma.
+WHAT THE LEARNER SEES (per team stream, per tick t -> t+1; see annotate_sequence)
 
-Team value      V_T(s) = C_T(s) + sum_{u in T} U_u(s)
-Zero-sum reward r_own  = d(score_own - score_enemy) + (g*V_own' - V_own) - (g*V_enemy' - V_enemy)
-Per-unit credit        own unit i gets its own dU_i, a fifth of each team's dC, and minus each
-                       enemy unit's dU_j when i is the Hunter assigned to that enemy (a fifth of it
-                       when no Hunter is) -- see shaped_rewards()
+    r_t   = outcome_t + d(confirmed_own - confirmed_enemy)_t / 20      "real" reward (in the buffer)
+    P(s)  = (V_own(s) - V_enemy(s)) / 20                                potential (in the buffer)
+    target = sum_k g^k r_{t+k} + g^n P(s_{t+n}) - P(s_t) + g^n Q(...)  inside the n-step return
 
-The displayed score counts batteries sitting in a team's storages too (ScoreItemEffect adds on
-entering storage, subtracts when one leaves, and only an absorption locks it in). Confirmed score =
-displayed score - batteries in own storages, and that is NOT part of V: it is the real reward, paid
-when an absorption locks stored batteries in (at which point their stored value, undiscounted as
-tau -> 0, leaves V). Keeping
-it inside V would add -(1-g)*score to every tick -- a constant pull proportional to the lead that
-measured 0.07 points/tick against near-zero informative shaping at g = 0.997.
+  outcome     +-TERMINAL_REWARD (= +-5, five agents x +-1) on a match's last row, recovered from the
+              sign of the stored Unity reward there; 0 elsewhere (and 0 for a draw)
+  confirmed   locked-in score = displayed score - batteries in that team's own storages. It changes
+              only when an absorption (every 20 s) empties the storages into the score
+  V_T(s)      C_T(s) + sum_{u in T} U_u(s): what team T's position is worth, in points
+  blocked     offline_pretrain --blocked-penalty (Run 11: 0.02 per blocked unit-tick) is added to
+              r_t afterwards, in train/reward_shaping.py. Unlike everything here it is NOT a
+              potential difference, so it does change the optimal policy (on purpose)
 
-C_T  batteries in T's storages, each discounted by the chance an enemy
-     Collector/Carrier (the classes that can pick it up) steals it before the next absorption;
-     a storage inside T's own base cannot be reached by the enemy
-U1   carrying: amount * survival * lambda(distance to a storage that can take the whole amount)
-U2   empty Collector/Carrier with a team-assigned battery: the value it will have once picked up,
-     so the pickup itself is worth nothing and only the approach is rewarded. A battery in the
-     enemy's storage counts only its (1 - keep) share -- the part the enemy's C already writes off
-     to thieves -- so a steal that can no longer happen before the absorption is worth nothing and
-     the two teams never claim the same battery twice
-U3   Hunter with a team-assigned prey: beta * prey value * closeness; beta < 1 so a kill nets
-     positive against the prey's value leaving the enemy's side
-U4   the one Hunter per team closest to the enemy base exit: e(t) * exit_value * closeness
-     (a Hunter's U3/U4 slot takes the larger of the two)
-U5   every unit: e(t) * (class value + seconds already travelled from spawn) -- what a death throws
-     away (death respawns a Collector at spawn), worth nothing once the field is empty
-e(t) batteries still to be won (on the floor or carried, not already stored) / initial total. Stored
-     batteries are left out so an absorption, which empties every storage at once, does not make
-     every unit's readiness drop in the same tick.
+Why confirmed score is outside V: the displayed score already counts stored batteries
+(ScoreItemEffect adds on entering storage, subtracts when one leaves, only an absorption locks it
+in). Confirmed score is the real reward, paid when an absorption locks stored batteries in (at which
+point their stored value, undiscounted as tau -> 0, leaves V). Keeping it inside V would add
+-(1-g)*score to every tick -- a constant pull proportional to the lead that measured 0.07
+points/tick against near-zero informative shaping at g = 0.997.
 
-Survival = exp(-hazard * seconds_exposed / distance_to_nearest_threat). Threats are the classes
-that can actually destroy that value: enemy Hunters for a carrying Collector, any enemy
-Hunter/Collector for a carrying Carrier (Collector beats Carrier), enemy Collectors/Carriers for
-a stored battery (heuristic_findings_for_reward_20260916.md §4.1).
+POTENTIAL TERMS (compute_potentials; every term is a pure function of one observation -- graphic,
+agent_states, team_state -- from one team's perspective, batched, so it can be evaluated on stored
+data, on hypothetical one-step moves, and inside n-step returns with the learner's own gamma)
+
+C_T  battery ownership (common, not owned by a unit): batteries in T's storages, each times
+     keep = exp(-steal_hazard * tau / max(d_thief, 0.5)), tau = seconds to the next absorption,
+     d_thief = path distance of the nearest enemy Collector/Carrier (the classes that can pick it
+     up; Hunters cannot). keep = 1 for a storage inside T's own 4x4 base (the enemy cannot walk in)
+U1   carry (Collector/Carrier holding cargo): cargo * survival * lambda(d_deliver), d_deliver =
+     path distance to the nearest storage tile whose connected storage region can take the WHOLE
+     cargo (Unity refuses a deposit that does not fit), so waiting at a full storage is worth less
+U2   fetch (empty Collector/Carrier, not holding a special item): the battery a greedy team-wide
+     assignment gives it (highest value first, one battery per unit), valued as it will be once
+     picked up: amount * survival * lambda(d_fetch + d_battery_to_storage), so the pickup itself is
+     worth nothing and only the approach is rewarded. A battery in the enemy's storage counts only
+     its (1 - keep_enemy) share -- the part the enemy's C already writes off to thieves -- so a
+     steal that can no longer happen before the absorption is worth nothing and the two teams never
+     claim the same battery twice
+U3   hunt (Hunter): hunt_beta * prey value * (1 - tanh(d / hunt_length)), prey = a non-Hunter enemy
+     given to it by a greedy team-wide assignment, prey value = the prey's U1 + U5.
+     hunt_beta < 1 so a kill nets (1 - beta) * prey value against the prey's value leaving the
+     enemy's side
+U4   exit camping: the one Hunter per team closest to a tile touching the enemy base gets
+     e(t) * exit_value * (1 - tanh(d_exit / exit_length)); a Hunter's U3/U4 slot takes the larger
+U5   readiness (every unit): e(t) * (class_value[class] + travel_value * min(path seconds from
+     own spawn, travel_cap_seconds)) -- what a death throws away (death respawns a Collector at
+     spawn), worth nothing once the field is empty
+e(t) batteries still to be won (on the floor or carried, not already stored) / initial_battery_total,
+     clipped to [0, 1]. Stored batteries are left out so an absorption, which empties every storage
+     at once, does not make every unit's readiness drop in the same tick.
+lambda(d)  1 - lambda_rho * tanh(d / lambda_length): a battery far from delivery is worth less
+survival   exp(-carry_hazard * (min(d, 60) / speed) / max(d_threat, 0.5)): seconds exposed over the
+           distance to the nearest enemy that can destroy that value -- enemy Hunters for a
+           Collector, enemy Hunters or Collectors for a Carrier (Collector beats Carrier)
+           (heuristic_findings_for_reward_20260916.md §4.1)
+(The design doc's U6 "walk to transform" term is not implemented.)
+
+RewardV2Config fields: initial_battery_total (e(t) denominator), steal_hazard (C), carry_hazard
+(survival), lambda_rho / lambda_length (lambda), hunt_beta / hunt_length (U3), exit_value /
+exit_length (U4), class_value (Collector, Hunter, Carrier) / travel_value (points per second) /
+travel_cap_seconds (U5). RewardV2Config() is the hand-set default (`--reward v2`);
+FITTED_20260917B (`--reward v2-fitted`, Run 11; same values in docs/design/
+reward_v2_fitted_20260917b.json) was fitted by examples/fit_reward_v2.py on matches recorded by
+examples/record_value_matches.py, with two values pulled back by hand (see the comment on it).
+FITTED_20260917 is the earlier 120-match fit, kept for reference.
+
+WHY POTENTIAL SHAPING, AND WITH THE LEARNER'S GAMMA
+
+Everything except outcome, confirmed score and the blocked penalty enters only as
+g * P(s') - P(s) (potential-based reward shaping, Ng et al. 1999): over any trajectory it telescopes
+to g^n P(s_end) - P(s_start), so it cannot create loops worth farming (back-and-forth, pick up and
+drop) and leaves the optimal policy of the real reward unchanged -- but only if g is the same g the
+Q target discounts with. The learner anneals g (0.97 -> 0.997 in Run 11) and n (10 -> 3), so the
+buffer stores P(s), not a shaped reward, and train/returns.compute_n_step_return adds
+g^steps * P(bootstrap) - P(anchor) with the current g (qmix_trainer, reward_mode="v2").
+At an absorption `done` (the 20 s cut the trainer uses as an episode boundary) the next row is the
+same match, so its P is kept as the bootstrap, standing in for the value the cut discards; only a
+`terminal` row (match end, next row is another match) drops it to 0.
+
+Zero-sum: team value enters as V_own - V_enemy, so e.g. killing an enemy carrier is rewarded by
+the enemy's U1 disappearing, with no separate kill reward.
+
+WHY PER-UNIT
+
+V is a sum of per-unit terms so each unit's share of the shaping can be attributed:
+shaped_rewards() gives own unit i its own dU_i, a fifth of each team's dC, and minus each enemy
+unit's dU_j when i is the Hunter assigned to that enemy (a fifth of it to every own unit when no
+Hunter is). Training does NOT use this split -- QMIX learns from the team sum, and the buffer holds
+only the team potential -- but examples/evaluate_reward_v2.py (E1 one-step ranking, E2 event
+credit) checks the reward unit by unit with it, and an individual-credit learner (VDN per-agent
+targets, MAPPO) could use it directly.
+
+WHERE IT RUNS
+
+  static dataset   offline_dataset.load_dataset_into -> annotate_dataset: split into 50k-row
+                   blocks over --reward-workers processes (default 8), then cached next to the
+                   dataset as reward_v2_<hash of config>_buffer_{a,b}.npz; later runs with the same
+                   config load the cache. The hash covers the config only -- delete the cache
+                   files after changing the code here
+  on-policy data   onpolicy_collect._finalize -> annotate_sequence, one match per call, in the
+                   training process
+  evaluation       examples/{evaluate,fit}_reward_v2.py call compute_potentials directly
 
 Geometry: the wall layout is identical in every match, each base is the 4x4 corner square around
 its spawn, and a base floor blocks the enemy team (MapManager.IsWalkable, BlockEnemy). Path
 distances are all-pairs over 8-connected moves with no corner cutting, per team, read at a unit's
 continuous position by bilinear interpolation over the four surrounding tiles, so a sub-tile step
-changes the potential.
+changes the potential. Geometry is computed once per map and cached (geometry_for).
 """
 
 from __future__ import annotations
@@ -78,18 +143,21 @@ INF = np.float32(1e6)
 
 @dataclass(frozen=True)
 class RewardV2Config:
+    """Weights of the potential terms (see the module docstring for the formulas). These defaults
+    are the hand-set first version (`--reward v2`); Run 11 used FITTED_20260917B below."""
+
     initial_battery_total: float = 200.0  # e(t) denominator (heuristic findings: ~200 per match)
-    steal_hazard: float = 0.14            # 1/s times tiles: a thief 3 tiles away over 20 s keeps 40%
-    carry_hazard: float = 0.14
-    lambda_rho: float = 0.5               # a battery infinitely far from delivery is worth half
-    lambda_length: float = 12.0           # tiles
-    hunt_beta: float = 0.5
-    hunt_length: float = 4.0              # tiles
-    exit_value: float = 5.0               # points at e(t) = 1
-    exit_length: float = 3.0              # tiles
-    class_value: tuple[float, float, float] = (0.0, 6.0, 3.0)  # Collector, Hunter, Carrier
-    travel_value: float = 0.5             # points per second travelled from spawn
-    travel_cap_seconds: float = 10.0
+    steal_hazard: float = 0.14            # C: 1/s times tiles: a thief 3 tiles away over 20 s keeps 40%
+    carry_hazard: float = 0.14            # U1/U2 survival, same units (seconds exposed / threat distance)
+    lambda_rho: float = 0.5               # lambda: a battery infinitely far from delivery is worth 1 - rho
+    lambda_length: float = 12.0           # lambda: tanh length scale, tiles
+    hunt_beta: float = 0.5                # U3: share of the prey's value a Hunter holds; a kill nets 1 - beta
+    hunt_length: float = 4.0              # U3: closeness length scale, tiles
+    exit_value: float = 5.0               # U4: points at e(t) = 1 for the camper standing at the exit
+    exit_length: float = 3.0              # U4: closeness length scale, tiles
+    class_value: tuple[float, float, float] = (0.0, 6.0, 3.0)  # U5: Collector, Hunter, Carrier, points at e(t) = 1
+    travel_value: float = 0.5             # U5: points per second of path from own spawn
+    travel_cap_seconds: float = 10.0      # U5: travel counted up to this many seconds
 
 
 # Fitted 2026-09-17 by examples/fit_reward_v2.py (coordinate search, 2 sweeps) on 120 recorded
@@ -103,6 +171,7 @@ FITTED_20260917 = RewardV2Config(
     exit_value=30.0, class_value=(0.0, 15.0, 3.0), travel_value=1.5,
 )
 
+# Run 11's config (`offline_pretrain --reward v2-fitted`; docs/design/reward_v2_fitted_20260917b.json).
 # Refit on 1,000 diverse matches (800 fit / 200 held out; reports/value_matches_20260917b). The search
 # ended at hunt_beta 0.95 and exit_value 30; both were pulled back (docs/reward_v2_design.md P2 refit):
 # beta 0.8 costs nothing held out and keeps a kill's net credit, exit 15 costs nothing held out and
@@ -151,6 +220,7 @@ def all_pairs_distance(walkable: np.ndarray) -> np.ndarray:
 
 
 def _touching(mask: np.ndarray) -> np.ndarray:
+    """[H, W] tiles outside `mask` that are 8-adjacent to it (used for the base exits of U4)."""
     grown = np.zeros_like(mask)
     padded = np.pad(mask, 1)
     for dr in (-1, 0, 1):
@@ -295,7 +365,12 @@ def compute_potentials(
     graphic: np.ndarray, agent_states: np.ndarray, team_state: np.ndarray, cfg: RewardV2Config = RewardV2Config()
 ) -> Potentials:
     """graphic [B, H, W, C], agent_states [B, 10, 12], team_state [B, 4], all one perspective and
-    one map (geometry is read from graphic[0])."""
+    one map (geometry is read from graphic[0]).
+
+    Returns every unit's U (U1 + U2 + U3/U4 + U5, both teams, from this perspective), both teams'
+    C and confirmed score, and the Hunter assignment that shaped_rewards uses for credit. Units
+    are points; annotate_sequence turns team_value() into the stored potential. Recomputing a
+    stored observation reproduces the same numbers, so a weight change never needs Unity."""
     geo = geometry_for(graphic[0])
     batch = graphic.shape[0]
     arange = np.arange(batch)
@@ -499,6 +574,13 @@ def annotate_sequence(
                  must not be bootstrapped (an absorption `done` still bootstraps it)
       done       the stored `done`, also forced on every match end -- shards of a parallel
                  collection are concatenated, and a shard can end mid-match
+      outcome    the terminal part of `reward` alone (drop_dead_segments moves it when it cuts a
+                 match short)
+
+    The stream has no row for the state after a match's last tick, so the score change on that
+    tick is dropped (0) and its potential is not bootstrapped: whatever a final absorption locks in
+    is paid only through the +-5 outcome. stored_reward is used for nothing but that sign, so the
+    stored rows may or may not include Unity's shaping.
     """
     parts = [compute_potentials(graphic[i : i + chunk], agent_states[i : i + chunk], team_state[i : i + chunk], cfg)
              for i in range(0, len(graphic), chunk)]
@@ -520,6 +602,8 @@ def annotate_sequence(
 
 
 def _annotate_npz_range(args) -> tuple[int, dict[str, np.ndarray]]:
+    """Worker for annotate_dataset: annotates rows [start, stop) of one stream, reading `overlap`
+    extra rows so the last row's score change and match-end test see the row after it."""
     from blackout_env.train.offline_dataset import npz_member_memmap
 
     path, start, stop, cfg, points_per_reward, overlap = args
@@ -534,7 +618,12 @@ def _annotate_npz_range(args) -> tuple[int, dict[str, np.ndarray]]:
 def annotate_dataset(path, cfg: RewardV2Config, points_per_reward: float = POINTS_PER_REWARD, workers: int = 8, block: int = 50_000) -> dict[str, np.ndarray]:
     """annotate_sequence over a whole stored stream (.npz), in parallel blocks, cached next to it
     as reward_v2_<hash>_<stem>.npz. Blocks overlap by one row so each block's last score change and
-    match-end test see the following row."""
+    match-end test see the following row.
+
+    Called by offline_dataset.load_dataset_into for `--reward v2|v2-fitted`; `workers` is
+    offline_pretrain's --reward-workers. The cache key hashes the config, points_per_reward and a
+    format version only, not this file's code: after changing how potentials are computed, delete
+    the reward_v2_*.npz files next to the dataset (or bump "v") or the stale cache is reused."""
     import hashlib
     import json
     from concurrent.futures import ProcessPoolExecutor

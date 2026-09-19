@@ -1,10 +1,14 @@
-# policy.py
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 class SwiGLUBlock(nn.Module):
-# (Batch, Length, Input size) -> (Batch, Length, Input size) ??
+    """
+    Pre-norm SwiGLU MLP: Wd(SiLU(gate) * x) with [x | gate] = Wu(RMSNorm(input)).
+    [..., input_size] -> [..., output_size] (output_size defaults to input_size). No residual:
+    callers add it where wanted (AttentionBlock). Used as the FFN in every attention block and
+    as a small projection head elsewhere (tokenizer, spr_head, IQN value head).
+    """
     def __init__(
             self, input_size: int,
             hidden_size: int,

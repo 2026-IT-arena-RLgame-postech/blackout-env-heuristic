@@ -1,3 +1,5 @@
+"""Uniform-random BaseModel, the minimal example of the policy interface (used by run_random.py)."""
+
 import numpy as np
 from blackout_env import BaseModel
 

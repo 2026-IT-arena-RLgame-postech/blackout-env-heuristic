@@ -1,6 +1,6 @@
 """
 Pure-math validation of the potential-based shaping formula used for both Psi_k (team, §6/§14.2)
-and Phi_i (individual nav, §15.3) in reward_proposal.md:
+and Phi_i (individual nav, §15.3) in docs/archive/reward_proposal.md:
 
     shaped_t = eta * (gamma * potential(s_{t+1}) - potential(s_t))
 
@@ -8,9 +8,9 @@ This does not need Unity at all -- the formula's safety properties (§11.2, §15
 approach/retreat or pickup/drop cycles must not let an agent accumulate unbounded reward just by
 repeating an action more times) are a property of the formula itself, independent of how
 potential(s) happens to be computed ( Psi_k's tanh(...) or Phi_i's 1-tanh(d/L)). Verifying them
-here with synthetic potential trajectories is exact and immediate; the separate empirical check
-(examples/evaluate_reward_model.py's JitterPolicy/run_cycle_probe) exercises the real game and
-confirms this formula is actually what got wired into BlackOutEpisodeCoordinator.
+here with synthetic potential trajectories is exact and immediate. This formula is the Unity-side
+(v1) reward's shaping in BlackOutEpisodeCoordinator; the example script that checked it in-game
+has been removed, since Run 11 trains on the Python reward v2 (blackout_env/train/reward_v2.py).
 
 Run directly (no pytest required):
     ./.venv/bin/python tests/test_potential_shaping_math.py
@@ -46,8 +46,8 @@ def discounted_return(potentials: list[float], eta: float = ETA, gamma: float = 
 
 def raw_reward_sum(potentials: list[float], eta: float = ETA, gamma: float = GAMMA) -> float:
     """Sum_{t=0}^{T-1} shaped_reward(psi_t, psi_{t+1}) with NO outer discount -- this is what
-    accumulates in a single episode's total reward (e.g. TensorBoard's episode_return), and what
-    examples/evaluate_reward_model.py's cumulative-shaped-return diagnostic actually measures."""
+    accumulates in a single episode's total reward (e.g. TensorBoard's episode_return) or any
+    cumulative-shaped-reward diagnostic."""
     return sum(shaped_reward(potentials[t], potentials[t + 1], eta, gamma) for t in range(len(potentials) - 1))
 
 
@@ -128,7 +128,7 @@ def test_discounted_return_does_not_scale_with_repetition_count_at_fixed_horizon
 
 def test_raw_undiscounted_sum_leakage_is_bounded_by_episode_length_not_cycle_count():
     """The raw (non-return-discounted) reward sum -- what a TensorBoard episode-return counter
-    or evaluate_reward_model.py's cumulative-shaped-return diagnostic actually accumulates -- is
+    or a cumulative-shaped-reward diagnostic actually accumulates -- is
     NOT an exact telescoping identity when gamma < 1 (only the gamma^t-weighted RETURN is, per
     test_discounted_return_telescopes_exactly). It carries a small leakage term proportional to
     (1-gamma) * T * avg(Psi), which is what an agent could theoretically exploit by staying at a

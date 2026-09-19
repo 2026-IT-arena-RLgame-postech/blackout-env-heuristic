@@ -1,6 +1,17 @@
 """
 Two trained checkpoints against each other, both sides per seed, with the Unity window visible.
 
+Each --seeds value is played twice (A as team A, then as team B), so spawn-side advantage
+cancels. Prints every match and a summary: A's points (win 1, draw 0.5) out of the match count
+and A's mean margin in game points. Passing the same checkpoint to --a and --b is self-play.
+
+Flags: --a / --b label=path (required), --build (default build/mac/BlackOut.app),
+--seeds (default 404 505 606), --time-scale (default 3), --headless (no window; the default
+shows the Unity window), --device (default cpu).
+
+Used by: models/run11_step80k/run11_pipeline.sh selfplay [ckpt] and vs <ckpt_b> [ckpt].
+For a rating across several checkpoints, use examples/elo_checkpoints.py instead.
+
 Usage:
     python examples/evaluate_checkpoint_vs_checkpoint.py \\
         --a run11_80k=checkpoints/offline/<run>/step_80000.pt --b run11_final=checkpoints/offline/<run>/final.pt

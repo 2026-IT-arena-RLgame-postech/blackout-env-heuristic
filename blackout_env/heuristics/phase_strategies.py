@@ -1,9 +1,18 @@
-"""Deliberately distinct, state-switching heuristic teachers.
+"""V10-V12: deliberately distinct, state-switching heuristic teachers.
 
 These policies are *not* intended to replace :class:`StrategicHeuristicV4` as the
 single strongest baseline.  They expose coherent alternate game plans for behaviour
 cloning and offline RL: a learner can observe a strategy change caused by public game
 state, rather than only infinitesimal parameter noise around one policy.
+
+* V10 (``strategic_v10``, parent V7): phase director -- opening economy, pressure raid,
+  lead-protecting closeout.
+* V11 (``strategic_v11``, parent V4): absorption-window raids by a small steal team.
+* V12 (``strategic_v12``, parent V7): fortress mode that guards a late lead.
+
+All three switch modes through ``_ModeSwitchMixin`` (a mode must be wanted for
+``mode_confirm_ticks`` consecutive ticks) and record ``current_mode`` /
+``strategy_transitions``.  V13 extends V11 and V16 extends V10 (counterplay_strategies.py).
 """
 
 from __future__ import annotations
@@ -48,6 +57,7 @@ class _ModeSwitchMixin:
         self.strategy_transitions.clear()
 
     def _set_mode_candidate(self, candidate: str) -> None:
+        """Feed this tick's wanted mode; switch only after ``mode_confirm_ticks`` in a row."""
         if candidate == self.current_mode:
             self._pending_mode = None
             self._pending_ticks = 0
@@ -96,6 +106,12 @@ class StrategicHeuristicV10(_ModeSwitchMixin, StrategicHeuristicV7):
         self._reset_mode_switch("opening_economy")
 
     def _desired_mode(self, sample) -> str:
+        """This tick's wanted mode, first match wins.
+
+        closeout_defend: lead >= closeout_lead and time_left <= closeout_time.
+        pressure_raid: absorption fraction <= pressure_absorption with >= 3 points in exposed
+        enemy storage, or trailing by >= 0.10 with >= 1 point there.  Else opening_economy.
+        """
         graphic = sample["graphic"]
         score, enemy_score, time_left, absorption = map(float, sample["team_state"][:4])
         lead = score - enemy_score
@@ -113,6 +129,7 @@ class StrategicHeuristicV10(_ModeSwitchMixin, StrategicHeuristicV7):
         return "opening_economy"
 
     def _update_roles(self, obs, sample) -> None:
+        """Advance the mode, then run V7 roles with the Hunter quota zeroed in the opening."""
         self._set_mode_candidate(self._desired_mode(sample))
         states = sample["agent_states"]
         own_hunter_exists = any(
@@ -132,6 +149,7 @@ class StrategicHeuristicV10(_ModeSwitchMixin, StrategicHeuristicV7):
         }
 
     def _choose_target(self, role, state, states, graphic, reservations, local_index, team_state):
+        """Mode-specific Hunter objective; non-Hunters and opening_economy use V7/V4."""
         if self._class_id(state) == HUNTER:
             pos = self._to_pixel(state[:2], graphic.shape[:2])
             enemies = [enemy for enemy in states if enemy[2] < 0]
@@ -157,8 +175,9 @@ class StrategicHeuristicV10(_ModeSwitchMixin, StrategicHeuristicV7):
                     (graphic[..., STORAGE_ENEMY] > 0.5) & ~protected, local_index, period=90
                 ), "patrol_raid"
             if self.current_mode == "closeout_defend":
-                # Do not donate a leading Hunter to a pointless cross-map chase.  Intercept only
-                # cargo likely to matter; otherwise hold a rotating home-storage patrol.
+                # Do not donate a leading Hunter to a pointless cross-map chase: chase only
+                # enemies holding cargo (the nearest, at any distance); otherwise guard the
+                # nearest defendable own storage.
                 cargo = [enemy for enemy in enemies if self._is_holding(enemy)]
                 if cargo:
                     enemy = min(cargo, key=lambda other: np.linalg.norm(other[:2] - state[:2]))
@@ -170,7 +189,13 @@ class StrategicHeuristicV10(_ModeSwitchMixin, StrategicHeuristicV7):
 
 
 class StrategicHeuristicV11(_ModeSwitchMixin, StrategicHeuristicV4):
-    """Raid-window specialist with a bounded two-unit external-storage strike team."""
+    """Raid-window specialist with a bounded (default two-unit) external-storage strike team.
+
+    Modes: ``harvest`` (plain V4) and ``raid_window`` -- entered when exposed enemy storage
+    holds >= 2 points and either absorption is near (fraction <= ``raid_absorption``) or we
+    trail by >= 0.08.  In raid_window up to ``raid_slots`` economic units are matched to
+    steals that can land before absorption; the rest keep V4's per-unit choice.
+    """
 
     def __init__(
         self,
@@ -190,6 +215,7 @@ class StrategicHeuristicV11(_ModeSwitchMixin, StrategicHeuristicV4):
         self._reset_mode_switch("harvest")
 
     def _update_mode(self, sample) -> None:
+        """Feed harvest/raid_window to the mode switch (see class docstring for the rule)."""
         graphic = sample["graphic"]
         score, enemy_score, _, absorption = map(float, sample["team_state"][:4])
         protected = self._cached_protected_enemy_storage_mask(graphic)
@@ -210,6 +236,8 @@ class StrategicHeuristicV11(_ModeSwitchMixin, StrategicHeuristicV4):
         return super().act(obs)
 
     def _assign_economic_tasks(self, names, row_for, states, graphic, team_state, walkable):
+        """In raid_window: greedy steal matching (8 x amount - 0.22 x distance), capped at
+        ``raid_slots`` units, skipping steals that would arrive after absorption."""
         if self.current_mode != "raid_window":
             return super()._assign_economic_tasks(
                 names, row_for, states, graphic, team_state, walkable
@@ -275,6 +303,8 @@ class StrategicHeuristicV12(_ModeSwitchMixin, StrategicHeuristicV7):
         self._reset_mode_switch("catch_up")
 
     def _update_roles(self, obs, sample) -> None:
+        """fortress when leading by >= fortress_lead with time_left <= 0.70, else catch_up;
+        fortress stops new Hunter transformations (an existing Hunter stays)."""
         score, enemy_score, time_left, _ = map(float, sample["team_state"][:4])
         candidate = "fortress" if score - enemy_score >= self.fortress_lead and time_left <= 0.70 else "catch_up"
         self._set_mode_candidate(candidate)
@@ -292,6 +322,8 @@ class StrategicHeuristicV12(_ModeSwitchMixin, StrategicHeuristicV7):
         }
 
     def _choose_target(self, role, state, states, graphic, reservations, local_index, team_state):
+        """In fortress the Hunter only chases enemy cargo within 7 cells of defendable own
+        storage and otherwise guards it; everything else is V7."""
         if self.current_mode == "fortress" and self._class_id(state) == HUNTER:
             pos = self._to_pixel(state[:2], graphic.shape[:2])
             home_points = list(zip(*np.nonzero(self._defendable_storage_mask(graphic))))

@@ -1,3 +1,25 @@
+"""
+MyPolicy: a trained MyModel exposed through the BaseModel.act() interface that run_match(),
+the evaluation scripts and the Elo tooling all call.
+
+Getting one:
+  - from a QMIXTrainer checkpoint via loader.load_my_policy_checkpoint(path, hidden_size=...),
+  - or, as the examples/ scripts do, MyPolicy(trainer.net) after QMIXTrainer.load().
+
+Per act() call (one team, 5 agents; every agent gets the same shared observation):
+  1. Detect the team from the observation itself (agent_states row 0's team sign) and, for
+     Team B, mirror it into the canonical frame the network was trained on
+     (blackout_env.env.team_frame).
+  2. One forward pass at batch 1 -> Q-table [10 units, 8 directions].
+  3. For Team B, reorder the 8 columns back to world-frame directions; pick each agent's row
+     (canonical_unit_row of its unit index).
+  4. Optionally mask directions that step into a wall (mask_walls, model/action_mask.py).
+  5. Greedy argmax -> DIRECTION_VECTORS[i], a unit (dx, dy) vector in the env's [-1, 1] range.
+
+There is no exploration here; the only randomness is the IQN quantile fractions MyModel samples
+per call (see MyModel.forward).
+"""
+
 import math
 
 import numpy as np

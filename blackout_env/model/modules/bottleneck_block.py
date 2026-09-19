@@ -3,6 +3,12 @@ from torch import nn
 
 
 class BottleNeckBlock(nn.Module):
+    """
+    Pre-activation residual bottleneck (ResNet-v2 style): x + [GN-SiLU-1x1 down, GN-SiLU-3x3,
+    GN-SiLU-1x1 up](x). Shape-preserving, [B, C, H, W] -> [B, C, H, W]. GroupNorm rather than
+    BatchNorm so behaviour does not depend on batch size (batch 1 at inference).
+    """
+
     def __init__(
             self,
             input_channels: int,

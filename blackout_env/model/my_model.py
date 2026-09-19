@@ -1,3 +1,37 @@
+"""
+MyModel: the Q-network shared by every unit of both teams (QMIX agent network + IQN head + SPR
+latent). One forward pass maps one team's observation to per-unit, per-direction Q-values.
+
+Data flow, at hidden size H (QMIXConfig.hidden_size = 128 in training; the constructor default
+here is 256) and batch B:
+
+  inputs (canonical team frame -- own units in rows 0-4, see blackout_env.env.team_frame)
+    graphic       [B, 13, 24, 24]   semantic map from MyObsPreprocessor, channels first
+    agent_states  [B, 10, 12]       all 10 units: pos(2) team(1) item(6) class(3)
+    team_state    [B, 4]            own/opp score, episode time left, absorption time left
+  derived obs (model/derived_obs.py, computed here so train/collect/eval share one path)
+    graphic       -> [B, 19, 24, 24]  + unit occupancy/cargo (4), storage free capacity,
+                                        fetchable battery
+    agent_states  -> [B, 10, 37]      + 5x5 bilinear wall samples around each unit's true position
+  encoders
+    GraphicEncoder  -> [B, 36, H]   6x6 grid of vision tokens (two stride-2 convs from 24x24)
+    VectorEncoder   -> [B, 11, H]   10 unit tokens + 1 team_state token, + per-slot embedding
+    SPR CLS         -> [B, 1, H]    learned query token, no input content
+  trunk
+    48 tokens + token-type embedding, 2D RoPE (vision: grid cell, units: real position, others:
+    grid centre), ATTENTION_DEPTH pre-norm blocks of GQA (XSA) + SwiGLU FFN
+  heads
+    unit tokens     -> IQNHead -> quantile_values [B, 10, Q, 8]
+                    -> mean over Q -> q_values [B, 10, 8]
+    team_state tok  -> global_latent [B, H]   (QMixer hypernetwork input, training only)
+    SPR CLS tok     -> spr_head -> vision_latent [B, H]   (SPR aux loss, training only)
+
+Q-values come out for all 10 units, both teams; the trainer keeps only the own-team rows 0-4
+(qmix_trainer._own_team_rows) and MyPolicy picks each agent's row by unit index. The 8 actions
+are compass directions, index i = angle i*45deg from +x (my_policy.DIRECTION_VECTORS); there is
+no "stay" action.
+"""
+
 import torch
 from torch import nn
 
@@ -44,10 +78,10 @@ class MyModel(nn.Module):
 
     Token identity
     --------------
-    The 47 trunk tokens (36 vision + 10 unit + 1 team_state) come from three different
+    The 48 trunk tokens (36 vision + 10 unit + 1 team_state + 1 SPR CLS) come from different
     encoders and have no positional signal of their own once concatenated, so the trunk adds
     three things before attention:
-      - a learned token-type embedding (graphic / unit / global), added to every token, so
+      - a learned token-type embedding (graphic / unit / global / spr_cls), added to every token, so
         attention can tell which "kind" of token it's looking at;
       - 2D RoPE over half of each head's dims (the other half is left unrotated for
         content-based matching — see apply_rope), so attention can tell *where in the 6x6 map*
@@ -97,6 +131,20 @@ class MyModel(nn.Module):
         n_actions: int = N_DISCRETE_ACTIONS,
         exclusive_attention: bool = True,
     ) -> None:
+        """
+        hidden_size         : token width H shared by every encoder, the trunk and the heads.
+                              Must match the checkpoint (Run 11 trained at 128 via QMIXConfig).
+        n_items             : non-"none" item types; agent_states carries an (n_items + 1)-way
+                              item slot (see VectorEncoder).
+        n_classes           : unit classes in agent_states' class one-hot.
+        team_state_size     : width of team_state (4: scores and timers).
+        n_actions           : Q-head width, the 8 compass directions.
+        exclusive_attention : XSA on (default) or plain self-attention in the trunk.
+
+        Only the learned parts live here; the derived-obs features are parameter-free functions
+        called from forward(). The *_ids buffers are non-persistent (rebuilt from constants, not
+        stored in checkpoints).
+        """
         super().__init__()
 
         self.hidden_size = hidden_size
@@ -162,7 +210,8 @@ class MyModel(nn.Module):
 
         # IQN (arXiv:1806.06923) distributional Q-head, chosen over C51 so the value range
         # doesn't need a hand-tuned [Vmin, Vmax] that would need re-tuning whenever the
-        # reward balance changes (see reward_config.json) — see modules/iqn_head.py.
+        # reward balance changes (see train/reward_v2.py) — see modules/iqn_head.py.
+        # Shared across the 10 unit tokens: each unit's token is one "state" row of the head.
         self.q_head = IQNHead(hidden_size, n_actions, n_cos=64)
 
     def _token_grid_positions(self, agent_states: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
@@ -197,12 +246,17 @@ class MyModel(nn.Module):
         tau: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        graphic      : [B, C, H, W]
+        graphic      : [B, C, H, W]  env channels only (13); derived channels are added here
         team_state   : [B, team_state_size]
-        agent_states : [B, N_UNITS, agent_state_size]
+        agent_states : [B, N_UNITS, agent_state_size]  raw rows (12); wall samples added here
         n_quantiles  : number of IQN quantile samples to draw (ignored if `tau` is given)
         tau          : [B, n_quantiles] fixed quantile fractions to use instead of sampling
                        (e.g. so an online/target pair can share draws where that matters)
+
+        All inputs must already be in the canonical team frame. With tau=None the fractions are
+        drawn fresh from U(0, 1) on every call, so q_values is a Monte-Carlo estimate of the
+        mean return: two calls on the same input differ slightly, and a near-tied argmax can
+        flip between them.
 
         Returns
         -------

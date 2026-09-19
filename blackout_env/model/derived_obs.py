@@ -7,7 +7,8 @@ collection and evaluation through one code path. Derivation happens after the te
 mirroring (blackout_env.env.team_frame), so these come out in whatever frame the batch is in.
 
 Each entry exists because a measured failure traced back to information the network could not
-practically recover for itself (docs/run6_diagnosis_20260916.md, and the Run 7 stall taxonomy):
+practically recover for itself (docs/archive/run6_diagnosis_20260916.md, and the Run 7 stall
+taxonomy):
 
 unit occupancy      The 13 env channels contain no units at all; positions reached the network
                     only as 10 coordinate rows, leaving the convolutional path unable to relate

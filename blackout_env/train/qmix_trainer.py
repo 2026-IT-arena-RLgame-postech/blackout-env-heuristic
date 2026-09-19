@@ -1,5 +1,33 @@
 """
-BBF-style DQN + QMIX self-play trainer.
+BBF-style distributional QMIX trainer: the network, losses and replay machinery behind every run.
+
+Two ways this module is driven:
+
+(a) Offline mode -- how Run 11 (models/run11_step80k/) was trained. offline_pretrain.py builds
+    QMIXTrainer(env=None, config) and only calls maybe_reset() + train_step() in its own loop,
+    mirroring env_step_count = train_step_count so every schedule below counts gradient steps:
+      - buffer_a/buffer_b hold the static heuristic dataset (collect_heuristic_dataset*.py, which
+        itself drives this class's phase-1 collect_step()/select_actions_heuristic()), one buffer
+        per team stream, never written after loading.
+      - On-policy rows (candidate vs V4, and optionally vs itself) are collected by
+        onpolicy_collect.py into onpolicy_buffers, each source a separate FIFO with its own PER
+        priorities; every batch takes a fixed share per source (QMIXConfig.batch_source_fracs --
+        Run 11: 70% dataset / 30% self-vs-heuristic).
+      - reward_mode="v2": rewards are recomputed in Python (train/reward_v2.py) and the team
+        potential is shaped inside the n-step return with the current gamma (train/returns.py).
+      - Losses: IQN quantile TD through the distributional mixer (PER-weighted) + SPR + BC on
+        demonstration rows only, TD3+BC-scaled (see train_step / _forward_and_loss).
+      - BBF shrink-and-perturb reset every reset_interval steps (offline_pretrain default
+        steps//5), each reset restarting the n-step 10->3 / gamma 0.97->0.997 anneal.
+
+(b) Legacy online self-play CLI -- `python -m blackout_env.train.qmix_trainer` (main() -> run()
+    -> _run_loop()): collects from a live Unity env with collect_step() and trains on the reward
+    Unity itself returns (reward_mode="unity", no reward v2, no blocked penalty, one mixed FIFO
+    buffer per stream). It cannot reproduce Run 11 and is not what any current result was
+    trained with. The self-play and bootstrap paragraphs below describe that mode (phase 1 is
+    also what the dataset collectors run); the BBF components and model copies apply to both.
+
+Legacy online mode:
 
 Both teams are controlled by the SAME shared network (MyModel already normalizes
 graphic/team_state/agent_states to "my team's own perspective" — see MyObsPreprocessor — so
@@ -23,7 +51,7 @@ SequentialReplayBuffer is a plain FIFO ring, the buffer's composition drifts fro
 all-heuristic toward increasingly model-influenced transitions for free as phase 2 collection
 overwrites the oldest entries — no explicit offline/online reweighting needed.
 
-BBF components combined with QMIX (per project's explicit choices — see conversation):
+BBF components combined with QMIX (both modes):
   - IQN distributional Q-head (MyModel.q_head) instead of scalar Q, mixed team-wide via
     DistributionalQMixer (DFAC-style, Sun et al. 2021 — see modules/qmix_mixer.py), which
     mixes agents' quantile *means* through the ordinary nonlinear QMixer (preserving IGM
@@ -32,11 +60,13 @@ BBF components combined with QMIX (per project's explicit choices — see conver
     and SPRPredictor's open-loop K-step latent rollout (see modules/spr_predictor.py).
   - n-step returns + gamma annealing (BBF's main efficiency lever), truncated at "episode"
     boundaries by SequentialReplayBuffer's sequential layout (see train/returns.py) -- "episode"
-    here means each absorption interval (~120s), not the full ~600s match: see collect_step's
+    here means each absorption interval (20 s), not the full match (up to 420 s, or first to
+    100 points; GameBalanceConfig.asset in the blackout repo): see collect_step's
     absorption_fired handling for why a full match is too long a horizon to bootstrap over.
+    Both modes share this cut; with reward v2 the potential still bootstraps across it.
   - Prioritized Experience Replay (train/replay_buffer.py, train/segment_tree.py).
-  - Periodic shrink-and-perturb reset, scoped ONLY to graphic_encoder for now (conservative,
-    per project decision — the attention trunk's FFN blocks are a separate future step).
+  - Periodic shrink-and-perturb reset of graphic_encoder and the attention trunk (not the Q
+    head, mixer or SPR predictor) -- see maybe_reset().
   - AdamW (weight decay) instead of plain Adam.
 
 Three model copies, each with a different role/update rule (this is intentional, not
@@ -46,7 +76,11 @@ different staleness properties):
   - `target_net` : hard-synced from `net` every `target_update_interval` train steps — the
                    Double-DQN bootstrap target for the Q-learning loss.
   - `ema_net`     : soft/EMA-updated from `net` every train_step() — doubles as the SPR target
-                    encoder AND the self-play opponent's action-selection network (see above).
+                    encoder AND (legacy online mode only) the self-play opponent's
+                    action-selection network (see above).
+
+Checkpoints (save/load) hold only the online weights, mixer, SPR predictor, optimizer and step
+counters; evaluation scripts load them via QMIXTrainer.load() or read "policy_state" directly.
 """
 
 from __future__ import annotations
@@ -112,6 +146,34 @@ ABSORPTION_IDX = 3  # team_state row: [own_score, opp_score, episode_time_left, 
 
 @dataclass
 class QMIXConfig:
+    """
+    Every trainer knob. Fields fall into these groups (per-field comments below give the why):
+
+      model / mixer      hidden_size, n_items, n_classes, team_state_size, mixer_*
+      replay             buffer_capacity (rows per team stream, rounded up to a power of 2),
+                         batch_size (split half team A / half team B), per_*, and the offline
+                         source mix batch_source_fracs + onpolicy_buffer_capacity
+      optimizer          lr, weight_decay, grad_clip, encoder_lr/encoder_weight_decay (a separate
+                         AdamW group for graphic_encoder), target_update_interval, ema_tau
+      return / reward    n_step_*, gamma_*, anneal_frac (fraction of each reset cycle the anneal
+                         takes), reward_mode ("unity" | "v2")
+      auxiliary losses   spr_k, spr_loss_weight, bc_loss_alpha, bc_policy_weighting
+      BBF reset          reset_interval, reset_alpha_cnn, reset_alpha_attention, reset_warmup_steps
+      acting             action_masking (also masks the Double-DQN bootstrap action)
+      legacy online only heuristic_fill_frac, bootstrap_train_start_frac, heuristic_opponent_frac,
+                         eps_*, train_every, grad_steps_per_call -- but heuristic_seed_*,
+                         heuristic_*noise*, heuristic_demo and stop_when_exhausted are also read by
+                         the dataset collectors, which run this class's phase 1
+      infra              device, compile, amp_dtype, tb_*, checkpoint_*, iqn_log_quantiles
+
+    Schedules count env_step_count; offline_pretrain.py sets it equal to train_step_count, so
+    there every "env steps" below means gradient steps. Run 11 overrides (offline_pretrain.py +
+    run11_pipeline.sh): buffer_capacity = dataset rows per stream, reward_mode="v2" (fitted),
+    spr_loss_weight=5.0, bc_loss_alpha=1.0, encoder_weight_decay=1e-4, reset_interval=40_000
+    (steps // 5), reset_warmup_steps=2000, batch_source_fracs=(0.7, 0.3, 0.0), compile=True;
+    everything else is the default here.
+    """
+
     hidden_size: int = 128
     n_items: int = 5
     n_classes: int = 3
@@ -389,6 +451,22 @@ def _own_team_rows(tensor: torch.Tensor, agent_states: torch.Tensor) -> torch.Te
 
 
 class QMIXTrainer:
+    """
+    Owns the networks (net / target_net / ema_net, dist_mixer + its target, spr_predictor), the
+    AdamW optimizer, the replay buffers and all schedules. See the module docstring for the two
+    ways it is driven.
+
+    Replay layout: buffer_a / buffer_b are the team-A / team-B streams, each row one team's
+    perspective of a tick (raw world coordinates; team-B batches are mirrored into the canonical
+    frame at sample time). onpolicy_buffers maps SOURCE_SELF_VS_HEURISTIC / SOURCE_SELF_PLAY to
+    their own (team A, team B) buffer pair and exists only when cfg.batch_source_fracs is set.
+
+    Public surface used outside this file: train_step(), maybe_reset(), save()/load(), net (wrapped
+    by MyPolicy for evaluation and on-policy collection), buffer_a/buffer_b/onpolicy_buffers
+    (filled by offline_dataset.load_dataset_into / onpolicy_collect), tb, and for the dataset
+    collectors _reset_env()/collect_step().
+    """
+
     def __init__(self, env: BlackOutEnv | None, config: QMIXConfig) -> None:
         """
         env=None builds the network/buffers/optimizer with no live Unity process at all --
@@ -732,7 +810,11 @@ class QMIXTrainer:
         Q-learning of the off-heuristic-action coverage it needs to evaluate alternatives the
         model might pick later -- a little uniform-random noise widens that coverage without
         giving up "the trajectories still mostly look like competent play" the way pure random
-        rollouts would.
+        rollouts would. Run 11's dataset used uniform noise at 0.1. heuristic_noise_mode="gaussian"
+        instead turns every unit's heading by N(0, heuristic_noise_sigma_deg) before snapping.
+
+        Also the whole action path of collect_heuristic_dataset.py (via collect_step()).
+        Returns (env_actions, full_direction_idx) exactly like select_actions().
         """
         if self.cfg.heuristic_noise_mode == "gaussian":
             vec_a = self._heuristic_vectors(obs, self.team_a_agents, self.heuristic_a)
@@ -759,6 +841,10 @@ class QMIXTrainer:
         Phase 2 only (see `_bootstrapping`). Returns (env_actions, full_direction_idx) where
         env_actions is the dict[agent,(dx,dy)] BlackOutEnv.step() expects, and
         full_direction_idx is [10] (physical unit order, both teams) for the replay buffer.
+
+        Legacy online mode only (offline_pretrain.py acts through MyPolicy instead). Each unit
+        takes this episode's heuristic action with probability `epsilon`, else the greedy Q action.
+        Team B is evaluated on the mirrored (canonical) observation and its choice mirrored back.
 
         This episode's "opponent" side (see `self._online_is_team_a`, module docstring) acts
         through `ema_net` instead of `net` for self-play stability -- except when this episode
@@ -831,6 +917,20 @@ class QMIXTrainer:
         return policy_index(sample.policy_id if sample is not None else None)
 
     def collect_step(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, dict[str, np.ndarray]]:
+        """
+        One env.step() for both teams: choose actions (phase 1 heuristic / phase 2 epsilon-mixed),
+        step Unity, and push one row into buffer_a and one into buffer_b. Returns the next obs,
+        already reset if the match ended. Needs a live env; offline_pretrain.py never calls it.
+        Callers: the legacy _run_loop(), and collect_heuristic_dataset.py, which stays in phase 1
+        and saves the buffers as the offline dataset (how Run 11's data was made).
+
+        Each row stores the pre-step obs, both teams' 10 direction indices (physical order), the
+        team's summed Unity reward (the stored "unity" reward; reward v2 is computed later, at
+        load time, from these observations) and done = match end OR absorption fired (see the
+        comment below). With stop_when_exhausted the match is cut at the first absorption with
+        no battery left and the winner's +-1 per agent is added to that last row. source/demo/
+        policy tag who played each stream (see SequentialReplayBuffer.push).
+        """
         bootstrapping = self._bootstrapping
         if self._was_bootstrapping and not bootstrapping:
             # One-way transition (see _bootstrapping) -- anchor epsilon() here so phase 2
@@ -859,7 +959,7 @@ class QMIXTrainer:
         # AbsorptionTimer loops in Unity (see GameScenario/TimerManager): the observed
         # absorption_time_left counts down 1.0->0.0 each step and snaps back up near 1.0 on the
         # exact tick an absorption fires, so an increase between consecutive steps IS that event
-        # -- there's no separate boolean for it anywhere in obs/info (see reward_proposal.md /
+        # -- there's no separate boolean for it anywhere in obs/info (see docs/archive/reward_proposal.md /
         # ml_agent_design.md for why absorption, not the ~600s full match, is this game's natural
         # reward/credit-assignment horizon). A full match is far too long to bootstrap a single
         # n-step/SPR window over, so each absorption interval is treated as its own training
@@ -1434,6 +1534,36 @@ class QMIXTrainer:
         }
 
     def train_step(self) -> float | None:
+        """
+        cfg.grad_steps_per_call gradient updates; returns their mean loss, or None (no update, no
+        train_step_count increment) while either main buffer is below bootstrap_train_start_frac.
+
+        Batch: batch_size // 2 anchors per team stream (each stream split across sources by
+        batch_source_fracs when set), team B mirrored to the canonical frame, merged into one
+        forward. n_step / gamma / PER beta come from the current schedules.
+
+        Per-sample loss (_forward_and_loss), averaged over the batch:
+            is_weight * L_iqn + spr_loss_weight * L_spr + bc_scale * bc_weight * L_bc
+          L_iqn  quantile Huber between the team's mixed return distribution
+                 dist_mixer(own 5 units' quantiles at the stored actions, global latent) [B, Q]
+                 and the target  n_step_return + gamma**steps * not_done * Z_target, where
+                 Z_target is target_net + target_dist_mixer at the Double-DQN action (online
+                 net's argmax at the bootstrap state). With reward v2, n_step_return already
+                 includes the potential shaping (train/returns.py). Only this term is
+                 PER-weighted, and its |mean TD error| becomes the new priority.
+          L_spr  1 - cosine between spr_predictor's K-step open-loop rollout of the online SPR
+                 latent (conditioned on all 10 units' actions) and ema_net's latent of the real
+                 next K frames; steps past a `done` are masked out.
+          L_bc   cross-entropy of own-team Q-values (as logits) vs the stored actions, mean over
+                 the 5 units. bc_weight is 0 on rows the net played (demo=False), else 1 (or
+                 the demonstrator's strength weight with bc_policy_weighting). TD3+BC-style scale:
+                 bc_scale = bc_loss_alpha * mean(L_iqn) / mean_over_demo_rows(L_bc), detached, so
+                 alpha=1 makes BC as large as the TD term whatever their raw scales.
+
+        After backward: grad-norm clip (grad_clip), encoder lr warmup, AdamW step, priority
+        update per source buffer, EMA update of ema_net and the SPR target projector (ema_tau),
+        and a hard target_net/target_dist_mixer sync every target_update_interval updates.
+        """
         if len(self.buffer_a) < self._train_start_size or len(self.buffer_b) < self._train_start_size:
             return None
 
@@ -1555,7 +1685,7 @@ class QMIXTrainer:
                 # gradient descent, i.e. how much the QMIX non-negative-weight constraint is
                 # actively fighting the loss -- the diagnostic for "is monotonicity a real
                 # bottleneck here, or would an unconstrained mixer (QPLEX/QTRAN) not actually
-                # help" (see qplex_migration_criteria.md for how to read this over training).
+                # help" (see docs/design/qplex_migration_criteria.md for how to read this over training).
                 w1_frac_neg, w1_neg_mag = clamp_pressure_stats(self.mixer.last_raw_w1)
                 w2_frac_neg, w2_neg_mag = clamp_pressure_stats(self.mixer.last_raw_w2)
                 shape_frac_neg, shape_neg_mag = clamp_pressure_stats(self.dist_mixer.last_raw_shape_w)
@@ -1603,6 +1733,17 @@ class QMIXTrainer:
 
     def maybe_reset(self) -> None:
         """
+        BBF-style periodic reset, fired when env_step_count % reset_interval == 0 (never when
+        reset_interval is 0). Shrink-and-perturbs net.graphic_encoder (keep reset_alpha_cnn of
+        the old weights) and net.attention (keep reset_alpha_attention) toward fresh inits, drops
+        their Adam state, copies them into target_net/ema_net, and restarts the n_step/gamma
+        anneal and the encoder lr warmup from this step. The rest of the net (vector encoder,
+        token embeddings, q_head, spr_head), the mixer and the SPR predictor are left alone.
+
+        offline_pretrain.py calls this before every train_step() with env_step_count set to
+        train_step_count, so it also fires at step 0 of a fresh run (blending the fresh init
+        with a second random init) and then every reset_interval gradient steps (Run 11: 40k).
+
         Checked once per env step (see run()) rather than inside train_step() — train_step()
         only actually runs on env steps that are multiples of `train_every`, so gating the
         reset on env_step_count *inside* it would silently drift the effective period to
@@ -1655,6 +1796,9 @@ class QMIXTrainer:
     # ------------------------------------------------------------------
 
     def run(self, total_env_steps: int) -> None:
+        """Legacy online self-play loop (see module docstring, mode b): collect_step() every env
+        step, maybe_reset(), train_step() every train_every steps, periodic checkpoints, and a
+        final.pt. Needs a live env; saves interrupted_step_N.pt on Ctrl+C."""
         self._total_env_steps_hint = total_env_steps
         obs, _ = self._reset_env()
         ckpt_dir = Path(self.cfg.checkpoint_dir)
@@ -1759,6 +1903,12 @@ class QMIXTrainer:
         self.save(ckpt_dir / "final.pt")
 
     def save(self, path: Path) -> None:
+        """
+        Writes policy_state (net, always uncompiled keys), dist_mixer_state, spr_state,
+        optimizer_state, env_step_count and train_step_count. Not saved: target_net/ema_net
+        (rebuilt from policy_state on load), replay buffers and PER priorities, and the
+        reset-cycle / epsilon anchors -- a resumed run restarts those from scratch.
+        """
         torch.save(
             {
                 "policy_state": _uncompiled(self.net).state_dict(),
@@ -1776,6 +1926,13 @@ class QMIXTrainer:
         print(f"[checkpoint] saved {path}")
 
     def load(self, path: Path) -> None:
+        """
+        Inverse of save(): net, target_net and ema_net all get policy_state; the mixer and its
+        target get dist_mixer_state. Step counters are restored, but _anneal_cycle_start_step
+        stays 0, so a run resumed partway into a reset cycle measures that cycle's anneal and
+        encoder warmup from step 0: n_step/gamma jump to their end values and the encoder lr to
+        its full value until the next reset.
+        """
         ckpt = torch.load(path, map_location=self.device, weights_only=True)
         _uncompiled(self.net).load_state_dict(ckpt["policy_state"])
         _uncompiled(self.target_net).load_state_dict(ckpt["policy_state"])
@@ -1812,6 +1969,14 @@ def _auto_device() -> str:
 
 
 def main() -> None:
+    """
+    LEGACY online self-play CLI (module docstring, mode b). Trains on Unity's own shaped reward
+    (reward_mode="unity"): no reward v2, no blocked penalty, no BC, no separate on-policy buffers.
+    Run 11 was NOT trained with this -- use offline_pretrain.py (models/run11_step80k/
+    run11_pipeline.sh train). Kept for reference and for the --resume/--seed-dataset-dir
+    online fine-tuning path it was built for; fine-tuning a reward-v2 checkpoint here would
+    silently switch it to the Unity reward.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--build", required=True, help="Path to the Unity build executable")
     parser.add_argument("--steps", type=int, default=1_000_000, help="Total env steps to train for")

@@ -1,4 +1,27 @@
-"""Reproducible heuristic policy families for BC and offline-RL data collection."""
+"""Reproducible heuristic policy families for BC and offline-RL data collection.
+
+HeuristicPolicyMixture is the teacher behind every heuristic dataset (collect_heuristic_dataset*
+via QMIXTrainer.heuristic_a/b, one independently seeded mixture per team) and, optionally, the
+on-policy opponent (offline_pretrain --onpolicy-opponent mixture). It draws from
+POLICY_REGISTRY: the V1-V19 StrategicHeuristic line plus ``strategic_v4_near``
+(V4PolicyFamily, V4 with small parameter variants).
+
+  - Which heuristic: one ``policy_id`` per match, drawn from the Elo-informed weight table in
+    HeuristicPolicyMixture.__init__ (V17-V19 32% combined, V4 + V4-near 19%, weak policies at
+    1-2%). It never changes mid-match.
+  - Parameter cloud: with ``perturb`` (default) each policy gets a bounded random draw of common
+    knobs (replan_interval, threat_radius, 8% chance of no specialists) plus per-version knobs;
+    V4-near samples one of V4PolicyFamily's profiles instead.
+  - Per-absorption resampling: with ``resample_each_absorption`` (default) the numeric knobs are
+    redrawn at every absorption (20 s) by retuning the running policy in place -- never
+    rebuilding it -- so paths, roles and mode state carry over. ``use_specialists`` stays fixed
+    for the match because it changes the role scheme.
+  - ``current_sample`` (PolicySample) records policy_id, seed and parameters; collectors store
+    policy_id with every row (train/policy_strength.py uses it for BC weighting).
+
+The action noise used in data collection (--noise-frac) is applied by the collector, not here.
+docs/heuristic_policy_catalog_ko.md describes each version and the weight rationale.
+"""
 
 from __future__ import annotations
 
@@ -96,6 +119,15 @@ class HeuristicPolicyMixture(BaseModel):
         perturb: bool = True,
         resample_each_absorption: bool = True,
     ):
+        """
+        seed: drives every draw (policy_id per match, parameter seeds), so the same seed replays
+            the same sequence of policies and parameters.
+        weights: policy_id -> relative weight (normalized here; zeros allowed, negatives not).
+            None uses the default table below.
+        perturb: False plays each policy at its fixed defaults (V4-near at its exact profile)
+            and disables per-absorption resampling.
+        resample_each_absorption: redraw the parameter cloud at each absorption (see class doc).
+        """
         self._rng = np.random.default_rng(seed)
         # Rebalanced 2026-09-16 against the 64s-truncated adaptive Bradley-Terry fits
         # (examples/elo_active.py): reports/elo_active_20260916/ for all 20 policies (SE 42-65) and
@@ -270,6 +302,13 @@ class HeuristicPolicyMixture(BaseModel):
         return self.current_sample
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
+        """Delegate to this match's policy, detecting match/absorption boundaries from team_state.
+
+        A rise in episode_time_left (team_state[2]) means Unity started a new match: reset()
+        draws a new policy_id. A rise in absorption_time_left (team_state[3]) means an
+        absorption fired: only the parameters are redrawn (when perturb and
+        resample_each_absorption are set).
+        """
         assert self._policy is not None
         if obs:
             team_state = next(iter(obs.values()))["team_state"]

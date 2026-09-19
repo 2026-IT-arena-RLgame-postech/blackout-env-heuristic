@@ -17,11 +17,11 @@ a second independent decode) and shares the results across every agent's obs dic
 
 Usage
 -----
-    from training.env.blackout_env import BlackOutEnv
+    from blackout_env import BlackOutEnv
 
     env = BlackOutEnv(
-        env_path="path/to/BlackOut.exe",      # None = connect to running Unity Editor
-        semantic_config_path="semantic_map_config.json",
+        env_path="build/mac/BlackOut.app",    # None = connect to running Unity Editor
+        # semantic_config_path defaults to the package's blackout_env/semantic_map_config.json
     )
     obs, infos = env.reset()
     while env.agents:
@@ -36,8 +36,7 @@ Parallel usage (Ray)
     # base_port=None (default): each worker calls find_free_port() independently,
     # so no manual port coordination is needed.
     def make_env():
-        return BlackOutEnv(env_path="path/to/BlackOut.exe",
-                           semantic_config_path="semantic_map_config.json")
+        return BlackOutEnv(env_path="build/mac/BlackOut.app")
 """
 
 from __future__ import annotations
@@ -185,13 +184,17 @@ class BlackOutEnv(ParallelEnv):
             Unity Time.timeScale. Values > 1 speed up simulation for faster training.
             20~100 is typical for headless builds; keep at 1 when using the Editor.
         additional_args : list[str] | None
-            Optional command-line arguments forwarded to a launched Unity player.
+            Optional command-line arguments forwarded to a launched Unity player, e.g.
+            ["-logFile", "/dev/null"] to silence the player log in headless tournaments.
+            ``-noRewardShaping`` is appended here automatically when unity_shaping is False.
         unity_shaping : bool
             False launches the player with -noRewardShaping: Unity skips its potential shaping
             (Ψ and nav Φ) and the reward carries only fixed event rewards (all 0 by default).
             Use it whenever the Unity reward is unused -- reward v2 computes its own from
             observations, and evaluation or recording ignores rewards -- since computing the
-            potentials is per-tick path-search work in the player.
+            potentials is per-tick path-search work in the player. True (the default) is only
+            needed when training on Unity's own reward (offline_pretrain --reward unity, the
+            online qmix_trainer); the Unity-side win/loss bonus is sent either way.
         """
         if base_port is None:
             base_port = find_free_port()
@@ -280,6 +283,13 @@ class BlackOutEnv(ParallelEnv):
         seed: int | None = None,
         options: dict | None = None,
     ) -> tuple[dict[str, dict], dict[str, Any]]:
+        """Start a new match and return its first decision observations.
+
+        seed goes over SeedChannel and is applied by Unity (Random.InitState) before the new
+        episode's map/item generation, so the same seed reproduces the same map; None leaves
+        Unity's RNG where it was. Infos are empty dicts. ``options`` is accepted for the
+        PettingZoo signature and ignored.
+        """
         if seed is not None:
             self._seed_channel.send_seed(seed)
         self._unity_env.reset()
@@ -334,6 +344,20 @@ class BlackOutEnv(ParallelEnv):
         dict[str, bool],
         dict[str, Any],
     ]:
+        """Apply one decision's actions and advance to the next decision (or match end).
+
+        actions: agent name -> float32[2] (dx, dy); values are clipped to [-1, 1]. An agent
+        missing from the dict gets (0, 0) for this decision, i.e. stands still.
+
+        Returns PettingZoo's (obs, rewards, terminations, truncations, infos). Skip ticks between
+        decisions are absorbed inside (_advance_until_ready). rewards/terminations cover the
+        agents alive before this call; rewards are Unity's per-unit rewards (only fixed event
+        rewards plus the terminal win/loss bonus when unity_shaping=False). Every agent shares
+        the same info dict: score_0, score_1, time_left, absorption_time_left (normalized, as in
+        team_state; scores x 100 = game points), plus ``winner`` (0 = A, 1 = B, -1 = draw) on
+        the terminal step, decided from the final scores. After termination ``self.agents`` is
+        empty; call reset() for the next match.
+        """
         self._send_actions(actions)
         self._unity_env.step()
         obs = self._advance_until_ready()
@@ -479,7 +503,7 @@ class BlackOutEnv(ParallelEnv):
         if len(obs_list) < 1:
             if not self._warned_empty_map_obs:
                 print(f"[BlackOutEnv] WARNING: MapObsAgent has no observations in obs_list. "
-                      f"Check that a RenderTextureSensorComponent is attached to the MapObsAgent GameObject.")
+                      f"Check that MapObsAgent adds its DynamicRTSensorComponent (the build may predate the packed-map observation).")
                 self._warned_empty_map_obs = True
             return
         # Find the visual (3-D) and vector (1-D) observations regardless of order.
@@ -494,7 +518,7 @@ class BlackOutEnv(ParallelEnv):
             if not self._warned_no_visual_obs:
                 print(f"[BlackOutEnv] WARNING: MapObsAgent has no 3-D visual observation in obs_list. "
                       f"Shapes: {[o.shape for o in obs_list]}. "
-                      f"Ensure RenderTextureSensorComponent is attached with Grayscale=true.")
+                      f"Check that MapObsAgent adds its DynamicRTSensorComponent (R16 packed map, see SemanticMapRenderer.cs).")
                 self._warned_no_visual_obs = True
         else:
             # ML-Agents delivers visual obs as (C, H, W); preprocessor expects (H, W, C)
@@ -559,6 +583,12 @@ class BlackOutEnv(ParallelEnv):
         return {"graphic": graphic, "team_state": team_state, "agent_states": agent_states}
 
     def _send_actions(self, actions: dict[str, np.ndarray]) -> None:
+        """Queue actions for every agent Unity is currently asking to decide.
+
+        Unity only accepts actions for agents in the current DecisionSteps, in that batch's
+        order, so the array is built per behavior from agent_id -> name (cached by _collect_obs)
+        rather than from ``actions``' own order. Agents without an entry get zeros.
+        """
         # Send empty actions to MapObsAgent (it has no real actions, Continuous Actions = 0)
         map_behavior = self._resolve_map_behavior_name()
         if map_behavior is not None:

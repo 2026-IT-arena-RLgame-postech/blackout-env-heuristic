@@ -1,12 +1,17 @@
-"""Intentionally polarised heuristic teachers for counterplay-rich datasets.
+"""V13-V16: intentionally polarised heuristic teachers for counterplay-rich datasets.
 
 These policies trade broad Elo strength for clear, repeatable strategic commitments.
 They are useful for behaviour cloning and offline RL because a learner sees both the
 strategy *and* the situations in which that strategy is punishable:
 
-* :class:`StrategicHeuristicV13` keeps a three-unit strike on external enemy storage.
-* :class:`StrategicHeuristicV14` spends an early unit on protecting home storage.
-* :class:`StrategicHeuristicV15` forgoes a Hunter and commits to Carrier throughput.
+* :class:`StrategicHeuristicV13` (``strategic_v13``, parent V11) keeps a three-unit strike
+  on external enemy storage.
+* :class:`StrategicHeuristicV14` (``strategic_v14``, parent V7) spends an early unit on
+  protecting home storage.
+* :class:`StrategicHeuristicV15` (``strategic_v15``, parent V7) forgoes a Hunter and commits
+  to Carrier throughput.
+* :class:`StrategicHeuristicV16` (``strategic_v16``, parent V10) keeps V10's phases and
+  switches into the V13/V14/V15 plans when public state calls for them.
 
 Each policy inherits the proven navigation/recovery behaviour of the previous
 heuristics.  The difference is a strategic objective, not a less reliable pathfinder.
@@ -42,6 +47,7 @@ class StrategicHeuristicV13(StrategicHeuristicV11):
         self.style_label = "storage_siege"
 
     def _update_mode(self, sample) -> None:
+        """raid_window whenever exposed enemy storage holds >= ``siege_min_value`` points."""
         graphic = sample["graphic"]
         protected = self._cached_protected_enemy_storage_mask(graphic)
         exposed_value = float(np.sum(graphic[..., BATTERY][
@@ -78,6 +84,8 @@ class StrategicHeuristicV14(StrategicHeuristicV7):
         self.current_mode = "home_guard"
 
     def _update_roles(self, obs, sample) -> None:
+        """V7 roles (no Carrier, Hunter at once); the mode label only records whether enemy
+        cargo is inside ``guard_radius`` of defendable own storage."""
         super()._update_roles(obs, sample)
         states = sample["agent_states"]
         graphic = sample["graphic"]
@@ -97,6 +105,8 @@ class StrategicHeuristicV14(StrategicHeuristicV7):
     def _choose_target(
         self, role, state, states, graphic, reservations, local_index, team_state,
     ):
+        """The Hunter chases the nearest enemy cargo inside ``guard_radius`` of home storage,
+        else guards that storage; it never hunts elsewhere."""
         if self._class_id(state) == HUNTER:
             home_points = list(zip(*np.nonzero(self._defendable_storage_mask(graphic))))
             threats = []
@@ -136,6 +146,8 @@ class StrategicHeuristicV15(StrategicHeuristicV7):
     def _assign_economic_tasks(
         self, names, row_for, states, graphic, team_state, walkable,
     ):
+        """V4 matching, then the Carrier is re-pointed at the field battery maximising
+        ``cargo_amount_weight`` x amount - 0.20 x distance (never a steal)."""
         result = super()._assign_economic_tasks(
             names, row_for, states, graphic, team_state, walkable
         )
@@ -199,6 +211,7 @@ class StrategicHeuristicV16(StrategicHeuristicV10):
         self.carrier_quota = self._configured_carrier_quota
 
     def _storage_values(self, graphic: np.ndarray) -> tuple[float, float]:
+        """(battery points in exposed enemy storage, battery points lying in the field)."""
         protected = self._cached_protected_enemy_storage_mask(graphic)
         external = float(np.sum(graphic[..., BATTERY][
             (graphic[..., STORAGE_ENEMY] > 0.5) & ~protected
@@ -209,6 +222,7 @@ class StrategicHeuristicV16(StrategicHeuristicV10):
         return external, field
 
     def _enemy_cargo_near_home(self, states: np.ndarray, graphic: np.ndarray) -> bool:
+        """Any enemy holding cargo within ``guard_radius`` of defendable own storage."""
         home_points = list(zip(*np.nonzero(self._defendable_storage_mask(graphic))))
         return any(
             enemy[2] < 0 and self._is_holding(enemy) and home_points
@@ -218,6 +232,7 @@ class StrategicHeuristicV16(StrategicHeuristicV10):
         )
 
     def _desired_mode(self, sample) -> str:
+        """Priority: home_guard > storage_siege > convoy_rush > V10's three modes."""
         graphic = sample["graphic"]
         states = sample["agent_states"]
         _, _, time_left, _ = map(float, sample["team_state"][:4])
@@ -233,6 +248,8 @@ class StrategicHeuristicV16(StrategicHeuristicV10):
         return super()._desired_mode(sample)
 
     def _update_roles(self, obs, sample) -> None:
+        """Mode-gated quotas: no new Carrier in home_guard; a new Hunter only in home_guard,
+        pressure_raid or closeout_defend.  Existing specialists are always kept."""
         self._set_mode_candidate(self._desired_mode(sample))
         states = sample["agent_states"]
         own_hunter_exists = any(
@@ -263,6 +280,8 @@ class StrategicHeuristicV16(StrategicHeuristicV10):
     def _assign_economic_tasks(
         self, names, row_for, states, graphic, team_state, walkable,
     ):
+        """storage_siege: V11's raid matching; convoy_rush: V15's Carrier re-pointing;
+        other modes: V4 matching."""
         if self.current_mode == "storage_siege":
             # This mirrors V11's bounded raid matcher, but lives here instead of calling its
             # method directly: V16 is a V10 subclass, so V11's zero-argument ``super()``
@@ -331,6 +350,7 @@ class StrategicHeuristicV16(StrategicHeuristicV10):
     def _choose_target(
         self, role, state, states, graphic, reservations, local_index, team_state,
     ):
+        """home_guard: V14's Hunter rule; otherwise V10's mode-specific targets."""
         if self.current_mode == "home_guard" and self._class_id(state) == HUNTER:
             home_points = list(zip(*np.nonzero(self._defendable_storage_mask(graphic))))
             threats = [

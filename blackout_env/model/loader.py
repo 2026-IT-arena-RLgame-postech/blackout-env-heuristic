@@ -3,6 +3,10 @@ PyTorch checkpoint loader.
 
 Loads a state dict into a user-provided nn.Module and wraps it as a BaseModel.
 
+load_checkpoint()/CheckpointModel are the generic path for a net whose forward() returns the
+(dx, dy) actions directly. For this project's QMIX checkpoints use load_my_policy_checkpoint()
+below.
+
 Checkpoint format
 -----------------
 Both formats are supported:
@@ -99,11 +103,15 @@ def load_checkpoint(
 
     Examples
     --------
+    `UserPolicy` is your own nn.Module (the README's competition `policy.py`), not this repo's
+    MyPolicy; extra keyword arguments go to its constructor.
+
         # Checkpoint saved as raw state dict
-        model = load_checkpoint(MyPolicy, "model.pt", state_dict_key=None, hidden=256)
+        model = load_checkpoint(UserPolicy, "model.pt", state_dict_key=None,
+                                n_graphic_channels=13, agent_state_size=12)
 
         # Checkpoint saved as {"policy_state": state_dict, ...}
-        model = load_checkpoint(MyPolicy, "model.pt", n_items=1, n_classes=3)
+        model = load_checkpoint(UserPolicy, "model.pt", n_graphic_channels=13, agent_state_size=12)
     """
     device = torch.device(device)
     net = model_class(**model_kwargs)
@@ -149,14 +157,19 @@ def load_my_policy_checkpoint(
     between a trained checkpoint and the repo's standard deployment/competition path.
 
     Trainer checkpoints also carry mixer/optimizer/SPR state used only for training; none of
-    that is relevant for inference, so only `policy_state` is read here.
+    that is relevant for inference, so only `policy_state` (the online net, not the EMA or
+    target copy) is read here.
+
+    `model_kwargs` go straight to MyModel(), whose constructor default hidden_size (256) is NOT
+    the training config (QMIXConfig.hidden_size = 128). When hidden_size isn't passed it is read
+    from the checkpoint's token-type embedding, so Run 11 checkpoints load without extra
+    arguments. The returned MyPolicy has mask_walls=False, matching the default
+    QMIXConfig.action_masking.
     """
     from .my_model import MyModel
     from .my_policy import MyPolicy
 
     device = torch.device(device)
-    net = MyModel(**model_kwargs)
-
     raw = torch.load(checkpoint_path, map_location=device, weights_only=True)
     if not isinstance(raw, dict) or "policy_state" not in raw:
         raise KeyError(
@@ -164,6 +177,11 @@ def load_my_policy_checkpoint(
             f"Available keys: {list(raw.keys()) if isinstance(raw, dict) else 'N/A'}."
         )
 
+    # token_type_emb is nn.Embedding(4, hidden_size), so its weight's width is the model width.
+    type_emb = raw["policy_state"].get("token_type_emb.weight")
+    if "hidden_size" not in model_kwargs and type_emb is not None:
+        model_kwargs["hidden_size"] = int(type_emb.shape[1])
+    net = MyModel(**model_kwargs)
     net.load_state_dict(raw["policy_state"])
     net.to(device)
     net.eval()

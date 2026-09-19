@@ -20,6 +20,12 @@ Movement reuses V6's threat-cost A* and V1's stuck recovery.  Measured choices (
 side-swapped gauntlets vs V1-V16): three Hunters in ``mixed`` mode won 96-98% of games, one
 Hunter hunting 66%, and every "avoid Hunters by blocking their surroundings" navigation variant
 lost more than it saved (20-27%), because stalled Collectors forfeit the race.
+
+Per tick ``act`` runs three stages: parse the observation into ``_Unit``/``_Store`` records and
+a shared ``ctx`` dict; ``_update_roles`` (quotas: one Carrier while field value remains, three
+Hunters); ``_plan`` (deposits, then transforms, then the economy matching ``_assign_economy``,
+then Hunters via ``_hunter_plan``).  Each (target, kind) is executed by V6/V1 ``_navigate``.
+Used as ``strategic_v17`` (14% of the default mixture, Elo 1832); V18 and V19 subclass it.
 """
 
 from __future__ import annotations
@@ -43,6 +49,8 @@ BUFF_SPEED, DEBUFF_SPEED, BUFF_SIZE, DEBUFF_SIZE = 9, 10, 11, 12
 
 @dataclass
 class _Unit:
+    """One unit parsed from agent_states (name is None for enemies)."""
+
     name: str | None
     row: int
     pos: tuple[int, int]
@@ -58,6 +66,8 @@ class _Unit:
 
 @dataclass
 class _Store:
+    """One storage component with this tick's contents and free capacity."""
+
     cells: list[tuple[int, int]]
     center: tuple[int, int]
     protected: bool
@@ -114,6 +124,7 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
     # ------------------------------------------------------------------ observation model
 
     def _parse_unit(self, name, row, state, shape, pos=None) -> _Unit:
+        """Decode class, held item slot and battery amount of one agent_states row."""
         items = state[4:9].tolist()  # item slots 1..5; slot 0 (state[3]) means empty-handed
         peak = max(items)
         slot = 1 + items.index(peak) if peak > 1e-5 else 0
@@ -146,6 +157,8 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             "special", graphic, lambda g: np.any(g[..., FIRST_SPECIAL:] > 0.5, axis=-1))
 
     def _stores(self, graphic, channel, protected_mask) -> list[_Store]:
+        """All storage components of one team with battery total, special count, free battery
+        capacity and empty tiles; also records whether a speed buff/debuff sits in them."""
         components = self._cached_components(graphic[..., channel] > 0.5)
         if not components:
             self._store_flags[channel] = (False, False)
@@ -196,6 +209,7 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
     # ------------------------------------------------------------------ main loop
 
     def act(self, obs):
+        """Build ``ctx`` for this tick, update roles, plan every unit, then navigate."""
         if not obs:
             return {}
         sample = next(iter(obs.values()))
@@ -314,6 +328,8 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         return slots
 
     def _speed(self, ctx, cls: int, enemy: bool = False) -> float:
+        """Cells/s for a class, with a speed buff (+50%, all classes) or debuff (-90%,
+        Collectors only) inferred from the items sitting in each side's storages."""
         mult = 1.0
         if enemy:
             mult += 0.5 * ctx["enemy_buff"]
@@ -326,6 +342,7 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         return BASE_SPEED[cls] * max(0.1, mult)
 
     def _dist(self, ctx, start, goal) -> float:
+        """Path length in cells (inf if unreachable)."""
         return float(self._cached_distance_map(ctx["walkable"], start)[goal])
 
     def _next_absorption_exposure(self, ctx, arrival: float) -> float:
@@ -359,6 +376,13 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
     # ------------------------------------------------------------------ roles
 
     def _update_roles(self, ctx) -> None:
+        """Assign carrier/hunter/collector by index into ``ctx["own"]``.
+
+        Existing specialists keep their role.  A Carrier is wanted only while the field still
+        holds >= 25 points (its speed pays off on long hauls); up to ``hunter_quota`` Hunters
+        are always wanted.  A walker already en route keeps its assignment unless it picked up
+        cargo; new assignees are the empty Collectors nearest (by path) to the sanctuary.
+        """
         own = ctx["own"]
         graphic = ctx["graphic"]
         roles = {}
@@ -399,6 +423,7 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         self.role_assignments = {u.name: roles[i] for i, u in enumerate(own)}
 
     def _closest_to_site(self, ctx, channel, excluded) -> int | None:
+        """Index of the empty, non-excluded Collector with the shortest path to a site pixel."""
         sites = list(zip(*np.nonzero(ctx["graphic"][..., channel] > 0.5)))
         if not sites:
             return None
@@ -415,6 +440,13 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
     # ------------------------------------------------------------------ planning
 
     def _plan(self, ctx) -> dict[str, tuple[tuple[int, int] | None, str]]:
+        """name -> (target, kind) for the whole team.
+
+        Order: cargo holders deposit (``_deposit_plan``), role walkers go to their sanctuary,
+        the remaining economic units are matched jointly (``_assign_economy``), and Hunters
+        are planned last so they can react to the economy; each Hunter's chase target is
+        ``claimed`` so a second Hunter values the same enemy at half.
+        """
         own = ctx["own"]
         graphic = ctx["graphic"]
         plan: dict[str, tuple[tuple[int, int] | None, str]] = {}
@@ -455,6 +487,14 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         return self._component_center(component)
 
     def _deposit_plan(self, ctx, unit, reserved_tiles):
+        """Pick the fitting own storage minimising arrival time + expected raid loss.
+
+        Exposed (non-protected) stores add ``exposure_cost`` x cargo value x risk, where risk
+        is the part of the window between our arrival and the next absorption that an empty
+        enemy Collector/Carrier could use to reach the store (saturating at 6 s), halved if
+        one of our Hunters stands within 3 cells.  The nearest unreserved tile of the chosen
+        store is the target.  Falls back to V1's ``_storage_target`` when nothing fits.
+        """
         walkable = ctx["walkable"]
         speed = self._speed(ctx, unit.cls)
         value = unit.amount if unit.slot == 1 else 8.0
@@ -492,6 +532,16 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         return target, "deposit"
 
     def _assign_economy(self, ctx, units):
+        """Greedy one-to-one matching of economic units to tasks by value per second.
+
+        score = gain / (time to pickup + time back to the nearest own storage + 1), where
+        gain is the battery amount, ``steal_weight`` x amount for steals that land before
+        absorption, or for specials ``special_weights[type]`` x seconds the effect would last
+        (plus the enemy's remaining effect time if stolen from its storage).  Gain is cut by
+        up to 60% for danger near the pickup (enemy Hunters; for a Carrier any enemy) and by
+        25% when an enemy would clearly reach a field battery first.  Keeping the previous
+        target is worth x1.12.  Unmatched units shadow enemy storage (``_idle_plan``).
+        """
         if not units:
             return {}
         graphic = ctx["graphic"]
@@ -619,10 +669,12 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             return self._patrol_component_center(
                 graphic[..., STORAGE_ENEMY] > 0.5, unit_index(unit.name), period=260), "patrol_raid"
         store = best[1]
-        # Wait just outside so we don't bounce on the region boundary; enter when value appears.
+        # Head for the store's centre and wait there (it does not stop outside the region);
+        # a steal task takes over once stealable value appears in it.
         return store.center, "patrol_raid"
 
     def _hunter_plan(self, ctx, hunter, claimed):
+        """Hunter rank 0 (by name) camps the enemy base exit in ``mixed`` mode; others hunt."""
         hunters = sorted(u.name for u in ctx["own"] if u.cls == HUNTER)
         rank = hunters.index(hunter.name)
         if self.hunter_mode == "camp" or (self.hunter_mode == "mixed" and rank == 0):
@@ -657,6 +709,14 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         return slot, "patrol_defend"
 
     def _hunt_plan(self, ctx, hunter, claimed):
+        """Chase the enemy maximising value / (time x chase factor + 1), if above 0.35.
+
+        Value: cargo amount (6 for a special), +3 for a Carrier, +1 for an empty Collector plus
+        a bonus when it is within 5 cells of our exposed stored value; an enemy Hunter is worth
+        12 near our spawn, 4 near our exposed storage and 0 elsewhere (a trade kills both).
+        Equal-or-faster targets get a 2.5x chase penalty.  With no worthwhile target, guard
+        the richest exposed own storage, else the nearest defendable one.
+        """
         walkable = ctx["walkable"]
         speed = self._speed(ctx, HUNTER)
         field = self._cached_distance_map(walkable, hunter.pos)
@@ -706,7 +766,7 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         if exposed:
             store = max(exposed, key=lambda s: s.battery + 6 * s.specials)
             return store.center, "patrol_defend"
-        # Nothing to protect: stand between enemy economy and their storages (field centre).
+        # Nothing exposed to protect: wait at the nearest defendable own storage.
         return self._defend_patrol_target(ctx["graphic"], hunter.pos), "patrol_defend"
 
     def _cached_astar(self, walkable, start, goal):

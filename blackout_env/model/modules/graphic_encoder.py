@@ -7,6 +7,13 @@ from .ffn_block import SwiGLUBlock
 
 
 class GraphicEncoder(nn.Module):
+    """
+    Small conv stack turning the [B, 19, 24, 24] semantic map into 36 vision tokens [B, 36, H]:
+    one per cell of a 6x6 grid (each covering 4x4 map tiles), in row-major order so they line
+    up with rotary.build_grid_position_ids. Downsampling is two stride-2 convs; a per-token
+    SwiGLU lifts the 128 conv channels to the trunk width H.
+    """
+
     def __init__(self, hidden_size : int = 256, in_channels : int = 13 + N_DERIVED_MAP_CHANNELS) -> None:
         super(GraphicEncoder, self).__init__()
 
@@ -34,7 +41,6 @@ class GraphicEncoder(nn.Module):
         # 256-channel-wide ResNet-style stack is built for; halving channel widths and dropping
         # a block per stage is a bet that a smaller encoder is easier for training to actually
         # rely on (less to get lost in) rather than a capacity increase being what's missing.
-        # to be flipped by setting tensor format
         # in -> [B, 19, 24, 24] = [B, C, H, W]
         self.pre_conv = nn.Sequential(
             nn.Conv2d(in_channels, 32, kernel_size=5, stride=1, padding=2), # -> [B, 32, 24, 24]

@@ -1,10 +1,18 @@
 """Optional Numba-JIT kernels for heuristic hot paths.
 
+Three kernels, each a drop-in for a pure-Python routine:
+
+* ``distance_map_numba`` -- ``advanced.StrategicHeuristicV2._distance_map`` (all-cell path
+  lengths; task assignment, V5 intercepts, V7+ role choice, V17 planning);
+* ``astar_numba`` -- ``strategic.StrategicHeuristic._astar`` (every unit's path, V1+);
+* ``risk_astar_numba`` -- ``risk_path.StrategicHeuristicV6._astar`` (threat-cost path for
+  cargo holders in V6 and V17-V19).
+
 ``blackout_env.heuristics.advanced._distance_map`` is an 8-neighbour Dijkstra over the
 semantic-map grid, called once per unique unit pixel per decision tick (memoised per
 episode by ``_cached_distance_map``). Profiling a full match under cProfile showed it
 dominates wall-clock time for every heuristic built on ``StrategicHeuristicV2``
-(V3/V4/V5/V7/V8/V10/V11/V12) — it is pure numeric code (bool grid in, float32 grid out)
+(all of V2-V19) — it is pure numeric code (bool grid in, float32 grid out)
 with no Python objects in the loop, which makes it a good Numba target unlike the rest
 of the heuristic stack (dataclasses, OrderedDict caches, heapq of tuples).  The two A*
 kernels follow the same rule: identical paths to the Python versions, tie-breaks included.
@@ -25,6 +33,10 @@ try:
 
     @njit(_SIGNATURE, cache=True, fastmath=True)
     def distance_map_numba(walkable: np.ndarray, start_y: int, start_x: int) -> np.ndarray:
+        """8-neighbour Dijkstra from one cell with corner-cut prevention (float32, inf = unreachable).
+
+        Hand-rolled binary heap over parallel arrays because Numba has no heapq of tuples.
+        """
         h, w = walkable.shape
         distances = np.full((h, w), np.inf, dtype=np.float32)
         if not (0 <= start_y < h and 0 <= start_x < w):

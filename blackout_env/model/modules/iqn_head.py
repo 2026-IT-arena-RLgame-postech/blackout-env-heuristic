@@ -5,10 +5,9 @@ Chosen over C51 for this project specifically because C51 needs a fixed [Vmin, V
 decided up front, and this game's reward balance (team score + kill/death + item pickups —
 see Unity's RewardConfig/GameBalanceConfig) is still being tuned; IQN represents the return
 distribution implicitly via a quantile function instead, so there's no fixed range to keep in
-sync with the reward config. It also composes with QMIX for free: since QMixer's mixing
-*weights* depend only on the state (not on the value being mixed), the exact same QMixer call
-can be reused once per sampled quantile fraction to produce a team-level quantile function too
-(DFAC-style, Sun et al. 2021) — see qmix_trainer.py.
+sync with the reward config. The per-unit quantile functions are combined into a team-level
+one by DistributionalQMixer (DFAC mean/shape split, Sun et al. 2021) -- see qmix_mixer.py for
+why mixing each quantile sample through QMixer directly is not used.
 
 Samples n_quantiles fractions tau ~ U(0,1), embeds each via the standard IQN cosine basis, and
 multiplies (Hadamard product) that embedding into a shared state embedding before the final
@@ -24,6 +23,17 @@ from .ffn_block import SwiGLUBlock
 
 
 class IQNHead(nn.Module):
+    """
+    Maps N state rows (MyModel: the 10 post-attention unit tokens) to n_actions quantile values
+    at each sampled fraction tau:
+
+        Z(s, tau)[a] = value_head(state * ReLU(Linear(cos(pi * i * tau)), i = 0..n_cos-1))[a]
+
+    The same tau draws are shared by all N rows of a batch element, which is what lets the
+    trainer gather the five own-team rows and mix them quantile-by-quantile. Nothing enforces
+    monotonicity in tau, so sampled quantiles can cross; the trainer only logs that.
+    """
+
     def __init__(self, hidden_size: int, n_actions: int, n_cos: int = 64) -> None:
         super().__init__()
         self.hidden_size = hidden_size

@@ -14,8 +14,31 @@ E5  `v17_variants`: the ordering of mean X(t) should follow the ordering of win 
 5-30 s on the diverse suite, and reports E3-E5 for the fitted config. Every --holdout-every-th diverse
 match is left out of the search and E3 is reported on it separately, so overfitting shows as a gap.
 
-Usage:
-    python examples/fit_reward_v2.py --root reports/value_matches [--fit]
+Without --fit it only reports E3-E5 for the default config (and the displayed score / old Psi).
+--save writes the fitted config as json, the format evaluate_reward_v2.py --config reads.
+
+Refit workflow for reward v2's weights (run from the repo root; how FITTED_20260917B was made):
+
+  0. Unity build at build/mac/BlackOut.app (models/run11_step80k/run11_pipeline.sh build), or pass
+     --build to step 1.
+  1. Record heuristic matches, one call per suite, all into the same --out root (each suite gets
+     its own subdirectory; use a fresh root, index.jsonl is appended to). The 20260917b refit used
+     1,000 / 480 / 360 matches, ~9 min on 18 workers:
+       ./.venv/bin/python examples/record_value_matches.py --suite diverse      --games 1000 --out reports/value_matches_NEW
+       ./.venv/bin/python examples/record_value_matches.py --suite matchups     --games 480  --out reports/value_matches_NEW
+       ./.venv/bin/python examples/record_value_matches.py --suite v17_variants --games 360  --out reports/value_matches_NEW
+  2. Fit (coordinate search on 4/5 of `diverse`, E3 on the held-out 1/5, E4/E5 on the other suites;
+     add --from-fitted to start from FITTED_20260917B instead of the defaults):
+       ./.venv/bin/python examples/fit_reward_v2.py --root reports/value_matches_NEW --fit --save reports/value_matches_NEW/fitted.json
+     Check the report: fit vs holdout objective gap, values sitting at a grid edge (see the P2
+     refit in docs/reward_v2_design.md for how two such values were pulled back by hand).
+  3. Unit-level check on a stored dataset (no Unity; without --config it evaluates the DEFAULT
+     weights -- Run 11's are docs/design/reward_v2_fitted_20260917b.json):
+       ./.venv/bin/python examples/evaluate_reward_v2.py --dataset-dir datasets/heuristic_mixv6_live_20260917 --config reports/value_matches_NEW/fitted.json
+  4. Paste the json values into blackout_env/train/reward_v2.py as a new RewardV2Config constant
+     (keep FITTED_20260917B for reproducing Run 11), point `--reward v2-fitted` at it in
+     blackout_env/train/offline_pretrain.py, and record the numbers in docs/reward_v2_design.md.
+     The dataset's reward cache is keyed by the config, so a new config re-annotates on its own.
 """
 
 from __future__ import annotations

@@ -1,4 +1,13 @@
-"""Sixth-generation heuristic: threat-aware A* for fragile cargo movement."""
+"""V6 (``strategic_v6``, parent V4): threat-aware A* for fragile cargo movement.
+
+V1-V5 plan the shortest path and then push cargo holders away from nearby threats with a
+local repulsion, which can shove them into walls or dead ends.  V6 moves the threat into the
+planner: for a cargo holder or Carrier, each step's cost is multiplied by
+``1 + risk_weight x risk`` (risk = sum of exp(-distance / risk_radius_tiles) over lethal
+enemies), with an extra penalty for narrow cells near threats, and the post-hoc repulsion is
+switched off.  Other units navigate exactly like V4.  Fewer stalls but longer detours
+(Elo 1390).  V17-V19 reuse this navigation layer.
+"""
 
 from __future__ import annotations
 
@@ -31,6 +40,10 @@ class StrategicHeuristicV6(StrategicHeuristicV4):
         self._risk_cache.clear()
 
     def _risk_field(self, states, unit_class, shape) -> np.ndarray:
+        """Per-cell threat: sum of exp(-d / risk_radius_tiles) over enemies lethal to this class.
+
+        Hunters threaten everyone; for a Carrier every enemy counts.  Cached per tick.
+        """
         key = (self._tick, unit_class == CARRIER, self.risk_radius_tiles, shape)
         risk = self._risk_cache.get(key)
         if risk is not None:
@@ -54,6 +67,7 @@ class StrategicHeuristicV6(StrategicHeuristicV4):
         return risk
 
     def _navigate(self, name, state, states, target, kind, walkable, shape):
+        """Cargo holders/Carriers plan with the risk-cost A*; everyone else uses V1 navigation."""
         unit_class = self._class_id(state)
         vulnerable = self._is_holding(state) or unit_class == CARRIER
         if not vulnerable:
@@ -80,6 +94,11 @@ class StrategicHeuristicV6(StrategicHeuristicV4):
         start: tuple[int, int],
         goal: tuple[int, int],
     ) -> list[tuple[int, int]]:
+        """A* with step cost x (1 + risk_weight x risk) + 0.45 for low-degree cells under threat.
+
+        Active only inside ``_navigate`` for a vulnerable unit (``_active_risk`` set); falls
+        back to the plain V1 A* otherwise.
+        """
         risk = self._active_risk
         if risk is None or self.risk_weight <= 0:
             return super()._astar(walkable, start, goal)

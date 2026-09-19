@@ -1,8 +1,13 @@
-"""Second-generation team-level BlackOut heuristic.
+"""V2 (``strategic_v2``, parent V1): team-level, path-aware economic task assignment.
 
 V2 intentionally inherits all navigation and recovery behaviour from V1.  Its isolated
 change is coordinated, path-aware economic task assignment, which makes V1/V2 comparisons
-and later policy-mixture sampling meaningful.
+and later policy-mixture sampling meaningful: every free Collector/Carrier is matched to a
+field battery, steal or special by one global greedy matching on true path distance, instead
+of V1's first-come per-unit choice.  Steals that cannot arrive before the next absorption are
+dropped.  Nearly every later version (V3-V19) builds on V2's ``_assign_economic_tasks`` and
+its per-episode ``_cached_distance_map`` (the Numba Dijkstra in ``_native``).  Weak on its own
+(Elo 1314, 2% of the mixture).
 """
 
 from __future__ import annotations
@@ -41,6 +46,11 @@ class StrategicHeuristicV2(StrategicHeuristic):
         self._distance_cache.clear()
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
+        """V1's tick, except free economic units get their targets from one team matching.
+
+        Hunters, cargo holders and Collectors still walking to a specialist sanctuary keep
+        V1's per-unit ``_choose_target``; so does any economic unit left unmatched.
+        """
         if not obs:
             return {}
         sample = next(iter(obs.values()))
@@ -104,6 +114,15 @@ class StrategicHeuristicV2(StrategicHeuristic):
         team_state: np.ndarray,
         walkable: np.ndarray,
     ) -> dict[str, tuple[tuple[int, int], str]]:
+        """Greedy one-to-one matching of economic units to battery/steal/special tasks.
+
+        Value of a (unit, task) pair: intrinsic value (battery amount x2.5; special by type),
+        plus an extra steal bonus rising towards absorption, plus 28 if the battery alone
+        would reach 100 points, minus 0.32 per path cell, minus a danger penalty when a
+        lethal enemy (a Hunter; any enemy for a Carrier) is within 5 cells of the target,
+        plus 1.5 hysteresis for keeping the previous target.  Unreachable tasks and steals
+        that would arrive after absorption are skipped.  Pairs are then taken best-first.
+        """
         if not names:
             return {}
 

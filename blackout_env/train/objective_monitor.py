@@ -7,7 +7,7 @@ snapped: the model picked up 113 batteries to the heuristic's 213, but once carr
 to storage at 75% of the heuristic's approach rate and delivered 74% of what it picked up. The
 bottleneck was the step before -- with no cargo, its distance to the nearest loose battery
 barely changed (-0.003 cells/tick against the heuristic's -0.013), i.e. it wandered instead of
-going to get one. See docs/run6_diagnosis_20260916.md §4.
+going to get one. See docs/archive/run6_diagnosis_20260916.md §4.
 
 That is the number worth watching during a run, and it is cheap enough to compute inline, so
 both the periodic eval and the on-policy collection track it here -- for the opponent too, which

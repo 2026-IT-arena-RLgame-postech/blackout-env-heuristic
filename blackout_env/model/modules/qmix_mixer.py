@@ -41,6 +41,16 @@ def clamp_pressure_stats(raw: torch.Tensor) -> tuple[float, float]:
 
 
 class QMixer(nn.Module):
+    """
+    Two-layer monotonic mixer: q_tot = w2 . ELU(q @ W1 + b1) + b2, with W1 [n_agents, embed_dim]
+    and w2 [embed_dim] made non-negative by abs(), and every weight/bias produced from `state` by
+    a small hypernetwork. The biases are unconstrained (they do not affect monotonicity).
+
+    In this project it is only used wrapped by DistributionalQMixer, which feeds it the
+    per-agent mean Q; n_agents is N_TEAM = 5 (own-team rows only) and state_dim is MyModel's
+    hidden size.
+    """
+
     def __init__(
         self,
         n_agents: int,

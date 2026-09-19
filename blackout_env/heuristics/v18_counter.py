@@ -60,6 +60,7 @@ class StrategicHeuristicV18(StrategicHeuristicV17):
     # ------------------------------------------------------------------ Hunters
 
     def _hunter_plan(self, ctx, hunter, claimed):
+        """Rank 0 camps the enemy exit, ranks 1..exit_guards guard our exit, the rest hunt."""
         hunters = sorted(u.name for u in ctx["own"] if u.cls == HUNTER)
         rank = hunters.index(hunter.name)
         if rank == 0:
@@ -92,6 +93,7 @@ class StrategicHeuristicV18(StrategicHeuristicV17):
         ) & (g[..., STORAGE_ALLY] < 0.5) & (g[..., STORAGE_ENEMY] < 0.5))
 
     def _item_free_walkable(self, walkable, graphic, open_cells) -> np.ndarray:
+        """Walkable grid with field-item cells blocked (``open_cells`` stay passable)."""
         detour = walkable & ~self._field_items(graphic)
         for cell in open_cells:
             detour[cell] = walkable[cell]
@@ -114,6 +116,8 @@ class StrategicHeuristicV18(StrategicHeuristicV17):
         return field
 
     def _navigate(self, name, state, states, target, kind, walkable, shape):
+        """Sanctuary walkers route around field items when such a route exists at all
+        (auto-pickup would force them back to deposit before transforming)."""
         if kind == "transform" and self.avoid_pickup_en_route and self._last_graphic is not None:
             pos = self._to_pixel(state[:2], shape)
             if target is not None:

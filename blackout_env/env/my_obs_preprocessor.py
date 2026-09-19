@@ -44,6 +44,7 @@ of all 10 BlackOutUnit agents each redundantly sending a full state vector, MapO
 broadcasts ONE shared float32[44] raw state per step (see MapObsAgent.cs):
 
     [0~39] : 10 unit blocks x 4 floats (pos_x, pos_y normalized to [-1, 1]; holdingItemId, classId)
+             holdingItemId: 0 = nothing, -n = carrying n batteries, k >= 2 = non-battery item k-1
     [40]   : score_A   (absolute — MapObsAgent isn't owned by either team)
     [41]   : score_B
     [42]   : episode_time_left
@@ -233,7 +234,13 @@ class MyObsPreprocessor(ObsPreprocessor):
     # ------------------------------------------------------------------
 
     def preprocess_team_graphics(self, raw: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """Convenience wrapper: decode once, derive both team perspectives."""
+        """Decode the R16 bit-packed 24x24 map once and derive both team perspectives.
+
+        raw: float32[H x W x 1] (ML-Agents' (C, H, W) already transposed by BlackOutEnv).
+        Returns (team_a, team_b), each float32[H x W x n_graphic_channels]; team_b only swaps
+        the ally/enemy spawn and storage channels (flip_team_perspective) -- the grid itself
+        stays in world coordinates (see team_frame.py for the spatial mirroring).
+        """
         team_a = self.preprocess_graphic(raw)
         team_b = self.flip_team_perspective(team_a)
         return team_a, team_b

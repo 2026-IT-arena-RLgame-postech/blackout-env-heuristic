@@ -90,6 +90,10 @@ class RotaryEmbedding2D(nn.Module):
     rotated dims carried no position at all. Small bases keep every pair meaningful; the fastest
     pair must still stay under a full turn across the grid to avoid aliasing (at base 10, 5.0 rad
     over 5 cells).
+
+    (The 8-pair figure above dates from a wider rotated band. With MyModel's defaults --
+    rope_dim = head_dim / 2 = 8 at hidden 128 -- each axis has 2 pairs, at frequencies 1 and
+    base**-0.5 per cell.)
     """
 
     def __init__(self, head_dim: int, base: float = 10.0, rope_dim: int | None = None) -> None:

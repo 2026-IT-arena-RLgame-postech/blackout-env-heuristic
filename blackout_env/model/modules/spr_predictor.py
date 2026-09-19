@@ -1,8 +1,9 @@
 """
 SPR (Self-Predictive Representations, Schwarzer et al. 2021) auxiliary objective — applied
-only to MyModel's pooled vision latent (project decision: the unit/team-state vector modality
-has no natural "future map state" analog the way the semantic map does, so SPR is scoped to
-vision only).
+only to MyModel's vision latent: the SPR CLS token's output through spr_head (earlier versions
+mean-pooled the vision tokens, hence the "pooled" names below). Project decision: the
+unit/team-state vector modality has no natural "future map state" analog the way the semantic
+map does, so SPR is scoped to vision only.
 
 Given the current pooled vision embedding and the joint action actually taken (all 10 units,
 both teams — the map's future depends on everyone on it, not just "my" team), a small latent

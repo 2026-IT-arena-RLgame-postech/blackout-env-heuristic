@@ -1,4 +1,11 @@
-"""Third-generation heuristic: V2 coordination plus risk-aware deposits."""
+"""V3 (``strategic_v3``, parent V2): risk-aware choice of where to deposit cargo.
+
+V1/V2 deposit in the nearest storage that fits.  V3 scores every fitting own storage by
+travel distance, a bonus for the protected in-base storage (it cannot be raided, and a unit
+inside the base cannot be intercepted), and a penalty for lethal enemies near exposed
+storages.  The protected bonus shrinks to 20% when the protected store cannot be reached
+before the next absorption, so cargo still lands (and scores) in time.  Only the deposit decision changes; V4 adds tile spreading on top.
+"""
 
 from __future__ import annotations
 
@@ -30,6 +37,7 @@ class StrategicHeuristicV3(StrategicHeuristicV2):
         local_index: int,
         team_state: np.ndarray,
     ) -> tuple[tuple[int, int] | None, str]:
+        """Cargo holders use ``_risk_aware_storage_target``; everything else is V2/V1."""
         if self._is_holding(state):
             origin = self._to_pixel(state[:2], graphic.shape[:2])
             target, can_deposit = self._risk_aware_storage_target(
@@ -48,6 +56,12 @@ class StrategicHeuristicV3(StrategicHeuristicV2):
         origin: tuple[int, int],
         team_state: np.ndarray,
     ) -> tuple[tuple[int, int] | None, bool]:
+        """Pick the own storage minimising distance - protected bonus + nearby-threat cost.
+
+        Only components with room for the whole item are candidates (same atomic-capacity
+        rule as ``_storage_target``, which is also the fallback when none fit).  Returns
+        (component centre, can_deposit).
+        """
         components = self._cached_components(graphic[..., STORAGE_ALLY] > 0.5)
         if not components:
             return None, False

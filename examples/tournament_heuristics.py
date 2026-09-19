@@ -1,5 +1,10 @@
 """Parallel, side-swapped round-robin evaluation for every named heuristic policy.
 
+Note: this is the older full round robin over a hardcoded V1-V19 list (POLICIES below; a new
+version must be added by hand). Current heuristic ratings -- including the Elo values behind
+HeuristicPolicyMixture's weights -- come from examples/elo_active.py, an adaptive
+Bradley-Terry fit that needs far fewer games. Keep this for full pairwise win-rate heatmaps.
+
 The result matrix stores the row policy's win rate against the column policy.  Every
 unordered pairing is played in both physical sides for each map seed, so spawn-side
 advantage does not become a fake strategy advantage.  The script intentionally uses

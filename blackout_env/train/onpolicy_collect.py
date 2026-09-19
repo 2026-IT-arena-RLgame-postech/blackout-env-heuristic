@@ -5,11 +5,11 @@ transitions into that source's own small FIFO buffer pair (QMIXTrainer.onpolicy_
 dataset's buffer_a/buffer_b stay untouched), applying reward_shaping.blocked_penalty_adjustment as it
 goes.
 
-Why this exists: diagnose_stopping2.py / diagnose_qvalues.py (docs/offline_pretrain_runs.md, Run4
-findings) found the Run4 checkpoint spends 41.66% of unit-ticks "blocked", with overconfident-but-
-wrong Q-values and zero self-correction (100% of blocked runs >=12 ticks kept picking the same
-wrong direction the whole run) -- and reward_proposal.md / the actual C# reward code confirmed
-nothing in the game's reward structure penalizes wall-collision itself. Two complementary fixes:
+Why this exists: the Run 4 diagnosis (docs/offline_pretrain_runs.md; its one-off scripts were not
+kept) found the Run4 checkpoint spends 41.66% of unit-ticks "blocked", with overconfident-but-wrong
+Q-values and zero self-correction (100% of blocked runs >=12 ticks kept picking the same wrong
+direction the whole run) -- and docs/archive/reward_proposal.md / the actual C# reward code
+confirmed nothing in the game's reward structure penalizes wall-collision itself. Two complementary fixes:
 
   1. reward_shaping.blocked_penalty_adjustment gives training data an explicit negative signal
      for this exact failure mode, applied uniformly to both the static dataset and this module's
@@ -25,6 +25,23 @@ nothing in the game's reward structure penalizes wall-collision itself. Two comp
      In self-vs-heuristic matches the heuristic side's stream is also stored as a behavior-cloning
      demonstration: it shows the heuristic playing against an opponent unlike anything in the
      heuristic-vs-heuristic dataset.
+
+How Run 11 uses it (models/run11_step80k/run11_pipeline.sh train; wiring in offline_pretrain.py):
+  - --onpolicy-self-vs-heuristic-frac 0.3 --onpolicy-self-play-frac 0 -> batch_source_fracs
+    (0.7, 0.3, 0): 30% of every batch comes from the self-vs-heuristic FIFO buffer (262,144 rows
+    per stream, --onpolicy-buffer-capacity), 70% from the static dataset, no self-play.
+  - Opponent: V4 (RecommendedStrategicHeuristic, --onpolicy-opponent default "v4" -- the same
+    instance periodic eval plays). --onpolicy-opponent mixture swaps in HeuristicPolicyMixture.
+  - Timing: collect_onpolicy_data runs right after each periodic eval (every --eval-interval =
+    10k steps), never at step 0 (an untrained policy's rows would sit in the FIFO as noise; a
+    --resume does collect once up front). Each window targets
+    frac * dataset_rows / n_windows ~= 0.3 * 1M / 20 ~= 15k ticks.
+  - Sides alternate every match (candidate is team A, then B, ...); seeds run from
+    10_000 + train_step, one per match.
+  - Matches stop at the first absorption with no battery left anywhere (stop_when_exhausted,
+    unless --keep-exhausted), mirroring how the static dataset's dead segments are dropped.
+  - Rewards: blocked-tick penalty (--blocked-penalty 0.02) on top of reward v2
+    (reward_v2.annotate_sequence) when --reward v2-*; Unity's own reward otherwise.
 """
 
 from __future__ import annotations
@@ -214,11 +231,20 @@ def play_and_collect(
 
 
 def _played_policy_id(policy) -> str | None:
+    """policy_id recorded in a policy's ``current_sample`` (HeuristicPolicyMixture, V4PolicyFamily);
+    None for a plain heuristic such as V4 or for the candidate network."""
     sample = getattr(policy, "current_sample", None)
     return sample.policy_id if sample is not None else None
 
 
 def _push(buffer: SequentialReplayBuffer, transitions: dict[str, np.ndarray], source: int, demo: bool, policy_id: str | None = None) -> None:
+    """Append one match's rows for one team to its on-policy FIFO buffer, in time order.
+
+    demo=True marks the rows as heuristic demonstrations, so the trainer applies BC to them;
+    only then is policy_id kept (as a policy_strength index, for --bc-policy-weighting) --
+    candidate rows always get -1. potential/terminal exist only when reward v2 annotated the
+    match; otherwise the buffer falls back to 0.0 and terminal = done.
+    """
     policy = policy_index(policy_id) if demo else -1
     n = transitions["graphic"].shape[0]
     for i in range(n):
@@ -238,6 +264,7 @@ def _push(buffer: SequentialReplayBuffer, transitions: dict[str, np.ndarray], so
 
 
 def _new_phase_totals() -> dict[str, float]:
+    """Running sums for one collection phase (self-vs-heuristic or self-play); see _phase_metrics."""
     return dict(
         ticks=0, matches=0, wins=0, losses=0, draws=0, margin=0.0,
         candidate_env_reward=0.0, other_env_reward=0.0, candidate_terminal_reward=0.0,
@@ -247,6 +274,8 @@ def _new_phase_totals() -> dict[str, float]:
 
 
 def _accumulate(totals: dict[str, float], info: dict, candidate_team: int) -> None:
+    """Add one play_and_collect match_info to a phase's totals, re-indexed from physical teams
+    (0 = A, 1 = B) to candidate vs other so side-swapped matches pool correctly."""
     other = 1 - candidate_team
     totals["ticks"] += info["ticks"]
     totals["matches"] += 1
@@ -270,6 +299,9 @@ def _accumulate(totals: dict[str, float], info: dict, candidate_team: int) -> No
 
 
 def _phase_metrics(totals: dict[str, float], penalty_per_unit: float) -> dict[str, float]:
+    """Turn a phase's totals into per-match (outcome, margin) and per-tick (reward, blocked,
+    Psi-saturation) rates plus candidate_/opponent_ objective rates; logged under onpolicy/.
+    Margins are in game points (scores x 100)."""
     ticks = max(1, totals["ticks"])
     matches = max(1, totals["matches"])
     n_team_units = len(TEAM_A_INDICES)
