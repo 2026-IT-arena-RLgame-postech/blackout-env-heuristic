@@ -2,32 +2,32 @@
 
 ## 배경
 
-현재 `MyModel`은 학습 대상 파라미터 기준 약 301만 개(`net` 264.8만 + `dist_mixer` 11.6만 +
-`spr_predictor` 24.9만)로, LLM 스케일링 법칙(Chinchilla의 params:tokens 비율 등)을 그대로 갖다
+현재 `MyModel`은 학습 대상 파라미터 기준 약 207만 개(`net` 170.4만 + `dist_mixer` 11.6만 +
+`spr_predictor` 24.9만, Run 11 체크포인트 기준)로, LLM 스케일링 법칙(Chinchilla의 params:tokens 비율 등)을 그대로 갖다
 쓰기엔 도메인이 너무 다르다 — grid 관측은 텍스트 토큰만큼 정보 밀도가 조밀하지 않고, offline RL은
 같은 데이터를 여러 epoch 도는 게 정상이라 "unique 토큰 대비 파라미터" 식의 비유는 결론이 기준 잡기에
 따라 정반대로 뒤집힌다. 그래서 graphic encoder / attention trunk / SPR head 등 특정 부분이 실제로
 용량이 부족해 병목인지는 비유가 아니라 아래 지표로 직접 판단한다.
 
-이 문서는 [`qplex_migration_criteria.md`](blackout_env/train/qplex_migration_criteria.md)와 같은
+이 문서는 [`qplex_migration_criteria.md`](qplex_migration_criteria.md)와 같은
 원칙을 따른다: **필요조건 → 정황 증거 → 확정적 ablation** 순서로, 모든 단계가 같은 방향을 가리킬 때만
 "용량을 늘려야 한다"고 결론 내린다. 필요조건 없이 정황 증거만으로, 혹은 ablation 없이 1~3단계만으로는
 모델 크기를 키우지 않는다.
 
 ## 현재 아키텍처 규모 (기준점)
 
-- `hidden_size=256`, `N_ATTENTION_HEADS=8` (head_dim=32), `ATTENTION_DEPTH=4`
-  ([`my_model.py`](blackout_env/model/my_model.py))
-- 학습 대상 파라미터: net 2,648,344 / dist_mixer 116,294 / spr_predictor 249,472 (합계 3,014,110)
+- `hidden_size=128`(`QMIXConfig`; `MyModel` 생성자 기본값 256은 학습에 안 쓰임), `N_ATTENTION_HEADS=8` (head_dim=16), `ATTENTION_DEPTH=4`
+  ([`my_model.py`](../../blackout_env/model/my_model.py))
+- 학습 대상 파라미터: net 1,703,832 / dist_mixer 116,294 / spr_predictor 249,472 (합계 2,069,598, `models/run11_step80k/step_80000.pt`에서 셈)
 
 ## 로깅된 진단 신호
 
-`train_step()`의 TB 로깅 블록([`qmix_trainer.py`](blackout_env/train/qmix_trainer.py))에 이미
+`train_step()`의 TB 로깅 블록([`qmix_trainer.py`](../../blackout_env/train/qmix_trainer.py))에 이미
 찍히고 있는 것들:
 
 - `grad_norm/{part}`, `weight_norm/{part}` — part는 `graphic_encoder`, `vector_encoder`,
   `attention_proj`, `attention_ffn`, `token_type_emb`, `spr_head`, `q_head`, `dist_mixer`,
-  `spr_predictor` (`_tb_net_parts`, [qmix_trainer.py:365](blackout_env/train/qmix_trainer.py:365)).
+  `spr_predictor` (`_tb_net_parts`, [qmix_trainer.py](../../blackout_env/train/qmix_trainer.py)).
 - `attention_logit_rms/layer_{i}` — attention trunk 각 레이어의 pre-softmax QK^T 로짓 RMS.
 - `loss/{total,iqn,spr}`, `td_error/mean`, `q_value/{mean,std}`.
 - `mixer_clamp_pressure/*` — 이건 mixer의 monotonicity 제약 전용 진단이라 QPLEX 판단 기준 문서

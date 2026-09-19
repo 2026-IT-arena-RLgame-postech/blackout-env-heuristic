@@ -5,7 +5,7 @@ Run 5(`checkpoints/offline/20260915-155519_23899`, 200k 스텝)가 절반을 넘
 세운 가설들. 학습 중이라 A/B 실험은 못 했고, 근거는 오프라인 데이터셋 분석, Unity 리워드 코드, Run 5
 텐서보드에서 나왔다. 검증이 진행되면 각 가설의 **상태**를 갱신할 것.
 
-리워드 구조 자체의 설계 의도는 `../reward_proposal.md`, 런별 기록은 `offline_pretrain_runs.md` 참고.
+리워드 구조 자체의 설계 의도는 `reward_proposal.md`, 런별 기록은 `offline_pretrain_runs.md` 참고.
 휴리스틱 실험으로 측정한 게임 역학(경기가 첫 1분에 결정됨, 약탈·사망 규모, 차단 전술, Ψ 위험도의 클래스
 미구분 등)은 `heuristic_findings_for_reward_20260916.md` 참고.
 

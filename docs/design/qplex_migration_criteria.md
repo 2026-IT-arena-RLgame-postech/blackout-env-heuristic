@@ -2,21 +2,21 @@
 
 ## 배경
 
-현재 `QMIXTrainer`는 [`QMixer`](blackout_env/model/modules/qmix_mixer.py)의 monotonicity 제약
+현재 `QMIXTrainer`는 [`QMixer`](../../blackout_env/model/modules/qmix_mixer.py)의 monotonicity 제약
 (`dQ_tot/dQ_i >= 0`, 하이퍼넷 출력에 `.abs()`를 걸어 강제)으로 IGM을 만족시킨다. 이 제약은 QMIX가
 표현 가능한 팀 가치함수 집합을 "진짜 IGM을 만족하는 함수 전체"의 부분집합으로 좁힌다 — 한 유닛이
 손해를 감수해야 팀 전체가 이득인 비단조적 협응(예: 미끼 역할)을 값으로 표현하지 못할 수 있다.
 
 QPLEX(duplex dueling)는 이 제약 없이 IGM을 만족시켜 표현력이 더 크지만, 지금 쓰고 있는 DFAC 스타일
-distributional 확장([`DistributionalQMixer`](blackout_env/model/modules/qmix_mixer.py))은 QMIX의
+distributional 확장([`DistributionalQMixer`](../../blackout_env/model/modules/qmix_mixer.py))은 QMIX의
 monotonic mixer를 전제로 설계된 트릭이라 QPLEX로 바꾸면 이 부분을 통째로 다시 설계해야 한다. SPR/PER/
 self-play까지 이미 복잡하게 얽힌 상태에서 근거 없이 감행할 변경은 아니다 — 아래 기준으로 실제
 병목인지 먼저 확인한다.
 
 ## 로깅된 진단 신호
 
-`train_step()`의 TB 로깅 블록([`qmix_trainer.py`](blackout_env/train/qmix_trainer.py))에
-[`clamp_pressure_stats`](blackout_env/model/modules/qmix_mixer.py)로 아래 6개 스칼라가 매
+`train_step()`의 TB 로깅 블록([`qmix_trainer.py`](../../blackout_env/train/qmix_trainer.py))에
+[`clamp_pressure_stats`](../../blackout_env/model/modules/qmix_mixer.py)로 아래 6개 스칼라가 매
 `tb_log_interval` 스텝마다 기록된다.
 
 - `mixer_clamp_pressure/frac_negative/{hyper_w1,hyper_w2,shape_weight}` — 각 하이퍼넷의 raw
