@@ -14,10 +14,13 @@ This branch (`run11-80k`) packages our strongest model so far and everything nee
 retrain and evaluate it. Clone it next to the Unity project's `run11-80k` branch:
 
 ```bash
-git clone -b run11-80k https://github.com/cucumbersaurus/blackout-env.git
-git clone -b run11-80k https://github.com/cucumbersaurus/blackout.git
+git clone -b run11-80k https://github.com/cucumbersaurus/blackout-env-heuristic.git blackout-env
+git clone -b run11-80k https://github.com/cucumbersaurus/blackout-fixed.git blackout
 cd blackout-env && git lfs pull        # fetches models/run11_step80k/step_80000.pt
 ```
+
+Keep the folder names `blackout-env` and `blackout`: `run11_pipeline.sh build` and Unity's `CIBuild` find
+each other through `../blackout` and `../blackout-env`.
 
 | What | Where |
 |---|---|

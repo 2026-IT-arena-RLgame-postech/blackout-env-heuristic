@@ -34,10 +34,11 @@
 
 1. 두 저장소를 같은 부모 폴더에 `run11-80k` 브랜치로 받는다.
    ```
-   git clone -b run11-80k https://github.com/cucumbersaurus/blackout-env.git
-   git clone -b run11-80k https://github.com/cucumbersaurus/blackout.git
+   git clone -b run11-80k https://github.com/cucumbersaurus/blackout-env-heuristic.git blackout-env
+   git clone -b run11-80k https://github.com/cucumbersaurus/blackout-fixed.git blackout
    cd blackout-env && git lfs pull
    ```
+   폴더 이름은 `blackout-env`, `blackout`으로 둔다 — `build` 단계와 Unity `CIBuild`가 `../blackout`, `../blackout-env`로 서로를 찾는다.
 2. 파이썬 환경: 저장소 `README.md`의 "Local Installation"(Python 3.10, `mlagents-envs==1.1.0`는 `--no-deps`) 뒤에
    `pip install ".[fast]" torch tensorboard "protobuf>=3.6,<3.21" "grpcio>=1.11.0,<=1.48.2"`(uv면 `uv pip install`,
    `uv sync`/`uv add`는 쓰지 않는다 — 저장소 README 참고). 동작 확인한 버전: Python 3.10.12, torch 2.14.0(MPS),
