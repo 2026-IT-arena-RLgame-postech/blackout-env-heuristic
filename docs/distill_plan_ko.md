@@ -17,15 +17,26 @@
 | **부분 성공** | V4 상대 > −27.7 (QMIX 최고 경신) | |
 | **실패 신호** | 20k 스텝에 신규 상태 정확도 < 0.7, 또는 평가가 두 번 연속 개선 없음 | |
 
-## 1. 사전 작업 (학습 전, 짧음)
+## 1. 기록 (재실행 없이 판단하기 위해)
 
-| # | 작업 | 이유 | 비용 |
-|---|---|---|---|
-| P1 | **신규 상태 정확도** 지표: sync 때 새로 들어온 샤드를 링에 넣기 *전에* 한 배치 평가 (`fresh/accuracy`, 역할별) | 지금 `train/accuracy`는 이미 본 행이라 암기와 구분이 안 된다(Run 14: 버퍼 96%, 새 상태 39%). DAgger 수집 행은 매번 학생이 새로 만든 상태라 공짜 보류 셋이다 | 코드 ~20줄 |
-| P2 | **교사 기준선 B0**: 평가 시드(고정 3시드 × 양 진영) 그대로 교사가 V17과 경기, 편성(H/Ca/C)·점수차 기록 | 학생 평가와 같은 맵에서 비교할 목표치. 편성 목표도 여기서 나온다 | 6경기, 수 분 |
-| P3 | 처리량 확인: 워커 4개, `--replay-ratio 2`에서 워커가 노는 비율과 스텝 속도 | 수집 ~180행/s/워커 대 학습 ~570샘플/s(배치 256, MPS ~0.45 s/스텝) 추정의 실측 | 스모크 10분 |
+모든 판단은 한 런의 기록만으로 내린다. `python examples/distill_report.py <out-dir>`가 아래 표를 뽑는다.
 
-P1이 없으면 아래 실험의 판단 대부분이 흐려지므로 먼저 한다.
+| 판단 | 지표 (`metrics.jsonl` kind / 키) |
+|---|---|
+| 암기 대 일반화 | `train`: `fresh_collect/accuracy`(새 샤드를 링에 넣기 *전* 점수), `fresh_eval/accuracy`(학생 단독 상태), `train/accuracy`와의 격차. `probe`: 고정 교사 상태 2048행, 배포마다 |
+| 어느 역할·행동을 못 배우나 | 위 정확도의 `_role_{collector,hunter,carrier}`, `_kind_{battery,deposit,hunt,transform,patrol_defend,…}`, 라벨 점유율 `share_*` |
+| 경기에서의 일치 | `eval`: `agree/all`, `agree/role_*`, `agree/kind_*` (워커가 실제 플레이한 모든 상태에서 학생 argmax ∈ 교사 집합) |
+| 편성 | `units_{hunter,carrier,collector}`, `first_hunter{1,2,3}_s`·`first_carrier1_s`(+ `_reached_frac`) |
+| 점수를 잃는 곳 | `learner/{pickups,deliveries,cargo_lost}_per_1000`, `opponent/cargo_lost_per_1000`(= 우리 처치), `approach_battery/storage`, `margin_{30,60,120}s` |
+| 진동·막힘 | `reversals_per_1000/{student,teacher}`, `movement/{blocked,idle}_per_1000`, `stall/*`(코너 막힘, 가득 찬 창고 대기) |
+| 로짓 건강 | `train/z`, `entropy`, `set_prob`, `logit_std`, `logit_abs_max`, `param_norm`, `param_update_norm`, `grad_norm` |
+| 파이프라인 | `pipeline/{steps_per_s, matches_per_min, busy_worker_frac, throttled_sync_frac}`, `replay_ratio`, `ring/{mean_version_age, teacher_only_frac, kind_share_*}`, `student_version_lag`, `system/peak_rss_gb` |
+| 목표치 | `eval_teacher`: 런 시작 시 교사가 같은 평가 시드로 치른 경기 (위 지표 전부) |
+| 예상 못 한 질문 | 샤드에 틱별 실행 행동·학생 선택·조종 주체와 경기 요약(`meta`), `matches.jsonl`에 원시 카운트, `run_info.json`에 커밋·dirty 파일·빌드 시각 |
+
+평가 점수차에는 `margin_se`(경기 간 표준오차)가 붙는다 — 6경기 평가의 차이를 읽을 때 기준.
+
+**남은 사전 작업**: P3 처리량 실측(워커 4개, 10분) — `pipeline/*`가 자동으로 기록하므로 D1 첫 10분으로 대신해도 된다.
 
 ## 2. 본 학습 D1
 
@@ -43,9 +54,9 @@ caffeinate -i -m -s python -m blackout_env.train.distill.run --build build/mac/B
 
 | 시점 | 볼 것 | 계속 조건 |
 |---|---|---|
-| 5k | `fresh/accuracy` 역할별, `train/z` (로짓 크기) | fresh ≥ 0.6, z가 발산하지 않음 |
-| 10k (v10 평가) | 평가 편성 H/Ca/C, 정지·막힘 | Hunter ≥ 2 (편성 라벨이 먹는지) |
-| 20k | 평가 점수차 추세, fresh − train 정확도 격차 | 격차 < 0.15 (암기 아님) |
+| 5k | `fresh_collect/accuracy_role_*`, `train/z`·`logit_abs_max` | fresh ≥ 0.6, z가 계속 커지지 않음 |
+| 10k (v10 평가) | `units_hunter`, `first_hunter3_s`, `movement/blocked_per_1000`, `reversals_per_1000/student` | Hunter ≥ 2 (편성 라벨이 먹는지), 반전이 교사 기준선의 2배 이내 |
+| 20k | 평가 `mean_margin`(± `margin_se`) 추세, `train/accuracy − fresh_eval/accuracy` | 격차 < 0.15 (암기 아님) |
 | 60k | 최종 평가 (§4) | — |
 
 ## 3. 실험 (D1 결과로 필요한 것만, 각 20k 스텝 ≈ 2.5시간)
@@ -54,15 +65,17 @@ caffeinate -i -m -s python -m blackout_env.train.distill.run --build build/mac/B
 
 | # | 변경 | 가설 | 언제 돌리나 |
 |---|---|---|---|
-| E1 | `--class-weighting balanced` | V17 편성에서 라벨의 ~60%가 Hunter라 Collector·Carrier 정확도가 뒤처진다 | D1에서 `fresh/accuracy_collector` 또는 `_carrier`가 hunter보다 0.1 이상 낮을 때 |
+| E1 | `--class-weighting balanced` | V17 편성에서 라벨의 ~60%가 Hunter라 Collector·Carrier 정확도가 뒤처진다 | D1에서 `fresh_eval/accuracy_role_collector` 또는 `_carrier`가 hunter보다 0.1 이상 낮을 때 |
 | E2 | `--beta-decay 1.0` (교사 상태만 = 순수 BC) | DAgger가 공변량 이동을 줄인다 — Run 11 진단(학생이 만든 상태에서 못 줍는다)의 직접 검증 | 항상 (DAgger 효과의 대조군, 결과 해석의 기준) |
-| E3 | `--replay-ratio 1` / `4` | 1: 더 신선한 상태, 4: 같은 데이터로 더 많은 학습 | fresh 정확도가 train보다 크게 낮으면 1, 둘이 같이 낮으면(과소적합) 4 |
+| E3 | `--replay-ratio 1` / `4` | 1: 더 신선한 상태, 4: 같은 데이터로 더 많은 학습 | `fresh_*`가 `train/accuracy`보다 크게 낮으면 1, 둘이 같이 낮으면(과소적합) 4. `pipeline/throttled_sync_frac`가 0에 가까우면 비율이 아니라 수집이 병목 |
 | E4 | `--opponents strategic_v17 mixture` | 강한 상대 앞에서의 상태(쫓기는 짐꾼, 진치기 당함)가 mixture에 적다 | V17 평가만 유독 나쁠 때 |
 | E5 | `--teacher v4-teach` | 학생이 V17의 복잡한 역할을 못 배우면 더 단순한 교사가 실제로 더 강한 학생을 만든다 | D1이 부분 성공 이하일 때 |
 
 E2는 결과와 관계없이 돌린다 — DAgger가 효과 없다면 파이프라인의 절반(학생 수집)이 불필요하다는 뜻이기 때문이다.
 
 ## 4. 최종 평가 (D1 60k 및 채택된 실험)
+
+온라인 평가(6경기)는 추세용이다. 최종 판단은 아래 별도 평가로 한다.
 
 1. **점수차**: V4·V17·V19 상대 12시드 × 양 진영, 헤드리스(`examples/evaluate_checkpoint_vs_heuristic.py`).
 2. **편성**: 경기당 평균 H/Ca/C를 B0(교사)와 비교. 편성은 같은데 점수가 낮으면 역할 운용, 편성부터 다르면 변신 라벨 문제.

@@ -10,6 +10,8 @@ learner's team is recorded.  The opponent is a fixed heuristic or the heuristic 
 from __future__ import annotations
 
 import functools
+import os
+import time
 from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -17,20 +19,21 @@ from pathlib import Path
 import numpy as np
 
 from blackout_env.env.constants import team_a_agents, team_b_agents, unit_index
-from blackout_env.env.team_frame import canonical_obs, is_team_b_view, mirror_direction_bits
+from blackout_env.env.team_frame import canonical_obs, is_team_b_view, mirror_direction_bits, mirror_direction_idx
 from blackout_env.heuristics import (
     HeuristicPolicyMixture, StrategicHeuristicV4Teach, StrategicHeuristicV17Teach, make_heuristic,
 )
 from blackout_env.heuristics.teach import label_action
+from blackout_env.model.my_policy import direction_vector_to_idx
 from blackout_env.train.dead_segments import batteries_in_play
-from blackout_env.train.distill.dataset import KIND_INDEX, N_TEAM, encode_graphic, save_shard
+from blackout_env.train.distill.dataset import EXTRA_FIELDS, FIELDS, KIND_INDEX, N_TEAM, encode_graphic, save_shard
+from blackout_env.train.distill.metrics import MATCH_SECONDS, STAND, MatchRecorder
 
 TEACHERS = {
     "v17-teach": StrategicHeuristicV17Teach,
     "v4-teach": functools.partial(StrategicHeuristicV4Teach, target_hunters=2, target_carriers=1),
 }
 ABSORPTION_IDX = 3  # team_state: time to the next absorption
-CLASS_COLS = slice(9, 12)  # agent_states class one-hot: Collector, Hunter, Carrier
 MAX_EMPTY_STEPS = 200
 
 
@@ -53,18 +56,17 @@ def make_opponent(opponent: str, seed: int):
 
 
 def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.ndarray], dict]:
-    """Plays ``task``; returns the learner's labelled rows (dataset.py schema) and a summary."""
+    """Plays ``task``; returns the learner's labelled rows (dataset.py schema) and a summary
+    (the task, outcome, and ``MatchRecorder`` counts)."""
     if student is None and task.beta < 1.0:
         raise ValueError("a match with beta < 1 needs a student")
     teacher = TEACHERS[task.teacher]()
     opponent = make_opponent(task.opponent, task.seed)
     learner_names = team_b_agents() if task.swap else team_a_agents()
     opponent_names = team_a_agents() if task.swap else team_b_agents()
+    recorder = MatchRecorder(learner_names, opponent_names)
     rng = np.random.default_rng(task.seed)
-
-    rows: dict[str, list] = {"graphic": [], "team_state": [], "agent_states": [], "labels": [], "kinds": []}
-    teacher_ticks = unit_ticks = recorded = labelled = 0
-    class_ticks = np.zeros(3, dtype=np.int64)
+    rows: dict[str, list] = {field: [] for field in FIELDS + EXTRA_FIELDS}
 
     obs, _ = env.reset(seed=task.seed)
     for policy in (teacher, opponent, student):
@@ -73,6 +75,7 @@ def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.nda
     final_info: dict = {}
     last_absorption = None
     empty_steps = 0
+    elapsed = 0.0
     while env.agents:
         if not obs:
             obs, _, _, _, infos = env.step({})
@@ -86,27 +89,25 @@ def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.nda
         opponent_obs = {a: obs[a] for a in opponent_names if a in obs}
         actions = opponent.act(opponent_obs) if opponent_obs else {}
 
+        full_window = len(learner_obs) == len(learner_names)  # partial decision windows are not recorded
         if learner_obs:
             labels = teacher.teach(learner_obs)
             student_actions = student.act(learner_obs) if student is not None and task.beta < 1.0 else {}
+            teacher_drove = {name: name not in student_actions or rng.random() < task.beta for name in learner_obs}
             for name in learner_obs:
-                if name not in student_actions or rng.random() < task.beta:
-                    actions[name] = label_action(labels[name])
-                    teacher_ticks += 1
-                else:
-                    actions[name] = student_actions[name]
-            unit_ticks += len(learner_obs)
-            if len(learner_obs) == len(learner_names):  # partial decision windows are not recorded
-                row = _labelled_row(learner_obs, labels)
-                recorded += 1
-                class_ticks += row["agent_states"][:N_TEAM, CLASS_COLS].sum(axis=0).round().astype(np.int64)
+                actions[name] = label_action(labels[name]) if teacher_drove[name] else student_actions[name]
+            if full_window:
+                recorder.before_step(learner_obs, opponent_obs, labels, actions, student_actions, teacher_drove)
+                row = _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove)
                 if row["labels"].any():
-                    labelled += 1
                     for field, value in row.items():
                         rows[field].append(value)
+            elapsed = (1.0 - float(next(iter(learner_obs.values()))["team_state"][2])) * MATCH_SECONDS
 
         obs, _, terminations, _, infos = env.step(actions)
         final_info = next(iter(infos.values()), final_info) if infos else final_info
+        learner_next = next((obs[a] for a in learner_names if a in obs), None) if obs else None
+        recorder.after_step(learner_next["agent_states"] if learner_next is not None and full_window else None)
         if any(terminations.values()) or not obs:
             continue
         view = next(iter(obs.values()))
@@ -122,39 +123,54 @@ def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.nda
     winner = final_info.get("winner")
     summary = {
         **asdict(task),
-        "rows": labelled,
+        "rows": len(rows["labels"]),
         "learner_score": scores[learner_team],
         "opponent_score": scores[1 - learner_team],
         "result": 0 if winner in (None, -1) else (1 if int(winner) == learner_team else -1),
-        "teacher_frac": teacher_ticks / max(1, unit_ticks),
-        # mean units per class on the learner's team: the role ratio it actually played
-        "collectors": class_ticks[0] / max(1, recorded), "hunters": class_ticks[1] / max(1, recorded),
-        "carriers": class_ticks[2] / max(1, recorded),
+        "elapsed_s": round(elapsed, 1),
+        **recorder.summary(),
     }
     arrays = {field: np.stack(values) if values else np.zeros((0,)) for field, values in rows.items()}
     return arrays, summary
 
 
-def _labelled_row(learner_obs, labels) -> dict[str, np.ndarray]:
-    """One tick in the canonical frame: own units in rows 0-4, labels mirrored for team B."""
+def _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove) -> dict[str, np.ndarray]:
+    """One tick in the canonical frame: own units in rows 0-4, labels and moves mirrored for
+    team B (dataset.py schema)."""
     view = next(iter(learner_obs.values()))
     team_b = is_team_b_view(view["agent_states"])
-    bits = np.zeros(2 * N_TEAM, dtype=np.uint8)
-    kinds = np.zeros(2 * N_TEAM, dtype=np.uint8)
+    per_unit = {
+        "labels": np.zeros(2 * N_TEAM, dtype=np.uint8), "kinds": np.zeros(2 * N_TEAM, dtype=np.uint8),
+        "actions": np.full(2 * N_TEAM, STAND, dtype=np.uint8), "student": np.full(2 * N_TEAM, STAND, dtype=np.uint8),
+        "teacher_drove": np.zeros(2 * N_TEAM, dtype=bool),
+    }
     for name, label in labels.items():
-        bits[unit_index(name)] = np.packbits(label.mask, bitorder="little")[0]
-        kinds[unit_index(name)] = KIND_INDEX.get(label.kind, 0) if label.valid else 0
+        i = unit_index(name)
+        per_unit["labels"][i] = np.packbits(label.mask, bitorder="little")[0]
+        per_unit["kinds"][i] = KIND_INDEX.get(label.kind, 0) if label.valid else 0
+        per_unit["actions"][i] = _direction(actions[name])
+        if name in student_actions:
+            per_unit["student"][i] = _direction(student_actions[name])
+        per_unit["teacher_drove"][i] = teacher_drove[name]
     if team_b:
-        bits = mirror_direction_bits(bits)
-        kinds = np.roll(kinds, -N_TEAM)
+        per_unit["labels"] = mirror_direction_bits(per_unit["labels"])
+        for field in ("actions", "student"):
+            moves = per_unit[field]
+            per_unit[field] = np.where(moves == STAND, STAND, mirror_direction_idx(np.minimum(moves, 7))).astype(np.uint8)
+        per_unit = {field: np.roll(values, -N_TEAM) if field != "labels" else values for field, values in per_unit.items()}
     canonical = canonical_obs(view)
     return {
         "graphic": encode_graphic(canonical["graphic"]),
         "team_state": canonical["team_state"].astype(np.float32),
         "agent_states": canonical["agent_states"].astype(np.float32),
-        "labels": bits[:N_TEAM],
-        "kinds": kinds[:N_TEAM],
+        **{field: values[:N_TEAM] for field, values in per_unit.items()},
     }
+
+
+def _direction(move: np.ndarray) -> int:
+    """Compass index of a continuous move, STAND for no movement."""
+    move = np.asarray(move, np.float32)
+    return STAND if float(np.linalg.norm(move)) < 1e-6 else int(direction_vector_to_idx(move))
 
 
 def _scores_from(view, team_b: bool) -> dict:
@@ -205,11 +221,13 @@ def _load_student(path: str | None) -> tuple[object | None, int]:
 
 
 def _run_task(task: MatchTask) -> dict:
+    started = time.time()
     student, version = _load_student(task.student)
     rows, summary = play_labelled_match(_ENV, task, student)
+    summary.update(student_version=version, wall_s=round(time.time() - started, 1), worker_pid=os.getpid())
     if task.shard is not None and summary["rows"]:
-        save_shard(Path(task.shard), rows)
-    return {**summary, "student_version": version}
+        save_shard(Path(task.shard), rows, meta=summary)
+    return summary
 
 
 class CollectorPool:

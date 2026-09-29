@@ -6,10 +6,11 @@ from blackout_env.env.constants import all_agents
 from blackout_env.env.team_frame import DIR_MIRROR
 from blackout_env.heuristics.teach import TeachLabel
 from blackout_env.model.my_model import MyModel
-from blackout_env.model.my_policy import MyPolicy
+from blackout_env.model.my_policy import DIRECTION_VECTORS, MyPolicy
 from blackout_env.train.distill.collect import MatchTask, _labelled_row, play_labelled_match
+from blackout_env.train.distill.metrics import STAND, LabelAccuracy, summarize_matches
 from blackout_env.train.distill.dataset import (
-    DistillDataset, decode_graphic, encode_graphic, save_shard, unpack_labels,
+    KIND_INDEX, DistillDataset, decode_graphic, encode_graphic, save_shard, shard_meta, unpack_labels,
 )
 from blackout_env.train.distill.loss import set_valued_cross_entropy
 from blackout_env.train.distill.run import class_weights
@@ -105,29 +106,38 @@ def test_team_b_rows_are_canonical_own_units_first_with_mirrored_labels():
         mask = np.zeros(8, bool)
         mask[k] = True
         labels[name] = TeachLabel(mask, True, "battery", (0, 0))
-    row = _labelled_row(obs, labels)
+    moves = {name: DIRECTION_VECTORS[k] for k, name in enumerate(obs)}
+    row = _labelled_row(obs, labels, moves, {}, {name: True for name in obs})
     assert (row["agent_states"][:5, 2] > 0).all()  # own team in rows 0-4
     for k in range(5):
         assert np.flatnonzero(unpack_labels(row["labels"])[k]).tolist() == [int(DIR_MIRROR[k])]
-    assert (row["kinds"] == 1).all()
+        assert row["actions"][k] == DIR_MIRROR[k]  # executed moves mirror like labels
+    assert (row["kinds"] == 1).all() and (row["student"] == STAND).all() and row["teacher_drove"].all()
 
 
 @pytest.mark.parametrize("swap", [False, True])
 def test_labelled_match_records_the_learner_team(swap):
     task = MatchTask(seed=1, swap=swap, opponent="strategic_v4", beta=1.0, teacher="v17-teach", student=None, shard=None)
     rows, summary = play_labelled_match(_FakeEnv(), task, None)
-    assert summary["rows"] == len(rows["labels"]) > 0
-    assert summary["teacher_frac"] == 1.0 and summary["result"] == (-1 if swap else 1)
-    assert summary["hunters"] == 0 and summary["collectors"] == 5  # everyone starts as a Collector
+    assert summary["rows"] == len(rows["labels"]) > 0 and summary["result"] == (-1 if swap else 1)
+    stats = summarize_matches([summary])
+    assert stats["teacher_frac"] == 1.0 and "agree/all" not in stats  # no student was asked
+    assert stats["units_hunter"] == 0 and stats["units_collector"] == 5  # everyone starts as a Collector
+    assert stats["label_valid_frac"] > 0 and "first_hunter1_s" not in stats
     assert rows["graphic"].dtype == np.uint8 and (rows["agent_states"][:, :5, 2] > 0).all()
+    assert rows["teacher_drove"].all() and (rows["student"] == STAND).all()
 
 
 def test_mixed_control_needs_and_uses_the_student():
     task = MatchTask(seed=2, swap=False, opponent="mixture", beta=0.5, teacher="v17-teach", student="x", shard=None)
     with pytest.raises(ValueError):
         play_labelled_match(_FakeEnv(), task, None)
-    _, summary = play_labelled_match(_FakeEnv(length=8), task, MyPolicy(MyModel().eval()))
-    assert 0.0 < summary["teacher_frac"] < 1.0
+    rows, summary = play_labelled_match(_FakeEnv(length=8), task, MyPolicy(MyModel().eval()))
+    stats = summarize_matches([summary, summary])
+    assert 0.0 < stats["teacher_frac"] < 1.0
+    assert 0.0 <= stats["agree/all"] <= 1.0 and stats["agree_share/role_collector"] == 1.0
+    assert (rows["student"] < 8).all()  # asked every tick, whoever drove
+    assert np.array_equal(rows["actions"][rows["teacher_drove"] == False], rows["student"][rows["teacher_drove"] == False])  # noqa: E712
 
 
 def test_balanced_class_weights_give_each_present_class_equal_mass():
@@ -147,3 +157,35 @@ def test_collection_follows_the_replay_ratio_after_warm_up():
     assert wants_matches(0, 0, 50, args)  # warm-up: always
     assert not wants_matches(150, 100, 100, args) and wants_matches(200, 100, 100, args)
     assert [beta_for(v, args) for v in range(4)] == [1.0, 1.0, 0.5, 0.25]
+
+
+def test_shards_keep_analysis_fields_and_meta_and_the_ring_tracks_versions(tmp_path):
+    rows = _rows(3, 0)
+    rows["actions"] = np.zeros((3, 5), np.uint8)
+    rows["kinds"][:, 0] = KIND_INDEX["hunt"]
+    save_shard(tmp_path / "a.npz", rows, meta={"student_version": 4, "tag": "eval"})
+    with np.load(tmp_path / "a.npz") as shard:
+        assert "actions" in shard and shard_meta(shard)["student_version"] == 4
+    dataset = DistillDataset(tmp_path, capacity=8)
+    (loaded, meta), = list(dataset.new_shards())
+    dataset.append(loaded, meta["student_version"])
+    ring = dataset.composition(current_version=6)
+    assert ring["ring/mean_version_age"] == 2 and ring["ring/teacher_only_frac"] == 0
+    assert ring["ring/kind_share_hunt"] == 1.0
+
+
+def test_label_accuracy_splits_by_role_and_kind():
+    logits = torch.zeros(1, 5, 8)
+    logits[0, :, 0] = 1  # always picks direction 0
+    masks = torch.zeros(1, 5, 8, dtype=torch.bool)
+    masks[0, 0, 0] = masks[0, 1, 3] = True  # unit 0 right, unit 1 wrong, others unlabelled
+    classes = torch.zeros(1, 5, 3)
+    classes[0, 0, 1] = classes[0, 1, 0] = 1  # unit 0 Hunter, unit 1 Collector
+    kinds = torch.tensor([[KIND_INDEX["hunt"], KIND_INDEX["battery"], 0, 0, 0]])
+    accuracy = LabelAccuracy(torch.device("cpu"))
+    accuracy.add(logits, masks, classes, kinds)
+    stats = accuracy.pop("fresh")
+    assert stats["fresh/accuracy"] == 0.5 and stats["fresh/labels"] == 2
+    assert stats["fresh/accuracy_role_hunter"] == 1.0 and stats["fresh/accuracy_role_collector"] == 0.0
+    assert stats["fresh/accuracy_kind_hunt"] == 1.0 and stats["fresh/share_kind_battery"] == 0.5
+    assert accuracy.pop("fresh") == {}  # popped

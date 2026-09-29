@@ -64,7 +64,12 @@ python -m blackout_env.train.distill.run --build build/mac/BlackOut.app --worker
   역할별 정확도·라벨 점유율(`train/accuracy_hunter`, `train/label_share_hunter` …). `--class-weighting balanced`는
   배치마다 세 클래스의 가중 합을 같게 한다 — V17 편성에서 Hunter 라벨이 Collector 한 기의 라벨을 덮지 않게.
 - **데이터 형식**: 그래픽은 ×15 uint8로 무손실, 행은 팀 정규 프레임(팀 B 거울, 라벨 비트도 거울). 교사가 아무 유닛에도
-  라벨을 안 준 틱은 저장하지 않는다.
+  라벨을 안 준 틱은 저장하지 않는다. 분석용으로 틱별 실행 행동·학생 선택·조종 주체와 경기 요약(`meta`)도 담는다.
+- **기록** (`train/distill/metrics.py`): `metrics.jsonl`(+ tb) 종류별 — `train`(손실·로짓 건강·역할×라벨 종류별 정확도,
+  **fresh** = 새 샤드를 링에 넣기 전 현재 망의 점수, 링 구성, 파이프라인·메모리), `collect`/`eval`/`eval_teacher`(경기
+  결과 ± 표준오차, 학생–교사 일치, 편성·도달 시각, 배달·짐 잃음·처치, 30/60/120초 점수차, 반전·막힘·정지 원인),
+  `probe`(고정 교사 상태 2048행, 배포마다). 새 런은 먼저 교사가 평가 시드로 경기해 목표치를 남긴다. `run_info.json`에
+  커밋·dirty 파일·빌드 시각. 표는 `python examples/distill_report.py <out-dir>`. 지표↔판단 대응은 `docs/distill_plan_ko.md` §1.
 
 스모크(2워커, 400스텝, 50스텝마다 배포, 재개 포함): 워커의 학생 재로드, β 혼합(β 0.53 → 교사 조종 0.52), 비율 조절,
 재개, 종료 드레인 확인. 학습 정확도 0.53 → 0.90(1.5만 행, 과적합 수준이라 성능 의미 없음). MPS 배치 256 ~0.45 s/스텝.

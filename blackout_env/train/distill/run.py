@@ -11,8 +11,9 @@ Collection and fitting run at the same time:
 
 They meet at two points:
 
-* every ``--sync-every`` steps the learner collects finished matches, loads their shards into the
-  replay ring, and queues more matches -- only while it has trained at least ``--replay-ratio``
+* every ``--sync-every`` steps the learner collects finished matches, scores the current net on
+  their rows *before* they enter the replay ring (``fresh_*``: states it has never trained on),
+  loads them, and queues more matches -- only while it has trained at least ``--replay-ratio``
   samples per collected row, so the (much faster) collector cannot flood the ring with rows the
   learner never sees;
 * every ``--publish-every`` steps it atomically replaces ``latest.pt``; a worker reloads the
@@ -21,11 +22,20 @@ They meet at two points:
   student yet = teacher only, which also fills the ring up to ``--min-rows`` before fitting).
   Every ``--eval-every`` versions ``2 x --eval-seeds`` student-only matches against
   ``--eval-opponent`` on fixed seeds are queued ahead of collection; their states are labelled
-  too.
+  too.  A new run first plays the teacher on the same seeds (``eval_teacher``), the target.
 
-``latest.pt`` holds ``policy_state`` = MyModel weights (load_my_policy_checkpoint and
-examples/gui_match.py play it directly) plus what a restart needs: re-running with the same
-``--out-dir`` resumes from it.
+Output (``--out-dir``):
+
+  metrics.jsonl    every record (kinds: train, collect, eval, eval_teacher, probe), also in tb/
+  matches.jsonl    one summary per match, with raw counts (train/distill/metrics.py)
+  shards/          one per match: states, labels, executed and student moves (dataset.py)
+  run_info.json    git commit and dirty files, build, versions, arguments (one entry per start)
+  probe.npz        fixed teacher-state rows, scored at every publish
+  latest.pt        policy_state (MyModel weights; load_my_policy_checkpoint and
+                   examples/gui_match.py play it) + optimizer and counters to resume from;
+                   v_NNNN.pt keeps weights every --snapshot-every versions
+
+Re-running with the same ``--out-dir`` resumes.  ``examples/distill_report.py`` prints the tables.
 
 Example (smoke test)::
 
@@ -38,6 +48,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
+import resource
+import subprocess
 import time
 from collections import defaultdict
 from datetime import datetime
@@ -47,13 +60,10 @@ import numpy as np
 import torch
 
 from blackout_env.model.my_model import MyModel
-from blackout_env.train.distill.collect import CLASS_COLS, TEACHERS, CollectorPool, MatchTask
-from blackout_env.train.distill.dataset import GRAPHIC_SCALE, N_TEAM, DistillDataset
+from blackout_env.train.distill.collect import TEACHERS, CollectorPool, MatchTask
+from blackout_env.train.distill.dataset import FIELDS, GRAPHIC_SCALE, N_TEAM, DistillDataset
 from blackout_env.train.distill.loss import set_valued_cross_entropy
-from blackout_env.train.tb_logger import TBLogger
-
-CLASS_NAMES = ("collector", "hunter", "carrier")
-ROLE_KEYS = ("collectors", "hunters", "carriers")
+from blackout_env.train.distill.metrics import CLASS_COLS, LabelAccuracy, MetricsLog, summarize_matches
 
 
 def parse_args(argv=None) -> argparse.Namespace:
@@ -72,6 +82,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--beta-min", type=float, default=0.0)
     p.add_argument("--eval-opponent", default="strategic_v17")
     p.add_argument("--eval-seeds", type=int, default=3, help="student-only eval matches = 2 x this")
+    p.add_argument("--baseline-eval", action=argparse.BooleanOptionalAction, default=True,
+                   help="a new run first plays the teacher on the eval seeds (eval_teacher)")
     p.add_argument("--seed", type=int, default=20260929)
     # synchronisation
     p.add_argument("--min-rows", type=int, default=20_000, help="teacher-only rows to collect before fitting")
@@ -82,6 +94,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--eval-every", type=int, default=5, help="versions between eval batches")
     p.add_argument("--snapshot-every", type=int, default=5, help="versions between kept v_NNNN.pt weights")
     p.add_argument("--log-every", type=int, default=200)
+    p.add_argument("--fresh-rows", type=int, default=256, help="rows per new shard scored before it enters the ring")
+    p.add_argument("--probe-rows", type=int, default=2048, help="fixed teacher-state rows scored at every publish")
     # learner
     p.add_argument("--batch-size", type=int, default=256)
     p.add_argument("--lr", type=float, default=3e-4)
@@ -108,20 +122,6 @@ def wants_matches(trained_samples: int, collected_rows: int, dataset_rows: int, 
     return dataset_rows < args.min_rows or trained_samples >= args.replay_ratio * collected_rows
 
 
-def summarize(summaries: list[dict], prefix: str) -> dict[str, float]:
-    margins = [s["learner_score"] - s["opponent_score"] for s in summaries]
-    stats = {
-        f"{prefix}/matches": len(summaries),
-        f"{prefix}/mean_margin": float(np.mean(margins)),
-        f"{prefix}/win_rate": float(np.mean([s["result"] == 1 for s in summaries])),
-        f"{prefix}/teacher_frac": float(np.mean([s["teacher_frac"] for s in summaries])),
-        f"{prefix}/rows": int(sum(s["rows"] for s in summaries)),
-    }
-    for role in ROLE_KEYS:  # the role ratio the learner's team actually played
-        stats[f"{prefix}/{role}"] = float(np.mean([s[role] for s in summaries]))
-    return stats
-
-
 def class_weights(classes: torch.Tensor, valid: torch.Tensor) -> torch.Tensor:
     """[B, 5, 3] one-hot classes -> [B, 5] weights giving each present class equal total weight."""
     counts = (classes * valid.unsqueeze(-1)).sum(dim=(0, 1))  # [3]
@@ -140,22 +140,23 @@ class Learner:
         self.net = MyModel().to(self.device)
         self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
         self._bit_index = torch.arange(8, device=self.device)
-        self._reset_stats()
-
-    def _reset_stats(self) -> None:
+        self.accuracy = LabelAccuracy(self.device)
         self._totals = defaultdict(lambda: torch.zeros((), device=self.device))
-        self._role_hits = torch.zeros(len(CLASS_NAMES), device=self.device)
-        self._role_labels = torch.zeros(len(CLASS_NAMES), device=self.device)
         self._steps = 0
+        self.mark_weights()
 
-    def step(self, batch: dict[str, np.ndarray]) -> None:
-        self.net.train()
-        batch = {k: torch.from_numpy(v).to(self.device) for k, v in batch.items()}
+    def _tensors(self, rows: dict[str, np.ndarray]):
+        batch = {k: torch.from_numpy(rows[k]).to(self.device) for k in FIELDS}
         graphic = batch["graphic"].permute(0, 3, 1, 2).float() / GRAPHIC_SCALE
-        q_values, *_ = self.net(graphic, batch["team_state"], batch["agent_states"])
-        logits = q_values[:, :N_TEAM]
         masks = ((batch["labels"].long().unsqueeze(-1) >> self._bit_index) & 1) == 1  # dataset.unpack_labels
         classes = batch["agent_states"][:, :N_TEAM, CLASS_COLS]
+        return graphic, batch["team_state"], batch["agent_states"], masks, classes, batch["kinds"]
+
+    def step(self, rows: dict[str, np.ndarray]) -> None:
+        self.net.train()
+        graphic, team_state, agent_states, masks, classes, kinds = self._tensors(rows)
+        q_values, *_ = self.net(graphic, team_state, agent_states)
+        logits = q_values[:, :N_TEAM]
         valid = masks.any(dim=-1).float()
         weights = class_weights(classes, valid) if self.args.class_weighting == "balanced" else None
         loss, stats = set_valued_cross_entropy(logits, masks, weights, self.args.z_loss)
@@ -168,22 +169,65 @@ class Learner:
         with torch.no_grad():
             for key, value in stats.items():
                 self._totals[key] += value.detach()
-            # accuracy per unit class: is each role's play being learned?
-            hit = masks.gather(-1, logits.argmax(-1, keepdim=True)).squeeze(-1).float() * valid
-            self._role_hits += (hit.unsqueeze(-1) * classes).sum(dim=(0, 1))
-            self._role_labels += (valid.unsqueeze(-1) * classes).sum(dim=(0, 1))
+            # Logit health: is the head drifting in scale, or collapsing to certainty?
+            n = valid.sum().clamp_min(1)
+            log_p = torch.log_softmax(logits, dim=-1)
+            self._totals["entropy"] += (-(log_p.exp() * log_p).sum(-1) * valid).sum() / n
+            self._totals["set_prob"] += ((log_p.exp() * masks).sum(-1) * valid).sum() / n
+            self._totals["logit_std"] += logits.std(dim=-1).mean()
+            self._totals["logit_abs_max"] += logits.abs().amax()
+            self._totals["valid_labels_per_row"] += valid.sum(-1).mean()
+            self.accuracy.add(logits, masks, classes, kinds)
         self._steps += 1
 
+    @torch.no_grad()
+    def score(self, rows: dict[str, np.ndarray], accuracy: LabelAccuracy, chunk: int = 512) -> None:
+        """Label accuracy of the current net on ``rows`` (no training)."""
+        self.net.eval()
+        for start in range(0, len(rows["labels"]), chunk):
+            part = {k: rows[k][start:start + chunk] for k in FIELDS}
+            graphic, team_state, agent_states, masks, classes, kinds = self._tensors(part)
+            q_values, *_ = self.net(graphic, team_state, agent_states)
+            accuracy.add(q_values[:, :N_TEAM], masks, classes, kinds)
+
+    def _flat_params(self) -> torch.Tensor:
+        return torch.cat([p.detach().flatten() for p in self.net.parameters()]).clone()
+
+    def mark_weights(self) -> None:
+        """Measure ``param_update_norm`` from the weights as they are now (e.g. after loading)."""
+        self._params_at_pop = self._flat_params()
+
     def pop_stats(self) -> dict[str, float]:
-        """Means since the last call."""
+        """Means since the last call, plus weight norm and how far the weights moved."""
         out = {f"train/{k}": float(v) / max(1, self._steps) for k, v in self._totals.items()}
-        hits, labels = self._role_hits.tolist(), self._role_labels.tolist()
-        for name, n_hit, n_label in zip(CLASS_NAMES, hits, labels):
-            if n_label:
-                out[f"train/accuracy_{name}"] = n_hit / n_label
-                out[f"train/label_share_{name}"] = n_label / sum(labels)
-        self._reset_stats()
+        out.update(self.accuracy.pop("train"))
+        params = self._flat_params()
+        out["train/param_norm"] = float(params.norm())
+        out["train/param_update_norm"] = float((params - self._params_at_pop).norm())
+        out["train/lr"] = self.optimizer.param_groups[0]["lr"]
+        self._params_at_pop = params
+        self._totals.clear()
+        self._steps = 0
         return out
+
+
+def _run_info(args) -> dict:
+    def git(*cmd: str) -> str:
+        try:
+            return subprocess.run(["git", *cmd], capture_output=True, text=True, check=True).stdout
+        except (OSError, subprocess.CalledProcessError):
+            return ""
+
+    build = Path(args.build)
+    return {
+        "started": datetime.now().isoformat(timespec="seconds"),
+        "git_commit": git("rev-parse", "HEAD").strip(),
+        "git_dirty": [line[3:] for line in git("status", "--porcelain", "--untracked-files=no").splitlines()],
+        "build": str(build.resolve()),
+        "build_mtime": datetime.fromtimestamp(build.stat().st_mtime).isoformat(timespec="seconds") if build.exists() else None,
+        "python": platform.python_version(), "torch": torch.__version__, "host": platform.node(),
+        "args": {k: str(v) for k, v in vars(args).items()},
+    }
 
 
 class Run:
@@ -197,18 +241,25 @@ class Run:
         self.latest = self.out_dir / "latest.pt"
         self.learner = Learner(args)
         self.step = self.version = self.queued = self.collected_rows = 0
-        self._restore()
-        (self.out_dir / "args.json").write_text(json.dumps({k: str(v) for k, v in vars(args).items()}, indent=1))
+        self.resumed = self._restore()
+        self.learner.mark_weights()
+        info_path = self.out_dir / "run_info.json"
+        history = json.loads(info_path.read_text()) if info_path.exists() else []
+        info_path.write_text(json.dumps(history + [_run_info(args)], indent=1))
         self.dataset = DistillDataset(self.shards, args.max_rows)
         self.dataset.refresh()
-        self.tb = TBLogger(self.out_dir / "tb")
+        self.metrics = MetricsLog(self.out_dir)
         self.match_log = open(self.out_dir / "matches.jsonl", "a")
+        self.fresh = {"collect": LabelAccuracy(self.learner.device), "eval": LabelAccuracy(self.learner.device)}
+        self.probe: dict[str, np.ndarray] | None = None
         self._collect_window: list[dict] = []
-        self._evals: dict[int, list[dict]] = defaultdict(list)
+        self._evals: dict[tuple[str, int], list[dict]] = defaultdict(list)
+        self._pipeline = defaultdict(float)  # sync-level counters since the last log
+        self._rng = np.random.default_rng(args.seed + self.step)
 
     # ----------------------------------------------------------------------- checkpoints
 
-    def _restore(self) -> None:
+    def _restore(self) -> bool:
         if self.latest.exists():
             ckpt = torch.load(self.latest, map_location=self.learner.device, weights_only=True)
             self.learner.net.load_state_dict(ckpt["policy_state"])
@@ -217,10 +268,12 @@ class Run:
             self.step, self.version = ckpt["train_step_count"], state["version"]
             self.queued, self.collected_rows = state["queued"], state["collected_rows"]
             print(f"[distill] resuming at step {self.step}, student v{self.version}")
-        elif self.args.init is not None:
+            return True
+        if self.args.init is not None:
             init = torch.load(self.args.init, map_location=self.learner.device, weights_only=True)
             self.learner.net.load_state_dict(init["policy_state"])
             self.publish()
+        return False
 
     def publish(self) -> None:
         """A new student version: replace latest.pt atomically (workers may be reading it)."""
@@ -238,6 +291,18 @@ class Run:
         if self.version % self.args.snapshot_every == 0:
             torch.save({"policy_state": payload["policy_state"], "distill": payload["distill"]},
                        self.out_dir / f"v_{self.version:04d}.pt")
+        if self.probe is not None:
+            accuracy = LabelAccuracy(self.learner.device)
+            self.learner.score(self.probe, accuracy)
+            self.metrics.write("probe", self.step, {"version": self.version, **accuracy.pop("probe")})
+
+    def _load_probe(self) -> None:
+        """Fixed rows drawn once from the teacher-only warm-up: one curve comparable across the run."""
+        path = self.out_dir / "probe.npz"
+        if not path.exists():
+            np.savez_compressed(path, **self.dataset.sample(self.args.probe_rows, np.random.default_rng(self.args.seed)))
+        with np.load(path) as probe:
+            self.probe = {field: probe[field] for field in FIELDS}
 
     # ------------------------------------------------------------------------- collection
 
@@ -249,13 +314,18 @@ class Run:
                          shard=str(self.shards / f"{index:06d}_{tag}_v{self.version:04d}.npz"),
                          tag=tag, version=self.version)
 
-    def queue_eval(self, pool: CollectorPool) -> None:
+    def queue_eval(self, pool: CollectorPool, tag: str = "eval") -> None:
         # the same seeds every time, so versions compare on equal maps
+        beta = 1.0 if tag == "eval_teacher" else 0.0
         for i in range(2 * self.args.eval_seeds):
-            pool.submit(self._task("eval", self.args.seed - 1 - i // 2, bool(i % 2), self.args.eval_opponent, 0.0))
+            pool.submit(self._task(tag, self.args.seed - 1 - i // 2, bool(i % 2), self.args.eval_opponent, beta))
 
     def top_up(self, pool: CollectorPool) -> None:
         args = self.args
+        wanted = wants_matches(self.step * args.batch_size, self.collected_rows, self.dataset.size, args)
+        self._pipeline["syncs"] += 1
+        self._pipeline["throttled_syncs"] += not wanted
+        self._pipeline["busy_worker_frac"] += min(pool.in_flight, pool.workers) / pool.workers
         while pool.in_flight < pool.workers and wants_matches(
                 self.step * args.batch_size, self.collected_rows, self.dataset.size, args):
             n = self.queued
@@ -266,58 +336,89 @@ class Run:
 
     def sync(self, pool: CollectorPool, timeout: float = 0.0) -> None:
         self._record(pool.poll(timeout))
-        self.dataset.refresh()
+        for rows, meta in self.dataset.new_shards():
+            if self.step and len(rows["labels"]):  # fresh = the current net has never trained on these
+                pick = self._rng.choice(len(rows["labels"]), min(self.args.fresh_rows, len(rows["labels"])), replace=False)
+                tag = "eval" if meta.get("tag") == "eval" else "collect"
+                self.learner.score({k: rows[k][np.sort(pick)] for k in FIELDS}, self.fresh[tag])
+            self.dataset.append(rows, meta.get("student_version", 0))
         self.top_up(pool)
 
     def _record(self, summaries: list[dict]) -> None:
         for summary in summaries:
+            if summary["student"] is not None:
+                summary["version_lag"] = self.version - summary["student_version"]
             self.match_log.write(json.dumps(summary) + "\n")
             self.collected_rows += summary["rows"]
-            if summary["tag"] == "eval":
+            self._pipeline["matches"] += 1
+            self._pipeline["match_wall_s"] += summary["wall_s"]
+            if summary["tag"].startswith("eval"):
                 self._log_eval(summary)
             else:
                 self._collect_window.append(summary)
         self.match_log.flush()
 
     def _log_eval(self, summary: dict) -> None:
-        group = self._evals[summary["version"]]
+        tag, version = summary["tag"], summary["version"]
+        group = self._evals[(tag, version)]
         group.append(summary)
         if len(group) < 2 * self.args.eval_seeds:
             return
-        stats = summarize(group, "eval")
-        self.tb.scalars("distill", stats, self.step)
-        print(f"[distill] eval v{summary['version']} vs {self.args.eval_opponent}: margin {stats['eval/mean_margin']:+.1f} "
-              f"win {stats['eval/win_rate']:.2f} H/Ca/C {stats['eval/hunters']:.1f}/{stats['eval/carriers']:.1f}/"
-              f"{stats['eval/collectors']:.1f}", flush=True)
-        del self._evals[summary["version"]]
+        stats = summarize_matches(group)
+        self.metrics.write(tag, self.step, {"version": version, **stats})
+        who = "teacher" if tag == "eval_teacher" else f"v{version}"
+        print(f"[distill] {tag} {who} vs {self.args.eval_opponent}: margin {stats['mean_margin']:+.1f}"
+              f"±{stats['margin_se']:.1f} win {stats['win_rate']:.2f} | H/Ca/C {stats['units_hunter']:.1f}/"
+              f"{stats['units_carrier']:.1f}/{stats['units_collector']:.1f} | agree {stats.get('agree/all', float('nan')):.2f} "
+              f"| deliv/1k {stats['learner/deliveries_per_1000']:.1f} lost/1k {stats['learner/cargo_lost_per_1000']:.1f} "
+              f"| blocked/1k {stats['movement/blocked_per_1000']:.1f}", flush=True)
+        del self._evals[(tag, version)]
 
-    def log(self, started: float) -> None:
-        stats = {"beta": beta_for(self.version, self.args), "version": self.version,
-                 "dataset_rows": self.dataset.size, "collected_rows": self.collected_rows,
-                 "replay_ratio": self.step * self.args.batch_size / max(1, self.collected_rows),
-                 **self.learner.pop_stats()}
+    def log(self, started: float, window_started: float) -> None:
+        args, p = self.args, self._pipeline
+        seconds = max(1e-6, time.time() - window_started)
+        stats = {
+            "version": self.version, "beta": beta_for(self.version, args),
+            "replay_ratio": self.step * args.batch_size / max(1, self.collected_rows),
+            "collected_rows": self.collected_rows, "elapsed_s": time.time() - started,
+            "pipeline/steps_per_s": args.log_every / seconds,
+            "pipeline/matches_per_min": 60 * p["matches"] / seconds,
+            "pipeline/mean_match_wall_s": p["match_wall_s"] / max(1, p["matches"]),
+            "pipeline/busy_worker_frac": p["busy_worker_frac"] / max(1, p["syncs"]),
+            "pipeline/throttled_sync_frac": p["throttled_syncs"] / max(1, p["syncs"]),
+            "system/peak_rss_gb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (2**30 if platform.system() == "Darwin" else 2**20),
+            **self.dataset.composition(self.version),
+            **self.learner.pop_stats(),
+        }
+        for tag, accuracy in self.fresh.items():
+            stats.update(accuracy.pop(f"fresh_{tag}"))
+        self._pipeline.clear()
+        self.metrics.write("train", self.step, stats)
         if self._collect_window:
-            stats.update(summarize(self._collect_window, "collect"))
+            self.metrics.write("collect", self.step, {"version": self.version, **summarize_matches(self._collect_window)})
             self._collect_window = []
-        self.tb.scalars("distill", stats, self.step)
-        collect = f" collect margin {stats['collect/mean_margin']:+.1f}" if "collect/matches" in stats else ""
+        fresh = f" fresh {stats['fresh_collect/accuracy']:.3f}" if "fresh_collect/accuracy" in stats else ""
         print(f"[distill] step {self.step} v{self.version} beta {stats['beta']:.2f} rows {self.dataset.size} "
-              f"ratio {stats['replay_ratio']:.1f} | ce {stats['train/ce']:.3f} acc {stats['train/accuracy']:.3f}"
-              f"{collect} | {time.time() - started:.0f}s", flush=True)
+              f"ratio {stats['replay_ratio']:.1f} | ce {stats['train/ce']:.3f} acc {stats['train/accuracy']:.3f}{fresh} "
+              f"| {stats['pipeline/steps_per_s']:.1f} step/s, workers {stats['pipeline/busy_worker_frac']:.0%} "
+              f"| {stats['elapsed_s']:.0f}s", flush=True)
 
     # ------------------------------------------------------------------------------- loop
 
     def run(self) -> None:
         args = self.args
-        rng = np.random.default_rng(args.seed + self.step)
         started = time.time()
         with CollectorPool(args.build, args.workers, args.time_scale) as pool:
+            if not self.resumed and args.baseline_eval:
+                self.queue_eval(pool, "eval_teacher")
             self.top_up(pool)
             while self.dataset.size < args.min_rows:  # teacher-only warm-up
                 self.sync(pool, timeout=5.0)
+            self._load_probe()
             print(f"[distill] {self.dataset.size} rows, fitting", flush=True)
+            window_started = time.time()
             while self.step < args.steps:
-                self.learner.step(self.dataset.sample(args.batch_size, rng))
+                self.learner.step(self.dataset.sample(args.batch_size, self._rng))
                 self.step += 1
                 if self.step % args.sync_every == 0:
                     self.sync(pool)
@@ -326,9 +427,11 @@ class Run:
                     if self.version % args.eval_every == 0:
                         self.queue_eval(pool)
                 if self.step % args.log_every == 0:
-                    self.log(started)
+                    self.log(started, window_started)
+                    window_started = time.time()
             self.publish()
-            self._record(pool.drain())  # matches still running finish into the log (and shards)
+            self._record(pool.drain())  # matches still running finish into the logs (and shards)
+        self.metrics.close()
         self.match_log.close()
         print(f"[distill] done: {self.latest} (v{self.version})")
 
