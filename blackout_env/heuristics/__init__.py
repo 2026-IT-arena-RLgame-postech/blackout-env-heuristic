@@ -19,6 +19,7 @@ from .v18_counter import StrategicHeuristicV18
 from .v19_counter import StrategicHeuristicV19
 from .teach import StrategicHeuristicV4Teach, TeachLabel, TeachLabeller
 from .v17_teach import StrategicHeuristicV17Teach
+from .v20_anticamp import StrategicHeuristicV20, StrategicHeuristicV20Teach
 from .mixture import HeuristicPolicyMixture, POLICY_REGISTRY, PolicySample, make_heuristic
 
 StrategicHeuristicV1 = StrategicHeuristic
@@ -35,9 +36,9 @@ __all__ = [
     "StrategicHeuristicV9",
     "StrategicHeuristicV10", "StrategicHeuristicV11", "StrategicHeuristicV12",
     "StrategicHeuristicV13", "StrategicHeuristicV14", "StrategicHeuristicV15", "StrategicHeuristicV16",
-    "StrategicHeuristicV17", "StrategicHeuristicV18", "StrategicHeuristicV19",
+    "StrategicHeuristicV17", "StrategicHeuristicV18", "StrategicHeuristicV19", "StrategicHeuristicV20",
     "RecommendedStrategicHeuristic",
-    "StrategicHeuristicV4Teach", "StrategicHeuristicV17Teach", "TeachLabel", "TeachLabeller",
+    "StrategicHeuristicV4Teach", "StrategicHeuristicV17Teach", "StrategicHeuristicV20Teach", "TeachLabel", "TeachLabeller",
     "V4FamilySample", "V4PolicyFamily",
     "HeuristicPolicyMixture", "POLICY_REGISTRY", "PolicySample", "make_heuristic",
 ]

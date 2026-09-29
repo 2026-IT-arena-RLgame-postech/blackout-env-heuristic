@@ -75,7 +75,6 @@ class StrategicHeuristicV17Teach(TeachLabeller, StrategicHeuristicV17):
         self._teach_walkable = move_walkable
 
         own = ctx["own"]
-        by_name = {unit.name: unit for unit in own}
         controlled = [unit.name for unit in own]
         row_for = {unit.name: unit.row for unit in own}
         transforms = self._composition_goals(controlled, row_for, states, graphic, move_walkable)
@@ -93,10 +92,14 @@ class StrategicHeuristicV17Teach(TeachLabeller, StrategicHeuristicV17):
                 economic.append(unit)
         goals.update(self._economy_goals(ctx, economic))
         goals.update(self._hunter_goals(ctx, [unit for unit in own if unit.cls == HUNTER], move_walkable))
+        return self._labels(ctx, goals, move_walkable)
 
+    def _labels(self, ctx, goals: dict[str, tuple[Goal, ...]], move_walkable: np.ndarray) -> dict[str, TeachLabel]:
+        """Each unit's goals as a label (subclasses change how units get there)."""
+        states, shape = ctx["states"], ctx["shape"]
         return {
-            name: self._label(states[by_name[name].row], states, goals.get(name, ()), move_walkable, shape)
-            for name in controlled
+            unit.name: self._label(states[unit.row], states, goals.get(unit.name, ()), move_walkable, shape)
+            for unit in ctx["own"]
         }
 
     def role_counts(self, labels: dict[str, TeachLabel], obs: dict[str, dict[str, np.ndarray]]) -> dict[str, int]:

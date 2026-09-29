@@ -21,7 +21,7 @@ import numpy as np
 
 from blackout_env.env.constants import team_a_agents, team_b_agents, unit_index
 from blackout_env.env.team_frame import canonical_obs, is_team_b_view, mirror_direction_bits, mirror_direction_idx
-from blackout_env.heuristics import StrategicHeuristicV4Teach, StrategicHeuristicV17Teach
+from blackout_env.heuristics import StrategicHeuristicV4Teach, StrategicHeuristicV17Teach, StrategicHeuristicV20Teach
 from blackout_env.heuristics.teach import label_action
 from blackout_env.model.my_policy import direction_vector_to_idx
 from blackout_env.train.dead_segments import batteries_in_play
@@ -31,6 +31,7 @@ from blackout_env.train.distill.opponents import make_opponent, opponent_label
 
 TEACHERS = {
     "v17-teach": StrategicHeuristicV17Teach,
+    "v20-teach": StrategicHeuristicV20Teach,  # + spawn-camp counterplay (heuristics/v20_anticamp.py)
     "v4-teach": functools.partial(StrategicHeuristicV4Teach, target_hunters=2, target_carriers=1),
 }
 ABSORPTION_IDX = 3  # team_state: time to the next absorption

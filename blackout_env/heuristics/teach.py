@@ -272,10 +272,12 @@ class TeachLabeller:
             mask = progress >= best - _PROGRESS_TOLERANCE
         return mask
 
+    evade_empty_collectors = False  # V4 (and V17) only steer cargo and Carriers away from Hunters
+
     def _evasion(self, state: np.ndarray, states: np.ndarray, delta: np.ndarray) -> int | None:
         """V4's threat repulsion (StrategicHeuristic._navigate), from current positions only."""
         cls = self._class_id(state)
-        if not (self._is_holding(state) or cls == CARRIER):
+        if not (self._is_holding(state) or cls == CARRIER or (self.evade_empty_collectors and cls == COLLECTOR)):
             return None
         total = delta.astype(np.float32).copy()
         repelled = False

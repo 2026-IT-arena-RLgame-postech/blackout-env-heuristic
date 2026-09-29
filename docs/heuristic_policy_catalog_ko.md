@@ -46,6 +46,8 @@ StrategicHeuristicV16  ── V10 director + storage siege / home guard / convoy
 StrategicHeuristicV17  ── V6 이동 계층 위의 팀 단위 planner: Hunter 3기(1기 적 본진 출구 진치기 + 2기 추격)로 운반 차단
     └── StrategicHeuristicV18  ── V17 전용 카운터: 아이템을 피하는 변신 경로 + 우리 출구 경비 Hunter
         └── StrategicHeuristicV19  ── V18 전용 카운터: 성소 소탕 + 성소 보초 Hunter + 가까운 성소 칸 경로
+    └── StrategicHeuristicV17Teach  ── V17의 편성·가치를 상태만의 함수로 라벨하는 증류 교사 (heuristics/v17_teach.py)
+        └── StrategicHeuristicV20  ── V17-teach + 스폰 진치기 대응: 위험 구역 우회, 본진 대기 후 함께 돌파, 빈손 Collector 회피
 
 V4PolicyFamily  ── V4의 작은 근접 파라미터 변형 (기본은 매치 단위, `resample_each_absorption=True`면 흡수 단위)
 HeuristicPolicyMixture ── 위 policy_id와 V4PolicyFamily를 함께 샘플링
@@ -264,6 +266,37 @@ V18의 변신 대기 유닛 4기는 한 덩어리로 중앙 성소에 간다. �
 대기 유닛을 서로 다른 성소 칸으로 분산(36%)하거나 적 Hunter를 보면 물러나게(20%) 하면 오히려 졌다.
 최종 420초 전체 경기(새 시드 64개 × 양 진영, 128경기)에서 **V19 대 V18은 92승 36패(72%), 평균 점수차
 +25.7**이었다(보초 추가 전 구성은 77승 51패, +5.3). 원시 결과는 `reports/gauntlet_v19_vs_v18_full/`에 있다.
+
+## V20: 스폰 진치기 대응 (2026-09-29)
+
+`heuristics/v20_anticamp.py`. 증류 교사 V17-teach(`StrategicHeuristicV20Teach`, `--teacher v20-teach`)이자 그 라벨을
+따라 움직이는 휴리스틱(`strategic_v20`)이다. mixture 기본 가중치에는 넣지 않았다(기존 수집 재현).
+
+### 문제
+
+적은 우리 본진에 못 들어오므로 출구 바로 밖의 Hunter 하나가 나오는 Collector·Carrier를 전부 잡는다(Hunter는 접촉만으로
+둘 다 처치하고, 속도 6 대 4라 쫓기면 못 빠져나간다). V17-teach로 V19를 상대하면 1000 유닛틱당 8.16기가 죽었고(V17 상대
+0.98), 그 81%가 본진 4칸 안, 경기의 32% 동안 출구가 막혀 있었다 — V19 상대 −38.9의 원인.
+
+### 동작 (적 Hunter가 우리 본진 3칸 안에 있을 때, Collector·Carrier만)
+
+| 구성 요소 | 내용 |
+|---|---|
+| 우회 | 진치는 Hunter 3칸 안 칸(우리 본진 제외)을 피해 목표에 갈 수 있으면 그 경로 |
+| 대기 후 함께 돌파 | 본진 안에서 안전 경로가 없는 유닛은 혼자면 본진에서 대기, 2기 이상이면 동시에 출발 — Hunter는 하나만 쫓는다 |
+| 추격 회피 | V4의 위협 반발을 빈손 Collector에도 적용(V17-teach는 짐·Carrier만) |
+| 나머지 | V17-teach 그대로. 우리 Hunter는 이미 스폰 진치기 적 Hunter를 최우선 교환 대상으로 본다(V17 가치 12) |
+
+### 평가 (교사가 직접 조종, 보류 시드 900000–900011 × 양 진영 = 상대당 24경기, `reports/anticamp/`)
+
+| 상대 | V17-teach | V20 | 짝 차이 (V20 − V17-teach) | 사망/1000틱 | 본진 근처 사망 |
+|---|---:|---:|---:|---|---|
+| V19 | −38.9 | −23.3 | **+15.6 ± 6.7** | 8.16 → **3.75** | 81% → 55% |
+| V17 | +17.8 | +14.7 | −3.1 ± 13.7 | 0.98 → 0.63 | 66% → 44% |
+| V4 | +49.8 | +48.5 | −1.3 ± 5.0 | 1.08 → 0.96 | 25% → 18% |
+
+V19 상대만 좋아지고(2.3 SE) 나머지는 그대로. V17 도입 때 "Hunter 주변을 막는 이동 변형은 20–27% 손해"였던 것과 달리,
+출구가 막혔을 때만 켜지는 규칙이라 경제를 멈추지 않는다.
 
 ## V4 근접 변형군
 

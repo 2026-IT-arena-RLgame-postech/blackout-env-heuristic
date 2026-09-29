@@ -42,6 +42,10 @@ MARGIN_AT = (30, 60, 120)  # seconds of play at which the learner's margin is re
 TIME_BUCKETS = ((0, 30), (30, 60), (60, 120), (120, 10_000))
 REVERSAL_COS = math.cos(math.radians(135))  # consecutive moves turning more than this = reversal
 STAND = 255  # action index for "no movement" (a teacher without a label stands still)
+CAMP_TILES = 3.0  # an enemy Hunter this close to our base (outside its own) is camping our exit
+NEAR_BASE_TILES = 4.0  # a death this close to our base = killed on the way out
+RESPAWN_JUMP = 0.15  # normalised position jump in one tick = died and respawned (MovementMonitor's rule)
+SPAWN_ALLY_CHANNEL = 4
 
 
 def _role(state: np.ndarray) -> str:
@@ -62,6 +66,8 @@ class MatchRecorder:
         self._stalls = StallMonitor()
         self._last_move: dict[str, tuple[np.ndarray, str]] = {}
         self._pending = None
+        self._base_cells: np.ndarray | None = None  # our base (4x4 corner around our spawn), tiles
+        self._camped = False
 
     def before_step(self, learner_obs, opponent_obs, labels, actions, student_actions, teacher_drove) -> None:
         view = next(iter(learner_obs.values()))
@@ -100,7 +106,28 @@ class MatchRecorder:
         for at in MARGIN_AT:
             if f"margin_{at}s" not in self.margins and elapsed >= at:
                 self.margins[f"margin_{at}s"] = round((float(view["team_state"][0]) - float(view["team_state"][1])) * 100, 1)
+        self._observe_camping(view["graphic"], states)
         self._pending = (view["graphic"], states.copy(), {n: actions[n] for n in learner_obs})
+
+    def _tiles_to_base(self, graphic: np.ndarray, positions: np.ndarray) -> np.ndarray:
+        """Straight-line tiles from each position to our base."""
+        if self._base_cells is None:
+            from blackout_env.heuristics.v17_planner import StrategicHeuristicV17
+
+            spawn = np.argwhere(graphic[..., SPAWN_ALLY_CHANNEL] > 0.5)
+            origin = tuple(int(v) for v in spawn[0]) if len(spawn) else None
+            self._base_cells = np.argwhere(StrategicHeuristicV17._base_mask(origin, graphic.shape[:2])).astype(np.float64)
+        if not len(self._base_cells):
+            return np.full(len(positions), np.inf)
+        h, w = graphic.shape[:2]
+        cells = np.stack([(1.0 - positions[:, 1]) * 0.5 * h - 0.5, (positions[:, 0] + 1.0) * 0.5 * w - 0.5], axis=1)
+        return np.sqrt(((cells[:, None, :] - self._base_cells[None]) ** 2).sum(-1)).min(1)
+
+    def _observe_camping(self, graphic: np.ndarray, states: np.ndarray) -> None:
+        hunters = [i for i in range(len(states)) if states[i, 2] < 0 and _role(states[i]) == "hunter"]
+        self._camped = bool(hunters) and bool((self._tiles_to_base(graphic, states[hunters, :2]) <= CAMP_TILES).any())
+        self.counts["camp/ticks"] += self._camped
+        self.counts["camp/observed_ticks"] += 1
 
     def _count_reversal(self, name: str, move: np.ndarray, controller: str) -> None:
         norm = float(np.linalg.norm(move))
@@ -114,6 +141,15 @@ class MatchRecorder:
         if self._pending is None or next_states is None:
             return
         graphic, before, actions = self._pending
+        rows = [unit_index(n) for n in actions]
+        died = [r for r in rows if float(np.linalg.norm(next_states[r, :2] - before[r, :2])) > RESPAWN_JUMP]
+        if died:  # respawned at spawn: where did it die, and was our exit camped?
+            near = self._tiles_to_base(graphic, before[died, :2]) <= NEAR_BASE_TILES
+            for r, at_base in zip(died, near):
+                role = _role(before[r])
+                self.counts[f"deaths/{role}"] += 1
+                self.counts[f"deaths_near_base/{role}"] += bool(at_base)
+                self.counts["deaths_while_camped"] += self._camped
         self._movement.observe(self.learner_names, before, next_states, actions)
         self._stalls.observe(graphic, before, next_states, actions, {n: unit_index(n) for n in actions})
         self._pending = None
@@ -153,6 +189,13 @@ def rates(counts: dict[str, float]) -> dict[str, float]:
         for key in [k for k in c if k.startswith("bucket_ticks/")]:
             bucket = key.split("/", 1)[1]
             out[f"units_{role}_{bucket}"] = c[f"bucket_units/{role}/{bucket}"] / c[key]
+    deaths = sum(c[f"deaths/{role}"] for role in ROLES)
+    out["deaths_per_1000"] = 1000 * deaths / max(1, ticks)
+    out["deaths_near_base_frac"] = sum(c[f"deaths_near_base/{role}"] for role in ROLES) / max(1, deaths)
+    out["deaths_while_camped_frac"] = c["deaths_while_camped"] / max(1, deaths)
+    for role in ROLES:
+        out[f"deaths_per_1000/{role}"] = 1000 * c[f"deaths/{role}"] / max(1, c[f"ticks/role_{role}"])
+    out["camped_frac"] = c["camp/ticks"] / max(1, c["camp/observed_ticks"])
     out["label_valid_frac"] = c["labels/valid"] / max(1, ticks)
     out["label_set_size"] = c["labels/set_size"] / max(1, c["labels/valid"])
     for controller in ("student", "teacher"):
