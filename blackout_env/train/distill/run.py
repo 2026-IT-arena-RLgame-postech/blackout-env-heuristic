@@ -258,6 +258,7 @@ class Run:
         self._collect_window: list[dict] = []
         self._evals: dict[tuple[str, int], list[dict]] = defaultdict(list)
         self._pipeline = defaultdict(float)  # sync-level counters since the last log
+        self._window_started = time.time()
         self._matches_received = 0
         self._rng = np.random.default_rng(args.seed + self.step)
 
@@ -363,6 +364,8 @@ class Run:
             self._matches_received += 1
             self._pipeline["matches"] += 1
             self._pipeline["match_wall_s"] += summary["wall_s"]
+            # the part of this match's wall time that fell inside the current log window
+            self._pipeline["busy_s"] += min(summary["wall_s"], time.time() - self._window_started)
             if summary["tag"].startswith("eval"):
                 self._log_eval(summary)
             else:
@@ -373,8 +376,11 @@ class Run:
         tag, version = summary["tag"], summary["version"]
         group = self._evals[(tag, version)]
         group.append(summary)
-        if len(group) < 2 * self.args.eval_seeds:
-            return
+        if len(group) == 2 * self.args.eval_seeds:
+            self._write_eval(tag, version)
+
+    def _write_eval(self, tag: str, version: int) -> None:
+        group = self._evals.pop((tag, version))
         stats = summarize_matches(group)
         self.metrics.write(tag, self.step, {"version": version, **stats})
         who = "teacher" if tag == "eval_teacher" else f"v{version}"
@@ -382,8 +388,8 @@ class Run:
               f"±{stats['margin_se']:.1f} win {stats['win_rate']:.2f} | H/Ca/C {stats['units_hunter']:.1f}/"
               f"{stats['units_carrier']:.1f}/{stats['units_collector']:.1f} | agree {stats.get('agree/all', float('nan')):.2f} "
               f"| deliv/1k {stats['learner/deliveries_per_1000']:.1f} lost/1k {stats['learner/cargo_lost_per_1000']:.1f} "
-              f"| blocked/1k {stats['movement/blocked_per_1000']:.1f}", flush=True)
-        del self._evals[(tag, version)]
+              f"| blocked/1k {stats['movement/blocked_per_1000']:.1f}"
+              + ("" if len(group) == 2 * self.args.eval_seeds else f" (incomplete: {len(group)} matches)"), flush=True)
 
     def log(self, started: float, window_started: float) -> None:
         args, p = self.args, self._pipeline
@@ -395,8 +401,8 @@ class Run:
             "pipeline/steps_per_s": args.log_every / seconds,
             "pipeline/matches_per_min": 60 * p["matches"] / seconds,
             "pipeline/mean_match_wall_s": p["match_wall_s"] / max(1, p["matches"]),
-            # time workers spent playing matches that finished in this window, over the time they had
-            "pipeline/worker_utilization": p["match_wall_s"] / (args.workers * seconds),
+            # worker time spent inside this window on matches that finished in it, over worker time
+            "pipeline/worker_utilization": p["busy_s"] / (args.workers * seconds),
             "pipeline/queued_per_worker": p["queued_per_worker"] / max(1, p["syncs"]),
             "pipeline/throttled_sync_frac": p["throttled_syncs"] / max(1, p["syncs"]),
             "system/peak_rss_gb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (2**30 if platform.system() == "Darwin" else 2**20),
@@ -429,7 +435,7 @@ class Run:
                 self.sync(pool, timeout=5.0)
             self._load_probe()
             print(f"[distill] {self.dataset.size} rows, fitting", flush=True)
-            window_started = time.time()
+            window_started = self._window_started = time.time()
             while self.step < args.steps:
                 self.learner.step(self.dataset.sample(args.batch_size, self._rng))
                 self.step += 1
@@ -441,9 +447,13 @@ class Run:
                         self.queue_eval(pool)
                 if self.step % args.log_every == 0:
                     self.log(started, window_started)
-                    window_started = time.time()
+                    window_started = self._window_started = time.time()
             self.publish()
-            self._record(pool.drain())  # matches still running finish into the logs (and shards)
+            self.queue_eval(pool)  # the final weights are always evaluated
+            # running matches and every queued eval finish into the logs (and shards)
+            self._record(pool.drain(keep=lambda task: task.tag.startswith("eval")))
+            for tag, version in list(self._evals):
+                self._write_eval(tag, version)
         self.metrics.close()
         self.match_log.close()
         print(f"[distill] done: {self.latest} (v{self.version})")

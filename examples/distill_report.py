@@ -5,16 +5,23 @@
 1. evaluation per student version, with the teacher's baseline on the same seeds first;
 2. learning curve: train vs fresh (never-trained-on) vs probe accuracy, by role, logit health,
    pipeline health;
-3. the latest fresh accuracy by label kind (what the student still gets wrong).
+3. the latest fresh accuracy by label kind (what the student still gets wrong);
+4. direction reversals in the eval matches, split by whether the teacher had a label (from the
+   shards, so it also covers runs logged before the split existed).
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
+from collections import defaultdict
 from pathlib import Path
 
+import numpy as np
+
 ROLES = ("collector", "hunter", "carrier")
+TRAP_TICKS = 25
 
 
 def _records(out_dir: Path) -> dict[str, list[dict]]:
@@ -85,6 +92,70 @@ def by_kind(records: dict[str, list[dict]]) -> None:
     _table(["kind", "fresh", "share", "train"], rows)
 
 
+def reversals(out_dir: Path) -> None:
+    """A reversal is a move turning more than 135 degrees from the previous tick's move (both
+    moving; MatchRecorder's definition).  Where the teacher has no label (interacting, holding a
+    camp slot) it stands still; the student has no "stay" action and dithers, so those reversals
+    are its way of standing.  Where it has a label, a reversal away from the label set is a real
+    error; one into the set is a correction."""
+    print("\n== eval reversals per 1000 unit-ticks, by whether the teacher had a label ==")
+    totals: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    for path in sorted(out_dir.glob("shards/*_eval*.npz")):
+        tag, version = re.search(r"_(eval(?:_teacher)?)_v(\d+)", path.name).groups()
+        who = "teacher" if tag == "eval_teacher" else f"v{int(version)}"
+        with np.load(path) as shard:
+            moves, labels, states = shard["actions"].astype(np.int16), shard["labels"], shard["agent_states"]
+            time_left = shard["team_state"][:, 2]
+        if len(moves) < 2:
+            continue
+        step = -np.diff(time_left)
+        consecutive = (step > 0) & (step < 1.5 * np.median(step))  # dropped (unlabelled) ticks break a pair
+        prev, cur, label = moves[:-1], moves[1:], labels[1:]
+        moving = (prev < 8) & (cur < 8) & consecutive[:, None]
+        reversal = moving & np.isin((cur - prev) % 8, (3, 4, 5))
+        labelled = label > 0
+        in_set = (label >> np.minimum(cur, 7).astype(np.uint8)) & 1 == 1
+        hunter = states[1:, :5, 10] > 0.5
+        # A trap is an unbroken run of reversals: the unit steps back and forth in place.
+        trapped = np.zeros_like(reversal)
+        for u in range(reversal.shape[1]):
+            run_start = None
+            for i, flag in enumerate(np.r_[reversal[:, u], False]):
+                if flag and run_start is None:
+                    run_start = i
+                elif not flag and run_start is not None:
+                    if i - run_start >= TRAP_TICKS:
+                        trapped[run_start:i, u] = True
+                        totals[who]["traps"] += 1
+                        totals[who]["trap_longest"] = max(totals[who]["trap_longest"], i - run_start)
+                    run_start = None
+        t = totals[who]
+        t["matches"] += 1
+        t["trapped_ticks"] += (trapped & labelled).sum()
+        t["rev_labelled_out_free"] += (reversal & labelled & ~in_set & ~trapped).sum()
+        t["labelled_ticks"] += (labelled & consecutive[:, None]).sum()
+        t["unlabelled_ticks"] += (~labelled & consecutive[:, None]).sum()
+        t["rev_labelled_out"] += (reversal & labelled & ~in_set).sum()
+        t["rev_labelled_in"] += (reversal & labelled & in_set).sum()
+        t["rev_unlabelled"] += (reversal & ~labelled).sum()
+        t["rev_unlabelled_hunter"] += (reversal & ~labelled & hunter).sum()
+    order = sorted(totals, key=lambda w: (w != "teacher", int(w[1:]) if w != "teacher" else 0))
+    rows = []
+    for who in order:
+        t = totals[who]
+        per = lambda n, d: _fmt(1000 * t[n] / max(1, t[d]), ".0f")
+        rows.append([who, _fmt(t["labelled_ticks"] / max(1, t["labelled_ticks"] + t["unlabelled_ticks"])),
+                     per("rev_labelled_out", "labelled_ticks"), per("rev_labelled_out_free", "labelled_ticks"),
+                     per("rev_labelled_in", "labelled_ticks"), per("rev_unlabelled", "unlabelled_ticks"),
+                     _fmt(t["rev_unlabelled_hunter"] / max(1, t["rev_unlabelled"])),
+                     _fmt(t["traps"] / max(1, t["matches"]), ".1f"), str(int(t["trap_longest"])),
+                     _fmt(t["trapped_ticks"] / max(1, t["labelled_ticks"]), ".1%")])
+    _table(["who", "labelled", "away", "away:outside-traps", "into", "no-label", "no-label:hunter",
+            "traps/match", "longest", "labelled-trapped"], rows)
+    print(f"  away/into = reversal leaving/entering the label set; a trap = >= {TRAP_TICKS} reversals in a row "
+          f"(~1 s back and forth); rates per 1000 ticks of that labelled/unlabelled kind")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("out_dir", type=Path)
@@ -97,6 +168,7 @@ def main() -> None:
     evaluation(records)
     learning(records, args.every)
     by_kind(records)
+    reversals(args.out_dir)
 
 
 if __name__ == "__main__":

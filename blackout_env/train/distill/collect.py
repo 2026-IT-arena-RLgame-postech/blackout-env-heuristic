@@ -239,26 +239,29 @@ class CollectorPool:
     def __init__(self, build: str, workers: int, time_scale: float = 20.0):
         self.workers = workers
         self._executor = ProcessPoolExecutor(workers, initializer=_init_worker, initargs=(build, time_scale))
-        self._pending: set[Future] = set()
+        self._pending: dict[Future, MatchTask] = {}
 
     @property
     def in_flight(self) -> int:
         return len(self._pending)
 
     def submit(self, task: MatchTask) -> None:
-        self._pending.add(self._executor.submit(_run_task, task))
+        self._pending[self._executor.submit(_run_task, task)] = task
 
     def poll(self, timeout: float = 0.0) -> list[dict]:
         if not self._pending:
             return []
-        done, self._pending = wait(self._pending, timeout=timeout, return_when=FIRST_COMPLETED)
+        done, _ = wait(self._pending, timeout=timeout, return_when=FIRST_COMPLETED)
+        for future in done:
+            del self._pending[future]
         return [future.result() for future in done]
 
-    def drain(self) -> list[dict]:
-        """Drop queued tasks, wait for the running ones, and return their summaries."""
-        running = {future for future in self._pending if not future.cancel()}
-        self._pending = set()
-        return [future.result() for future in wait(running).done]
+    def drain(self, keep=lambda task: False) -> list[dict]:
+        """Cancel queued tasks except those ``keep`` accepts, wait for the rest (running or kept),
+        and return their summaries."""
+        remaining = [f for f, task in self._pending.items() if keep(task) or not f.cancel()]
+        self._pending = {}
+        return [future.result() for future in wait(remaining).done]
 
     def close(self) -> None:
         self._executor.shutdown(cancel_futures=True)
