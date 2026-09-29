@@ -61,9 +61,12 @@ import torch
 
 from blackout_env.model.my_model import MyModel
 from blackout_env.train.distill.collect import TEACHERS, CollectorPool, MatchTask
-from blackout_env.train.distill.dataset import FIELDS, GRAPHIC_SCALE, N_TEAM, DistillDataset
+from blackout_env.train.distill.dataset import FIELDS, GRAPHIC_SCALE, N_TEAM, DistillDataset, new_shards
 from blackout_env.train.distill.loss import set_valued_cross_entropy
 from blackout_env.train.distill.metrics import CLASS_COLS, LabelAccuracy, MetricsLog, summarize_matches
+from blackout_env.train.distill.opponents import compatible_checkpoints, draw_opponent, opponent_category, parse_pool
+
+HELDOUT_SEEDS = range(900_000, 1_000_000)  # examples/distill_heldout_eval.py
 
 
 def parse_args(argv=None) -> argparse.Namespace:
@@ -76,7 +79,11 @@ def parse_args(argv=None) -> argparse.Namespace:
     # collector
     p.add_argument("--workers", type=int, default=8)
     p.add_argument("--time-scale", type=float, default=20.0)
-    p.add_argument("--opponents", nargs="+", default=["mixture"], help="heuristic ids or 'mixture', cycled over matches")
+    p.add_argument("--opponents", nargs="+", default=["mixture=0.75", "checkpoints=0.25"],
+                   help="kind=weight pool drawn per collection match: mixture (all heuristics, V17-V19 perturbed "
+                   "too), checkpoints (--opponent-checkpoints), or a heuristic id (opponents.py)")
+    p.add_argument("--opponent-checkpoints", nargs="+", default=["checkpoints/offline/*/*.pt"],
+                   help="globs of past MyModel checkpoints; those that no longer load are skipped")
     p.add_argument("--beta-start", type=float, default=1.0, help="beta of the first student version")
     p.add_argument("--beta-decay", type=float, default=0.9, help="per published version")
     p.add_argument("--beta-min", type=float, default=0.0)
@@ -117,6 +124,16 @@ def beta_for(version: int, args) -> float:
     if version == 0:
         return 1.0
     return max(args.beta_min, args.beta_start * args.beta_decay ** (version - 1))
+
+
+def collect_seed(run_seed: int, index: int, reserved: set[int]) -> int:
+    """A random-looking map seed for collection match ``index``: reproducible (and so resumable)
+    from the run seed, never an eval or held-out seed."""
+    for attempt in range(100):
+        seed = int(np.random.SeedSequence((run_seed, index, attempt)).generate_state(1)[0] % 2**31)
+        if seed not in reserved and seed not in HELDOUT_SEEDS:
+            return seed
+    raise RuntimeError("no free seed")
 
 
 def wants_matches(trained_samples: int, collected_rows: int, dataset_rows: int, args) -> bool:
@@ -239,8 +256,14 @@ class Run:
     def __init__(self, args):
         self.args = args
         self.out_dir = args.out_dir or Path("checkpoints/distill") / datetime.now().strftime("%Y%m%d-%H%M%S")
-        self.shards = self.out_dir / "shards"
+        self.shards = self.out_dir / "shards"  # collection only: the replay ring reads these
+        self.eval_shards = self.out_dir / "eval_shards"  # scored as held-out, never trained on
         self.shards.mkdir(parents=True, exist_ok=True)
+        self.eval_shards.mkdir(exist_ok=True)
+        self._eval_seen: set[str] = set()
+        self.eval_seeds = [args.seed - 1 - i for i in range(args.eval_seeds)]
+        self.opponent_pool = parse_pool(args.opponents)
+        self.opponent_checkpoints = self._resolve_checkpoints()
         self.latest = self.out_dir / "latest.pt"
         self.learner = Learner(args)
         self.step = self.version = self.queued = self.collected_rows = 0
@@ -261,6 +284,18 @@ class Run:
         self._window_started = time.time()
         self._matches_received = 0
         self._rng = np.random.default_rng(args.seed + self.step)
+
+    def _resolve_checkpoints(self) -> list[str]:
+        """Checkpoint opponents, fixed for the run (saved, so a resume draws from the same list)."""
+        path = self.out_dir / "opponent_checkpoints.json"
+        if path.exists():
+            return json.loads(path.read_text())["loadable"]
+        if "checkpoints" not in self.opponent_pool:
+            return []
+        loadable, rejected = compatible_checkpoints(self.args.opponent_checkpoints)
+        path.write_text(json.dumps({"loadable": loadable, "rejected": rejected}, indent=1))
+        print(f"[distill] checkpoint opponents: {len(loadable)} loadable, {len(rejected)} skipped", flush=True)
+        return loadable
 
     # ----------------------------------------------------------------------- checkpoints
 
@@ -314,16 +349,17 @@ class Run:
     def _task(self, tag: str, seed: int, swap: bool, opponent: str, beta: float) -> MatchTask:
         index = self.queued
         self.queued += 1
+        folder = self.shards if tag == "collect" else self.eval_shards
         return MatchTask(seed=seed, swap=swap, opponent=opponent, beta=beta, teacher=self.args.teacher,
                          student=str(self.latest) if beta < 1.0 else None,
-                         shard=str(self.shards / f"{index:06d}_{tag}_v{self.version:04d}.npz"),
+                         shard=str(folder / f"{index:06d}_{tag}_v{self.version:04d}.npz"),
                          tag=tag, version=self.version)
 
     def queue_eval(self, pool: CollectorPool, tag: str = "eval") -> None:
         # the same seeds every time, so versions compare on equal maps
         beta = 1.0 if tag == "eval_teacher" else 0.0
         for i in range(2 * self.args.eval_seeds):
-            pool.submit(self._task(tag, self.args.seed - 1 - i // 2, bool(i % 2), self.args.eval_opponent, beta))
+            pool.submit(self._task(tag, self.eval_seeds[i // 2], bool(i % 2), self.args.eval_opponent, beta))
 
     def top_up(self, pool: CollectorPool) -> None:
         """Fill idle workers while the learner wants data, counting the rows the matches already
@@ -338,8 +374,10 @@ class Run:
                 throttled = True
                 break
             n = self.queued
-            pool.submit(self._task("collect", args.seed + n, bool(n % 2), args.opponents[n % len(args.opponents)],
-                                   beta_for(self.version, args)))
+            rng = np.random.default_rng((args.seed, n))
+            opponent = draw_opponent(rng, self.opponent_pool, self.opponent_checkpoints)
+            pool.submit(self._task("collect", collect_seed(args.seed, n, set(self.eval_seeds)), bool(rng.integers(2)),
+                                   opponent, beta_for(self.version, args)))
         self._pipeline["throttled_syncs"] += throttled
 
     def _rows_per_match(self) -> float:
@@ -347,13 +385,18 @@ class Run:
 
     def sync(self, pool: CollectorPool, timeout: float = 0.0) -> None:
         self._record(pool.poll(timeout))
-        for rows, meta in self.dataset.new_shards():
-            if self.step and len(rows["labels"]):  # fresh = the current net has never trained on these
-                pick = self._rng.choice(len(rows["labels"]), min(self.args.fresh_rows, len(rows["labels"])), replace=False)
-                tag = "eval" if meta.get("tag") == "eval" else "collect"
-                self.learner.score({k: rows[k][np.sort(pick)] for k in FIELDS}, self.fresh[tag])
+        for rows, meta in self.dataset.new_shards():  # fresh = the current net has not trained on these yet
+            self._score_fresh(rows, "collect")
             self.dataset.append(rows, meta.get("student_version", 0))
+        for rows, meta in new_shards(self.eval_shards, self._eval_seen):  # and never will
+            if meta.get("tag") == "eval":
+                self._score_fresh(rows, "eval")
         self.top_up(pool)
+
+    def _score_fresh(self, rows: dict[str, np.ndarray], tag: str) -> None:
+        if self.step and len(rows["labels"]):
+            pick = self._rng.choice(len(rows["labels"]), min(self.args.fresh_rows, len(rows["labels"])), replace=False)
+            self.learner.score({k: rows[k][np.sort(pick)] for k in FIELDS}, self.fresh[tag])
 
     def _record(self, summaries: list[dict]) -> None:
         for summary in summaries:
@@ -415,6 +458,11 @@ class Run:
         self.metrics.write("train", self.step, stats)
         if self._collect_window:
             self.metrics.write("collect", self.step, {"version": self.version, **summarize_matches(self._collect_window)})
+            by_category = defaultdict(list)
+            for summary in self._collect_window:
+                by_category[opponent_category(summary.get("opponent_played", summary["opponent"]))].append(summary)
+            for category, group in by_category.items():  # e.g. collect_top_tier: margin against V17-V19
+                self.metrics.write(f"collect_{category}", self.step, {"version": self.version, **summarize_matches(group)})
             self._collect_window = []
         fresh = f" fresh {stats['fresh_collect/accuracy']:.3f}" if "fresh_collect/accuracy" in stats else ""
         print(f"[distill] step {self.step} v{self.version} beta {stats['beta']:.2f} rows {self.dataset.size} "

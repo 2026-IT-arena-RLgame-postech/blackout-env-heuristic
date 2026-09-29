@@ -212,3 +212,29 @@ def test_composition_is_also_reported_by_time_of_play():
     stats = summarize_matches([summary])
     # _FakeEnv's time_left stays 1.0: every tick is in the first bucket
     assert stats["units_collector_0_30s"] == 5 and "units_hunter_30_60s" not in stats
+
+
+def test_collection_seeds_are_random_reproducible_and_avoid_eval_seeds():
+    from blackout_env.train.distill.run import HELDOUT_SEEDS, collect_seed
+
+    seeds = [collect_seed(7, n, reserved={123}) for n in range(500)]
+    assert seeds == [collect_seed(7, n, reserved={123}) for n in range(500)]  # resume replays them
+    assert len(set(seeds)) == 500 and not any(s in HELDOUT_SEEDS or s == 123 for s in seeds)
+    assert seeds[:3] != [collect_seed(8, n, reserved=set()) for n in range(3)]
+
+
+def test_opponent_pool_draws_by_weight_and_labels_categories():
+    from blackout_env.train.distill.opponents import draw_opponent, opponent_category, parse_pool
+
+    pool = parse_pool(["mixture=3", "checkpoints=1"])
+    assert pool == {"mixture": 0.75, "checkpoints": 0.25}
+    rng = np.random.default_rng(0)
+    draws = [draw_opponent(rng, pool, ["a.pt", "b.pt"]) for _ in range(2000)]
+    assert 0.2 < np.mean([d.startswith("ckpt:") for d in draws]) < 0.3
+    assert {d for d in draws if d.startswith("ckpt:")} == {"ckpt:a.pt", "ckpt:b.pt"}
+    with pytest.raises(ValueError):
+        parse_pool(["nonsense"])
+    with pytest.raises(ValueError):
+        draw_opponent(rng, {"checkpoints": 1.0}, [])
+    assert [opponent_category(x) for x in ("ckpt:r/final", "mixture:strategic_v18", "mixture:strategic_v4", "strategic_v17")] \
+        == ["checkpoint", "top_tier", "heuristic", "top_tier"]

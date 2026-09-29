@@ -21,14 +21,13 @@ import numpy as np
 
 from blackout_env.env.constants import team_a_agents, team_b_agents, unit_index
 from blackout_env.env.team_frame import canonical_obs, is_team_b_view, mirror_direction_bits, mirror_direction_idx
-from blackout_env.heuristics import (
-    HeuristicPolicyMixture, StrategicHeuristicV4Teach, StrategicHeuristicV17Teach, make_heuristic,
-)
+from blackout_env.heuristics import StrategicHeuristicV4Teach, StrategicHeuristicV17Teach
 from blackout_env.heuristics.teach import label_action
 from blackout_env.model.my_policy import direction_vector_to_idx
 from blackout_env.train.dead_segments import batteries_in_play
 from blackout_env.train.distill.dataset import EXTRA_FIELDS, FIELDS, KIND_INDEX, N_TEAM, encode_graphic, save_shard
 from blackout_env.train.distill.metrics import MATCH_SECONDS, STAND, MatchRecorder
+from blackout_env.train.distill.opponents import make_opponent, opponent_label
 
 TEACHERS = {
     "v17-teach": StrategicHeuristicV17Teach,
@@ -42,7 +41,7 @@ MAX_EMPTY_STEPS = 200
 class MatchTask:
     seed: int
     swap: bool  # the learner plays team B
-    opponent: str  # heuristic id, or "mixture"
+    opponent: str  # descriptor: heuristic id, "mixture" or "ckpt:<path>" (opponents.py)
     beta: float
     teacher: str
     student: str | None  # checkpoint path; None = teacher only (beta must be 1)
@@ -51,10 +50,6 @@ class MatchTask:
     tag: str = "collect"  # "collect" (DAgger data) or "eval" (student alone vs a fixed opponent)
     version: int = 0  # student version current when the task was queued (eval groups by it)
     inference: str = "iqn"  # how the student turns logits into a move (inference.py)
-
-
-def make_opponent(opponent: str, seed: int):
-    return HeuristicPolicyMixture(seed=seed) if opponent == "mixture" else make_heuristic(opponent)
 
 
 def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.ndarray], dict]:
@@ -130,6 +125,7 @@ def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.nda
         "opponent_score": scores[1 - learner_team],
         "result": 0 if winner in (None, -1) else (1 if int(winner) == learner_team else -1),
         "elapsed_s": round(elapsed, 1),
+        "opponent_played": opponent_label(task.opponent, opponent),
         **recorder.summary(),
     }
     arrays = {field: np.stack(values) if values else np.zeros((0,)) for field, values in rows.items()}

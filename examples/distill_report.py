@@ -101,7 +101,8 @@ def reversals(out_dir: Path) -> None:
     error; one into the set is a correction."""
     print("\n== eval reversals per 1000 unit-ticks, by whether the teacher had a label ==")
     totals: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
-    for path in sorted(out_dir.glob("shards/*_eval*.npz")):
+    # eval shards live in eval_shards/ (runs before 2026-09-29 kept them in shards/)
+    for path in sorted([*out_dir.glob("eval_shards/*_eval*.npz"), *out_dir.glob("shards/*_eval*.npz")]):
         tag, version = re.search(r"_(eval(?:_teacher)?)_v(\d+)", path.name).groups()
         who = "teacher" if tag == "eval_teacher" else f"v{int(version)}"
         with np.load(path) as shard:

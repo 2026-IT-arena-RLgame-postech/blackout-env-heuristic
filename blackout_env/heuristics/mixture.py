@@ -60,6 +60,9 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
 }
 
 
+TOP_TIER = ("strategic_v17", "strategic_v18", "strategic_v19")
+
+
 def make_heuristic(policy_id: str, **parameters) -> BaseModel:
     """Construct one immutable named heuristic version from the public registry."""
     try:
@@ -95,8 +98,14 @@ class HeuristicPolicyMixture(BaseModel):
         weights: dict[str, float] | None = None,
         perturb: bool = True,
         resample_each_absorption: bool = True,
+        perturb_top_tier: bool = False,
     ):
+        """perturb_top_tier: also vary V17-V19's own strategy knobs (see _top_tier_parameters),
+        which ``perturb`` alone leaves at their defaults; off by default so existing collections
+        replay unchanged."""
         self._rng = np.random.default_rng(seed)
+        self.perturb_top_tier = bool(perturb_top_tier)
+        self._match_structure: dict[str, int | str] = {}
         # Rebalanced 2026-09-16 against the 64s-truncated adaptive Bradley-Terry fits
         # (examples/elo_active.py): reports/elo_active_20260916/ for all 20 policies (SE 42-65) and
         # reports/elo_active_mid_20260916/ for the middle tier alone (78/78 pairs, 1,324 games,
@@ -248,6 +257,8 @@ class HeuristicPolicyMixture(BaseModel):
                 parameters.update({
                     "cargo_amount_weight": float(episode_rng.uniform(15.0, 26.0)),
                 })
+            elif policy_id in TOP_TIER and self.perturb_top_tier:
+                parameters.update(self._top_tier_parameters(policy_id, episode_rng, new_match))
             elif policy_id == "strategic_v16":
                 parameters.update({
                     "mode_confirm_ticks": int(episode_rng.integers(8, 18)),
@@ -268,6 +279,30 @@ class HeuristicPolicyMixture(BaseModel):
                 self._policy.retune(**parameters)
         self.current_sample = PolicySample(policy_id, policy_seed, parameters)
         return self.current_sample
+
+    def _top_tier_parameters(self, policy_id: str, rng: np.random.Generator, new_match: bool) -> dict:
+        """Knobs of the V17 planner family.  Role counts and the Hunter mode change who does what,
+        so like ``use_specialists`` they are drawn once per match; the weights are redrawn with
+        the rest at every absorption."""
+        if new_match:
+            default_hunters = 3 if policy_id == "strategic_v17" else 4
+            self._match_structure = {
+                "hunter_quota": int(rng.choice([default_hunters - 1, default_hunters], p=[0.3, 0.7])),
+                "hunter_mode": str(rng.choice(["mixed", "hunt"], p=[0.8, 0.2])),
+            }
+        scale = rng.uniform(0.7, 1.3, size=4)
+        parameters = {
+            **self._match_structure,
+            "exposure_cost": float(rng.uniform(0.6, 1.2)),
+            "steal_weight": float(rng.uniform(1.3, 2.3)),
+            "camp_engage_radius": float(rng.uniform(3.5, 5.5)),
+            "special_weights": tuple(float(w * k) for w, k in zip((0.45, 0.8, 0.12, 0.12), scale)),
+        }
+        if policy_id in ("strategic_v18", "strategic_v19"):
+            parameters["guard_radius"] = float(rng.uniform(5.5, 8.5))
+        if policy_id == "strategic_v19":
+            parameters.update(sweep_radius=float(rng.uniform(7.0, 11.0)), sentry_radius=float(rng.uniform(5.5, 8.5)))
+        return parameters
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         assert self._policy is not None

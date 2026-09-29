@@ -68,6 +68,18 @@ def shard_meta(shard) -> dict:
     return json.loads(str(shard["meta"])) if "meta" in shard else {}
 
 
+def new_shards(root: Path, seen: set[str]):
+    """(rows, meta) of every complete shard under ``root`` not in ``seen``, oldest first; each is
+    added to ``seen``."""
+    for path in sorted(Path(root).glob("*.npz")):
+        if path.name in seen or path.name.endswith(".tmp.npz"):
+            continue
+        with np.load(path) as shard:
+            rows, meta = {field: shard[field] for field in FIELDS}, shard_meta(shard)
+        seen.add(path.name)
+        yield rows, meta
+
+
 class DistillDataset:
     """The most recent ``capacity`` rows of every shard under ``root``, sampled uniformly.
 
@@ -87,13 +99,7 @@ class DistillDataset:
 
     def new_shards(self):
         """Yields (rows, meta) for each shard not seen yet, and marks it seen."""
-        for path in sorted(self.root.glob("*.npz")):
-            if path.name in self._loaded or path.name.endswith(".tmp.npz"):
-                continue
-            with np.load(path) as shard:
-                rows, meta = {field: shard[field] for field in FIELDS}, shard_meta(shard)
-            self._loaded.add(path.name)
-            yield rows, meta
+        yield from new_shards(self.root, self._loaded)
 
     def refresh(self) -> int:
         """Append every new shard; returns the number of rows added."""
