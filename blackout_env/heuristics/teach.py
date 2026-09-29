@@ -127,15 +127,24 @@ def _invalid(goals: tuple[Goal, ...] = ()) -> TeachLabel:
     return TeachLabel(np.zeros(N_DIRECTIONS, dtype=bool), False, kind, target, goals)
 
 
-class StrategicHeuristicV4Teach(StrategicHeuristicV4):
-    """V4's values as a memoryless, role-conditioned, motion-stable, set-valued action labeller."""
+def label_action(label: TeachLabel) -> np.ndarray:
+    """The continuous action that follows ``label``: the mean of its directions, or standing
+    still where the teacher has no label (interacting, nowhere to go)."""
+    if not label.valid:
+        return np.zeros(2, dtype=np.float32)
+    vector = DIRECTIONS[label.mask].mean(axis=0)  # never cancels: see _CANCELLING
+    return (vector / float(np.linalg.norm(vector))).astype(np.float32)
 
-    def __init__(self, *, target_hunters: int | None = None, target_carriers: int | None = None, **kwargs):
-        """target_hunters / target_carriers: opt-in composition labels (see _composition_goals);
-        None leaves the composition entirely to the learner."""
+
+class TeachLabeller:
+    """Goal -> label machinery shared by the relabelling teachers; mix in before a heuristic.
+
+    A teacher implements ``teach(obs) -> {name: TeachLabel}``: it picks goals as a function of the
+    observation alone and turns each unit's goals into a label with ``_label``.  ``act`` follows
+    the labels, which checks that they lead somewhere."""
+
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.target_hunters = target_hunters
-        self.target_carriers = target_carriers
         self._teach_distance_cache: dict[tuple[bytes, tuple[tuple[int, int], ...]], np.ndarray] = {}
         self._teach_walkable: np.ndarray | None = None
 
@@ -144,117 +153,19 @@ class StrategicHeuristicV4Teach(StrategicHeuristicV4):
         self._teach_distance_cache.clear()
         self._teach_walkable = None
 
-    # ------------------------------------------------------------------------------------ labels
-
     def teach(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, TeachLabel]:
-        """Labels for every agent in ``obs`` (one team's observations, as ``act`` receives them)."""
-        if not obs:
-            return {}
-        sample = next(iter(obs.values()))
-        graphic, states, team_state = sample["graphic"], sample["agent_states"], sample["team_state"]
-
-        # Episode boundary (remaining time jumps up), as in StrategicHeuristic.act.  Only static
-        # caches (walls, storage components, distance maps) survive within an episode.
-        time_left = float(team_state[2])
-        if self._last_time_left is not None and time_left > self._last_time_left + 0.25:
-            self.reset()
-        self._last_time_left = time_left
-        self._tick += 1  # refreshes the per-tick battery/special scans
-        self._memory.clear()  # no assignment hysteresis: the answer depends on this state only
-
-        controlled = sorted(obs, key=unit_index)
-        own_rows = [i for i in range(len(states)) if states[i, 2] > 0]
-        row_for = {name: unit_index(name) for name in controlled}
-        if any(i >= len(states) or states[i, 2] <= 0 for i in row_for.values()):
-            row_for = {name: own_rows[j] for j, name in enumerate(controlled)}
-        local_order = {name: j for j, name in enumerate(controlled)}
-        # V4 values tasks on the wall channel alone; our own movement cannot enter the enemy base.
-        walkable = graphic[..., WALL] < 0.5
-        move_walkable = walkable & ~self._enemy_base_mask(graphic)
-        self._teach_walkable = move_walkable
-        shape = graphic.shape[:2]
-
-        transforms = self._composition_goals(controlled, row_for, states, graphic, move_walkable)
-        economic = [
-            name for name in controlled
-            if name not in transforms
-            and not self._is_holding(states[row_for[name]]) and self._class_id(states[row_for[name]]) != HUNTER
-        ]
-        claims = self._economic_goals(economic, row_for, states, graphic, team_state, walkable)
-        reservations: set[tuple[int, int]] = {tile for goals in claims.values() for tiles, _ in goals for tile in tiles}
-
-        labels: dict[str, TeachLabel] = {}
-        for name in controlled:
-            state = states[row_for[name]]
-            if name in transforms:
-                goals = transforms[name]
-            elif name in claims:
-                goals = claims[name]
-            elif self._is_holding(state):
-                goals = self._storage_goals(graphic, state, states, team_state)
-            else:
-                target, kind = self._choose_target(
-                    _CLASS_ROLE[self._class_id(state)], state, states, graphic, reservations,
-                    local_order[name], team_state,
-                )
-                goals = () if target is None or kind == "transform" else (((tuple(target),), kind),)
-                if target is not None and kind in {"battery", "special", "steal"}:
-                    reservations.add(tuple(target))
-            labels[name] = self._label(state, states, goals, move_walkable, shape)
-        return labels
+        raise NotImplementedError
 
     def label_masks(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         """``teach`` reduced to its ``[8]`` bool masks (all False = no label)."""
         return {name: label.mask for name, label in self.teach(obs).items()}
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
-        actions = {}
-        for name, label in self.teach(obs).items():
-            if not label.valid:
-                actions[name] = np.zeros(2, dtype=np.float32)
-                continue
-            vector = DIRECTIONS[label.mask].mean(axis=0)  # never cancels: see _CANCELLING
-            actions[name] = (vector / float(np.linalg.norm(vector))).astype(np.float32)
-        return actions
+        return {name: label_action(label) for name, label in self.teach(obs).items()}
 
-    # --------------------------------------------------------------------------------- decisions
-
-    def _economic_goals(
-        self,
-        names: list[str],
-        row_for: dict[str, int],
-        states: np.ndarray,
-        graphic: np.ndarray,
-        team_state: np.ndarray,
-        walkable: np.ndarray,
-    ) -> dict[str, tuple[Goal, ...]]:
-        """Each unit's best tasks under V4's value, minus the ones a clearly faster teammate wants.
-
-        "Wants" is the teammate's own unfiltered choice, so exclusions never cascade."""
-        tasks, pairs, distance_of = self._economic_candidates(names, row_for, states, graphic, team_state, walkable)
-        by_unit: dict[str, list[tuple[float, int]]] = {}
-        for value, name, task in pairs:
-            by_unit.setdefault(name, []).append((value, task))
-        speed = {name: 6.0 if self._class_id(states[row_for[name]]) == CARRIER else 4.0 for name in by_unit}
-
-        def best(scored: list[tuple[float, int]]) -> list[int]:
-            top = max(value for value, _ in scored)
-            return [task for value, task in scored if value >= top - VALUE_BAND]
-
-        wanted = {name: set(best(scored)) for name, scored in by_unit.items()}
-        goals = {}
-        for name, scored in by_unit.items():
-            arrival = {task: distance_of[(name, task)] / speed[name] for _, task in scored}
-            taken = {
-                task
-                for other, tasks_wanted in wanted.items() if other != name
-                for task in tasks_wanted
-                if task in arrival and distance_of[(other, task)] / speed[other] + EXCLUSION_MARGIN <= arrival[task]
-            }
-            free = [(value, task) for value, task in scored if task not in taken]
-            if free:
-                goals[name] = tuple(((tuple(tasks[task][0]),), tasks[task][1]) for task in best(free))
-        return goals
+    def _composition_targets(self, graphic: np.ndarray, states: np.ndarray, row_for: dict[str, int]) -> tuple[int, int]:
+        """(Hunters, Carriers) the team should have; (0, 0) = no composition labels."""
+        return 0, 0
 
     def _composition_goals(
         self,
@@ -264,16 +175,17 @@ class StrategicHeuristicV4Teach(StrategicHeuristicV4):
         graphic: np.ndarray,
         walkable: np.ndarray,
     ) -> dict[str, tuple[Goal, ...]]:
-        """Transform labels that fill the team up to target_carriers / target_hunters.
+        """Transform labels that fill the team up to ``_composition_targets``.
 
-        V4 decides roles by slot, which conflicts with whatever composition the learner chose.  This
+        V4 decides roles by slot (V17 by slot and memory), which conflicts with whatever composition the learner chose.  This
         reads the team's current classes instead: for each missing Carrier (the base sanctuary only
         works while none is alive) and each missing Hunter, the empty Collector with the shortest
         path to that sanctuary is sent there, closest first, ties by unit index.  Walking toward it
         only shortens its own path, so the choice holds; a pickup on the way takes it out of the
         running (cargo is deposited first, as in V4).  A surplus is never labelled -- a unit only
         changes class back by dying."""
-        if not self.target_hunters and not self.target_carriers:
+        target_hunters, target_carriers = self._composition_targets(graphic, states, row_for)
+        if not target_hunters and not target_carriers:
             return {}
         shape = graphic.shape[:2]
         classes = {name: self._class_id(states[row_for[name]]) for name in controlled}
@@ -282,7 +194,7 @@ class StrategicHeuristicV4Teach(StrategicHeuristicV4):
             if classes[name] == COLLECTOR and not self._is_holding(states[row_for[name]])
         ]
         goals: dict[str, tuple[Goal, ...]] = {}
-        for role, channel, target in ((CARRIER, SITE_CARRIER, self.target_carriers), (HUNTER, SITE_HUNTER, self.target_hunters)):
+        for role, channel, target in ((CARRIER, SITE_CARRIER, target_carriers), (HUNTER, SITE_HUNTER, target_hunters)):
             missing = (target or 0) - sum(cls == role for cls in classes.values())
             if missing <= 0 or not candidates:
                 continue
@@ -299,33 +211,6 @@ class StrategicHeuristicV4Teach(StrategicHeuristicV4):
                 candidates.remove(name)
         return goals
 
-    def _storage_goals(
-        self, graphic: np.ndarray, state: np.ndarray, states: np.ndarray, team_state: np.ndarray
-    ) -> tuple[Goal, ...]:
-        """V3's storage choice by path distance, as whole clusters, keeping exact ties."""
-        origin = self._to_pixel(state[:2], graphic.shape[:2])
-        components = self._cached_components(graphic[..., STORAGE_ALLY] > 0.5)
-        if not components:
-            return ()
-        available = self._fitting_storage_components(graphic, state, components)
-        if not available:
-            target, can_deposit = self._storage_target(graphic, state, origin)
-            if target is None:
-                return ()
-            return (((tuple(target),), "deposit" if can_deposit else "wait_storage"),)
-        costs = self._storage_component_costs(graphic, state, states, origin, team_state, components, available)
-        best = min(cost for cost, _ in costs)
-        return tuple((tuple(component), "deposit") for cost, component in costs if cost <= best + STORAGE_BAND)
-
-    def _storage_distance(
-        self, graphic: np.ndarray, origin: tuple[int, int], component: list[tuple[int, int]]
-    ) -> float:
-        # Path distance: straight-line distance can grow while a unit walks around a wall toward
-        # the chosen store and shrink toward another, flipping the choice mid-trip.
-        walkable = self._teach_walkable if self._teach_walkable is not None else graphic[..., WALL] < 0.5
-        return float(self._distance_to(walkable, tuple(component))[origin])
-
-    # ------------------------------------------------------------------------------------ labels
 
     def _label(
         self,
@@ -428,3 +313,141 @@ class StrategicHeuristicV4Teach(StrategicHeuristicV4):
             cached = StrategicHeuristicV17._base_mask(origin, graphic.shape[:2])
             self._static_masks["teach_enemy_base"] = cached
         return cached
+
+
+class StrategicHeuristicV4Teach(TeachLabeller, StrategicHeuristicV4):
+    """V4's values as a memoryless, role-conditioned, motion-stable, set-valued action labeller."""
+
+    def __init__(self, *, target_hunters: int | None = None, target_carriers: int | None = None, **kwargs):
+        """target_hunters / target_carriers: opt-in composition labels (see _composition_goals);
+        None leaves the composition entirely to the learner."""
+        super().__init__(**kwargs)
+        self.target_hunters = target_hunters
+        self.target_carriers = target_carriers
+
+    def _composition_targets(self, graphic: np.ndarray, states: np.ndarray, row_for: dict[str, int]) -> tuple[int, int]:
+        return self.target_hunters or 0, self.target_carriers or 0
+
+    # ------------------------------------------------------------------------------------ labels
+
+    def teach(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, TeachLabel]:
+        """Labels for every agent in ``obs`` (one team's observations, as ``act`` receives them)."""
+        if not obs:
+            return {}
+        sample = next(iter(obs.values()))
+        graphic, states, team_state = sample["graphic"], sample["agent_states"], sample["team_state"]
+
+        # Episode boundary (remaining time jumps up), as in StrategicHeuristic.act.  Only static
+        # caches (walls, storage components, distance maps) survive within an episode.
+        time_left = float(team_state[2])
+        if self._last_time_left is not None and time_left > self._last_time_left + 0.25:
+            self.reset()
+        self._last_time_left = time_left
+        self._tick += 1  # refreshes the per-tick battery/special scans
+        self._memory.clear()  # no assignment hysteresis: the answer depends on this state only
+
+        controlled = sorted(obs, key=unit_index)
+        own_rows = [i for i in range(len(states)) if states[i, 2] > 0]
+        row_for = {name: unit_index(name) for name in controlled}
+        if any(i >= len(states) or states[i, 2] <= 0 for i in row_for.values()):
+            row_for = {name: own_rows[j] for j, name in enumerate(controlled)}
+        local_order = {name: j for j, name in enumerate(controlled)}
+        # V4 values tasks on the wall channel alone; our own movement cannot enter the enemy base.
+        walkable = graphic[..., WALL] < 0.5
+        move_walkable = walkable & ~self._enemy_base_mask(graphic)
+        self._teach_walkable = move_walkable
+        shape = graphic.shape[:2]
+
+        transforms = self._composition_goals(controlled, row_for, states, graphic, move_walkable)
+        economic = [
+            name for name in controlled
+            if name not in transforms
+            and not self._is_holding(states[row_for[name]]) and self._class_id(states[row_for[name]]) != HUNTER
+        ]
+        claims = self._economic_goals(economic, row_for, states, graphic, team_state, walkable)
+        reservations: set[tuple[int, int]] = {tile for goals in claims.values() for tiles, _ in goals for tile in tiles}
+
+        labels: dict[str, TeachLabel] = {}
+        for name in controlled:
+            state = states[row_for[name]]
+            if name in transforms:
+                goals = transforms[name]
+            elif name in claims:
+                goals = claims[name]
+            elif self._is_holding(state):
+                goals = self._storage_goals(graphic, state, states, team_state)
+            else:
+                target, kind = self._choose_target(
+                    _CLASS_ROLE[self._class_id(state)], state, states, graphic, reservations,
+                    local_order[name], team_state,
+                )
+                goals = () if target is None or kind == "transform" else (((tuple(target),), kind),)
+                if target is not None and kind in {"battery", "special", "steal"}:
+                    reservations.add(tuple(target))
+            labels[name] = self._label(state, states, goals, move_walkable, shape)
+        return labels
+
+    # --------------------------------------------------------------------------------- decisions
+
+    def _economic_goals(
+        self,
+        names: list[str],
+        row_for: dict[str, int],
+        states: np.ndarray,
+        graphic: np.ndarray,
+        team_state: np.ndarray,
+        walkable: np.ndarray,
+    ) -> dict[str, tuple[Goal, ...]]:
+        """Each unit's best tasks under V4's value, minus the ones a clearly faster teammate wants.
+
+        "Wants" is the teammate's own unfiltered choice, so exclusions never cascade."""
+        tasks, pairs, distance_of = self._economic_candidates(names, row_for, states, graphic, team_state, walkable)
+        by_unit: dict[str, list[tuple[float, int]]] = {}
+        for value, name, task in pairs:
+            by_unit.setdefault(name, []).append((value, task))
+        speed = {name: 6.0 if self._class_id(states[row_for[name]]) == CARRIER else 4.0 for name in by_unit}
+
+        def best(scored: list[tuple[float, int]]) -> list[int]:
+            top = max(value for value, _ in scored)
+            return [task for value, task in scored if value >= top - VALUE_BAND]
+
+        wanted = {name: set(best(scored)) for name, scored in by_unit.items()}
+        goals = {}
+        for name, scored in by_unit.items():
+            arrival = {task: distance_of[(name, task)] / speed[name] for _, task in scored}
+            taken = {
+                task
+                for other, tasks_wanted in wanted.items() if other != name
+                for task in tasks_wanted
+                if task in arrival and distance_of[(other, task)] / speed[other] + EXCLUSION_MARGIN <= arrival[task]
+            }
+            free = [(value, task) for value, task in scored if task not in taken]
+            if free:
+                goals[name] = tuple(((tuple(tasks[task][0]),), tasks[task][1]) for task in best(free))
+        return goals
+
+    def _storage_goals(
+        self, graphic: np.ndarray, state: np.ndarray, states: np.ndarray, team_state: np.ndarray
+    ) -> tuple[Goal, ...]:
+        """V3's storage choice by path distance, as whole clusters, keeping exact ties."""
+        origin = self._to_pixel(state[:2], graphic.shape[:2])
+        components = self._cached_components(graphic[..., STORAGE_ALLY] > 0.5)
+        if not components:
+            return ()
+        available = self._fitting_storage_components(graphic, state, components)
+        if not available:
+            target, can_deposit = self._storage_target(graphic, state, origin)
+            if target is None:
+                return ()
+            return (((tuple(target),), "deposit" if can_deposit else "wait_storage"),)
+        costs = self._storage_component_costs(graphic, state, states, origin, team_state, components, available)
+        best = min(cost for cost, _ in costs)
+        return tuple((tuple(component), "deposit") for cost, component in costs if cost <= best + STORAGE_BAND)
+
+    def _storage_distance(
+        self, graphic: np.ndarray, origin: tuple[int, int], component: list[tuple[int, int]]
+    ) -> float:
+        # Path distance: straight-line distance can grow while a unit walks around a wall toward
+        # the chosen store and shrink toward another, flipping the choice mid-trip.
+        walkable = self._teach_walkable if self._teach_walkable is not None else graphic[..., WALL] < 0.5
+        return float(self._distance_to(walkable, tuple(component))[origin])

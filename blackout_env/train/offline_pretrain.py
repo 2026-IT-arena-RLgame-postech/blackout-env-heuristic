@@ -48,7 +48,9 @@ import numpy as np
 
 from blackout_env.env.blackout_env import BlackOutEnv
 from blackout_env.env.constants import TEAM_A_INDICES, TEAM_B_INDICES
-from blackout_env.heuristics import HeuristicPolicyMixture, RecommendedStrategicHeuristic, StrategicHeuristicV4Teach
+from blackout_env.heuristics import (
+    HeuristicPolicyMixture, RecommendedStrategicHeuristic, StrategicHeuristicV4Teach, StrategicHeuristicV17Teach,
+)
 from blackout_env.model.my_policy import MyPolicy
 from blackout_env.train.offline_dataset import dataset_has_unity_shaping, dataset_is_demo, load_dataset_into, npz_member_memmap
 from blackout_env.train.onpolicy_collect import collect_onpolicy_data
@@ -82,11 +84,13 @@ def main() -> None:
     parser.add_argument("--onpolicy-opponent-seed", type=int, default=7777)
     parser.add_argument(
         "--dagger-teacher",
-        choices=["none", "v4-teach"],
+        choices=["none", "v4-teach", "v17-teach"],
         default="none",
         help="DAgger relabelling of on-policy data: the teacher labels every state the net plays in "
         "on-policy collection (heuristics/teach.py) and those rows get a set-valued BC term "
-        "(QMIXConfig.dagger_weight). The heuristic side keeps its own demonstration BC. none = off.",
+        "(QMIXConfig.dagger_weight). The heuristic side keeps its own demonstration BC. none = off. "
+        "v17-teach (heuristics/v17_teach.py) also labels V17's role ratio (3 Hunters, 1 Carrier) and each "
+        "role's play; --dagger-target-hunters/carriers override its quotas.",
     )
     parser.add_argument("--dagger-weight", type=float, default=1.0,
                         help="BC weight of a relabelled on-policy row relative to a demonstration row (1.0).")
@@ -462,6 +466,14 @@ def main() -> None:
     def collect_onpolicy(step: int) -> None:
         candidate = MyPolicy(trainer.net, device=args.device)
         trainer.net.eval()
+        make_teacher = None
+        if args.dagger_teacher == "v4-teach":
+            make_teacher = functools.partial(StrategicHeuristicV4Teach, target_hunters=args.dagger_target_hunters,
+                                             target_carriers=args.dagger_target_carriers)
+        elif args.dagger_teacher == "v17-teach":
+            quotas = {key: value for key, value in (("hunter_quota", args.dagger_target_hunters),
+                                                     ("carrier_quota", args.dagger_target_carriers)) if value is not None}
+            make_teacher = functools.partial(StrategicHeuristicV17Teach, **quotas)
         try:
             stats = collect_onpolicy_data(
                 eval_env,
@@ -475,11 +487,7 @@ def main() -> None:
                 max_matches=args.onpolicy_max_matches,
                 reward_v2=reward_v2_cfg,
                 stop_when_exhausted=not args.keep_exhausted,
-                make_teacher=(
-                    functools.partial(StrategicHeuristicV4Teach, target_hunters=args.dagger_target_hunters,
-                                      target_carriers=args.dagger_target_carriers)
-                    if args.dagger_teacher == "v4-teach" else None
-                ),
+                make_teacher=make_teacher,
             )
         finally:
             trainer.net.train()

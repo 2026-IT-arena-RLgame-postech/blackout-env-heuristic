@@ -198,6 +198,19 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
     def act(self, obs):
         if not obs:
             return {}
+        ctx = self._context(obs)
+        self._update_roles(ctx)
+        plan = self._plan(ctx)
+        self.plan = plan
+        actions = {}
+        for unit in ctx["own"]:
+            target, kind = plan.get(unit.name, (None, "idle"))
+            actions[unit.name] = self._navigate(
+                unit.name, ctx["states"][unit.row], ctx["states"], target, kind, ctx["walkable"], ctx["shape"])
+        return actions
+
+    def _context(self, obs) -> dict:
+        """Parse one team's observations into the planner context (advances the tick)."""
         sample = next(iter(obs.values()))
         graphic = sample["graphic"]
         states = sample["agent_states"]
@@ -252,16 +265,7 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             field = outside[[p[0] for p in pixels], [p[1] for p in pixels]].tolist()
         # Summed one by one in scan order, as before, so the float total is unchanged.
         ctx["field_value"] = float(sum(p[2] for p, keep in zip(pixels, field) if keep))
-
-        self._update_roles(ctx)
-        plan = self._plan(ctx)
-        self.plan = plan
-        actions = {}
-        for unit in own:
-            target, kind = plan.get(unit.name, (None, "idle"))
-            actions[unit.name] = self._navigate(
-                unit.name, states[unit.row], states, target, kind, walkable, shape)
-        return actions
+        return ctx
 
     # ------------------------------------------------------------------ helpers
 
@@ -455,10 +459,24 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         return self._component_center(component)
 
     def _deposit_plan(self, ctx, unit, reserved_tiles):
+        costs = self._deposit_costs(ctx, unit)
+        best = min(costs, key=lambda c: c[0]) if costs else None
+        if best is None:
+            target, can_deposit = self._storage_target(ctx["graphic"], ctx["states"][unit.row], unit.pos)
+            return target, "deposit" if can_deposit else "wait_storage"
+        _, _, store = best
+        free = [c for c in store.cells if c not in reserved_tiles] or store.cells
+        target = min(free, key=lambda c: math.dist(c, unit.pos))
+        reserved_tiles.add(target)
+        return target, "deposit"
+
+    def _deposit_costs(self, ctx, unit) -> list[tuple[float, int, _Store]]:
+        """(cost, index, store) for every reachable ally storage the cargo fits: travel seconds
+        plus the expected raid loss of an exposed storage before the next absorption."""
         walkable = ctx["walkable"]
         speed = self._speed(ctx, unit.cls)
         value = unit.amount if unit.slot == 1 else 8.0
-        best = None
+        costs = []
         for index, store in enumerate(ctx["ally_stores"]):
             fits = (store.free_battery_capacity >= max(1, round(unit.amount))
                     if unit.slot == 1 else store.free_empty_tiles > 0)
@@ -480,20 +498,30 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
                     if self._hunter_near(ctx, store.center, 3.0, enemy=False):
                         risk *= 0.5
                     cost += self.exposure_cost * value * risk
-            if best is None or cost < best[0]:
-                best = (cost, index, store)
-        if best is None:
-            target, can_deposit = self._storage_target(ctx["graphic"], ctx["states"][unit.row], unit.pos)
-            return target, "deposit" if can_deposit else "wait_storage"
-        _, _, store = best
-        free = [c for c in store.cells if c not in reserved_tiles] or store.cells
-        target = min(free, key=lambda c: math.dist(c, unit.pos))
-        reserved_tiles.add(target)
-        return target, "deposit"
+            costs.append((cost, index, store))
+        return costs
 
     def _assign_economy(self, ctx, units):
         if not units:
             return {}
+        tasks, pairs, _ = self._economy_pairs(ctx, units)
+        pairs.sort(key=lambda p: p[0], reverse=True)
+        result = {}
+        used = set()
+        for score, name, task_index in pairs:
+            if name in result or task_index in used:
+                continue
+            target, kind, _, _ = tasks[task_index]
+            result[name] = (target, "special" if kind == "special" else kind)
+            used.add(task_index)
+        for unit in units:
+            if unit.name not in result:
+                result[unit.name] = self._idle_plan(ctx, unit)
+        return result
+
+    def _economy_pairs(self, ctx, units):
+        """Every (score, unit name, task index) worth doing, the task list, and each pair's
+        pickup time in seconds.  Scores include the 1.12 bonus for a unit's remembered target."""
         graphic = ctx["graphic"]
         walkable = ctx["walkable"]
         ally_stores = ctx["ally_stores"]
@@ -544,6 +572,7 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             contest.append(fastest)
 
         pairs = []
+        pickup: dict[tuple[str, int], float] = {}
         for unit in units:
             speed = self._speed(ctx, unit.cls)
             field = self._cached_distance_map(walkable, unit.pos)
@@ -583,20 +612,8 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
                 if old_target == target:
                     score *= 1.12
                 pairs.append((score, unit.name, task_index))
-
-        pairs.sort(key=lambda p: p[0], reverse=True)
-        result = {}
-        used = set()
-        for score, name, task_index in pairs:
-            if name in result or task_index in used:
-                continue
-            target, kind, _, _ = tasks[task_index]
-            result[name] = (target, "special" if kind == "special" else kind)
-            used.add(task_index)
-        for unit in units:
-            if unit.name not in result:
-                result[unit.name] = self._idle_plan(ctx, unit)
-        return result
+                pickup[(unit.name, task_index)] = t_pick
+        return tasks, pairs, pickup
 
     def _idle_plan(self, ctx, unit):
         """No task: shadow the enemy external storage most likely to receive the next deposit."""
@@ -657,6 +674,19 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         return slot, "patrol_defend"
 
     def _hunt_plan(self, ctx, hunter, claimed):
+        scored, exposed = self._hunt_scores(ctx, hunter, claimed)
+        best = max(scored, key=lambda p: p[0]) if scored else None
+        if best is not None and best[0] > 0.35:
+            return best[1].pos, "hunt"
+        if exposed:
+            store = max(exposed, key=lambda s: s.battery + 6 * s.specials)
+            return store.center, "patrol_defend"
+        # Nothing to protect: stand between enemy economy and their storages (field centre).
+        return self._defend_patrol_target(ctx["graphic"], hunter.pos), "patrol_defend"
+
+    def _hunt_scores(self, ctx, hunter, claimed):
+        """(score, enemy) for every enemy worth chasing, and our exposed (unprotected, non-empty)
+        storages.  Score = value / (chase-weighted intercept seconds + 1)."""
         walkable = ctx["walkable"]
         speed = self._speed(ctx, HUNTER)
         field = self._cached_distance_map(walkable, hunter.pos)
@@ -665,7 +695,7 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             if store.protected or store.battery + store.specials * 6 <= 0:
                 continue
             exposed.append(store)
-        best = None
+        scored = []
         for enemy in ctx["enemies"]:
             if enemy.in_base:
                 continue
@@ -699,15 +729,8 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             score = value / (t * chase + 1.0)
             if enemy.pos in claimed:
                 score *= 0.5
-            if best is None or score > best[0]:
-                best = (score, enemy)
-        if best is not None and best[0] > 0.35:
-            return best[1].pos, "hunt"
-        if exposed:
-            store = max(exposed, key=lambda s: s.battery + 6 * s.specials)
-            return store.center, "patrol_defend"
-        # Nothing to protect: stand between enemy economy and their storages (field centre).
-        return self._defend_patrol_target(ctx["graphic"], hunter.pos), "patrol_defend"
+            scored.append((score, enemy))
+        return scored, exposed
 
     def _cached_astar(self, walkable, start, goal):
         # V6's threat-cost A* depends on where enemies are right now, so a (start, goal) path
