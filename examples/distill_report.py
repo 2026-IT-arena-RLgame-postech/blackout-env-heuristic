@@ -69,7 +69,7 @@ def learning(records: dict[str, list[dict]], every: int) -> None:
                      _fmt(probe.get("probe/accuracy")),
                      *[_fmt(r.get(f"fresh_collect/accuracy_role_{role}")) for role in ROLES],
                      _fmt(r["train/z"], ".2f"), _fmt(r["train/entropy"]), _fmt(r["train/logit_abs_max"], ".1f"),
-                     _fmt(r["pipeline/steps_per_s"], ".1f"), _fmt(r["pipeline/busy_worker_frac"]),
+                     _fmt(r["pipeline/steps_per_s"], ".1f"), _fmt(r.get("pipeline/worker_utilization")),
                      _fmt(r["pipeline/throttled_sync_frac"]), _fmt(r.get("ring/mean_version_age"), ".1f")])
     _table(header, rows)
 

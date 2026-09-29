@@ -89,6 +89,9 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--min-rows", type=int, default=20_000, help="teacher-only rows to collect before fitting")
     p.add_argument("--replay-ratio", type=float, default=2.0,
                    help="trained samples per collected row; below it no new matches are queued")
+    p.add_argument("--queue-depth", type=int, default=2,
+                   help="matches queued per worker: most finish in seconds, so a worker must have its next one "
+                   "waiting instead of idling until the next sync")
     p.add_argument("--sync-every", type=int, default=50, help="steps between replay syncs")
     p.add_argument("--publish-every", type=int, default=1000, help="steps between student versions")
     p.add_argument("--eval-every", type=int, default=5, help="versions between eval batches")
@@ -326,9 +329,9 @@ class Run:
         running will bring (at the mean rows per match so far) as collected."""
         args = self.args
         self._pipeline["syncs"] += 1
-        self._pipeline["busy_worker_frac"] += min(pool.in_flight, pool.workers) / pool.workers
+        self._pipeline["queued_per_worker"] += pool.in_flight / pool.workers
         throttled = False
-        while pool.in_flight < pool.workers:
+        while pool.in_flight < args.queue_depth * pool.workers:
             expected = self.collected_rows + pool.in_flight * self._rows_per_match()
             if not wants_matches(self.step * args.batch_size, expected, self.dataset.size, args):
                 throttled = True
@@ -392,7 +395,9 @@ class Run:
             "pipeline/steps_per_s": args.log_every / seconds,
             "pipeline/matches_per_min": 60 * p["matches"] / seconds,
             "pipeline/mean_match_wall_s": p["match_wall_s"] / max(1, p["matches"]),
-            "pipeline/busy_worker_frac": p["busy_worker_frac"] / max(1, p["syncs"]),
+            # time workers spent playing matches that finished in this window, over the time they had
+            "pipeline/worker_utilization": p["match_wall_s"] / (args.workers * seconds),
+            "pipeline/queued_per_worker": p["queued_per_worker"] / max(1, p["syncs"]),
             "pipeline/throttled_sync_frac": p["throttled_syncs"] / max(1, p["syncs"]),
             "system/peak_rss_gb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (2**30 if platform.system() == "Darwin" else 2**20),
             **self.dataset.composition(self.version),
@@ -408,7 +413,7 @@ class Run:
         fresh = f" fresh {stats['fresh_collect/accuracy']:.3f}" if "fresh_collect/accuracy" in stats else ""
         print(f"[distill] step {self.step} v{self.version} beta {stats['beta']:.2f} rows {self.dataset.size} "
               f"ratio {stats['replay_ratio']:.1f} | ce {stats['train/ce']:.3f} acc {stats['train/accuracy']:.3f}{fresh} "
-              f"| {stats['pipeline/steps_per_s']:.1f} step/s, workers {stats['pipeline/busy_worker_frac']:.0%} "
+              f"| {stats['pipeline/steps_per_s']:.1f} step/s, workers {stats['pipeline/worker_utilization']:.0%} "
               f"| {stats['elapsed_s']:.0f}s", flush=True)
 
     # ------------------------------------------------------------------------------- loop

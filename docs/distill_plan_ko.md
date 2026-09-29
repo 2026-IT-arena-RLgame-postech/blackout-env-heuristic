@@ -30,7 +30,7 @@
 | 점수를 잃는 곳 | `learner/{pickups,deliveries,cargo_lost}_per_1000`, `opponent/cargo_lost_per_1000`(= 우리 처치), `approach_battery/storage`, `margin_{30,60,120}s` |
 | 진동·막힘 | `reversals_per_1000/{student,teacher}`, `movement/{blocked,idle}_per_1000`, `stall/*`(코너 막힘, 가득 찬 창고 대기) |
 | 로짓 건강 | `train/z`, `entropy`, `set_prob`, `logit_std`, `logit_abs_max`, `param_norm`, `param_update_norm`, `grad_norm` |
-| 파이프라인 | `pipeline/{steps_per_s, matches_per_min, busy_worker_frac, throttled_sync_frac}`, `replay_ratio`, `ring/{mean_version_age, teacher_only_frac, kind_share_*}`, `student_version_lag`, `system/peak_rss_gb` |
+| 파이프라인 | `pipeline/{steps_per_s, matches_per_min, worker_utilization, queued_per_worker, throttled_sync_frac}`, `replay_ratio`, `ring/{mean_version_age, teacher_only_frac, kind_share_*}`, `student_version_lag`, `system/peak_rss_gb` |
 | 목표치 | `eval_teacher`: 런 시작 시 교사가 같은 평가 시드로 치른 경기 (위 지표 전부) |
 | 예상 못 한 질문 | 샤드에 틱별 실행 행동·학생 선택·조종 주체와 경기 요약(`meta`), `matches.jsonl`에 원시 카운트, `run_info.json`에 커밋·dirty 파일·빌드 시각 |
 
