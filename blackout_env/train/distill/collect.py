@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import functools
 import os
+import threading
 import time
 from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
 from dataclasses import asdict, dataclass
@@ -199,6 +200,19 @@ def _init_worker(build: str, time_scale: float) -> None:
                        additional_args=["-logFile", "/dev/null"], unity_shaping=False)
     # see examples/gauntlet_heuristics.py: pool workers exit through os._exit(), so close here
     util.Finalize(_ENV, _ENV.close, exitpriority=10)
+    threading.Thread(target=_exit_with_parent, args=(os.getppid(),), daemon=True).start()
+
+
+def _exit_with_parent(parent: int) -> None:
+    """A worker whose trainer was killed is not told (a pool only shuts workers down when it
+    closes), and it kept its Unity process alive: 8 such pairs sat idle for 6 hours next to D1.
+    Poll the parent and close both when it is gone."""
+    while os.getppid() == parent:
+        time.sleep(5.0)
+    try:
+        _ENV.close()
+    finally:
+        os._exit(0)
 
 
 def _load_student(path: str | None, inference: str = "iqn") -> tuple[object | None, int]:
