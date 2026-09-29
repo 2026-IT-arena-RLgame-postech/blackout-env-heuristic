@@ -189,3 +189,18 @@ def test_label_accuracy_splits_by_role_and_kind():
     assert stats["fresh/accuracy_role_hunter"] == 1.0 and stats["fresh/accuracy_role_collector"] == 0.0
     assert stats["fresh/accuracy_kind_hunt"] == 1.0 and stats["fresh/share_kind_battery"] == 0.5
     assert accuracy.pop("fresh") == {}  # popped
+
+
+def test_inference_modes_are_deterministic_where_promised():
+    from blackout_env.train.distill.inference import make_student
+
+    torch.manual_seed(0)
+    net = MyModel()
+    team = {name: _view(False) for name in all_agents()[:5]}
+    fixed = make_student(net, "fixed_tau")
+    first, again = fixed.action_values(team), fixed.action_values(team)
+    assert all(np.array_equal(first[a], again[a]) for a in first)
+    moves = make_student(net, "tie_mean").act(team)
+    assert all(abs(np.linalg.norm(v) - 1) < 1e-5 for v in moves.values())
+    with pytest.raises(ValueError):
+        make_student(net, "nope")

@@ -49,6 +49,7 @@ class MatchTask:
     stop_when_exhausted: bool = True
     tag: str = "collect"  # "collect" (DAgger data) or "eval" (student alone vs a fixed opponent)
     version: int = 0  # student version current when the task was queued (eval groups by it)
+    inference: str = "iqn"  # how the student turns logits into a move (inference.py)
 
 
 def make_opponent(opponent: str, seed: int):
@@ -183,7 +184,7 @@ def _scores_from(view, team_b: bool) -> dict:
 # ------------------------------------------------------------------------------ worker pool
 
 _ENV = None
-_STUDENT: tuple[str, float, object, int] | None = None  # (path, mtime, policy, version)
+_STUDENT: tuple[tuple, object, int] | None = None  # ((path, mtime, inference), policy, version)
 
 
 def _init_worker(build: str, time_scale: float) -> None:
@@ -200,7 +201,7 @@ def _init_worker(build: str, time_scale: float) -> None:
     util.Finalize(_ENV, _ENV.close, exitpriority=10)
 
 
-def _load_student(path: str | None) -> tuple[object | None, int]:
+def _load_student(path: str | None, inference: str = "iqn") -> tuple[object | None, int]:
     """The student at ``path`` and its published version, reloaded only when the file changed
     (the trainer replaces it atomically, so a match always plays one consistent version)."""
     global _STUDENT
@@ -209,20 +210,20 @@ def _load_student(path: str | None) -> tuple[object | None, int]:
     import torch
 
     from blackout_env.model.my_model import MyModel
-    from blackout_env.model.my_policy import MyPolicy
+    from blackout_env.train.distill.inference import make_student
 
-    mtime = Path(path).stat().st_mtime
-    if _STUDENT is None or _STUDENT[:2] != (path, mtime):
+    key = (path, Path(path).stat().st_mtime, inference)
+    if _STUDENT is None or _STUDENT[0] != key:
         ckpt = torch.load(path, map_location="cpu", weights_only=True)
         net = MyModel()
         net.load_state_dict(ckpt["policy_state"])
-        _STUDENT = (path, mtime, MyPolicy(net.eval()), int(ckpt.get("distill", {}).get("version", 0)))
-    return _STUDENT[2], _STUDENT[3]
+        _STUDENT = (key, make_student(net, inference), int(ckpt.get("distill", {}).get("version", 0)))
+    return _STUDENT[1], _STUDENT[2]
 
 
 def _run_task(task: MatchTask) -> dict:
     started = time.time()
-    student, version = _load_student(task.student)
+    student, version = _load_student(task.student, task.inference)
     rows, summary = play_labelled_match(_ENV, task, student)
     summary.update(student_version=version, wall_s=round(time.time() - started, 1), worker_pid=os.getpid())
     if task.shard is not None and summary["rows"]:
