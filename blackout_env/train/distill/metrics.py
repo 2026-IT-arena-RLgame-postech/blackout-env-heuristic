@@ -36,6 +36,10 @@ ROLES = ("collector", "hunter", "carrier")
 CLASS_COLS = slice(9, 12)  # agent_states class one-hot, ROLES order
 MATCH_SECONDS = 420.0
 MARGIN_AT = (30, 60, 120)  # seconds of play at which the learner's margin is recorded
+# Composition by time of play: matches end when the field is exhausted, anywhere from 20 s to
+# 420 s, so a whole-match average mostly measures how long the match lasted (D1 v35 read 1.2
+# Hunters against the teacher's 2.8 with the same 0-60 s build-up, in matches a fifth as long).
+TIME_BUCKETS = ((0, 30), (30, 60), (60, 120), (120, 10_000))
 REVERSAL_COS = math.cos(math.radians(135))  # consecutive moves turning more than this = reversal
 STAND = 255  # action index for "no movement" (a teacher without a label stands still)
 
@@ -84,6 +88,10 @@ class MatchRecorder:
                     c[f"agree_n/{key}"] += 1
             self._count_reversal(name, np.asarray(actions[name], np.float32), controller)
 
+        bucket = next(f"{lo}_{hi}s" if hi < 10_000 else f"{lo}s_plus" for lo, hi in TIME_BUCKETS if lo <= elapsed < hi)
+        c[f"bucket_ticks/{bucket}"] += 1
+        for role in roles.values():
+            c[f"bucket_units/{role}/{bucket}"] += 1
         present = Counter(roles.values())
         for role, needed in (("hunter", 1), ("hunter", 2), ("hunter", 3), ("carrier", 1)):
             key = f"first_{role}{needed}_s"
@@ -142,6 +150,9 @@ def rates(counts: dict[str, float]) -> dict[str, float]:
     out["teacher_frac"] = c["ticks/teacher"] / max(1, ticks)
     for role in ROLES:
         out[f"units_{role}"] = N_TEAM * c[f"ticks/role_{role}"] / max(1, ticks)
+        for key in [k for k in c if k.startswith("bucket_ticks/")]:
+            bucket = key.split("/", 1)[1]
+            out[f"units_{role}_{bucket}"] = c[f"bucket_units/{role}/{bucket}"] / c[key]
     out["label_valid_frac"] = c["labels/valid"] / max(1, ticks)
     out["label_set_size"] = c["labels/set_size"] / max(1, c["labels/valid"])
     for controller in ("student", "teacher"):

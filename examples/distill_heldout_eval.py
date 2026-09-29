@@ -88,13 +88,14 @@ def main() -> None:
     for d in done:
         groups[(d["candidate"], d["inference"], d["opponent"])].append(d)
     lines = [f"{'candidate':42s} {'inference':9s} {'opponent':14s} {'n':>3s} {'margin':>7s} {'±se':>5s} {'win':>5s} "
-             f"{'H':>4s} {'Ca':>4s} {'C':>4s} {'agree':>6s} {'deliv/1k':>8s} {'rev/1k':>7s}"]
+             f"{'H<30s':>5s} {'H<60s':>5s} {'H<120':>5s} {'Ca<60':>5s} {'end_s':>5s} {'agree':>6s} {'deliv/1k':>8s} {'rev/1k':>7s}"]
     for (candidate, inference, opponent), group in sorted(groups.items()):
         s = summarize_matches(group)
         rev = s.get("reversals_per_1000/student", s.get("reversals_per_1000/teacher", float("nan")))
         name = candidate if candidate == TEACHER else "/".join(Path(candidate).parts[-2:])
         lines.append(f"{name:42s} {inference:9s} {opponent:14s} {s['matches']:3d} {s['mean_margin']:+7.1f} {s['margin_se']:5.1f} "
-                     f"{s['win_rate']:5.2f} {s['units_hunter']:4.1f} {s['units_carrier']:4.1f} {s['units_collector']:4.1f} "
+                     f"{s['win_rate']:5.2f} {s.get('units_hunter_0_30s', float('nan')):5.1f} {s.get('units_hunter_30_60s', float('nan')):5.1f} "
+                     f"{s.get('units_hunter_60_120s', float('nan')):5.1f} {s.get('units_carrier_30_60s', float('nan')):5.1f} {s['match_seconds']:5.0f} "
                      f"{s.get('agree/all', float('nan')):6.2f} {s['learner/deliveries_per_1000']:8.1f} {rev:7.0f}")
     table = "\n".join(lines)
     print(table)

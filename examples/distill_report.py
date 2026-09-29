@@ -45,13 +45,14 @@ def _table(header: list[str], rows: list[list[str]]) -> None:
 
 def evaluation(records: dict[str, list[dict]]) -> None:
     print("\n== eval (student alone vs the eval opponent; teacher = baseline on the same seeds) ==")
-    header = ["who", "step", "margin", "±se", "win", "H", "Ca", "C", "t(H3)", "agree", "agreeH", "agreeC",
+    header = ["who", "step", "margin", "±se", "win", "H", "Ca", "C", "H<30s", "H<60s", "end_s", "t(H3)", "agree", "agreeH", "agreeC",
               "deliv/1k", "lost/1k", "kill/1k", "blocked/1k", "rev/1k"]
     rows = []
     for r in records.get("eval_teacher", []) + records.get("eval", []):
         who = "teacher" if r["kind"] == "eval_teacher" else f"v{r['version']}"
         rows.append([who, str(r["step"]), _fmt(r["mean_margin"], "+.1f"), _fmt(r["margin_se"], ".1f"), _fmt(r["win_rate"]),
                      _fmt(r["units_hunter"], ".1f"), _fmt(r["units_carrier"], ".1f"), _fmt(r["units_collector"], ".1f"),
+                     _fmt(r.get("units_hunter_0_30s"), ".1f"), _fmt(r.get("units_hunter_30_60s"), ".1f"), _fmt(r.get("match_seconds"), ".0f"),
                      _fmt(r.get("first_hunter3_s"), ".0f"), _fmt(r.get("agree/all")), _fmt(r.get("agree/role_hunter")),
                      _fmt(r.get("agree/role_collector")), _fmt(r["learner/deliveries_per_1000"], ".1f"),
                      _fmt(r["learner/cargo_lost_per_1000"], ".1f"), _fmt(r["opponent/cargo_lost_per_1000"], ".1f"),

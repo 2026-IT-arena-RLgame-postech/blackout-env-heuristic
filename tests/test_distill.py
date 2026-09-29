@@ -204,3 +204,11 @@ def test_inference_modes_are_deterministic_where_promised():
     assert all(abs(np.linalg.norm(v) - 1) < 1e-5 for v in moves.values())
     with pytest.raises(ValueError):
         make_student(net, "nope")
+
+
+def test_composition_is_also_reported_by_time_of_play():
+    task = MatchTask(seed=1, swap=False, opponent="strategic_v4", beta=1.0, teacher="v17-teach", student=None, shard=None)
+    _, summary = play_labelled_match(_FakeEnv(), task, None)
+    stats = summarize_matches([summary])
+    # _FakeEnv's time_left stays 1.0: every tick is in the first bucket
+    assert stats["units_collector_0_30s"] == 5 and "units_hunter_30_60s" not in stats
