@@ -255,6 +255,7 @@ class Run:
         self._collect_window: list[dict] = []
         self._evals: dict[tuple[str, int], list[dict]] = defaultdict(list)
         self._pipeline = defaultdict(float)  # sync-level counters since the last log
+        self._matches_received = 0
         self._rng = np.random.default_rng(args.seed + self.step)
 
     # ----------------------------------------------------------------------- checkpoints
@@ -321,18 +322,24 @@ class Run:
             pool.submit(self._task(tag, self.args.seed - 1 - i // 2, bool(i % 2), self.args.eval_opponent, beta))
 
     def top_up(self, pool: CollectorPool) -> None:
+        """Fill idle workers while the learner wants data, counting the rows the matches already
+        running will bring (at the mean rows per match so far) as collected."""
         args = self.args
-        wanted = wants_matches(self.step * args.batch_size, self.collected_rows, self.dataset.size, args)
         self._pipeline["syncs"] += 1
-        self._pipeline["throttled_syncs"] += not wanted
         self._pipeline["busy_worker_frac"] += min(pool.in_flight, pool.workers) / pool.workers
-        while pool.in_flight < pool.workers and wants_matches(
-                self.step * args.batch_size, self.collected_rows, self.dataset.size, args):
+        throttled = False
+        while pool.in_flight < pool.workers:
+            expected = self.collected_rows + pool.in_flight * self._rows_per_match()
+            if not wants_matches(self.step * args.batch_size, expected, self.dataset.size, args):
+                throttled = True
+                break
             n = self.queued
             pool.submit(self._task("collect", args.seed + n, bool(n % 2), args.opponents[n % len(args.opponents)],
                                    beta_for(self.version, args)))
-            if self.dataset.size >= args.min_rows:
-                break  # one at a time once fitting: the ratio is re-checked at the next sync
+        self._pipeline["throttled_syncs"] += throttled
+
+    def _rows_per_match(self) -> float:
+        return self.collected_rows / self._matches_received if self._matches_received else 2000.0
 
     def sync(self, pool: CollectorPool, timeout: float = 0.0) -> None:
         self._record(pool.poll(timeout))
@@ -350,6 +357,7 @@ class Run:
                 summary["version_lag"] = self.version - summary["student_version"]
             self.match_log.write(json.dumps(summary) + "\n")
             self.collected_rows += summary["rows"]
+            self._matches_received += 1
             self._pipeline["matches"] += 1
             self._pipeline["match_wall_s"] += summary["wall_s"]
             if summary["tag"].startswith("eval"):
