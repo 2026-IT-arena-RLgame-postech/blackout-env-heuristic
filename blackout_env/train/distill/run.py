@@ -322,8 +322,6 @@ class Run:
         self.latest = self.out_dir / "latest.pt"
         self.learner = Learner(args)
         self.step = self.version = self.queued = self.collected_rows = 0
-        self.resumed = self._restore()
-        self.learner.mark_weights()
         info_path = self.out_dir / "run_info.json"
         history = json.loads(info_path.read_text()) if info_path.exists() else []
         info_path.write_text(json.dumps(history + [_run_info(args)], indent=1))
@@ -335,6 +333,8 @@ class Run:
         self.probe: dict[str, np.ndarray] | None = None
         self._collect_window: list[dict] = []
         self._evals: dict[tuple[str, int], list[dict]] = defaultdict(list)
+        self.resumed = self._restore()  # last: an --init start publishes (and scores the probe) right away
+        self.learner.mark_weights()
         self._pipeline = defaultdict(float)  # sync-level counters since the last log
         self._window_started = time.time()
         self._matches_received = 0
