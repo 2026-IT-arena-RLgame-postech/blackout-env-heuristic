@@ -49,6 +49,7 @@ StrategicHeuristicV17  ── V6 이동 계층 위의 팀 단위 planner: Hunter
     └── StrategicHeuristicV17Teach  ── V17의 편성·가치를 상태만의 함수로 라벨하는 증류 교사 (heuristics/v17_teach.py)
         └── StrategicHeuristicV20  ── V17-teach + 스폰 진치기 대응: 위험 구역 우회, 본진 대기 후 함께 돌파, 빈손 Collector 회피
             └── StrategicHeuristicV21  ── V20 + 안전한 경로가 있을 때만 Hunter 변신 (모든 적 Hunter 3칸을 피하는 경로)
+    └── StrategicRaider·CargoHunter·EarlyRush·Fortress·Duelist  ── V17 planner 위의 보류 상대 (약탈 우선, 화물 요격, 초반 소탕 후 편성 전환, 지역 방어, Hunter 사냥)
 
 V4PolicyFamily  ── V4의 작은 근접 파라미터 변형 (기본은 매치 단위, `resample_each_absorption=True`면 흡수 단위)
 HeuristicPolicyMixture ── 위 policy_id와 V4PolicyFamily를 함께 샘플링
@@ -327,6 +328,91 @@ V21 − V17-teach는 V19 상대 +42.3 ± 9.3.
 
 약탈 가치: V17 계열은 이미 상대 창고 배터리를 필드 배터리의 `steal_weight` 1.8배로 매기고(흡수 전 도착 가능할 때만),
 할 일 없는 Collector는 상대 외부 창고 옆에서 대기한다.
+
+## 새 상대 정책과 신경망식 실행 오류 래퍼 (2026-09-30)
+
+학생이 교사(V21-teach)와 기존 상대 풀을 모두 넘어서서, 증류용 보류(held-out) 상대로 추가했다. 전부 `POLICY_REGISTRY`에
+등록했지만 mixture 기본 가중치에는 넣지 않았다. 목표는 강도보다 **기존 정책군에 없는 전략 축**이다.
+
+### 기존 정책의 행동군 (비교 대표 선정 근거)
+
+V1–V19 44,732경기 결합 승률표(`reports/elo_augment_20260918/combined_tournament.json`)에서 두 정책의 "제3자 상대 승률
+행"의 RMS 차이와 상호 승률을 비교했다. 쌍당 승률 SE ≤ 0.05라서, 같은 정책끼리라도 RMS 차이는 약 0.068까지 나온다(잡음 바닥).
+
+| 행동군 | 정책 | 근거 | 비교 대표 |
+|---|---|---|---|
+| 중위권 V4 군 | v3, v4, v6, v7, v8, v9, v10, v11, v12, v13 | 모든 쌍의 행 차이 0.021–0.069 (잡음 바닥 이하), 상호 승률 0.44–0.57, Elo 1460–1510. 안에서 v7·v8·v12(0.021–0.031)와 v3·v11(0.034)이 특히 붙어 있다 | `strategic_v4` |
+| V15 / V16 | 각각 단독 | 행은 비슷하지만(0.062) v16이 v15를 62% 이김. v4 대비 행 차이 0.11–0.13, v4에 59–68% 짐 | — |
+| V2 / V5 | 각각 단독 | 행 차이 0.090, 상호 36:64 | — |
+| V1, V14 | 각각 단독 | 최하위권, 다른 모든 정책과 행 차이 0.13 이상 | — |
+| V17 | 단독 | V18/V19와 행 차이 0.128, 두 정책에 16–21% | `strategic_v17` |
+| V18 / V19 | 각각 단독 | 제3자 행은 거의 같지만(0.034) V19가 V18을 69% 이김 — 카운터 관계라 합치지 않는다 | `strategic_v19` |
+
+즉 "비슷한 계열"은 V4–V10+V16이 아니라 **v3·v4·v6–v13**이다(v5는 약한 별도 정책, v16은 v4에 68% 지는 별도 정책). V20/V21은
+이 토너먼트에 없고 V17-teach 기반이다. 아래 비교는 V4 군을 `strategic_v4` 하나로 대표한다.
+
+### 전략 정책 (모두 V17 planner 위, `heuristics/<모듈>.py`)
+
+| ID | 모듈 | 전략 축 | 동작 |
+|---|---|---|---|
+| `strategic_raider` | `raider.py` | 약탈 우선 경제 | Collector 2기(`raid_squad`)는 필드 배터리를 아예 안 줍고 적 외부 창고 옆에서 대기·약탈, 나머지는 약탈 가치 3.5배(`steal_weight`), 필드 0.6배(`field_weight`). 적재는 보호 창고 우선(`exposure_cost` 2.0). Hunter 2기 중 1기는 약탈 중인 창고와 도둑 주변 5칸 안의 적(수비자·적 Hunter·적재하러 오는 화물)을 처치하는 호위 |
+| `strategic_cargo_hunter` | `cargo_hunter.py` | 화물만 파괴 | Hunter 3기가 빈손 Collector와 적 Hunter(우리 스폰 진치기 제외)는 무시하고 화물·Carrier만 노림. 추격 대신 적의 가장 가까운 창고까지 최단 경로 위에서 우리가 먼저 닿는 첫 칸으로 요격(속도 6 Carrier도 잡음). 화물이 없으면 적 본진 출구와 적 외부 창고에서 매복 |
+| `strategic_early_rush` | `early_rush.py` | 경기 중 편성 전환 | 첫 35초(`rush_seconds`)는 Hunter 4기, Carrier 0기로 적 Collector를 가까운 순으로 소탕(대상이 없으면 적 본진 출구). 이후 Hunter 1기 + Carrier 1기를 원하고, 남는 Hunter는 적 Hunter와 교환해 죽어 Collector로 돌아옴 — 편성을 되돌리는 유일한 정책 |
+| `strategic_fortress` | `fortress.py` | 지역 방어 + 무위험 경제 | Hunter 2기가 우리 본진 출구와 우리 외부 창고(가치 순)에 서서 반경 6칸(`guard_radius`) 안만 교전. 적 Hunter 5칸(`danger_tiles`) 안의 작업은 아예 제외, 적재는 보호 창고(`exposure_cost` 3.0), 약탈 가치 1.0, 할 일 없는 유닛은 본진으로 귀환 |
+| `strategic_duelist` | `duelist.py` | Hunter 사냥 | Hunter 2기가 맵 어디든 적 Hunter를 가까운 순으로 찾아가 맞교환(양쪽 사망 → 적은 다시 성소까지 걸어가야 함). 적 Hunter가 없으면 우리 화물/Carrier를 적 쪽에서 1.5칸 떨어져 호위하고 4칸 안의 적을 처치 |
+
+### 신경망식 실행 오류 래퍼 (`train/distill/perturb.py`)
+
+서술자 `perturb:<key=value,...>:<기본 서술자>` — 기본은 `self`를 뺀 모든 서술자(`strategic_v19`,
+`teacher:v21-teach`, `ckpt:<경로>`, 중첩 `perturb:` 포함). 전략은 기본 정책 그대로, 실행만 망가뜨린다. 매치 seed로 시드되고
+`reset()`마다 같은 난수열을 다시 쓴다. 적용 순서: lag → 정책 → sticky → dither → eps → freeze.
+
+| 키 | 의미 |
+|---|---|
+| `eps=p` | 유닛·틱마다 확률 p로 무작위 8방향 |
+| `dither=f` | 유닛틱의 f 비율을 `dither_ticks`(12)틱 역전 구간으로: `dither_period`(3)틱마다 정방향/역방향 교대(f/2가 역방향) |
+| `sticky=k` | 유닛마다(무작위 위상) k틱에 한 번만 새 action, 그 사이 반복 |
+| `lag=k` | k틱 전 팀 관측으로 행동 |
+| `freeze=f` | 유닛틱의 f 비율을 `freeze_ticks`(50틱, 약 2초) 길이 정지 구간으로 |
+| `seed=s` | 매치 seed에 더할 값 |
+
+구간 시작 확률은 `f / (L·(1−f))`라서 장기 비율이 f다(테스트에서 확인). 예:
+`perturb:eps=0.2:strategic_v21`, `perturb:sticky=4,lag=3:teacher:v21-teach`.
+
+### 강도 확인 (V21 교사 직접 조종, 보류 시드 900000–900003 × 양 진영 = 상대당 8경기, `reports/new_opponents/`)
+
+교사 관점 점수차(음수일수록 상대가 강함). 8경기라 ±SE가 크다 — 대략의 서열만 본다.
+
+| 상대 | 교사 점수차 | 교사 승률 | 같은 시드 짝 차이 |
+|---|---:|---:|---:|
+| `strategic_v17` (참고) | +4.1 ± 19.8 | 62% | v4 대비 −32.5 ± 18.9 |
+| `strategic_v19` (참고) | +23.9 ± 14.5 | 62% | v4 대비 −12.8 ± 1.8 |
+| `strategic_v4` (V4 군 대표) | +36.6 ± 10.5 | 75% | — |
+| `strategic_cargo_hunter` | +38.8 ± 12.5 | 88% | v4 대비 +2.1 ± 12.9 |
+| `strategic_duelist` | +44.8 ± 14.9 | 88% | v4 대비 +8.1 ± 21.3 |
+| `strategic_fortress` | +54.1 ± 8.0 | 100% | v4 대비 +17.5 ± 18.3 |
+| `strategic_early_rush` | +58.9 ± 6.2 | 100% | v4 대비 +22.2 ± 9.4 |
+| `strategic_raider` | +59.9 ± 6.1 | 100% | v4 대비 +23.2 ± 9.8 |
+| `perturb:freeze=0.2:strategic_v19` | +24.6 ± 15.3 | 62% | v19 대비 +0.8 ± 20.0 |
+| `perturb:dither=0.2:strategic_v19` | +48.5 ± 12.2 | 88% | v19 대비 +24.6 ± 23.8 |
+| `perturb:sticky=6:strategic_v19` | +49.2 ± 9.3 | 88% | v19 대비 +25.4 ± 21.0 |
+| `perturb:eps=0.2:strategic_v19` | +67.6 ± 5.4 | 100% | v19 대비 +43.8 ± 12.6 |
+| `perturb:lag=6:strategic_v19` | +71.5 ± 8.4 | 100% | v19 대비 +47.6 ± 16.0 |
+| `perturb:eps=0.1,dither=0.1,sticky=3,lag=3,freeze=0.1:strategic_v19` | +79.2 ± 3.0 | 100% | v19 대비 +55.4 ± 14.5 |
+
+- 새 전략 5개는 모두 V17/V19보다 약하고 V4 군과 비슷하거나(cargo_hunter, duelist) 더 약하다(raider, early_rush, fortress).
+  V17 계열의 강점인 적 본진 출구 진치기를 전부 버렸기 때문이다(교사 사망/1000틱: V19 상대 2.41, 새 전략 상대 0.38–0.51).
+  V21 교사가 이미 Hunter를 피해 다니므로 소탕(early_rush)과 약탈(raider, 교사는 보호 창고 위주로 적재)이 잘 먹히지 않는다.
+  목적은 다양성이라 강화 튜닝은 하지 않았다.
+- 래퍼는 V19를 크게 약화한다. lag 6틱과 eps 0.2가 가장 치명적(V19의 요격·진치기가 늦거나 흩어짐)이고, freeze 0.2는
+  영향이 거의 없다(Hunter가 서서 진치는 정책이라 멈춤이 곧 대기). 학생 평가에는 강한 기본 정책에 약한 오류(eps 0.05–0.1,
+  lag 2–3)를 거는 편이 "강하지만 엉성한" 상대를 만든다.
+
+```bash
+./.venv/bin/python examples/distill_heldout_eval.py --teacher v21-teach --seeds 4 --workers 4 --out reports/new_opponents \
+    --opponents strategic_v4 strategic_v17 strategic_v19 strategic_raider strategic_cargo_hunter strategic_early_rush \
+    strategic_fortress strategic_duelist perturb:eps=0.2:strategic_v19 perturb:lag=6:strategic_v19 ...
+```
 
 ## V4 근접 변형군
 

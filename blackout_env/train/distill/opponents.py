@@ -19,7 +19,10 @@ distribution descriptors no collection draws:
   ``RANDOM_TURN`` a tick; ``idle`` -- every unit stands still;
 * ``teacher:v21-teach`` -- a teacher following its own labels;
 * ``self`` -- the learner's own policy on the other side (the student, or the teacher when the
-  teacher plays alone), resolved by ``play_labelled_match``.
+  teacher plays alone), resolved by ``play_labelled_match``;
+* ``perturb:<key=value,...>:<base>`` -- any other descriptor (not ``self``) executed with
+  learned-policy errors: ``perturb:eps=0.2:strategic_v21``, ``perturb:sticky=4,lag=3:teacher:v21-teach``
+  (keys eps, dither, sticky, lag, freeze; see perturb.py).
 """
 
 from __future__ import annotations
@@ -32,6 +35,8 @@ import numpy as np
 
 from blackout_env.heuristics import POLICY_REGISTRY, HeuristicPolicyMixture, make_heuristic
 from blackout_env.model.base import BaseModel
+from blackout_env.train.distill.perturb import PREFIX as PERTURB_PREFIX
+from blackout_env.train.distill.perturb import PerturbedPolicy, split_descriptor
 
 CHECKPOINT_PREFIX = "ckpt:"
 TEACHER_PREFIX = "teacher:"
@@ -99,6 +104,10 @@ def make_opponent(descriptor: str, seed: int):
         return Idle()
     if descriptor == SELF:
         raise ValueError("'self' is the learner's own policy: play_labelled_match resolves it")
+    if descriptor.startswith(PERTURB_PREFIX):
+        parameters, base = split_descriptor(descriptor)
+        offset = parameters.pop("seed", 0)
+        return PerturbedPolicy(make_opponent(base, seed), seed=seed + offset, **parameters)
     policy_id, _, parameters = descriptor.partition(":")
     return make_heuristic(policy_id, **_parse_parameters(parameters))
 
@@ -107,6 +116,12 @@ def check_opponent(descriptor: str) -> None:
     """Raise now, not in a worker, on a descriptor ``make_opponent`` cannot build."""
     if descriptor == SELF:
         return
+    if descriptor.startswith(PERTURB_PREFIX):
+        parameters, base = split_descriptor(descriptor)
+        if base.startswith(CHECKPOINT_PREFIX):  # the checkpoint itself is loaded in the worker
+            check_opponent(base)
+            PerturbedPolicy(Idle(), **parameters)
+            return
     if descriptor.startswith(CHECKPOINT_PREFIX):
         if not Path(descriptor[len(CHECKPOINT_PREFIX):]).is_file():
             raise ValueError(f"no checkpoint at {descriptor[len(CHECKPOINT_PREFIX):]!r}")
@@ -180,6 +195,9 @@ def opponent_label(descriptor: str, opponent) -> str:
     if descriptor.startswith(CHECKPOINT_PREFIX):
         path = Path(descriptor[len(CHECKPOINT_PREFIX):])
         return f"ckpt:{path.parent.name}/{path.stem}"
+    if descriptor.startswith(PERTURB_PREFIX):
+        base = split_descriptor(descriptor)[1]
+        return descriptor[: len(descriptor) - len(base)] + opponent_label(base, opponent.policy)
     sample = getattr(opponent, "current_sample", None)
     return f"mixture:{sample.policy_id}" if sample is not None else descriptor
 

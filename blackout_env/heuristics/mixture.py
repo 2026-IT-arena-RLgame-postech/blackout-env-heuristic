@@ -27,6 +27,11 @@ from .v18_counter import StrategicHeuristicV18
 from .v19_counter import StrategicHeuristicV19
 from .v20_anticamp import StrategicHeuristicV20
 from .v21_safe_transform import StrategicHeuristicV21
+from .raider import StrategicRaider
+from .cargo_hunter import StrategicCargoHunter
+from .early_rush import StrategicEarlyRush
+from .fortress import StrategicFortress
+from .duelist import StrategicDuelist
 
 
 @dataclass(frozen=True)
@@ -61,6 +66,13 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
     "strategic_v19": StrategicHeuristicV19,
     "strategic_v20": StrategicHeuristicV20,  # not in the mixture's default weights
     "strategic_v21": StrategicHeuristicV21,  # not in the mixture's default weights
+    # Named strategies on the V17 planner, each on a strategic axis the V-series lacks (held-out
+    # opponents for distillation; not in the mixture's default weights):
+    "strategic_raider": StrategicRaider,  # steal-first economy, Hunter escorts the thieves
+    "strategic_cargo_hunter": StrategicCargoHunter,  # Hunters intercept only cargo and Carriers
+    "strategic_early_rush": StrategicEarlyRush,  # 4-Hunter opening sweep, then 1 Hunter + Carrier
+    "strategic_fortress": StrategicFortress,  # zone defence, protected deposits, Hunter-free tasks
+    "strategic_duelist": StrategicDuelist,  # Hunters hunt Hunters, escort our cargo otherwise
 }
 
 

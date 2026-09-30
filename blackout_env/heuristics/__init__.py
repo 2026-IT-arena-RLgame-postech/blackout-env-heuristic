@@ -21,6 +21,11 @@ from .teach import StrategicHeuristicV4Teach, TeachLabel, TeachLabeller
 from .v17_teach import StrategicHeuristicV17Teach
 from .v20_anticamp import StrategicHeuristicV20, StrategicHeuristicV20Teach
 from .v21_safe_transform import StrategicHeuristicV21, StrategicHeuristicV21Teach
+from .raider import StrategicRaider
+from .cargo_hunter import StrategicCargoHunter
+from .early_rush import StrategicEarlyRush
+from .fortress import StrategicFortress
+from .duelist import StrategicDuelist
 from .mixture import HeuristicPolicyMixture, POLICY_REGISTRY, PolicySample, make_heuristic
 
 StrategicHeuristicV1 = StrategicHeuristic
@@ -38,6 +43,7 @@ __all__ = [
     "StrategicHeuristicV10", "StrategicHeuristicV11", "StrategicHeuristicV12",
     "StrategicHeuristicV13", "StrategicHeuristicV14", "StrategicHeuristicV15", "StrategicHeuristicV16",
     "StrategicHeuristicV17", "StrategicHeuristicV18", "StrategicHeuristicV19", "StrategicHeuristicV20", "StrategicHeuristicV21",
+    "StrategicRaider", "StrategicCargoHunter", "StrategicEarlyRush", "StrategicFortress", "StrategicDuelist",
     "RecommendedStrategicHeuristic",
     "StrategicHeuristicV4Teach", "StrategicHeuristicV17Teach", "StrategicHeuristicV20Teach", "StrategicHeuristicV21Teach", "TeachLabel", "TeachLabeller",
     "V4FamilySample", "V4PolicyFamily",
