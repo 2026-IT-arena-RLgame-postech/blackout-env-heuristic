@@ -339,3 +339,18 @@ def test_stand_targets_where_the_teacher_has_no_label():
     assert masks[0, 1].tolist() == [False] * 8 + [True] and masks[0, 0, 8].item() is False
     assert kinds[0, 1].item() == 11 and kinds[1, 4].item() == 2
     learner.step(rows)  # trains on both kinds of rows
+
+
+def test_extra_pool_draws_listed_descriptors_and_categories():
+    from blackout_env.train.distill.opponents import draw_opponent, opponent_category, parse_pool
+
+    extra = ["perturb:eps=0.1:strategic_v19", "strategic_raider", "strategic_v17:steal_weight=3.0"]
+    pool = parse_pool(["mixture=1", "extra=1"])
+    rng = np.random.default_rng(0)
+    draws = [draw_opponent(rng, pool, [], extra) for _ in range(600)]
+    assert set(draws) == {"mixture", *extra}
+    with pytest.raises(ValueError):
+        draw_opponent(rng, {"extra": 1.0}, [], [])
+    assert [opponent_category(x) for x in ("perturb:eps=0.1:strategic_v19", "strategic_raider", "mixture:strategic_v21",
+                                           "strategic_v17:steal_weight=3.0", "mixture:strategic_v4")] \
+        == ["perturbed", "new_axis", "top_tier", "top_tier", "heuristic"]

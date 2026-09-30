@@ -50,7 +50,7 @@ def parse_pool(entries: list[str]) -> dict[str, float]:
     pool = {}
     for entry in entries:
         name, _, weight = entry.partition("=")
-        if name not in ("mixture", "checkpoints") and name not in POLICY_REGISTRY:
+        if name not in ("mixture", "checkpoints", "extra") and name not in POLICY_REGISTRY:
             raise ValueError(f"unknown opponent kind {name!r}")
         pool[name] = float(weight) if weight else 1.0
     total = sum(pool.values())
@@ -79,13 +79,20 @@ def compatible_checkpoints(patterns: list[str]) -> tuple[list[str], list[str]]:
     return loadable, rejected
 
 
-def draw_opponent(rng: np.random.Generator, pool: dict[str, float], checkpoints: list[str]) -> str:
+def draw_opponent(rng: np.random.Generator, pool: dict[str, float], checkpoints: list[str],
+                  extra: list[str] = ()) -> str:
+    """One opponent descriptor: ``checkpoints`` and ``extra`` (any descriptors, e.g. perturb: or
+    parameterised heuristics, from --opponent-extra) draw uniformly from their lists."""
     names = list(pool)
     name = names[int(rng.choice(len(names), p=[pool[n] for n in names]))]
     if name == "checkpoints":
         if not checkpoints:
             raise ValueError("'checkpoints' opponents requested but no compatible checkpoint was found")
         return CHECKPOINT_PREFIX + checkpoints[int(rng.integers(len(checkpoints)))]
+    if name == "extra":
+        if not extra:
+            raise ValueError("'extra' opponents requested but --opponent-extra is empty")
+        return extra[int(rng.integers(len(extra)))]
     return name
 
 
@@ -211,7 +218,12 @@ def opponent_name(descriptor: str) -> str:
 
 
 def opponent_category(label: str) -> str:
-    """checkpoint / top_tier (V17-V19) / heuristic -- how collection stats are split."""
+    """checkpoint / perturbed / new_axis (the 2026-09-30 strategies) / top_tier (V17-V21) /
+    heuristic -- how collection stats are split."""
     if label.startswith(CHECKPOINT_PREFIX):
         return "checkpoint"
-    return "top_tier" if re.search(r"strategic_v1[789]$", label) else "heuristic"
+    if label.startswith("perturb:"):
+        return "perturbed"
+    if re.search(r"strategic_(raider|cargo_hunter|early_rush|fortress|duelist)\b", label):
+        return "new_axis"
+    return "top_tier" if re.search(r"strategic_v(1[789]|2[01])\b", label) else "heuristic"

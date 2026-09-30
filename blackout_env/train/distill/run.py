@@ -66,7 +66,9 @@ from blackout_env.model.my_policy import N_DIRECTIONS
 from blackout_env.train.distill.dataset import FIELDS, GRAPHIC_SCALE, KIND_INDEX, N_TEAM, DistillDataset, new_shards
 from blackout_env.train.distill.loss import set_valued_cross_entropy
 from blackout_env.train.distill.metrics import CLASS_COLS, LabelAccuracy, MetricsLog, summarize_matches
-from blackout_env.train.distill.opponents import compatible_checkpoints, draw_opponent, opponent_category, parse_pool
+from blackout_env.train.distill.opponents import (
+    check_opponent, compatible_checkpoints, draw_opponent, opponent_category, parse_pool,
+)
 
 HELDOUT_SEEDS = range(900_000, 1_000_000)
 # --compile: the heavy submodules only.  Inductor on MPS (torch 2.14) multiplies the gradient of
@@ -93,6 +95,9 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--beta-start", type=float, default=1.0, help="beta of the first student version")
     p.add_argument("--beta-decay", type=float, default=0.9, help="per published version")
     p.add_argument("--beta-min", type=float, default=0.0)
+    p.add_argument("--opponent-extra", nargs="+", default=[],
+                   help="descriptors the 'extra' pool kind draws uniformly from (opponents.py: perturb:..., "
+                   "heuristic:key=value, teacher:..., ...)")
     p.add_argument("--eval-opponent", default="strategic_v17")
     p.add_argument("--eval-seeds", type=int, default=3, help="student-only eval matches = 2 x this")
     p.add_argument("--baseline-eval", action=argparse.BooleanOptionalAction, default=True,
@@ -319,6 +324,8 @@ class Run:
         self.eval_seeds = [args.seed - 1 - i for i in range(args.eval_seeds)]
         self.opponent_pool = parse_pool(args.opponents)
         self.opponent_checkpoints = self._resolve_checkpoints()
+        for descriptor in args.opponent_extra:
+            check_opponent(descriptor)
         self.latest = self.out_dir / "latest.pt"
         self.learner = Learner(args)
         self.step = self.version = self.queued = self.collected_rows = 0
@@ -433,7 +440,7 @@ class Run:
                 break
             n = self.queued
             rng = np.random.default_rng((args.seed, n))
-            opponent = draw_opponent(rng, self.opponent_pool, self.opponent_checkpoints)
+            opponent = draw_opponent(rng, self.opponent_pool, self.opponent_checkpoints, args.opponent_extra)
             pool.submit(self._task("collect", collect_seed(args.seed, n, set(self.eval_seeds)), bool(rng.integers(2)),
                                    opponent, beta_for(self.version, args)))
         self._pipeline["throttled_syncs"] += throttled
