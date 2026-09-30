@@ -32,7 +32,7 @@ from pathlib import Path
 
 import numpy as np
 
-from blackout_env.train.distill.collect import TEACHERS, CollectorPool, MatchTask
+from blackout_env.train.distill.collect import CollectorPool, MatchTask, teacher_arg
 from blackout_env.train.distill.inference import INFERENCE
 from blackout_env.train.distill.metrics import summarize_matches
 from blackout_env.train.distill.opponents import SELF, TEACHER_PREFIX, check_opponent, opponent_name
@@ -112,7 +112,7 @@ def main() -> None:
     p.add_argument("--inference", nargs="+", choices=INFERENCE, default=["iqn"])
     p.add_argument("--seeds", type=int, default=12)
     p.add_argument("--seed-base", type=int, default=900_000, help="far from every training/eval seed (2026xxxx)")
-    p.add_argument("--teacher", choices=sorted(TEACHERS), default="v17-teach")
+    p.add_argument("--teacher", type=teacher_arg, default="v17-teach", help="a TEACHERS name or act:<opponent descriptor>")
     p.add_argument("--no-teacher-baseline", action="store_true")
     p.add_argument("--build", default="build/mac/BlackOut.app")
     p.add_argument("--workers", type=int, default=4)

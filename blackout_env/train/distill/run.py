@@ -61,7 +61,7 @@ import numpy as np
 import torch
 
 from blackout_env.model.my_model import MyModel
-from blackout_env.train.distill.collect import TEACHERS, CollectorPool, MatchTask
+from blackout_env.train.distill.collect import CollectorPool, MatchTask, teacher_arg
 from blackout_env.model.my_policy import N_DIRECTIONS
 from blackout_env.train.distill.dataset import FIELDS, GRAPHIC_SCALE, KIND_INDEX, N_TEAM, DistillDataset, new_shards
 from blackout_env.train.distill.loss import set_valued_cross_entropy
@@ -81,7 +81,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--build", default="build/mac/BlackOut.app")
     p.add_argument("--out-dir", type=Path, default=None, help="default: checkpoints/distill/<timestamp>")
-    p.add_argument("--teacher", choices=sorted(TEACHERS), default="v17-teach")
+    p.add_argument("--teacher", type=teacher_arg, default="v17-teach", help="a TEACHERS name or act:<opponent descriptor>")
     p.add_argument("--init", type=Path, default=None, help="start from these MyModel weights (any checkpoint with policy_state)")
     p.add_argument("--steps", type=int, default=100_000, help="total gradient steps")
     # collector

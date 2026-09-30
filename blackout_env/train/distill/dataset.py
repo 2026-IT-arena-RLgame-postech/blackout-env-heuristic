@@ -18,7 +18,15 @@ For analysis only (the trainer does not load them):
   teacher_drove bool  [T, 5]        the teacher's move was executed
   meta          str                 the match summary as JSON (task, outcome, recorder counts)
 
-Ticks where the teacher labels no unit are not stored.
+Loaded into the ring beside FIELDS (for sequence windows, ``DistillDataset.sample_windows``):
+
+  tick          int32 [T]           learner decision step within the match (0 = first).  Every
+                                    full-window tick is stored in order, labelled or not; partial
+                                    windows are counted but not stored, so a jump > 1 marks one.
+
+Shards written before 2026-09-30 dropped ticks without any label and have no ``tick``; loading
+reconstructs it from ``team_state[2]`` (time left, 25 decisions/s: exact to ~0.02 tick, offset by
+a per-match constant of 0 or 1 from a counted tick), or -1 = unknown when not strictly increasing.
 """
 
 from __future__ import annotations
@@ -34,10 +42,14 @@ KINDS = (
     "", "battery", "steal", "special", "deposit", "wait_storage", "transform",
     "hunt", "patrol_defend", "patrol_raid", "idle",
     "stand",  # never stored: --stand-action's target where the teacher has no label (and stands)
+    "act",  # an act-teacher's own move (act_teacher.py); after "stand" so no existing index moves
 )
 KIND_INDEX = {kind: i for i, kind in enumerate(KINDS)}
 FIELDS = ("graphic", "team_state", "agent_states", "labels", "kinds")
-EXTRA_FIELDS = ("actions", "student", "teacher_drove")
+EXTRA_FIELDS = ("actions", "student", "teacher_drove", "tick")
+SEQUENCE_FIELDS = ("tick",)  # loaded into the ring beside FIELDS (not fed to the net)
+MATCH_TICKS = 420 * 25  # match seconds x decisions per second
+UNKNOWN_TICK = -1
 
 
 def encode_graphic(graphic: np.ndarray) -> np.ndarray:
@@ -65,6 +77,21 @@ def save_shard(path: Path, rows: dict[str, np.ndarray], meta: dict | None = None
     tmp.rename(path)  # readers only ever see complete shards
 
 
+def reconstruct_ticks(team_state: np.ndarray) -> np.ndarray:
+    """Decision ticks of a shard without ``tick``, from its time left (team_state[2]); all
+    UNKNOWN_TICK when they are not strictly increasing (not one match in order)."""
+    ticks = np.rint((1.0 - team_state[:, 2].astype(np.float64)) * MATCH_TICKS).astype(np.int32)
+    if len(ticks) > 1 and not np.all(np.diff(ticks) > 0):
+        return np.full(len(ticks), UNKNOWN_TICK, dtype=np.int32)
+    return ticks
+
+
+def _ticks_of(rows) -> np.ndarray:
+    if "tick" in rows:
+        return np.asarray(rows["tick"], dtype=np.int32)
+    return reconstruct_ticks(np.asarray(rows["team_state"]))
+
+
 def shard_meta(shard) -> dict:
     return json.loads(str(shard["meta"])) if "meta" in shard else {}
 
@@ -77,6 +104,7 @@ def new_shards(root: Path, seen: set[str]):
             continue
         with np.load(path) as shard:
             rows, meta = {field: shard[field] for field in FIELDS}, shard_meta(shard)
+            rows["tick"] = _ticks_of(shard)
         seen.add(path.name)
         yield rows, meta
 
@@ -87,13 +115,19 @@ class DistillDataset:
     New shards are picked up oldest first, either one by one (``new_shards`` + ``append``, so a
     caller can look at rows before they enter the ring) or all at once (``refresh``).  Once full,
     new rows overwrite the oldest (DAgger aggregates, but a laptop cannot hold every row ever
-    played).  Each ring row remembers the student version that played it (0 = teacher only)."""
+    played).  Each ring row remembers the student version that played it (0 = teacher only), its
+    match (a running count of appended shards) and its decision tick, so ``sample_windows`` can
+    cut windows of consecutive ticks that never cross a match or the ring's overwrite boundary."""
 
     def __init__(self, root: Path, capacity: int):
         self.root = Path(root)
         self.capacity = int(capacity)
         self._arrays: dict[str, np.ndarray] | None = None
         self._version = np.zeros(self.capacity, dtype=np.int32)
+        self._match = np.full(self.capacity, -1, dtype=np.int64)
+        self._tick = np.full(self.capacity, UNKNOWN_TICK, dtype=np.int32)
+        self._labelled = np.zeros(self.capacity, dtype=bool)
+        self._matches = 0
         self._loaded: set[str] = set()
         self._next = 0
         self.size = 0
@@ -118,15 +152,94 @@ class DistillDataset:
         for field in FIELDS:
             self._arrays[field][idx] = rows[field][start:]
         self._version[idx] = version
+        self._match[idx] = self._matches
+        self._tick[idx] = _ticks_of(rows)[start:]
+        self._labelled[idx] = rows["labels"][start:].reshape(n - start, -1).any(axis=1)
+        self._matches += 1
         self._next = int((self._next + n - start) % self.capacity)
         self.size = min(self.capacity, self.size + n - start)
         return n
 
-    def sample(self, batch_size: int, rng: np.random.Generator) -> dict[str, np.ndarray]:
+    def sample(self, batch_size: int, rng: np.random.Generator, labelled_only: bool = True) -> dict[str, np.ndarray]:
+        """Uniform rows.  ``labelled_only`` (default) draws only rows where some unit has a label,
+        as before unlabelled ticks were stored; with --stand-action the others are all-STAND
+        targets, which ``labelled_only=False`` includes."""
         if not self.size:
             raise RuntimeError(f"no distillation rows under {self.root}")
-        idx = np.sort(rng.integers(0, self.size, batch_size))
+        idx = rng.integers(0, self.size, batch_size)
+        if labelled_only:
+            idx = self._labelled_draw(idx, batch_size, rng)
+        idx = np.sort(idx)
         return {field: self._arrays[field][idx] for field in FIELDS}
+
+    def _labelled_draw(self, idx: np.ndarray, batch_size: int, rng: np.random.Generator) -> np.ndarray:
+        keep = idx[self._labelled[idx]]
+        for _ in range(4):  # rejection: nearly every stored tick has a label
+            if len(keep) >= batch_size:
+                return keep[:batch_size]
+            more = rng.integers(0, self.size, 2 * batch_size)
+            keep = np.concatenate((keep, more[self._labelled[more]]))
+        if len(keep) >= batch_size:
+            return keep[:batch_size]
+        labelled = np.flatnonzero(self._labelled[: self.size])
+        if not len(labelled):
+            raise RuntimeError(f"no labelled distillation rows under {self.root}")
+        return labelled[rng.integers(0, len(labelled), batch_size)]
+
+    def sample_windows(self, batch_size: int, length: int, burn_in: int, rng: np.random.Generator,
+                       max_gap: int = 1) -> dict[str, np.ndarray]:
+        """``batch_size`` windows of ``T = burn_in + length`` consecutive ring rows.
+
+        Each window is placed around one target row drawn uniformly from the ring, at a uniform
+        position among the ``length`` trained positions, so every row is trained equally often
+        at every position (windows near a match's start or end are padded).  The valid part of a
+        window is the run of rows around the target in the same match with ticks increasing by
+        1..``max_gap`` (1: strictly consecutive, any skipped partial window breaks the run;
+        larger bridges them, which matches a student that only steps its memory on full
+        windows), never past the ring's oldest row (the overwritten boundary) or its newest.
+
+        Returns FIELDS as [B, T, ...] (zeros where invalid) plus
+          tick      int32 [B, T]  decision tick (-1 where invalid or unknown)
+          match     int64 [B, T]  ring match id (-1 where invalid)
+          valid     bool  [B, T]  a real row of the target's run
+          reset     bool  [B, T]  the run starts here (match start, a gap, or the oldest row
+                                  left in the ring): zero the recurrent state before this tick.
+                                  Position 0 of a window that starts mid-run is not a reset --
+                                  the state starts at zero there anyway and burn-in warms it
+          loss_mask bool  [B, T]  valid and not burn-in (>= 1 per window: the target)
+        """
+        if not self.size:
+            raise RuntimeError(f"no distillation rows under {self.root}")
+        if length < 1 or burn_in < 0 or max_gap < 1:
+            raise ValueError("need length >= 1, burn_in >= 0, max_gap >= 1")
+        span = burn_in + length
+        base = self._next if self.size == self.capacity else 0  # physical index of the oldest row
+        target = rng.integers(0, self.size, batch_size)  # logical: 0 = oldest row in the ring
+        position = burn_in + rng.integers(0, length, batch_size)
+        logical = (target - position)[:, None] + np.arange(-1, span)[None, :]  # one extra row in front
+        exists = (logical >= 0) & (logical < self.size)
+        physical = (base + np.clip(logical, 0, self.size - 1)) % self.capacity
+        match, tick = self._match[physical], self._tick[physical]
+        gap = tick[:, 1:] - tick[:, :-1]
+        # link[:, j]: window row j continues the run of the row before it
+        link = (exists[:, 1:] & exists[:, :-1] & (match[:, 1:] == match[:, :-1])
+                & (tick[:, :-1] >= 0) & (gap > 0) & (gap <= max_gap))
+        breaks = np.cumsum(~link, axis=1)
+        valid = exists[:, 1:] & (breaks == breaks[np.arange(batch_size), position][:, None])
+        reset = valid & ~link
+        loss_mask = valid & (np.arange(span) >= burn_in)[None, :]
+
+        rows = physical[:, 1:].reshape(-1)
+        invalid = ~valid.reshape(-1)
+        out = {}
+        for field in FIELDS:
+            values = self._arrays[field][rows]
+            values[invalid] = 0
+            out[field] = values.reshape(batch_size, span, *values.shape[1:])
+        out["tick"] = np.where(valid, tick[:, 1:], UNKNOWN_TICK).astype(np.int32)
+        out["match"] = np.where(valid, match[:, 1:], -1)
+        out.update(valid=valid, reset=reset, loss_mask=loss_mask)
+        return out
 
     def composition(self, current_version: int) -> dict[str, float]:
         """How old and how teacher-driven the ring is -- what the learner is fitting right now."""

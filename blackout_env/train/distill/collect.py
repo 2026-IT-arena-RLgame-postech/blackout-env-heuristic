@@ -1,10 +1,20 @@
 """Labelled matches for distillation, played in the background by headless Unity workers.
 
 In a match the learner's team is driven unit by unit: each tick every unit follows the teacher
-with probability ``beta`` and the student net otherwise (DAgger's mixture policy; both are
-memoryless, so switching per tick is well defined).  ``beta = 1`` is the teacher alone,
-``beta = 0`` the student alone.  Whatever drove, the teacher labels the state; only the
-learner's team is recorded.  The opponent is a fixed heuristic or the heuristic mixture.
+with probability ``beta`` and the student net otherwise (DAgger's mixture policy).  ``beta = 1``
+is the teacher alone, ``beta = 0`` the student alone.  Whatever drove, the teacher labels the
+state; only the learner's team is recorded.  The opponent is a fixed heuristic or the heuristic
+mixture.
+
+Teachers (``--teacher``) are the relabelling heuristics in ``TEACHERS`` (memoryless: labels are a
+function of the observation) or ``act:<opponent descriptor>`` (act_teacher.py): any policy, possibly
+stateful, labelled with its own moves.  The teacher is stepped exactly once per learner decision
+tick -- partial windows included -- so a stateful teacher's memory follows the played trajectory;
+where it drives, an act-teacher's raw move is executed (beta = 1 reproduces the policy exactly).
+
+Every full-window tick is recorded, labelled or not, in order, with ``tick`` = the index of the
+learner decision step within the match (partial windows are counted but not recorded, so a jump
+in ``tick`` marks them): recurrent students train on windows of consecutive rows.
 """
 
 from __future__ import annotations
@@ -27,16 +37,44 @@ from blackout_env.heuristics import (
 from blackout_env.heuristics.teach import label_action
 from blackout_env.model.my_policy import direction_vector_to_idx
 from blackout_env.train.dead_segments import batteries_in_play
+from blackout_env.train.distill.act_teacher import ZERO_MOVE, ActTeacher, check_act_teacher, is_act_teacher
 from blackout_env.train.distill.dataset import EXTRA_FIELDS, FIELDS, KIND_INDEX, N_TEAM, encode_graphic, save_shard
 from blackout_env.train.distill.metrics import MATCH_SECONDS, STAND, MatchRecorder
 from blackout_env.train.distill.opponents import SELF, make_opponent, opponent_label
 
-TEACHERS = {
+class _Teachers(dict):
+    """name -> teacher factory.  Besides the listed relabelling teachers, any ``act:<descriptor>``
+    key resolves to an ActTeacher factory (act_teacher.py) without being listed."""
+
+    def __missing__(self, key):
+        if is_act_teacher(key):
+            return functools.partial(ActTeacher, key[len("act:"):])
+        raise KeyError(key)
+
+    def __contains__(self, key) -> bool:
+        return super().__contains__(key) or is_act_teacher(key)
+
+
+TEACHERS = _Teachers({
     "v17-teach": StrategicHeuristicV17Teach,
     "v20-teach": StrategicHeuristicV20Teach,  # + spawn-camp counterplay (heuristics/v20_anticamp.py)
     "v21-teach": StrategicHeuristicV21Teach,  # + Hunter transforms only by routes clear of enemy Hunters
     "v4-teach": functools.partial(StrategicHeuristicV4Teach, target_hunters=2, target_carriers=1),
-}
+})
+
+
+def teacher_arg(name: str) -> str:
+    """argparse ``type`` for ``--teacher``: a TEACHERS name or ``act:<opponent descriptor>``."""
+    import argparse
+
+    try:
+        if is_act_teacher(name):
+            check_act_teacher(name)
+        elif name not in TEACHERS:
+            raise ValueError(f"choose from {', '.join(sorted(dict.keys(TEACHERS)))} or act:<opponent descriptor>")
+    except (ValueError, KeyError, TypeError) as exc:
+        raise argparse.ArgumentTypeError(f"invalid teacher {name!r}: {exc}") from exc
+    return name
 ABSORPTION_IDX = 3  # team_state: time to the next absorption
 MAX_EMPTY_STEPS = 200
 
@@ -71,6 +109,7 @@ def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.nda
     recorder = MatchRecorder(learner_names, opponent_names)
     rng = np.random.default_rng(task.seed)
     rows: dict[str, list] = {field: [] for field in FIELDS + EXTRA_FIELDS}
+    tick = -1  # learner decision steps so far (partial windows included)
 
     obs, _ = env.reset(seed=task.seed)
     for policy in (teacher, opponent, student):
@@ -95,17 +134,23 @@ def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.nda
 
         full_window = len(learner_obs) == len(learner_names)  # partial decision windows are not recorded
         if learner_obs:
-            labels = teacher.teach(learner_obs)
+            tick += 1
+            labels = teacher.teach(learner_obs)  # every tick: a stateful teacher must see them all
+            # an act-teacher executes its own raw move; a relabeller follows its label
+            teacher_moves = getattr(teacher, "last_actions", None)
             student_actions = student.act(learner_obs) if student is not None and task.beta < 1.0 else {}
             teacher_drove = {name: name not in student_actions or rng.random() < task.beta for name in learner_obs}
             for name in learner_obs:
-                actions[name] = label_action(labels[name]) if teacher_drove[name] else student_actions[name]
+                if not teacher_drove[name]:
+                    actions[name] = student_actions[name]
+                else:
+                    actions[name] = teacher_moves[name] if teacher_moves is not None else label_action(labels[name])
             if full_window:
                 recorder.before_step(learner_obs, opponent_obs, labels, actions, student_actions, teacher_drove)
                 row = _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove)
-                if row["labels"].any():
-                    for field, value in row.items():
-                        rows[field].append(value)
+                row["tick"] = np.int32(tick)
+                for field, value in row.items():  # unlabelled ticks too: context / STAND targets
+                    rows[field].append(value)
             elapsed = (1.0 - float(next(iter(learner_obs.values()))["team_state"][2])) * MATCH_SECONDS
 
         obs, _, terminations, _, infos = env.step(actions)
@@ -175,7 +220,7 @@ def _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove) 
 def _direction(move: np.ndarray) -> int:
     """Compass index of a continuous move, STAND for no movement."""
     move = np.asarray(move, np.float32)
-    return STAND if float(np.linalg.norm(move)) < 1e-6 else int(direction_vector_to_idx(move))
+    return STAND if float(np.linalg.norm(move)) < ZERO_MOVE else int(direction_vector_to_idx(move))
 
 
 def _scores_from(view, team_b: bool) -> dict:
