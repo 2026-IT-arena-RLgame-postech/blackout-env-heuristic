@@ -31,10 +31,20 @@ def _key(candidate: str, inference: str, opponent: str, seed: int, swap: bool) -
     return candidate, inference, opponent, seed, swap
 
 
+def _shard_path(args, candidate: str, inference: str, opponent: str, seed: int, swap: bool) -> str | None:
+    if not args.save_shards:
+        return None
+    name = candidate.replace(":", "_") if candidate.startswith(TEACHER) else "_".join(Path(candidate).parts[-2:]).removesuffix(".pt")
+    (args.out / "shards").mkdir(parents=True, exist_ok=True)
+    return str(args.out / "shards" / f"{name}__{inference}__{opponent}__{seed}_{'B' if swap else 'A'}.npz")
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("checkpoints", nargs="*", type=Path, help="none = the teacher baseline alone")
     p.add_argument("--out", type=Path, required=True)
+    p.add_argument("--save-shards", action="store_true",
+                   help="keep every match's per-tick rows (states, labels, moves) under <out>/shards for analysis")
     p.add_argument("--opponents", nargs="+", default=["strategic_v4", "strategic_v17", "strategic_v19"])
     p.add_argument("--inference", nargs="+", choices=INFERENCE, default=["iqn"])
     p.add_argument("--seeds", type=int, default=12)
@@ -70,7 +80,8 @@ def main() -> None:
                     tasks.append(MatchTask(
                         seed=seed, swap=swap, opponent=opponent, beta=1.0 if is_teacher else 0.0,
                         teacher=args.teacher, student=None if is_teacher else candidate,
-                        shard=None, tag="heldout", inference="iqn" if inference == "-" else inference))
+                        shard=_shard_path(args, candidate, inference, opponent, seed, swap), tag="heldout",
+                        inference="iqn" if inference == "-" else inference))
     print(f"[heldout] {len(tasks)} matches to play ({len(finished)} already done), {args.workers} workers", flush=True)
 
     with CollectorPool(args.build, args.workers, args.time_scale) as pool, open(log_path, "a") as log:

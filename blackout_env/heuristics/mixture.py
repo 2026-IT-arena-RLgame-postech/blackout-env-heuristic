@@ -26,6 +26,7 @@ from .v17_planner import StrategicHeuristicV17
 from .v18_counter import StrategicHeuristicV18
 from .v19_counter import StrategicHeuristicV19
 from .v20_anticamp import StrategicHeuristicV20
+from .v21_safe_transform import StrategicHeuristicV21
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,7 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
     "strategic_v18": StrategicHeuristicV18,
     "strategic_v19": StrategicHeuristicV19,
     "strategic_v20": StrategicHeuristicV20,  # not in the mixture's default weights
+    "strategic_v21": StrategicHeuristicV21,  # not in the mixture's default weights
 }
 
 

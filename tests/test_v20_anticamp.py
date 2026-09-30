@@ -76,3 +76,18 @@ def test_v20_is_a_registered_heuristic_that_plays_its_labels():
     actions = policy.act(_obs({0: (2, 2)}, camper=(5, 5)))
     assert set(actions) == {f"unit_{i}" for i in range(5)}
     assert all(np.isfinite(a).all() and a.shape == (2,) for a in actions.values())
+
+
+def test_v21_sends_no_one_to_transform_past_a_hunter_on_the_sanctuary():
+    from blackout_env.heuristics import StrategicHeuristicV21Teach
+
+    # every Collector's way to the Hunter sanctuary (11-12, 11-12) is covered: a Hunter sits on it
+    obs = _obs({0: (2, 2), 1: (5, 8), 2: (8, 5)}, camper=(11, 11))
+    v20 = StrategicHeuristicV20Teach().teach(obs)
+    v21 = StrategicHeuristicV21Teach().teach(obs)
+    assert any(label.kind == "transform" for label in v20.values())
+    assert not any(label.kind == "transform" and label.target and label.target[0] >= 10 for label in v21.values())
+    # with the sanctuary clear, V21 sends units there like V20
+    clear = _obs({0: (2, 2), 1: (5, 8), 2: (8, 5)}, camper=None)
+    assert sum(l.kind == "transform" for l in StrategicHeuristicV21Teach().teach(clear).values()) == \
+        sum(l.kind == "transform" for l in StrategicHeuristicV20Teach().teach(clear).values())

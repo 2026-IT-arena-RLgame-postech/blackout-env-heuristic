@@ -48,6 +48,7 @@ StrategicHeuristicV17  ── V6 이동 계층 위의 팀 단위 planner: Hunter
         └── StrategicHeuristicV19  ── V18 전용 카운터: 성소 소탕 + 성소 보초 Hunter + 가까운 성소 칸 경로
     └── StrategicHeuristicV17Teach  ── V17의 편성·가치를 상태만의 함수로 라벨하는 증류 교사 (heuristics/v17_teach.py)
         └── StrategicHeuristicV20  ── V17-teach + 스폰 진치기 대응: 위험 구역 우회, 본진 대기 후 함께 돌파, 빈손 Collector 회피
+            └── StrategicHeuristicV21  ── V20 + 안전한 경로가 있을 때만 Hunter 변신 (모든 적 Hunter 3칸을 피하는 경로)
 
 V4PolicyFamily  ── V4의 작은 근접 파라미터 변형 (기본은 매치 단위, `resample_each_absorption=True`면 흡수 단위)
 HeuristicPolicyMixture ── 위 policy_id와 V4PolicyFamily를 함께 샘플링
@@ -297,6 +298,35 @@ V18의 변신 대기 유닛 4기는 한 덩어리로 중앙 성소에 간다. �
 
 V19 상대만 좋아지고(2.3 SE) 나머지는 그대로. V17 도입 때 "Hunter 주변을 막는 이동 변형은 20–27% 손해"였던 것과 달리,
 출구가 막혔을 때만 켜지는 규칙이라 경제를 멈추지 않는다.
+
+## V21: 안전한 변신만 (2026-09-30)
+
+`heuristics/v21_safe_transform.py`, 교사 `--teacher v21-teach`, 휴리스틱 `strategic_v21`(mixture 기본 가중치에는 없음).
+
+### 문제 (V20 교사 대 V19, 보류 시드 24경기의 샤드 분석, `reports/v19_analysis/`)
+
+V17-teach의 편성 라벨은 무엇이 가로막든 Hunter 3기를 채운다. V19는 Hunter 4기(우리 출구 1, 중앙 성소 보초 1, 성소 주변
+소탕 2)를 둬서, 성소로 가는 변신 시도 2,491회 중 2%만 Hunter가 되고 17%가 가는 길에 죽었다. 경기당 사망 35회의 70%가
+변신하러 가던 중이었고, Hunter는 평균 0.5기 — 경제 유닛을 성과 없이 소모했다.
+
+### 동작
+
+Hunter 변신 후보는 **모든 적 Hunter(자기 본진 밖) 3칸 안을 피해 성소까지 가는 경로가 있는 Collector만**이고, 그 경로로
+간다(우리 본진은 위험 구역에서 제외). 없으면 Collector로 남아 경제를 한다. Carrier 성소는 본진 안이라 그대로. 나머지는 V20.
+
+### 평가 (교사 직접 조종, 보류 시드 × 양 진영, 상대당 24경기, `reports/anticamp/`)
+
+| 상대 | V17-teach | V20 | **V21** | V21 − V20 (짝) |
+|---|---:|---:|---:|---:|
+| V19 | −38.9 | −23.3 | **+3.4** (승 46%) | **+26.7 ± 10.2** |
+| V17 | +17.8 | +14.7 | +12.8 | −1.9 ± 7.6 |
+| V4 | +49.8 | +48.5 | +49.7 | +1.2 ± 6.7 |
+
+V19 상대: 변신 중 사망 70% → 0%, 변신 성공 2% → 6%(사망 0%), 평균 Hunter 0.50 → 1.04, 사망/1000틱 3.75 → 2.44.
+V21 − V17-teach는 V19 상대 +42.3 ± 9.3.
+
+약탈 가치: V17 계열은 이미 상대 창고 배터리를 필드 배터리의 `steal_weight` 1.8배로 매기고(흡수 전 도착 가능할 때만),
+할 일 없는 Collector는 상대 외부 창고 옆에서 대기한다.
 
 ## V4 근접 변형군
 
