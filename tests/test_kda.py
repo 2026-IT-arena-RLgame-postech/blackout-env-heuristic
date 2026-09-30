@@ -175,3 +175,18 @@ def test_learns_delayed_recall():
         accuracy = (net(x).argmax(-1) == y).float().mean().item()
     assert accuracy > 0.9, accuracy
 
+
+
+@pytest.mark.parametrize("solve", ["blocked", "solve"])
+def test_chunk_is_stable_on_repeated_keys(solve):
+    """A unit standing still feeds (nearly) the same key every tick; with beta near 1 the plain
+    doubling solve blew up in fp32 (error ~1e9 at chunk 64) -- the stable solvers must not."""
+    torch.manual_seed(0)
+    B, H, T, dk, dv = 2, 2, 64, 16, 8
+    k = F.normalize(torch.ones(B, H, T, dk) + 1e-3 * torch.randn(B, H, T, dk), dim=-1)
+    q, v = torch.randn(B, H, T, dk), torch.randn(B, H, T, dv)
+    log_alpha = -0.01 * torch.rand(B, H, T, dk)
+    beta = torch.full((B, H, T), 0.95)
+    ref, _ = kda_recurrent_reference(*(x.double() for x in (q, k, v, log_alpha, beta)))
+    out, _ = kda_chunk(q, k, v, log_alpha, beta, chunk_size=64, solve=solve)
+    assert (out.double() - ref).abs().max() < 1e-3

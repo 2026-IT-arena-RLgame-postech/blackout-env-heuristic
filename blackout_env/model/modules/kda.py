@@ -88,15 +88,40 @@ def unit_lower_inverse_apply(A: torch.Tensor, rhs: torch.Tensor, method: str = "
     ``solve``: ``torch.linalg.solve_triangular``.  ``doubling``: the Neumann series of the
     nilpotent -A summed by repeated squaring, (I - A)(I + A^2)(I + A^4)... -- exact after
     ceil(log2 C) matmul pairs, and ~40x faster than MPS's solve_triangular at our shapes (which
-    does not run as a batched GPU kernel there).  ``auto``: doubling on MPS, solve elsewhere."""
+    does not run as a batched GPU kernel there) -- but NOT stable over a whole chunk: with nearly
+    equal keys (a unit standing still, zero padding) and beta >~ 0.5 the partial products grow
+    like binomial(C, C/2) before they cancel, and fp32 loses everything (error ~4e8 at C=64,
+    beta 0.9).  ``blocked``: doubling only inside diagonal blocks of DOUBLING_BLOCK rows (growth
+    <= binomial(8, 4) = 70), block forward substitution between them -- as stable as a triangular
+    solve.  ``auto``: blocked on MPS, solve elsewhere."""
     if method == "auto":
-        method = "doubling" if A.device.type == "mps" else "solve"
+        method = "blocked" if A.device.type == "mps" else "solve"
     C = A.shape[-1]
+    if method == "blocked":
+        if C <= DOUBLING_BLOCK:
+            return _doubling_apply(A, rhs)
+        parts = []
+        for i in range(0, C, DOUBLING_BLOCK):
+            j = min(C, i + DOUBLING_BLOCK)
+            r = rhs[..., i:j, :]
+            if i:
+                r = r - A[..., i:j, :i] @ torch.cat(parts, dim=-2)
+            parts.append(_doubling_apply(A[..., i:j, i:j], r))
+        return torch.cat(parts, dim=-2)
     eye = torch.eye(C, dtype=A.dtype, device=A.device)
     if method == "solve":
         return torch.linalg.solve_triangular(eye + A, rhs, upper=False, unitriangular=True)
     if method != "doubling":
         raise ValueError(f"unknown method {method!r}")
+    return _doubling_apply(A, rhs)
+
+
+DOUBLING_BLOCK = 8
+
+
+def _doubling_apply(A: torch.Tensor, rhs: torch.Tensor) -> torch.Tensor:
+    C = A.shape[-1]
+    eye = torch.eye(C, dtype=A.dtype, device=A.device)
     power = -A
     inverse = eye + power  # sum of (-A)^j, j < 2
     for _ in range(max(0, (C - 1).bit_length() - 1)):  # doubles the number of terms each pass
