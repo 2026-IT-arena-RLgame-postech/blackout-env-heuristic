@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+import math
+
 import numpy as np
 
 
@@ -52,11 +54,12 @@ class MovementMonitor:
             if name not in actions:
                 continue
             row = int(name.split("_")[1])
-            action_norm = float(np.linalg.norm(actions[name]))
-            movement = float(np.linalg.norm(after[row, :2] - before[row, :2]))
+            action = actions[name]
+            action_norm = math.hypot(float(action[0]), float(action[1]))
+            movement = math.hypot(float(after[row, 0] - before[row, 0]), float(after[row, 1] - before[row, 1]))
             # Respawn/teleport and class/cargo transitions delimit a run rather than count as
             # successful navigation; this prevents unrelated episodes being joined together.
-            transition = movement > 0.15 or not np.array_equal(before[row, 3:], after[row, 3:])
+            transition = movement > 0.15 or not (before[row, 3:] == after[row, 3:]).all()
             self.result.unit_ticks += 1
             self._update(name, "idle", action_norm <= 0.05 and movement <= 2e-4 and not transition)
             self._update(name, "blocked", action_norm >= 0.35 and movement <= 2e-4 and not transition)

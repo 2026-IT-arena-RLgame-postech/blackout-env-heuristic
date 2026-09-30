@@ -130,6 +130,8 @@ class MatchRecorder:
         self.counts["camp/observed_ticks"] += 1
 
     def _count_reversal(self, name: str, move: np.ndarray, controller: str) -> None:
+        # np.linalg.norm, not math.hypot: an exact 135-degree turn between compass moves sits on
+        # REVERSAL_COS, so float32 rounding decides it -- keep the rounding earlier runs counted with
         norm = float(np.linalg.norm(move))
         previous = self._last_move.get(name)
         if norm > 1e-6:
@@ -142,7 +144,7 @@ class MatchRecorder:
             return
         graphic, before, actions = self._pending
         rows = [unit_index(n) for n in actions]
-        died = [r for r in rows if float(np.linalg.norm(next_states[r, :2] - before[r, :2])) > RESPAWN_JUMP]
+        died = [r for r in rows if math.hypot(float(next_states[r, 0] - before[r, 0]), float(next_states[r, 1] - before[r, 1])) > RESPAWN_JUMP]
         if died:  # respawned at spawn: where did it die, and was our exit camped?
             near = self._tiles_to_base(graphic, before[died, :2]) <= NEAR_BASE_TILES
             for r, at_base in zip(died, near):
