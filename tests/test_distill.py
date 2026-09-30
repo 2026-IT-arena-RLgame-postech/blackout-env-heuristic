@@ -238,3 +238,32 @@ def test_opponent_pool_draws_by_weight_and_labels_categories():
         draw_opponent(rng, {"checkpoints": 1.0}, [])
     assert [opponent_category(x) for x in ("ckpt:r/final", "mixture:strategic_v18", "mixture:strategic_v4", "strategic_v17")] \
         == ["checkpoint", "top_tier", "heuristic", "top_tier"]
+
+
+def test_ood_opponent_descriptors_build_and_fail_early():
+    from blackout_env.train.distill.opponents import Idle, RandomWalker, check_opponent, make_opponent, opponent_name
+
+    camp = make_opponent("strategic_v19:hunter_quota=4,hunter_mode=camp,sentry=false", 0)
+    assert (camp.hunter_quota, camp.hunter_mode, camp.sentry) == (4, "camp", False)
+    assert make_opponent("strategic_v17:steal_weight=3.0", 0).steal_weight == 3.0
+    assert make_opponent("teacher:v21-teach", 0).act(_obs := {n: _view(False) for n in all_agents()[:5]}).keys() == _obs.keys()
+    assert all((a == 0).all() for a in Idle().act(_obs).values())
+    walker = RandomWalker(3)
+    first = walker.act(_obs)
+    assert all(np.isclose(np.linalg.norm(a), 1.0) for a in first.values())
+    walker.reset()
+    assert all(np.array_equal(first[n], a) for n, a in walker.act(_obs).items())  # seeded
+    for bad in ("strategic_v19:hunter_mode=sit", "strategic_v99", "strategic_v17:quota", "ckpt:missing.pt", "teacher:none"):
+        with pytest.raises((ValueError, KeyError)):
+            check_opponent(bad)
+    check_opponent("self")
+    assert opponent_name("ckpt:checkpoints/offline/20260919-010456_42178/final.pt") == "ckpt-20260919-010456-final"
+    assert opponent_name("strategic_v19:hunter_quota=4,hunter_mode=camp") == "strategic_v19-hunter_quota=4-hunter_mode=camp"
+
+
+def test_self_opponent_mirrors_the_learner():
+    task = MatchTask(seed=1, swap=False, opponent="self", beta=0.0, teacher="v17-teach", student="x", shard=None)
+    _, summary = play_labelled_match(_FakeEnv(length=8), task, MyPolicy(MyModel().eval()))
+    assert summary["opponent_played"] == "self"
+    teacher_task = MatchTask(seed=1, swap=True, opponent="self", beta=1.0, teacher="v17-teach", student=None, shard=None)
+    assert play_labelled_match(_FakeEnv(), teacher_task, None)[1]["rows"] > 0

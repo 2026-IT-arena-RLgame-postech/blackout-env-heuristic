@@ -9,8 +9,17 @@ Kinds (``--opponents kind=weight ...``):
   ``--opponent-checkpoints``: learned play no heuristic produces, including its mistakes;
 * any heuristic id (``strategic_v17`` ...) -- that policy, unperturbed.
 
-A draw is a descriptor string carried by MatchTask.opponent ("mixture", "strategic_v17",
-"ckpt:<path>") and built inside the worker by ``make_opponent``.
+A draw is a descriptor string carried by MatchTask.opponent and built inside the worker by
+``make_opponent``.  Evaluation (examples/distill_heldout_eval.py) also takes the out-of-
+distribution descriptors no collection draws:
+
+* ``strategic_v19:hunter_quota=4,hunter_mode=camp`` -- a heuristic with fixed constructor
+  arguments (ints, floats, true/false, otherwise strings);
+* ``random`` -- every unit walks a random compass direction, redrawn with probability
+  ``RANDOM_TURN`` a tick; ``idle`` -- every unit stands still;
+* ``teacher:v21-teach`` -- a teacher following its own labels;
+* ``self`` -- the learner's own policy on the other side (the student, or the teacher when the
+  teacher plays alone), resolved by ``play_labelled_match``.
 """
 
 from __future__ import annotations
@@ -22,8 +31,12 @@ from pathlib import Path
 import numpy as np
 
 from blackout_env.heuristics import POLICY_REGISTRY, HeuristicPolicyMixture, make_heuristic
+from blackout_env.model.base import BaseModel
 
 CHECKPOINT_PREFIX = "ckpt:"
+TEACHER_PREFIX = "teacher:"
+SELF = "self"
+RANDOM_TURN = 0.1  # per tick; a random walker keeps its heading ~10 ticks
 _CHECKPOINT_CACHE: dict[str, object] = {}  # worker-side: path -> policy
 
 
@@ -76,7 +89,76 @@ def make_opponent(descriptor: str, seed: int):
         return HeuristicPolicyMixture(seed=seed, perturb_top_tier=True)
     if descriptor.startswith(CHECKPOINT_PREFIX):
         return _checkpoint_policy(descriptor[len(CHECKPOINT_PREFIX):])
-    return make_heuristic(descriptor)
+    if descriptor.startswith(TEACHER_PREFIX):
+        from blackout_env.train.distill.collect import TEACHERS  # collect imports this module
+
+        return TEACHERS[descriptor[len(TEACHER_PREFIX):]]()
+    if descriptor == "random":
+        return RandomWalker(seed)
+    if descriptor == "idle":
+        return Idle()
+    if descriptor == SELF:
+        raise ValueError("'self' is the learner's own policy: play_labelled_match resolves it")
+    policy_id, _, parameters = descriptor.partition(":")
+    return make_heuristic(policy_id, **_parse_parameters(parameters))
+
+
+def check_opponent(descriptor: str) -> None:
+    """Raise now, not in a worker, on a descriptor ``make_opponent`` cannot build."""
+    if descriptor == SELF:
+        return
+    if descriptor.startswith(CHECKPOINT_PREFIX):
+        if not Path(descriptor[len(CHECKPOINT_PREFIX):]).is_file():
+            raise ValueError(f"no checkpoint at {descriptor[len(CHECKPOINT_PREFIX):]!r}")
+        return
+    make_opponent(descriptor, 0)
+
+
+def _parse_parameters(text: str) -> dict:
+    parameters = {}
+    for item in filter(None, text.split(",")):
+        key, sep, value = item.partition("=")
+        if not sep:
+            raise ValueError(f"heuristic parameter {item!r} is not key=value")
+        parameters[key] = _parse_value(value)
+    return parameters
+
+
+def _parse_value(value: str):
+    if value.lower() in ("true", "false"):
+        return value.lower() == "true"
+    for cast in (int, float):
+        try:
+            return cast(value)
+        except ValueError:
+            pass
+    return value
+
+
+class Idle(BaseModel):
+    """Every unit stands still."""
+
+    def act(self, obs):
+        return {name: np.zeros(2, dtype=np.float32) for name in obs}
+
+
+class RandomWalker(BaseModel):
+    """Every unit walks a random compass direction, turning with probability ``turn`` a tick."""
+
+    def __init__(self, seed: int, turn: float = RANDOM_TURN):
+        self.seed, self.turn = seed, turn
+        self.reset()
+
+    def reset(self) -> None:
+        self._rng = np.random.default_rng(self.seed)
+        self._heading: dict[str, np.ndarray] = {}
+
+    def act(self, obs):
+        for name in obs:
+            if name not in self._heading or self._rng.random() < self.turn:
+                angle = self._rng.integers(8) * np.pi / 4
+                self._heading[name] = np.array([np.cos(angle), np.sin(angle)], dtype=np.float32)
+        return {name: self._heading[name].copy() for name in obs}
 
 
 def _checkpoint_policy(path: str):
@@ -103,6 +185,14 @@ def opponent_label(descriptor: str, opponent) -> str:
         return f"ckpt:{path.parent.name}/{path.stem}"
     sample = getattr(opponent, "current_sample", None)
     return f"mixture:{sample.policy_id}" if sample is not None else descriptor
+
+
+def opponent_name(descriptor: str) -> str:
+    """A short, file-name-safe name for a descriptor (reports and shard files)."""
+    if descriptor.startswith(CHECKPOINT_PREFIX):
+        path = Path(descriptor[len(CHECKPOINT_PREFIX):])
+        descriptor = f"ckpt:{path.parent.name.split('_')[0]}/{path.stem}"
+    return re.sub(r"[^A-Za-z0-9_.=+-]+", "-", descriptor)
 
 
 def opponent_category(label: str) -> str:

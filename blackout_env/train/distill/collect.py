@@ -29,7 +29,7 @@ from blackout_env.model.my_policy import direction_vector_to_idx
 from blackout_env.train.dead_segments import batteries_in_play
 from blackout_env.train.distill.dataset import EXTRA_FIELDS, FIELDS, KIND_INDEX, N_TEAM, encode_graphic, save_shard
 from blackout_env.train.distill.metrics import MATCH_SECONDS, STAND, MatchRecorder
-from blackout_env.train.distill.opponents import make_opponent, opponent_label
+from blackout_env.train.distill.opponents import SELF, make_opponent, opponent_label
 
 TEACHERS = {
     "v17-teach": StrategicHeuristicV17Teach,
@@ -45,7 +45,7 @@ MAX_EMPTY_STEPS = 200
 class MatchTask:
     seed: int
     swap: bool  # the learner plays team B
-    opponent: str  # descriptor: heuristic id, "mixture" or "ckpt:<path>" (opponents.py)
+    opponent: str  # descriptor: heuristic id, "mixture", "ckpt:<path>", "self" ... (opponents.py)
     beta: float
     teacher: str
     student: str | None  # checkpoint path; None = teacher only (beta must be 1)
@@ -62,7 +62,10 @@ def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.nda
     if student is None and task.beta < 1.0:
         raise ValueError("a match with beta < 1 needs a student")
     teacher = TEACHERS[task.teacher]()
-    opponent = make_opponent(task.opponent, task.seed)
+    if task.opponent == SELF:  # a mirror match: the learner's own policy on the other side too
+        opponent = student if student is not None else TEACHERS[task.teacher]()
+    else:
+        opponent = make_opponent(task.opponent, task.seed)
     learner_names = team_b_agents() if task.swap else team_a_agents()
     opponent_names = team_a_agents() if task.swap else team_b_agents()
     recorder = MatchRecorder(learner_names, opponent_names)

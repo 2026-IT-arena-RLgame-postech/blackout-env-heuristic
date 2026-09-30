@@ -119,8 +119,14 @@ E2는 결과와 관계없이 돌린다 — DAgger가 효과 없다면 파이프�
 | 거울전 | 학생 대 학생, 학생 대 교사 | 학생이 만든 상태가 양쪽에 |
 
 볼 것: 점수차(학생 − 교사, 짝), 교사 일치율(`agree/*`, 역할·라벨 종류별), 트랩(`distill_report` 반전 표 — `--save-shards`
-필요), 사망·출구 봉쇄. 필요한 코드: 체크포인트 상대(`ckpt:` 서술자는 이미 지원) · 파라미터 지정 휴리스틱 상대 · 무작위/정지
-상대를 `distill_heldout_eval --opponents`에서 받기.
+필요), 사망·출구 봉쇄.
+
+구현: `distill_heldout_eval --opponents ood`가 위 표를 펼친다(`OOD_OPPONENTS` — Run 16 final/100k/50k, V20, V21,
+`strategic_v19:hunter_quota=4,hunter_mode=camp`, `strategic_v17:steal_weight=3.0,exposure_cost=0.3`, `random`, `idle`,
+`self`, `teacher:<교사>`). 서술자는 `opponents.py`(`key=value` 인자, `random`은 틱당 10% 확률로 방향 전환, `self`는
+학습자 자신). `summary.txt` 하단에 짝 격차(후보 − 교사, 같은 시드·진영, 시드 단위 ±se)가 붙는다. `self` 거울전은 점수차가
+대칭 잡음이라 격차에서 빼고 일치율·사망·트랩만 본다. `teacher:<교사>` 행의 격차가 곧 학생 대 교사 직접 대결 점수차.
+실행: `checkpoints/distill/launch_ood_d4.sh`(gitignore 경로) — D4 보류 평가가 끝나면 D4·D3b latest를 `reports/distill_ood/`에.
 
 ### OOD 대응이 부족하면 — 합성 상태에 교사 라벨
 
