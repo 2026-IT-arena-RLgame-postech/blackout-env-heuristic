@@ -53,6 +53,11 @@ __all__ = ["KDA", "kda_chunk", "kda_recurrent_reference", "kda_step", "unit_lowe
 #
 # Shapes: q, k [B, H, T, dk]; v [B, H, T, dv]; log_alpha [B, H, T, dk] (<= 0); beta [B, H, T];
 # state S [B, H, dk, dv].  q and k are used as given (normalise / scale them before).
+#
+# ``reset`` [B, T] bool (optional): the state is zeroed *before* step t wherever reset[:, t] --
+# a sequence start (e.g. a new match) in the middle of a batch row.  Every form handles it
+# exactly: the loop by zeroing, the chunk form by masking the pairs that straddle a reset (the
+# decays themselves stay bounded, so the fp32 range argument above is unchanged).
 
 
 def kda_step(q, k, v, log_alpha, beta, state):
@@ -64,12 +69,14 @@ def kda_step(q, k, v, log_alpha, beta, state):
     return torch.einsum("bhk,bhkv->bhv", q, s), s
 
 
-def kda_recurrent_reference(q, k, v, log_alpha, beta, state=None):
+def kda_recurrent_reference(q, k, v, log_alpha, beta, state=None, reset=None):
     """The recurrence as a loop over t -- the definition the other forms are tested against."""
     B, H, T, dk = q.shape
     s = q.new_zeros(B, H, dk, v.shape[-1]) if state is None else state
     outs = []
     for t in range(T):
+        if reset is not None:
+            s = s * (~reset[:, t]).to(s.dtype)[:, None, None, None]
         o, s = kda_step(q[:, :, t], k[:, :, t], v[:, :, t], log_alpha[:, :, t], beta[:, :, t], s)
         outs.append(o)
     return torch.stack(outs, dim=2), s
@@ -99,11 +106,16 @@ def unit_lower_inverse_apply(A: torch.Tensor, rhs: torch.Tensor, method: str = "
 
 
 def kda_chunk(q, k, v, log_alpha, beta, state=None, chunk_size: int = 64, gate_bound: float | None = None,
-              solve: str = "auto"):
+              solve: str = "auto", reset=None):
     """Chunk-parallel form; same result as ``kda_recurrent_reference``.  T need not be a multiple
     of ``chunk_size`` (the tail is padded with k = v = 0, beta = 0, no decay: a no-op).
     ``gate_bound`` (the per-step bound on -log_alpha), when given, is checked against fp32 range.
-    ``solve`` picks the triangular solver (``unit_lower_inverse_apply``)."""
+    ``solve`` picks the triangular solver (``unit_lower_inverse_apply``).
+
+    ``reset`` [B, T] bool: zero the state before those steps.  Inside a chunk, a reset splits it
+    into segments (seg_r = number of resets at positions <= r); only pairs (r, i) in the same
+    segment interact (A, P), the start state reaches only segment 0, and the carried state keeps
+    only the last segment's writes (plus the decayed start state if the chunk had no reset)."""
     B, H, T, dk = q.shape
     dv = v.shape[-1]
     C = int(chunk_size)
@@ -115,6 +127,8 @@ def kda_chunk(q, k, v, log_alpha, beta, state=None, chunk_size: int = 64, gate_b
     if pad:
         q, k, v, log_alpha = (F.pad(x, (0, 0, 0, pad)) for x in (q, k, v, log_alpha))
         beta = F.pad(beta, (0, pad))
+        if reset is not None:
+            reset = F.pad(reset, (0, pad), value=False)
     N = (T + pad) // C
     q, k, log_alpha = (x.reshape(B, H, N, C, dk) for x in (q, k, log_alpha))
     v = v.reshape(B, H, N, C, dv)
@@ -130,19 +144,27 @@ def kda_chunk(q, k, v, log_alpha, beta, state=None, chunk_size: int = 64, gate_b
     strict = idx[:, None] > idx[None, :]
     causal = idx[:, None] >= idx[None, :]
     zero = q.new_zeros(())
+    k_start = k * g.exp()  # k_r Gamma_r: the start state's correction
+    q_dec = q * g.exp()  # q_r Gamma_r: reads the decayed start state
+    g_last = g[:, :, :, -1:]  # [B, H, N, 1, dk]
+    k_to_end = k * (g_last - g).exp()  # k_i Gamma_C Gamma_i^{-1} (<= |k|)
+    decay_end = g_last.squeeze(3).exp().unsqueeze(-1)  # [B, H, N, dk, 1]
+    if reset is not None:
+        seg = reset.reshape(B, 1, N, C).cumsum(dim=-1)  # segment id within the chunk
+        same = seg.unsqueeze(-1) == seg.unsqueeze(-2)  # [B, 1, N, C, C]
+        strict, causal = strict & same, causal & same
+        first = (seg == 0).unsqueeze(-1).to(q.dtype)  # [B, 1, N, C, 1]: sees the start state
+        k_start, q_dec = k_start * first, q_dec * first
+        k_to_end = k_to_end * (seg == seg[..., -1:]).unsqueeze(-1).to(q.dtype)
+        decay_end = decay_end * (seg[..., -1] == 0).to(q.dtype)[..., None, None]
     A = torch.where(strict, beta * (k_out @ k_in.transpose(-1, -2)), zero)  # [B, H, N, C, C]
     P = torch.where(causal, q_out @ k_in.transpose(-1, -2), zero)  # causal intra-chunk q.k
 
     # (I + A) [W | U~] = beta * [K Gamma | V]: W maps the chunk's start state to its correction,
     # U~ is the correction from the chunk's own values.  One batched solve for every chunk.
-    rhs = beta * torch.cat((k * g.exp(), v), dim=-1)
+    rhs = beta * torch.cat((k_start, v), dim=-1)
     sol = unit_lower_inverse_apply(A, rhs, solve)
     W, U_own = sol[..., :dk], sol[..., dk:]
-
-    q_dec = q * g.exp()  # q_r Gamma_r: reads the decayed start state
-    g_last = g[:, :, :, -1:]  # [B, H, N, 1, dk]
-    k_to_end = k * (g_last - g).exp()  # k_i Gamma_C Gamma_i^{-1} (<= |k|)
-    decay_end = g_last.squeeze(3).exp().unsqueeze(-1)  # [B, H, N, dk, 1]
 
     outs = []
     for n in range(N):  # only the state crosses chunks
@@ -226,26 +248,36 @@ class KDA(nn.Module):
             conv = torch.zeros(batch, self.conv_size - 1, self.conv_weight.shape[0], device=device, dtype=dtype)
         return s, conv
 
-    def _short_conv(self, qkv: torch.Tensor, cache: torch.Tensor | None):
-        """Causal depthwise conv over time on [B, T, C] with a (K-1)-step cache [B, K-1, C]."""
+    def _short_conv(self, qkv: torch.Tensor, cache: torch.Tensor | None, reset: torch.Tensor | None = None):
+        """Causal depthwise conv over time on [B, T, C] with a (K-1)-step cache [B, K-1, C].
+        ``reset`` [B, T]: inputs from before a reset do not reach the steps from it on."""
         B, T, _ = qkv.shape
         K = self.conv_size
         if cache is None:
             cache = qkv.new_zeros(B, K - 1, qkv.shape[-1])
         x = torch.cat((cache.to(qkv.dtype), qkv), dim=1)  # [B, K-1+T, C]
         w = self.conv_weight.to(qkv.dtype)
-        y = sum(x[:, j : j + T] * w[:, j] for j in range(K))  # tap K-1 = the current step
-        return y, x[:, -(K - 1):]
+        if reset is None:
+            y = sum(x[:, j : j + T] * w[:, j] for j in range(K))  # tap K-1 = the current step
+            return y, x[:, -(K - 1):]
+        t = torch.arange(T, device=qkv.device)
+        # index of the latest reset at or before t (-K: none, so the whole cache is visible)
+        last = torch.where(reset, t, torch.full_like(t, -K)).cummax(dim=1).values  # [B, T]
+        y = sum(x[:, j : j + T] * w[:, j] * (t + j - (K - 1) >= last).unsqueeze(-1).to(qkv.dtype) for j in range(K))
+        src = torch.arange(T - (K - 1), T, device=qkv.device)  # the new cache's step indices
+        keep = (src[None, :] >= last[:, -1:]).unsqueeze(-1).to(qkv.dtype)
+        return y, x[:, -(K - 1):] * keep
 
-    def forward(self, x: torch.Tensor, state=None, mode: str | None = None):
-        """x [B, T, d_model]; returns (y [B, T, d_model], state)."""
+    def forward(self, x: torch.Tensor, state=None, mode: str | None = None, reset: torch.Tensor | None = None):
+        """x [B, T, d_model]; returns (y [B, T, d_model], state).  ``reset`` [B, T] bool zeroes
+        the state (and the short-conv history) before those steps."""
         B, T, _ = x.shape
         H, dk, dv = self.n_heads, self.dk, self.dv
         s, conv_cache = (None, None) if state is None else state
 
         qkv = torch.cat((self.q_proj(x), self.k_proj(x), self.v_proj(x)), dim=-1)
         if self.conv_size:
-            qkv, conv_cache = self._short_conv(qkv, conv_cache)
+            qkv, conv_cache = self._short_conv(qkv, conv_cache, reset)
         qkv = F.silu(qkv)
         q, k, v = qkv.split((H * dk, H * dk, H * dv), dim=-1)
 
@@ -264,12 +296,14 @@ class KDA(nn.Module):
 
         mode = mode or ("step" if T == 1 else "chunk")
         if mode == "chunk":
-            o, s = kda_chunk(q, k, v, log_alpha, beta, s, self.chunk_size)
+            o, s = kda_chunk(q, k, v, log_alpha, beta, s, self.chunk_size, reset=reset)
         elif mode == "step":
             if s is None:
                 s = q.new_zeros(B, H, dk, dv)
             outs = []
             for t in range(T):
+                if reset is not None:
+                    s = s * (~reset[:, t]).to(s.dtype)[:, None, None, None]
                 o_t, s = kda_step(q[:, :, t], k[:, :, t], v[:, :, t], log_alpha[:, :, t], beta[:, :, t], s)
                 outs.append(o_t)
             o = torch.stack(outs, dim=2)

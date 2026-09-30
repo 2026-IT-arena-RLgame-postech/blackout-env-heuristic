@@ -55,6 +55,12 @@ class MyPolicy(BaseModel):
     once per act() call (batch size 1) — each agent's action is then just its row of the
     resulting 10-unit Q-table, selected by unit index (blackout_env.unit_index), converted
     from an argmax direction index to a continuous (dx, dy) vector.
+
+    A temporal net (``net.is_temporal``: ``MyModel(temporal=True)`` or a ``_FastNet`` around
+    one) makes this policy stateful: every ``action_values``/``act`` call is one tick, feeding
+    the memory the net returned last tick back in.  The memory lives in the canonical frame and
+    is kept per team (Team A / Team B view), so one policy object can play both sides of a
+    mirror match.  ``reset()`` forgets it -- call it at the start of every match.
     """
 
     def __init__(self, net: MyModel, device: str | torch.device = "cpu", mask_walls: bool = False) -> None:
@@ -63,6 +69,12 @@ class MyPolicy(BaseModel):
         # Keep in step with QMIXConfig.action_masking: a policy evaluated without the mask its
         # targets were computed under is a different policy (see model/action_mask.py).
         self._mask_walls = mask_walls
+        self._temporal = bool(getattr(net, "is_temporal", False))
+        self._memory: dict[bool, object] = {}  # team_b -> the net's memory after the last tick
+
+    def reset(self) -> None:
+        """Start of a match: forget the temporal memory (a no-op for a stateless net)."""
+        self._memory.clear()
 
     def action_values(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         """
@@ -95,7 +107,11 @@ class MyPolicy(BaseModel):
         ).unsqueeze(0)
 
         with torch.no_grad():
-            q_values, *_ = self._net(graphic, team_state, agent_states)  # [1, N_UNITS, 8]
+            if self._temporal:
+                out = self._net(graphic, team_state, agent_states, memory=self._memory.get(team_b))
+                q_values, self._memory[team_b] = out[0], out[-1]
+            else:
+                q_values, *_ = self._net(graphic, team_state, agent_states)  # [1, N_UNITS, 8]
         q_rows = q_values.squeeze(0).cpu().numpy()
 
         if team_b:

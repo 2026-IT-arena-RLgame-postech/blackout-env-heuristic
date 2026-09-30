@@ -11,6 +11,7 @@ from blackout_env.model.modules import (
     build_grid_position_ids,
 )
 from blackout_env.model.derived_obs import N_PATCH_FEATURES, derived_map_channels, local_wall_features
+from blackout_env.model.modules.temporal_memory import TemporalMemory
 
 N_QUANTILES_DEFAULT = 32  # quantile samples used when the caller doesn't ask for a specific count
 
@@ -28,6 +29,8 @@ ROPE_BASE = 10.0
 # Token-type ids for the trunk sequence: which tokens are "graphic", "unit", "global"
 # (team_state), or the dedicated SPR CLS token — see MyModel's token_type_emb.
 TYPE_GRAPHIC, TYPE_UNIT, TYPE_GLOBAL, TYPE_SPR_CLS = 0, 1, 2, 3
+
+TEMPORAL_PREFIX = "temporal."  # every temporal-memory parameter's state_dict key starts with this
 
 
 class MyModel(nn.Module):
@@ -86,6 +89,25 @@ class MyModel(nn.Module):
     example, which graphic tokens matter and pull from them directly with a learned weight
     instead of a fixed uniform average -- spr_head now runs on this one token's post-attention
     output instead of a mean over vis_out.
+
+    Temporal memory (``temporal=True``)
+    -----------------------------------
+    Off by default: the stateless model, its forward and its state_dict keys are unchanged.  On,
+    a ``TemporalMemory`` block (modules/temporal_memory.py: per-slot KDA over the 10 unit tokens
+    + the team_state token, then attention across those 11 slots, added back residually through
+    a zero-initialised projection) sits between the trunk and the Q head.  At init the block is
+    the identity, so ``MyModel.from_state_dict(stateless_state, temporal=True)`` reproduces the
+    stateless net's Q-values exactly.  Its keys all start with ``temporal.``.
+
+    * ``forward(..., memory=None)``: one frame per batch row.  A temporal model returns the same
+      five outputs plus the new ``memory`` as a sixth, last element (``q_values, *_ = net(...)``
+      still works); ``memory=None`` = start of a match.
+    * ``forward_sequence(...)``: [B, T, ...] frames; trunk on all B*T frames at once, KDA chunk-
+      parallel over T, ``reset`` [B, T] zeroes the memory before chosen frames.  Equals T
+      successive ``forward`` calls carrying ``memory`` (tests/test_temporal_model.py).
+
+    Memory: ``(S [B, 11, H, dk, dv], conv [B, 11, K-1, 2*H*dk + H*dv])`` fp32 tensors, in the
+    canonical (own team first) frame -- a Team B caller mirrors the obs, never the memory.
     """
 
     def __init__(
@@ -96,6 +118,10 @@ class MyModel(nn.Module):
         team_state_size: int = 4,
         n_actions: int = N_DISCRETE_ACTIONS,
         exclusive_attention: bool = True,
+        temporal: bool = False,
+        temporal_heads: int = 4,
+        temporal_head_dim: int = 64,
+        temporal_chunk: int = 64,
     ) -> None:
         super().__init__()
 
@@ -165,6 +191,70 @@ class MyModel(nn.Module):
         # reward balance changes (see reward_config.json) — see modules/iqn_head.py.
         self.q_head = IQNHead(hidden_size, n_actions, n_cos=64)
 
+        # Created last so that a stateless model's parameter order (and optimiser state layout)
+        # is unchanged; absent entirely when off, so its state_dict has no temporal keys.
+        self.temporal = (
+            TemporalMemory(hidden_size, n_vector_tokens, temporal_heads, temporal_head_dim, temporal_chunk)
+            if temporal else None
+        )
+
+    @property
+    def is_temporal(self) -> bool:
+        return self.temporal is not None
+
+    def initial_memory(self, batch: int = 1, device=None):
+        """Zero memory (the start of a match) for ``batch`` rows; None for a stateless model."""
+        if self.temporal is None:
+            return None
+        return self.temporal.initial_memory(batch, device=device)
+
+    @staticmethod
+    def config_from_state_dict(state: dict) -> dict:
+        """Constructor kwargs that match ``state``: width, 8 or 9 actions, and -- when it has
+        ``temporal.`` keys -- the temporal block's heads and head size."""
+        config = dict(hidden_size=state["token_type_emb.weight"].shape[1],
+                      n_actions=state["q_head.value_head.1.weight"].shape[0])
+        if any(key.startswith(TEMPORAL_PREFIX) for key in state):
+            heads = state["temporal.kda.b_proj.weight"].shape[0]
+            config.update(temporal=True, temporal_heads=heads,
+                          temporal_head_dim=state["temporal.kda.q_proj.weight"].shape[0] // heads)
+        return config
+
+    @classmethod
+    def from_state_dict(cls, state: dict, temporal: bool | None = None, **temporal_kwargs) -> "MyModel":
+        """A MyModel shaped like ``state`` with ``state`` loaded.
+
+        ``temporal=None`` follows the state (temporal iff it has ``temporal.`` keys).
+        ``temporal=True`` on a stateless state is the warm start: every stateless key is loaded
+        strictly, the temporal block keeps its (identity) init -- see ``load_warm_start``.
+        ``temporal=False`` on a temporal state raises (dropping the memory changes the policy)."""
+        config = cls.config_from_state_dict(state)
+        has_temporal = config.get("temporal", False)
+        if temporal is False and has_temporal:
+            raise ValueError("state has temporal keys; load it with temporal=None or True")
+        if temporal and not has_temporal:
+            config.update(temporal=True, **temporal_kwargs)
+        elif temporal_kwargs:
+            config.update(temporal_kwargs)
+        net = cls(**config)
+        net.load_warm_start(state)
+        return net
+
+    def load_warm_start(self, state: dict) -> list[str]:
+        """Load ``state`` -- a stateless or a temporal state dict -- into this model.
+
+        Every non-temporal key must match exactly (missing or unexpected ones raise, like
+        ``load_state_dict(strict=True)``); temporal keys absent from ``state`` keep their init,
+        which for a fresh model is the identity.  Returns those initialised temporal keys."""
+        if any(key.startswith(TEMPORAL_PREFIX) for key in state):  # a temporal state: all of it
+            self.load_state_dict(state)
+            return []
+        missing, unexpected = self.load_state_dict(state, strict=False)
+        bad_missing = [key for key in missing if not key.startswith(TEMPORAL_PREFIX)]
+        if bad_missing or unexpected:
+            raise RuntimeError(f"state does not fit this MyModel: missing {bad_missing}, unexpected {list(unexpected)}")
+        return list(missing)
+
     def _token_grid_positions(self, agent_states: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Per-sample (row, col) RoPE coordinates for the whole trunk sequence, [B, T] each.
@@ -196,7 +286,8 @@ class MyModel(nn.Module):
         n_quantiles: int = N_QUANTILES_DEFAULT,
         tau: torch.Tensor | None = None,
         q_units: int = N_UNITS,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        memory=None,
+    ) -> tuple:
         """
         graphic      : [B, C, H, W]
         team_state   : [B, team_state_size]
@@ -224,8 +315,25 @@ class MyModel(nn.Module):
                            summary of whatever graphic info attention found relevant, used by
                            the SPR aux loss (see class docstring "SPR CLS token").
         global_latent   : [B, hidden_size]                          attention-refined team_state
-                           token, used as QMixer's hypernetwork input.
+                           token, used as QMixer's hypernetwork input (after the temporal block
+                           when there is one).
+        memory          : temporal model only, a sixth element: the memory after this frame
+                           (pass it back as ``memory`` next tick; the ``memory`` argument is the
+                           one before it, None = start of a match).  Stateless: must be None.
         """
+        tokens_out = self._trunk(graphic, team_state, agent_states)
+        vec_out = tokens_out[:, N_VISION_TOKENS : N_VISION_TOKENS + N_UNITS + N_TEAM_STATE_TOKENS]
+        new_memory = None
+        if self.temporal is not None:
+            vec_out, new_memory = self.temporal(vec_out.unsqueeze(1), memory)
+            vec_out = vec_out.squeeze(1)
+        elif memory is not None:
+            raise ValueError("memory was given to a stateless MyModel (temporal=False)")
+        outputs = self._heads(vec_out, tokens_out[:, -1], n_quantiles, tau, q_units)
+        return outputs if self.temporal is None else (*outputs, new_memory)
+
+    def _trunk(self, graphic, team_state, agent_states) -> torch.Tensor:
+        """The 48 trunk tokens' post-attention output, [B, 48, hidden]."""
         B = graphic.shape[0]
         # Features the env does not send, but that measured failures traced back to -- unit
         # occupancy, storage free capacity, fetchable batteries, and each unit's local
@@ -245,14 +353,72 @@ class MyModel(nn.Module):
 
         row_ids, col_ids = self._token_grid_positions(agent_states)  # [B, T] each
         rope_cos, rope_sin = self.rope(row_ids, col_ids)
-        tokens_out = self.attention(tokens_in, rope=(rope_cos, rope_sin))
+        return self.attention(tokens_in, rope=(rope_cos, rope_sin))
 
-        unit_out = tokens_out[:, N_VISION_TOKENS : N_VISION_TOKENS + N_UNITS, :]
-        global_out = tokens_out[:, N_VISION_TOKENS + N_UNITS, :]  # the single TYPE_GLOBAL (team_state) token
-        spr_cls_out = tokens_out[:, -1, :]  # the single TYPE_SPR_CLS token, always last
-
+    def _heads(self, vec_out, spr_cls_out, n_quantiles, tau, q_units):
+        """vec_out [B, 11, hidden] (10 units + team_state), spr_cls_out [B, hidden] -> forward's
+        five outputs."""
+        unit_out = vec_out[:, :N_UNITS]
+        global_out = vec_out[:, N_UNITS]  # the single TYPE_GLOBAL (team_state) token
         vision_latent = self.spr_head(spr_cls_out)
         quantile_values, tau = self.q_head(unit_out[:, :q_units], n_quantiles=n_quantiles, tau=tau)
         q_values = quantile_values.mean(dim=2)  # [B, N_UNITS, n_actions]
-
         return q_values, quantile_values, tau, vision_latent, global_out
+
+    def forward_sequence(
+        self,
+        graphic: torch.Tensor,
+        team_state: torch.Tensor,
+        agent_states: torch.Tensor,
+        memory=None,
+        reset: torch.Tensor | None = None,
+        n_quantiles: int = N_QUANTILES_DEFAULT,
+        tau: torch.Tensor | None = None,
+        q_units: int = N_UNITS,
+        burn_in: int = 0,
+    ):
+        """
+        A temporal model over whole sequences (training / prefill).
+
+        graphic [B, T, C, H, W], team_state [B, T, team_state_size], agent_states
+        [B, T, N_UNITS, agent_state_size]; memory: the state before frame 0 (None = zeros);
+        reset [B, T] bool: zero the memory before those frames (a match starting mid-window);
+        tau: None (sampled per frame), [B, n_quantiles] (shared over T) or [B, T, n_quantiles];
+        burn_in: the first ``burn_in`` frames only warm the memory -- trunk and KDA under
+        no_grad, no Q outputs for them (R2D2-style); the memory entering frame ``burn_in`` is
+        detached.
+
+        Returns (q_values [B, T', q_units, n_actions], quantile_values [B, T', q_units,
+        n_quantiles, n_actions], tau [B, T', n_quantiles], memory after the last frame), with
+        T' = T - burn_in.
+        """
+        if self.temporal is None:
+            raise ValueError("forward_sequence needs a temporal MyModel (temporal=True)")
+        B, T = graphic.shape[:2]
+        if not 0 <= burn_in < T:
+            raise ValueError(f"burn_in must be in [0, T={T}), got {burn_in}")
+        if tau is not None and tau.dim() == 3:
+            tau = tau[:, burn_in:]
+        if burn_in:
+            with torch.no_grad():
+                memory = self._temporal_frames(graphic[:, :burn_in], team_state[:, :burn_in], agent_states[:, :burn_in],
+                                               memory, None if reset is None else reset[:, :burn_in])[1]
+            memory = tuple(m.detach() for m in memory)
+            graphic, team_state, agent_states = graphic[:, burn_in:], team_state[:, burn_in:], agent_states[:, burn_in:]
+            reset = None if reset is None else reset[:, burn_in:]
+            T -= burn_in
+        (vec_out, spr_cls_out), memory = self._temporal_frames(graphic, team_state, agent_states, memory, reset)
+        if tau is not None:
+            tau = tau.unsqueeze(1).expand(B, T, tau.shape[-1]) if tau.dim() == 2 else tau
+            tau = tau.reshape(B * T, -1)
+        q_values, quantile_values, tau, _, _ = self._heads(vec_out, spr_cls_out, n_quantiles, tau, q_units)
+        return (q_values.reshape(B, T, *q_values.shape[1:]), quantile_values.reshape(B, T, *quantile_values.shape[1:]),
+                tau.reshape(B, T, -1), memory)
+
+    def _temporal_frames(self, graphic, team_state, agent_states, memory, reset):
+        """Trunk on B*T frames, temporal block over T: ((vec_out [B*T, 11, D], spr_cls [B*T, D]), memory)."""
+        B, T = graphic.shape[:2]
+        tokens_out = self._trunk(graphic.flatten(0, 1), team_state.flatten(0, 1), agent_states.flatten(0, 1))
+        vec_out = tokens_out[:, N_VISION_TOKENS : N_VISION_TOKENS + N_UNITS + N_TEAM_STATE_TOKENS]
+        vec_out, memory = self.temporal(vec_out.reshape(B, T, *vec_out.shape[1:]), memory, reset)
+        return (vec_out.flatten(0, 1), tokens_out[:, -1]), memory

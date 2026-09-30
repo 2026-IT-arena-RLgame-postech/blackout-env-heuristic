@@ -7,6 +7,11 @@
 * ``tie_mean`` -- fixed tau, and every direction within ``TIE_MARGIN`` logits of the best counts:
   the move is their mean, like the teacher following a label *set* (a straight and a diagonal
   move that both make progress), unless they point apart, then the best alone.
+
+A temporal student (``MyModel(temporal=True)``) works in every mode: ``_FastNet`` then takes and
+returns the memory, ``MyPolicy`` carries it across ticks (one memory per team, so a mirror match
+against itself is two independent players) and clears it in ``reset()`` -- call that at every
+match start, as ``play_labelled_match`` does.
 """
 
 from __future__ import annotations
@@ -37,21 +42,40 @@ class _OwnQ(nn.Module):
         return self.net(graphic, team_state, agent_states, tau=tau, q_units=N_TEAM)[0]
 
 
+class _OwnQStep(nn.Module):
+    """``_OwnQ`` for a temporal MyModel: one tick, memory in and out as plain tensors (traceable)."""
+
+    def __init__(self, net: MyModel):
+        super().__init__()
+        self.net = net
+
+    def forward(self, graphic, team_state, agent_states, tau, kda_state, conv_state):
+        out = self.net(graphic, team_state, agent_states, tau=tau, q_units=N_TEAM, memory=(kda_state, conv_state))
+        return out[0], out[-1][0], out[-1][1]
+
+
 class _FastNet(nn.Module):
     """``MyModel`` for MyPolicy: ``_OwnQ`` under inference_mode, traced at batch 1 on first use.
 
     ``tau`` = None draws fresh quantile fractions every call (IQN as trained); a tensor fixes
-    them.  Returns ``(q_values,)`` so MyPolicy's ``q_values, *_ = net(...)`` still unpacks."""
+    them.  Returns ``(q_values,)`` so MyPolicy's ``q_values, *_ = net(...)`` still unpacks.
+
+    A temporal net: ``forward(..., memory=None)`` returns ``(q_values, memory)`` (None = zeros,
+    the start of a match); the batch-1 trace takes and returns the memory tensors."""
 
     def __init__(self, net: MyModel, tau: torch.Tensor | None = None, n_quantiles: int = N_QUANTILES_DEFAULT):
         super().__init__()
-        self.own = _OwnQ(net.eval())
+        net = net.eval()
+        self.is_temporal = bool(getattr(net, "is_temporal", False))
+        self.own = _OwnQStep(net) if self.is_temporal else _OwnQ(net)
         self.fixed_tau, self.n_quantiles = tau, n_quantiles
         self._traced = None
 
-    def forward(self, graphic, team_state, agent_states, **_):
+    def forward(self, graphic, team_state, agent_states, memory=None, **_):
         batch = graphic.shape[0]
         tau = self.fixed_tau.expand(batch, -1) if self.fixed_tau is not None else torch.rand(batch, self.n_quantiles)
+        if self.is_temporal:
+            return self._step(graphic, team_state, agent_states, tau, memory)
         with torch.inference_mode():
             if batch != 1:  # the trace is batch-1 only
                 return (self.own(graphic, team_state, agent_states, tau),)
@@ -60,6 +84,22 @@ class _FastNet(nn.Module):
                     warnings.simplefilter("ignore")
                     self._traced = torch.jit.trace(self.own, (graphic, team_state, agent_states, tau), check_trace=False)
             return (self._traced(graphic, team_state, agent_states, tau),)
+
+    def _step(self, graphic, team_state, agent_states, tau, memory):
+        batch = graphic.shape[0]
+        with torch.inference_mode():
+            if memory is None:
+                memory = self.own.net.initial_memory(batch, device=graphic.device)
+            args = (graphic, team_state, agent_states, tau, *memory)
+            if batch != 1:
+                q, *memory = self.own(*args)
+                return q, tuple(memory)
+            if self._traced is None:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    self._traced = torch.jit.trace(self.own, args, check_trace=False)
+            q, *memory = self._traced(*args)
+            return q, tuple(memory)
 
 
 def fixed_tau(n: int = N_QUANTILES_DEFAULT) -> torch.Tensor:
@@ -82,11 +122,12 @@ class _TieMeanPolicy(MyPolicy):
         return moves
 
 
-def load_net(state: dict) -> MyModel:
-    """A MyModel shaped like ``state``: its width, and 8 or 9 (--stand-action) outputs."""
-    net = MyModel(hidden_size=state["token_type_emb.weight"].shape[1], n_actions=state["q_head.value_head.1.weight"].shape[0])
-    net.load_state_dict(state)
-    return net
+def load_net(state: dict, temporal: bool | None = None) -> MyModel:
+    """A MyModel shaped like ``state``: its width, 8 or 9 (--stand-action) outputs, and temporal
+    memory iff ``state`` has ``temporal.`` keys (``temporal=None``).  ``temporal=True`` also
+    accepts a stateless state: the warm start (identity-initialised memory, the same Q-values);
+    see ``MyModel.from_state_dict``."""
+    return MyModel.from_state_dict(state, temporal=temporal)
 
 
 def make_student(net: MyModel, inference: str = "iqn") -> MyPolicy:
