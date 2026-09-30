@@ -72,6 +72,10 @@ class MyPolicy(BaseModel):
         self._temporal = bool(getattr(net, "is_temporal", False))
         self._memory: dict[bool, object] = {}  # team_b -> the net's memory after the last tick
 
+    @property
+    def is_temporal(self) -> bool:
+        return self._temporal
+
     def reset(self) -> None:
         """Start of a match: forget the temporal memory (a no-op for a stateless net)."""
         self._memory.clear()

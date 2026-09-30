@@ -60,7 +60,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from blackout_env.model.my_model import MyModel
+from blackout_env.model.my_model import TEMPORAL_PREFIX, MyModel
 from blackout_env.train.distill.collect import CollectorPool, MatchTask, teacher_arg
 from blackout_env.model.my_policy import N_DIRECTIONS
 from blackout_env.train.distill.dataset import FIELDS, GRAPHIC_SCALE, KIND_INDEX, N_TEAM, DistillDataset, new_shards
@@ -136,6 +136,12 @@ def parse_args(argv=None) -> argparse.Namespace:
                    help="a 9th output, STAND, trained where the teacher has no label: it stands there (interacting, "
                    "waiting, holding a slot), and an 8-way student dithers back and forth instead -- 46%% of D4's "
                    "reversals.  --init from an 8-way checkpoint keeps its directions and adds the new row")
+    p.add_argument("--temporal", action="store_true",
+                   help="a student with memory (MyModel(temporal=True): per-slot KDA between trunk and head), trained on "
+                   "windows of consecutive ticks; --init from a stateless checkpoint warm-starts it with identical outputs")
+    p.add_argument("--windows", type=int, default=8, help="--temporal: windows per batch")
+    p.add_argument("--window", type=int, default=32, help="--temporal: trained ticks per window")
+    p.add_argument("--burn-in", type=int, default=32, help="--temporal: ticks before each window that only build memory")
     p.add_argument("--max-rows", type=int, default=600_000, help="replay ring size (~8 KB per row in RAM)")
     p.add_argument("--device", default="mps" if torch.backends.mps.is_available() else "cpu")
     return p.parse_args(argv)
@@ -186,7 +192,10 @@ def load_weights(net: MyModel, state: dict) -> None:
         weight, bias = state[f"{key}.weight"], state[f"{key}.bias"]
         state[f"{key}.weight"] = torch.cat((weight, torch.zeros_like(weight[:1])))
         state[f"{key}.bias"] = torch.cat((bias, (bias.min() - STAND_INIT_MARGIN).reshape(1)))
-    net.load_state_dict(state)
+    if net.is_temporal and not any(k.startswith(TEMPORAL_PREFIX) for k in state):
+        net.load_warm_start(state)  # a stateless checkpoint: the memory block starts as the identity
+    else:
+        net.load_state_dict(state)
 
 
 class Learner:
@@ -196,7 +205,7 @@ class Learner:
     def __init__(self, args):
         self.args = args
         self.device = torch.device(args.device)
-        self.net = MyModel(n_actions=N_DIRECTIONS + int(args.stand_action)).to(self.device)
+        self.net = MyModel(n_actions=N_DIRECTIONS + int(args.stand_action), temporal=args.temporal).to(self.device)
         if args.compile:
             for name in COMPILED_MODULES:  # in place: state_dict keys stay the same
                 getattr(self.net, name).compile()
@@ -222,13 +231,47 @@ class Learner:
             kinds = torch.where(stand, torch.full_like(kinds, KIND_INDEX["stand"]), kinds)
         return graphic, batch["team_state"], batch["agent_states"], masks, classes, kinds
 
+    @property
+    def rows_per_step(self) -> int:
+        """Trained rows per gradient step (what --replay-ratio counts)."""
+        return self.args.windows * self.args.window if self.args.temporal else self.args.batch_size
+
+    def _autocast(self):
+        return torch.autocast(self.device.type, dtype=self._amp) if self._amp else contextlib.nullcontext()
+
     def step(self, rows: dict[str, np.ndarray]) -> None:
+        """One gradient step on independent rows (a stateless student)."""
         self.net.train()
         graphic, team_state, agent_states, masks, classes, kinds = self._tensors(rows)
-        autocast = torch.autocast(self.device.type, dtype=self._amp) if self._amp else contextlib.nullcontext()
-        with autocast:  # the loss and statistics below stay fp32
+        with self._autocast():  # the loss and statistics below stay fp32
             q_values, *_ = self.net(graphic, team_state, agent_states, n_quantiles=self.args.train_quantiles, q_units=N_TEAM)
-        logits = q_values.float()
+        self._fit(q_values.float(), masks, classes, kinds)
+
+    def _window_tensors(self, windows: dict[str, np.ndarray]):
+        """dataset.sample_windows output -> [B, T, ...] tensors; label masks are cleared where
+        ``loss_mask`` is off (padding, burn-in), so those positions carry no target."""
+        b, t = windows["valid"].shape
+        flat = {k: windows[k].reshape(b * t, *windows[k].shape[2:]) for k in FIELDS}
+        graphic, team_state, agent_states, masks, classes, kinds = self._tensors(flat)
+        seq = lambda x: x.reshape(b, t, *x.shape[1:])
+        loss_mask = torch.from_numpy(windows["loss_mask"]).to(self.device)
+        masks = seq(masks) & loss_mask[:, :, None, None]
+        reset = torch.from_numpy(windows["reset"]).to(self.device)
+        return seq(graphic), seq(team_state), seq(agent_states), masks, seq(classes), seq(kinds), reset
+
+    def step_windows(self, windows: dict[str, np.ndarray]) -> None:
+        """One gradient step on windows of consecutive ticks (a --temporal student): memory is
+        built over the burn-in without gradients, then trained through the window."""
+        self.net.train()
+        graphic, team_state, agent_states, masks, classes, kinds, reset = self._window_tensors(windows)
+        burn = self.args.burn_in
+        with self._autocast():
+            q_values, *_ = self.net.forward_sequence(graphic, team_state, agent_states, reset=reset, burn_in=burn,
+                                                     n_quantiles=self.args.train_quantiles, q_units=N_TEAM)
+        flat = lambda x: x[:, burn:].reshape(-1, *x.shape[2:])
+        self._fit(q_values.float().reshape(-1, *q_values.shape[2:]), flat(masks), flat(classes), flat(kinds))
+
+    def _fit(self, logits: torch.Tensor, masks: torch.Tensor, classes: torch.Tensor, kinds: torch.Tensor) -> None:
         valid = masks.any(dim=-1).float()
         weights = class_weights(classes, valid) if self.args.class_weighting == "balanced" else None
         loss, stats = set_valued_cross_entropy(logits, masks, weights, self.args.z_loss)
@@ -265,8 +308,23 @@ class Learner:
         for start in range(0, len(rows["labels"]), chunk):
             part = {k: rows[k][start:start + chunk] for k in FIELDS}
             graphic, team_state, agent_states, masks, classes, kinds = self._tensors(part)
-            q_values, *_ = self.net(graphic, team_state, agent_states, q_units=N_TEAM)
+            q_values, *_ = self.net(graphic, team_state, agent_states, q_units=N_TEAM)  # temporal: from empty memory
             accuracy.add(q_values, masks, classes, kinds)
+
+    @torch.no_grad()
+    def score_sequence(self, rows: dict[str, np.ndarray], accuracy: LabelAccuracy, burn_in: int) -> None:
+        """Label accuracy on consecutive ticks of one match (a --temporal student), the first
+        ``burn_in`` only building memory."""
+        self.net.eval()
+        n = len(rows["labels"])
+        windows = {k: rows[k][None] for k in FIELDS}
+        windows["valid"] = np.ones((1, n), bool)
+        windows["reset"] = np.zeros((1, n), bool)
+        windows["loss_mask"] = windows["valid"].copy()
+        windows["loss_mask"][:, :burn_in] = False
+        graphic, team_state, agent_states, masks, classes, kinds, reset = self._window_tensors(windows)
+        q_values, *_ = self.net.forward_sequence(graphic, team_state, agent_states, reset=reset, burn_in=burn_in, q_units=N_TEAM)
+        accuracy.add(q_values[0], masks[0, burn_in:], classes[0, burn_in:], kinds[0, burn_in:])
 
     def _flat_params(self) -> torch.Tensor:
         return torch.cat([p.detach().flatten() for p in self.net.parameters()]).clone()
@@ -388,7 +446,7 @@ class Run:
             "scaler_state": self.learner.scaler.state_dict(),
             "train_step_count": self.step,
             "distill": {"version": self.version, "teacher": self.args.teacher, "queued": self.queued,
-                        "collected_rows": self.collected_rows},
+                        "collected_rows": self.collected_rows, "temporal": self.args.temporal},
         }
         tmp = self.latest.with_suffix(".tmp")
         torch.save(payload, tmp)
@@ -435,7 +493,7 @@ class Run:
         throttled = False
         while pool.in_flight < args.queue_depth * pool.workers:
             expected = self.collected_rows + pool.in_flight * self._rows_per_match()
-            if not wants_matches(self.step * args.batch_size, expected, self.dataset.size, args):
+            if not wants_matches(self.step * self.learner.rows_per_step, expected, self.dataset.size, args):
                 throttled = True
                 break
             n = self.queued
@@ -460,7 +518,14 @@ class Run:
 
     def _score_fresh(self, rows: dict[str, np.ndarray], tag: str) -> None:
         if self.step and len(rows["labels"]):
-            pick = self._rng.choice(len(rows["labels"]), min(self.args.fresh_rows, len(rows["labels"])), replace=False)
+            n = len(rows["labels"])
+            if self.args.temporal:  # one contiguous stretch, its memory built over a burn-in first
+                length = min(n, self.args.burn_in + self.args.fresh_rows)
+                start = int(self._rng.integers(n - length + 1))
+                burn = min(self.args.burn_in, length - 1)
+                self.learner.score_sequence({k: rows[k][start:start + length] for k in FIELDS}, self.fresh[tag], burn)
+                return
+            pick = self._rng.choice(n, min(self.args.fresh_rows, n), replace=False)
             self.learner.score({k: rows[k][np.sort(pick)] for k in FIELDS}, self.fresh[tag])
 
     def _record(self, summaries: list[dict]) -> None:
@@ -504,7 +569,7 @@ class Run:
         seconds = max(1e-6, time.time() - window_started)
         stats = {
             "version": self.version, "beta": beta_for(self.version, args),
-            "replay_ratio": self.step * args.batch_size / max(1, self.collected_rows),
+            "replay_ratio": self.step * self.learner.rows_per_step / max(1, self.collected_rows),
             "collected_rows": self.collected_rows, "elapsed_s": time.time() - started,
             "pipeline/steps_per_s": args.log_every / seconds,
             "pipeline/matches_per_min": 60 * p["matches"] / seconds,
@@ -550,7 +615,10 @@ class Run:
             print(f"[distill] {self.dataset.size} rows, fitting", flush=True)
             window_started = self._window_started = time.time()
             while self.step < args.steps:
-                self.learner.step(self.dataset.sample(args.batch_size, self._rng))
+                if args.temporal:
+                    self.learner.step_windows(self.dataset.sample_windows(args.windows, args.window, args.burn_in, self._rng))
+                else:  # with STAND, all-unlabelled rows are targets too (the teacher stands everywhere there)
+                    self.learner.step(self.dataset.sample(args.batch_size, self._rng, labelled_only=not args.stand_action))
                 self.step += 1
                 if self.step % args.sync_every == 0:
                     self.sync(pool)

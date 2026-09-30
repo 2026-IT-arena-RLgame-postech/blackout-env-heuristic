@@ -138,7 +138,10 @@ def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.nda
             labels = teacher.teach(learner_obs)  # every tick: a stateful teacher must see them all
             # an act-teacher executes its own raw move; a relabeller follows its label
             teacher_moves = getattr(teacher, "last_actions", None)
-            student_actions = student.act(learner_obs) if student is not None and task.beta < 1.0 else {}
+            # a temporal student is stepped every tick, even where the teacher drives, so its memory
+            # follows the whole match (the same ticks its training windows see)
+            asked = student is not None and (task.beta < 1.0 or getattr(student, "is_temporal", False))
+            student_actions = student.act(learner_obs) if asked else {}
             teacher_drove = {name: name not in student_actions or rng.random() < task.beta for name in learner_obs}
             for name in learner_obs:
                 if not teacher_drove[name]:

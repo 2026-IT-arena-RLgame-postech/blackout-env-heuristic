@@ -354,3 +354,33 @@ def test_extra_pool_draws_listed_descriptors_and_categories():
     assert [opponent_category(x) for x in ("perturb:eps=0.1:strategic_v19", "strategic_raider", "mixture:strategic_v21",
                                            "strategic_v17:steal_weight=3.0", "mixture:strategic_v4")] \
         == ["perturbed", "new_axis", "top_tier", "top_tier", "heuristic"]
+
+
+def test_temporal_learner_trains_on_windows_and_warm_starts_from_a_stateless_state():
+    from blackout_env.train.distill.run import Learner, load_weights, parse_args
+
+    args = ["--build", "x", "--device", "cpu", "--stand-action", "--temporal", "--windows", "2", "--window", "4", "--burn-in", "3"]
+    learner = Learner(parse_args(args))
+    stateless = MyModel().eval()  # an 8-way stateless checkpoint
+    load_weights(learner.net, stateless.state_dict())
+    g, ts, ag = torch.rand(1, 13, 24, 24).round(), torch.rand(1, 4), torch.rand(1, 10, 12) * 2 - 1
+    tau = torch.rand(1, 8)
+    with torch.no_grad():
+        learner.net.eval()
+        assert torch.allclose(learner.net(g, ts, ag, tau=tau)[0][..., :8], stateless(g, ts, ag, tau=tau)[0], atol=1e-5)
+    b, t = 2, 7
+    rng = np.random.default_rng(0)
+    windows = {
+        "graphic": rng.integers(0, 16, (b, t, 24, 24, 13)).astype(np.uint8), "team_state": rng.random((b, t, 4), dtype=np.float32),
+        "agent_states": rng.random((b, t, 10, 12), dtype=np.float32), "labels": rng.integers(0, 256, (b, t, 5)).astype(np.uint8),
+        "kinds": np.ones((b, t, 5), np.uint8), "valid": np.ones((b, t), bool), "reset": np.zeros((b, t), bool),
+    }
+    windows["agent_states"][..., 9:12] = [1, 0, 0]  # every unit a Collector (one-hot class)
+    windows["reset"][1, 5] = True
+    windows["loss_mask"] = windows["valid"].copy()
+    windows["loss_mask"][:, :3] = False
+    windows["loss_mask"][0, 6] = False  # padding
+    learner.step_windows(windows)
+    stats = learner.pop_stats()
+    assert np.isfinite(stats["train/ce"]) and stats["train/labels"] == 5 * (2 * 4 - 1)  # trained positions only
+    assert learner.rows_per_step == 8

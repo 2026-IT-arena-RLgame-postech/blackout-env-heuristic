@@ -83,7 +83,17 @@ class TemporalMemory(nn.Module):
 
     def forward(self, tokens: torch.Tensor, memory=None, reset: torch.Tensor | None = None):
         """tokens [B, T, S, D]; memory as in the module docstring or None; reset [B, T] bool
-        (zero the memory before those frames).  Returns (tokens' [B, T, S, D], memory)."""
+        (zero the memory before those frames).  Returns (tokens' [B, T, S, D], memory).
+
+        Always fp32, outside any autocast: under fp16 autocast the block's projections and
+        gates overflowed (NaN loss from the first step of a temporal fp16 run), and it is ~8% of
+        a training step, so there is little to save."""
+        dtype = tokens.dtype
+        with torch.autocast(tokens.device.type, enabled=False):
+            out, memory = self._forward_fp32(tokens.float(), memory, reset)
+        return out.to(dtype), memory
+
+    def _forward_fp32(self, tokens: torch.Tensor, memory, reset: torch.Tensor | None):
         B, T, S, D = tokens.shape
         x = self.norm_in(tokens + self.slot_emb).transpose(1, 2).reshape(B * S, T, D)
         state = None
