@@ -299,3 +299,43 @@ def test_fast_student_matches_eager_mymodel(team_b):
     eager = MyPolicy(_EagerFixedTau(net)).action_values(team)
     for agent in names:
         assert np.allclose(fast[agent], eager[agent], atol=1e-5) and np.allclose(fast[agent], fast_again[agent])
+
+
+def test_stand_action_student_stands_and_mirrors_like_the_directions():
+    from blackout_env.model.my_policy import ACTION_VECTORS, STAND
+    from blackout_env.train.distill.inference import load_net, make_student
+    from blackout_env.train.distill.run import load_weights
+
+    eight = MyModel().eval()
+    nine = MyModel(n_actions=9).eval()
+    load_weights(nine, eight.state_dict())  # keeps the directions, adds STAND
+    assert torch.equal(nine.q_head.value_head[1].weight[:8], eight.q_head.value_head[1].weight)
+    assert not nine.q_head.value_head[1].weight[8].any()
+    assert load_net(nine.state_dict()).q_head.value_head[1].out_features == 9
+
+    with torch.no_grad():  # make STAND win for every unit
+        nine.q_head.value_head[1].bias[8] = 1e3
+    for team_b in (False, True):
+        names = all_agents()[5:] if team_b else all_agents()[:5]
+        team = {name: _view(team_b) for name in names}
+        for inference in ("iqn", "fixed_tau", "tie_mean"):
+            moves = make_student(nine, inference).act(team)
+            assert all(np.array_equal(m, ACTION_VECTORS[STAND]) for m in moves.values())
+        values = make_student(nine, "fixed_tau").action_values(team)
+        assert all(int(np.argmax(v)) == STAND and len(v) == 9 for v in values.values())
+
+
+def test_stand_targets_where_the_teacher_has_no_label():
+    from blackout_env.train.distill.run import Learner, parse_args
+
+    learner = Learner(parse_args(["--build", "x", "--stand-action", "--device", "cpu"]))
+    rows = {
+        "graphic": np.zeros((2, 24, 24, 13), np.uint8), "team_state": np.zeros((2, 4), np.float32),
+        "agent_states": np.zeros((2, 10, 12), np.float32),
+        "labels": np.array([[1, 0, 3, 0, 0], [0, 0, 0, 0, 128]], np.uint8), "kinds": np.array([[1, 0, 1, 0, 0], [0] * 4 + [2]], np.uint8),
+    }
+    _, _, _, masks, _, kinds = learner._tensors(rows)
+    assert masks.shape == (2, 5, 9)
+    assert masks[0, 1].tolist() == [False] * 8 + [True] and masks[0, 0, 8].item() is False
+    assert kinds[0, 1].item() == 11 and kinds[1, 4].item() == 2
+    learner.step(rows)  # trains on both kinds of rows

@@ -92,6 +92,9 @@ class MatchRecorder:
                 for key in ("all", f"role_{role}", f"kind_{label.kind}", f"{controller}_driving"):
                     c[f"agree_hit/{key}"] += hit
                     c[f"agree_n/{key}"] += 1
+            elif name in student_actions:  # the teacher stands here: does the student?
+                c["agree_hit/stand"] += not np.any(student_actions[name])
+                c["agree_n/stand"] += 1
             self._count_reversal(name, np.asarray(actions[name], np.float32), controller)
 
         bucket = next(f"{lo}_{hi}s" if hi < 10_000 else f"{lo}s_plus" for lo, hi in TIME_BUCKETS if lo <= elapsed < hi)

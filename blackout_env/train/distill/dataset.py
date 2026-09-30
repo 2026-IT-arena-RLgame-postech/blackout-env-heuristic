@@ -33,6 +33,7 @@ N_TEAM = 5
 KINDS = (
     "", "battery", "steal", "special", "deposit", "wait_storage", "transform",
     "hunt", "patrol_defend", "patrol_raid", "idle",
+    "stand",  # never stored: --stand-action's target where the teacher has no label (and stands)
 )
 KIND_INDEX = {kind: i for i, kind in enumerate(KINDS)}
 FIELDS = ("graphic", "team_state", "agent_states", "labels", "kinds")

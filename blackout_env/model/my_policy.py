@@ -24,6 +24,12 @@ DIRECTION_VECTORS = np.array(
 )
 
 
+# A net with one more output than directions (MyModel(n_actions=N_DIRECTIONS + 1), the distilled
+# students trained with --stand-action) has a "stay" action at index STAND: the zero move.
+STAND = N_DIRECTIONS
+ACTION_VECTORS = np.vstack([DIRECTION_VECTORS, np.zeros((1, 2), dtype=np.float32)])
+
+
 def direction_vector_to_idx(vectors: np.ndarray) -> np.ndarray:
     """
     Snaps arbitrary-angle (dx, dy) vectors to the index of the nearest DIRECTION_VECTORS
@@ -94,8 +100,9 @@ class MyPolicy(BaseModel):
 
         if team_b:
             # Canonical action index i is world index mirror(i), so reordering the 8 columns by
-            # the mirror turns a canonical row into a world-frame one.
-            q_rows = q_rows[:, mirror_direction_idx(np.arange(N_DIRECTIONS))]
+            # the mirror turns a canonical row into a world-frame one (STAND mirrors to itself).
+            order = mirror_direction_idx(np.arange(N_DIRECTIONS))
+            q_rows = q_rows[:, np.r_[order, np.arange(N_DIRECTIONS, q_rows.shape[1])]]
         return {
             agent: q_rows[canonical_unit_row(unit_index(agent), team_b)]
             for agent in agents
@@ -107,7 +114,7 @@ class MyPolicy(BaseModel):
             shared_obs = obs[next(iter(obs))]
             mask = world_legal_mask(shared_obs["graphic"], shared_obs["agent_states"])  # [N_UNITS, 8]
             q_rows = {
-                agent: np.where(mask[unit_index(agent)], row, -np.inf)
+                agent: np.where(np.r_[mask[unit_index(agent)], np.ones(len(row) - N_DIRECTIONS, bool)], row, -np.inf)
                 for agent, row in q_rows.items()
             }
-        return {agent: DIRECTION_VECTORS[int(np.argmax(row))] for agent, row in q_rows.items()}
+        return {agent: ACTION_VECTORS[int(np.argmax(row))] for agent, row in q_rows.items()}

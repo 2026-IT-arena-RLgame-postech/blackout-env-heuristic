@@ -62,7 +62,8 @@ import torch
 
 from blackout_env.model.my_model import MyModel
 from blackout_env.train.distill.collect import TEACHERS, CollectorPool, MatchTask
-from blackout_env.train.distill.dataset import FIELDS, GRAPHIC_SCALE, N_TEAM, DistillDataset, new_shards
+from blackout_env.model.my_policy import N_DIRECTIONS
+from blackout_env.train.distill.dataset import FIELDS, GRAPHIC_SCALE, KIND_INDEX, N_TEAM, DistillDataset, new_shards
 from blackout_env.train.distill.loss import set_valued_cross_entropy
 from blackout_env.train.distill.metrics import CLASS_COLS, LabelAccuracy, MetricsLog, summarize_matches
 from blackout_env.train.distill.opponents import compatible_checkpoints, draw_opponent, opponent_category, parse_pool
@@ -126,6 +127,10 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--amp", choices=["none", "bf16", "fp16"], default="none",
                    help="autocast precision of the training forward (weights and optimizer stay fp32)")
     p.add_argument("--compile", action="store_true", help="torch.compile COMPILED_MODULES (~11 s warm-up)")
+    p.add_argument("--stand-action", action="store_true",
+                   help="a 9th output, STAND, trained where the teacher has no label: it stands there (interacting, "
+                   "waiting, holding a slot), and an 8-way student dithers back and forth instead -- 46%% of D4's "
+                   "reversals.  --init from an 8-way checkpoint keeps its directions and adds the new row")
     p.add_argument("--max-rows", type=int, default=600_000, help="replay ring size (~8 KB per row in RAM)")
     p.add_argument("--device", default="mps" if torch.backends.mps.is_available() else "cpu")
     return p.parse_args(argv)
@@ -161,6 +166,24 @@ def class_weights(classes: torch.Tensor, valid: torch.Tensor) -> torch.Tensor:
     return (classes * per_class).sum(dim=-1)
 
 
+STAND_INIT_MARGIN = 4.0  # logits
+
+
+def load_weights(net: MyModel, state: dict) -> None:
+    """Load ``state`` into ``net``; an 8-way state into a --stand-action net keeps every
+    direction and starts STAND's row at zero weights and a bias STAND_INIT_MARGIN below the lowest
+    direction's, so the inherited student keeps moving until STAND is trained (at the lowest
+    bias alone, STAND won half of the labelled ticks of D4's weights)."""
+    key = "q_head.value_head.1"
+    rows = net.state_dict()[f"{key}.weight"].shape[0]
+    if state[f"{key}.weight"].shape[0] == N_DIRECTIONS and rows == N_DIRECTIONS + 1:
+        state = dict(state)
+        weight, bias = state[f"{key}.weight"], state[f"{key}.bias"]
+        state[f"{key}.weight"] = torch.cat((weight, torch.zeros_like(weight[:1])))
+        state[f"{key}.bias"] = torch.cat((bias, (bias.min() - STAND_INIT_MARGIN).reshape(1)))
+    net.load_state_dict(state)
+
+
 class Learner:
     """The net, its optimizer, and running training statistics (summed on-device: no per-step
     host sync)."""
@@ -168,7 +191,7 @@ class Learner:
     def __init__(self, args):
         self.args = args
         self.device = torch.device(args.device)
-        self.net = MyModel().to(self.device)
+        self.net = MyModel(n_actions=N_DIRECTIONS + int(args.stand_action)).to(self.device)
         if args.compile:
             for name in COMPILED_MODULES:  # in place: state_dict keys stay the same
                 getattr(self.net, name).compile()
@@ -187,7 +210,12 @@ class Learner:
         graphic = batch["graphic"].permute(0, 3, 1, 2).float() / GRAPHIC_SCALE
         masks = ((batch["labels"].long().unsqueeze(-1) >> self._bit_index) & 1) == 1  # dataset.unpack_labels
         classes = batch["agent_states"][:, :N_TEAM, CLASS_COLS]
-        return graphic, batch["team_state"], batch["agent_states"], masks, classes, batch["kinds"]
+        kinds = batch["kinds"]
+        if self.args.stand_action:  # no label = the teacher stands: target STAND alone
+            stand = batch["labels"] == 0
+            masks = torch.cat((masks, stand.unsqueeze(-1)), dim=-1)
+            kinds = torch.where(stand, torch.full_like(kinds, KIND_INDEX["stand"]), kinds)
+        return graphic, batch["team_state"], batch["agent_states"], masks, classes, kinds
 
     def step(self, rows: dict[str, np.ndarray]) -> None:
         self.net.train()
@@ -340,7 +368,7 @@ class Run:
             return True
         if self.args.init is not None:
             init = torch.load(self.args.init, map_location=self.learner.device, weights_only=True)
-            self.learner.net.load_state_dict(init["policy_state"])
+            load_weights(self.learner.net, init["policy_state"])
             self.publish()
         return False
 

@@ -18,7 +18,7 @@ import torch
 from torch import nn
 
 from blackout_env.model.my_model import N_QUANTILES_DEFAULT, MyModel
-from blackout_env.model.my_policy import DIRECTION_VECTORS, MyPolicy
+from blackout_env.model.my_policy import ACTION_VECTORS, DIRECTION_VECTORS, STAND, MyPolicy
 from blackout_env.train.distill.dataset import N_TEAM
 
 INFERENCE = ("iqn", "fixed_tau", "tie_mean")
@@ -71,11 +71,22 @@ class _TieMeanPolicy(MyPolicy):
     def act(self, obs):
         moves = {}
         for agent, row in self.action_values(obs).items():
+            if int(np.argmax(row)) == STAND:  # a --stand-action student choosing to stay
+                moves[agent] = ACTION_VECTORS[STAND]
+                continue
+            row = row[:len(DIRECTION_VECTORS)]
             tied = row >= row.max() - TIE_MARGIN
             mean = DIRECTION_VECTORS[tied].mean(axis=0)
             norm = float(np.linalg.norm(mean))
             moves[agent] = (mean / norm).astype(np.float32) if norm >= _CANCELLING else DIRECTION_VECTORS[int(np.argmax(row))]
         return moves
+
+
+def load_net(state: dict) -> MyModel:
+    """A MyModel shaped like ``state``: its width, and 8 or 9 (--stand-action) outputs."""
+    net = MyModel(hidden_size=state["token_type_emb.weight"].shape[1], n_actions=state["q_head.value_head.1.weight"].shape[0])
+    net.load_state_dict(state)
+    return net
 
 
 def make_student(net: MyModel, inference: str = "iqn") -> MyPolicy:

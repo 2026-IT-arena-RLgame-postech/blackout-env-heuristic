@@ -226,15 +226,12 @@ def _load_student(path: str | None, inference: str = "iqn") -> tuple[object | No
         return None, 0
     import torch
 
-    from blackout_env.model.my_model import MyModel
-    from blackout_env.train.distill.inference import make_student
+    from blackout_env.train.distill.inference import load_net, make_student
 
     key = (path, Path(path).stat().st_mtime, inference)
     if _STUDENT is None or _STUDENT[0] != key:
         ckpt = torch.load(path, map_location="cpu", weights_only=True)
-        net = MyModel()
-        net.load_state_dict(ckpt["policy_state"])
-        _STUDENT = (key, make_student(net, inference), int(ckpt.get("distill", {}).get("version", 0)))
+        _STUDENT = (key, make_student(load_net(ckpt["policy_state"]), inference), int(ckpt.get("distill", {}).get("version", 0)))
     return _STUDENT[1], _STUDENT[2]
 
 

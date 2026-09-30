@@ -17,8 +17,7 @@ import torch
 
 from blackout_env import BlackOutEnv
 from blackout_env.heuristics import POLICY_REGISTRY
-from blackout_env.model.my_model import MyModel
-from blackout_env.train.distill.inference import INFERENCE, make_student
+from blackout_env.train.distill.inference import INFERENCE, load_net, make_student
 
 try:
     from evaluate_checkpoint_vs_heuristic import play
@@ -28,10 +27,7 @@ except ImportError:
 
 def load(path: Path, inference: str):
     ckpt = torch.load(path, map_location="cpu", weights_only=True)
-    state = ckpt["policy_state"]
-    net = MyModel(hidden_size=state["token_type_emb.weight"].shape[1])
-    net.load_state_dict(state)
-    return make_student(net, inference), ckpt.get("distill", {}).get("version"), ckpt.get("train_step_count")
+    return make_student(load_net(ckpt["policy_state"]), inference), ckpt.get("distill", {}).get("version"), ckpt.get("train_step_count")
 
 
 def main() -> None:
