@@ -11,28 +11,60 @@
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import torch
 from torch import nn
 
 from blackout_env.model.my_model import N_QUANTILES_DEFAULT, MyModel
 from blackout_env.model.my_policy import DIRECTION_VECTORS, MyPolicy
+from blackout_env.train.distill.dataset import N_TEAM
 
 INFERENCE = ("iqn", "fixed_tau", "tie_mean")
 TIE_MARGIN = 1.0  # logits; e^-1 = the tied move has at least ~37% of the best one's probability
 _CANCELLING = 0.5  # |mean of the tied unit vectors| below this = tied moves point apart
 
 
-class _FixedTau(nn.Module):
-    """MyModel evaluated at fixed quantile fractions (i + 0.5) / n."""
+class _OwnQ(nn.Module):
+    """MyModel's Q-values for the own team's rows only (0-4 of a canonical batch)."""
 
-    def __init__(self, net: MyModel, n: int = N_QUANTILES_DEFAULT):
+    def __init__(self, net: MyModel):
         super().__init__()
         self.net = net
-        self.register_buffer("tau", (torch.arange(n, dtype=torch.float32) + 0.5) / n)
+
+    def forward(self, graphic, team_state, agent_states, tau):
+        return self.net(graphic, team_state, agent_states, tau=tau, q_units=N_TEAM)[0]
+
+
+class _FastNet(nn.Module):
+    """``MyModel`` for MyPolicy: ``_OwnQ`` under inference_mode, traced at batch 1 on first use.
+
+    ``tau`` = None draws fresh quantile fractions every call (IQN as trained); a tensor fixes
+    them.  Returns ``(q_values,)`` so MyPolicy's ``q_values, *_ = net(...)`` still unpacks."""
+
+    def __init__(self, net: MyModel, tau: torch.Tensor | None = None, n_quantiles: int = N_QUANTILES_DEFAULT):
+        super().__init__()
+        self.own = _OwnQ(net.eval())
+        self.fixed_tau, self.n_quantiles = tau, n_quantiles
+        self._traced = None
 
     def forward(self, graphic, team_state, agent_states, **_):
-        return self.net(graphic, team_state, agent_states, tau=self.tau.expand(graphic.shape[0], -1))
+        batch = graphic.shape[0]
+        tau = self.fixed_tau.expand(batch, -1) if self.fixed_tau is not None else torch.rand(batch, self.n_quantiles)
+        with torch.inference_mode():
+            if batch != 1:  # the trace is batch-1 only
+                return (self.own(graphic, team_state, agent_states, tau),)
+            if self._traced is None:
+                with warnings.catch_warnings():  # deprecation, and GroupNorm's shape check (batch 1 is fixed)
+                    warnings.simplefilter("ignore")
+                    self._traced = torch.jit.trace(self.own, (graphic, team_state, agent_states, tau), check_trace=False)
+            return (self._traced(graphic, team_state, agent_states, tau),)
+
+
+def fixed_tau(n: int = N_QUANTILES_DEFAULT) -> torch.Tensor:
+    """Evenly spaced quantile fractions (i + 0.5) / n, shape [1, n]."""
+    return ((torch.arange(n, dtype=torch.float32) + 0.5) / n).unsqueeze(0)
 
 
 class _TieMeanPolicy(MyPolicy):
@@ -49,9 +81,9 @@ class _TieMeanPolicy(MyPolicy):
 def make_student(net: MyModel, inference: str = "iqn") -> MyPolicy:
     net.eval()
     if inference == "iqn":
-        return MyPolicy(net)
+        return MyPolicy(_FastNet(net))
     if inference == "fixed_tau":
-        return MyPolicy(_FixedTau(net))
+        return MyPolicy(_FastNet(net, tau=fixed_tau()))
     if inference == "tie_mean":
-        return _TieMeanPolicy(_FixedTau(net))
+        return _TieMeanPolicy(_FastNet(net, tau=fixed_tau()))
     raise ValueError(f"unknown inference {inference!r}; choose from {INFERENCE}")

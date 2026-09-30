@@ -276,3 +276,26 @@ def test_q_units_computes_only_the_first_rows_exactly():
     full = net(g, ts, ag, tau=tau)[0]
     own = net(g, ts, ag, tau=tau, q_units=5)[0]
     assert own.shape == (3, 5, 8) and torch.allclose(full[:, :5], own, atol=1e-6)
+
+
+@pytest.mark.parametrize("team_b", [False, True])
+def test_fast_student_matches_eager_mymodel(team_b):
+    from blackout_env.train.distill.inference import fixed_tau, make_student
+
+    class _EagerFixedTau(torch.nn.Module):  # the pre-trace path: all 10 rows, eager
+        def __init__(self, net):
+            super().__init__()
+            self.net = net
+
+        def forward(self, graphic, team_state, agent_states, **_):
+            return self.net(graphic, team_state, agent_states, tau=fixed_tau().expand(graphic.shape[0], -1))
+
+    torch.manual_seed(0)
+    net = MyModel().eval()
+    names = all_agents()[5:] if team_b else all_agents()[:5]
+    team = {name: _view(team_b) for name in names}
+    fast = make_student(net, "fixed_tau").action_values(team)
+    fast_again = make_student(net, "fixed_tau").action_values(team)  # traced on first use, then reused
+    eager = MyPolicy(_EagerFixedTau(net)).action_values(team)
+    for agent in names:
+        assert np.allclose(fast[agent], eager[agent], atol=1e-5) and np.allclose(fast[agent], fast_again[agent])

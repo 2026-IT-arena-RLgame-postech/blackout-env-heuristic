@@ -167,14 +167,14 @@ def _checkpoint_policy(path: str):
         import torch
 
         from blackout_env.model.my_model import MyModel
-        from blackout_env.model.my_policy import MyPolicy
+        from blackout_env.train.distill.inference import make_student
 
         state = torch.load(path, map_location="cpu", weights_only=True)["policy_state"]
         net = MyModel(hidden_size=state["token_type_emb.weight"].shape[1])
         net.load_state_dict(state)
         if len(_CHECKPOINT_CACHE) >= 16:  # ~24 MB each; a worker meets a few dozen at most
             _CHECKPOINT_CACHE.pop(next(iter(_CHECKPOINT_CACHE)))
-        policy = _CHECKPOINT_CACHE[path] = MyPolicy(net.eval())
+        policy = _CHECKPOINT_CACHE[path] = make_student(net)  # MyPolicy, own rows only, traced
     return policy
 
 
