@@ -53,7 +53,8 @@ def _load(root: Path, rows: int) -> DistillDataset:
     return dataset
 
 
-def bench(learner: Learner, dataset: DistillDataset, batch: int, quantiles: int, amp: str, steps: int, warmup: int) -> dict:
+def bench(learner: Learner, dataset: DistillDataset, batch: int, quantiles: int, amp: str, steps: int, warmup: int,
+          q_units: int = 5) -> dict:
     device, args = learner.device, learner.args
     rng = np.random.default_rng(0)
     autocast = (torch.autocast(device.type, dtype={"fp16": torch.float16, "bf16": torch.bfloat16}[amp])
@@ -76,7 +77,7 @@ def bench(learner: Learner, dataset: DistillDataset, batch: int, quantiles: int,
             local_wall_features(graphic, agent_states)
             derived_map_channels(graphic, agent_states)
             mark()
-            q_values, *_ = net(graphic, team_state, agent_states, n_quantiles=quantiles)
+            q_values, *_ = net(graphic, team_state, agent_states, n_quantiles=quantiles, q_units=q_units)
             logits = q_values[:, :5].float()
             valid = masks.any(dim=-1).float()
             loss, stats = set_valued_cross_entropy(logits, masks, class_weights(classes, valid), args.z_loss)
@@ -111,6 +112,7 @@ def main() -> None:
     p.add_argument("--amp", nargs="+", choices=("none", "fp16", "bf16"), default=["none"])
     p.add_argument("--steps", type=int, default=40)
     p.add_argument("--warmup", type=int, default=10)
+    p.add_argument("--q-units", type=int, nargs="+", default=[5], help="unit rows through the Q head (10 = before 2026-10)")
     p.add_argument("--device", default=None)
     cli = p.parse_args()
 
@@ -119,16 +121,17 @@ def main() -> None:
     t = time.time()
     dataset = _load(cli.shards, cli.rows)
     print(f"[bench] {dataset.size} rows loaded in {time.time() - t:.0f}s, device {learner.device}, torch {torch.__version__}")
-    print(f"{'batch':>5s} {'quant':>5s} {'amp':>4s} " + " ".join(f"{part:>9s}" for part in PARTS) + f" {'total':>7s} {'rows/s':>7s} {'step/s':>6s}")
-    for amp in cli.amp:
+    print(f"{'units':>5s} {'batch':>5s} {'quant':>5s} {'amp':>4s} " + " ".join(f"{part:>9s}" for part in PARTS) + f" {'total':>7s} {'rows/s':>7s} {'step/s':>6s}")
+    for q_units in cli.q_units:
+      for amp in cli.amp:
         for quantiles in cli.quantiles:
             for batch in cli.batch_sizes:
                 try:
-                    r = bench(learner, dataset, batch, quantiles, amp, cli.steps, cli.warmup)
+                    r = bench(learner, dataset, batch, quantiles, amp, cli.steps, cli.warmup, q_units)
                 except RuntimeError as exc:  # e.g. an op without an fp16 MPS kernel
-                    print(f"{batch:5d} {quantiles:5d} {amp:>4s} failed: {str(exc).splitlines()[0]}")
+                    print(f"{q_units:5d} {batch:5d} {quantiles:5d} {amp:>4s} failed: {str(exc).splitlines()[0]}")
                     continue
-                print(f"{batch:5d} {quantiles:5d} {amp:>4s} " + " ".join(f"{r['ms'][part]:9.1f}" for part in PARTS)
+                print(f"{q_units:5d} {batch:5d} {quantiles:5d} {amp:>4s} " + " ".join(f"{r['ms'][part]:9.1f}" for part in PARTS)
                       + f" {r['total_ms']:7.1f} {r['rows_per_s']:7.0f} {1000 / r['total_ms']:6.2f}", flush=True)
 
 

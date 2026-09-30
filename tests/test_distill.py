@@ -267,3 +267,12 @@ def test_self_opponent_mirrors_the_learner():
     assert summary["opponent_played"] == "self"
     teacher_task = MatchTask(seed=1, swap=True, opponent="self", beta=1.0, teacher="v17-teach", student=None, shard=None)
     assert play_labelled_match(_FakeEnv(), teacher_task, None)[1]["rows"] > 0
+
+
+def test_q_units_computes_only_the_first_rows_exactly():
+    net = MyModel().eval()
+    g, ts, ag = torch.rand(3, 13, 24, 24).round(), torch.rand(3, 4), torch.rand(3, 10, 12) * 2 - 1
+    tau = torch.rand(3, 8)
+    full = net(g, ts, ag, tau=tau)[0]
+    own = net(g, ts, ag, tau=tau, q_units=5)[0]
+    assert own.shape == (3, 5, 8) and torch.allclose(full[:, :5], own, atol=1e-6)

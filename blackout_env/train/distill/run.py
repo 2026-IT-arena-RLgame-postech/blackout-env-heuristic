@@ -46,6 +46,7 @@ Example (smoke test)::
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import platform
@@ -66,7 +67,11 @@ from blackout_env.train.distill.loss import set_valued_cross_entropy
 from blackout_env.train.distill.metrics import CLASS_COLS, LabelAccuracy, MetricsLog, summarize_matches
 from blackout_env.train.distill.opponents import compatible_checkpoints, draw_opponent, opponent_category, parse_pool
 
-HELDOUT_SEEDS = range(900_000, 1_000_000)  # examples/distill_heldout_eval.py
+HELDOUT_SEEDS = range(900_000, 1_000_000)
+# --compile: the heavy submodules only.  Inductor on MPS (torch 2.14) multiplies the gradient of
+# an embedding broadcast over the batch (token_type_emb, vec_slot_emb, spr_cls_emb) by the batch
+# size, so the embeddings stay eager; compiled this way every gradient matches CPU eager.
+COMPILED_MODULES = ("graphic_encoder", "vector_encoder", "attention", "q_head")  # examples/distill_heldout_eval.py
 
 
 def parse_args(argv=None) -> argparse.Namespace:
@@ -115,6 +120,12 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--class-weighting", choices=["none", "balanced"], default="none",
                    help="balanced: each unit class (Collector/Hunter/Carrier) gets equal total weight per batch, "
                    "so V17's 3-Hunter composition does not crowd out the one Collector's labels")
+    p.add_argument("--train-quantiles", type=int, default=32,
+                   help="IQN quantiles sampled per training forward (the loss reads their mean); the Q head is "
+                   "half the forward at 32 (examples/distill_step_bench.py)")
+    p.add_argument("--amp", choices=["none", "bf16", "fp16"], default="none",
+                   help="autocast precision of the training forward (weights and optimizer stay fp32)")
+    p.add_argument("--compile", action="store_true", help="torch.compile COMPILED_MODULES (~11 s warm-up)")
     p.add_argument("--max-rows", type=int, default=600_000, help="replay ring size (~8 KB per row in RAM)")
     p.add_argument("--device", default="mps" if torch.backends.mps.is_available() else "cpu")
     return p.parse_args(argv)
@@ -158,11 +169,17 @@ class Learner:
         self.args = args
         self.device = torch.device(args.device)
         self.net = MyModel().to(self.device)
+        if args.compile:
+            for name in COMPILED_MODULES:  # in place: state_dict keys stay the same
+                getattr(self.net, name).compile()
         self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
         self._bit_index = torch.arange(8, device=self.device)
         self.accuracy = LabelAccuracy(self.device)
         self._totals = defaultdict(lambda: torch.zeros((), device=self.device))
         self._steps = 0
+        self._amp = {"bf16": torch.bfloat16, "fp16": torch.float16}.get(args.amp)
+        # fp16's narrow exponent underflows small gradients: scale the loss (a no-op otherwise)
+        self.scaler = torch.amp.GradScaler(self.device.type, enabled=args.amp == "fp16")
         self.mark_weights()
 
     def _tensors(self, rows: dict[str, np.ndarray]):
@@ -175,16 +192,24 @@ class Learner:
     def step(self, rows: dict[str, np.ndarray]) -> None:
         self.net.train()
         graphic, team_state, agent_states, masks, classes, kinds = self._tensors(rows)
-        q_values, *_ = self.net(graphic, team_state, agent_states)
-        logits = q_values[:, :N_TEAM]
+        autocast = torch.autocast(self.device.type, dtype=self._amp) if self._amp else contextlib.nullcontext()
+        with autocast:  # the loss and statistics below stay fp32
+            q_values, *_ = self.net(graphic, team_state, agent_states, n_quantiles=self.args.train_quantiles, q_units=N_TEAM)
+        logits = q_values.float()
         valid = masks.any(dim=-1).float()
         weights = class_weights(classes, valid) if self.args.class_weighting == "balanced" else None
         loss, stats = set_valued_cross_entropy(logits, masks, weights, self.args.z_loss)
 
         self.optimizer.zero_grad(set_to_none=True)
-        loss.backward()
-        stats["grad_norm"] = torch.nn.utils.clip_grad_norm_(self.net.parameters(), self.args.grad_clip)
-        self.optimizer.step()
+        self.scaler.scale(loss).backward()
+        self.scaler.unscale_(self.optimizer)
+        grad_norm = torch.nn.utils.clip_grad_norm_(self.net.parameters(), self.args.grad_clip)
+        self.scaler.step(self.optimizer)  # skipped when fp16 gradients overflowed
+        self.scaler.update()
+        finite = torch.isfinite(grad_norm)
+        stats["grad_norm"] = torch.where(finite, grad_norm, torch.zeros_like(grad_norm))
+        if self.scaler.is_enabled():
+            stats["amp_skipped"] = (~finite).float()
 
         with torch.no_grad():
             for key, value in stats.items():
@@ -207,8 +232,8 @@ class Learner:
         for start in range(0, len(rows["labels"]), chunk):
             part = {k: rows[k][start:start + chunk] for k in FIELDS}
             graphic, team_state, agent_states, masks, classes, kinds = self._tensors(part)
-            q_values, *_ = self.net(graphic, team_state, agent_states)
-            accuracy.add(q_values[:, :N_TEAM], masks, classes, kinds)
+            q_values, *_ = self.net(graphic, team_state, agent_states, q_units=N_TEAM)
+            accuracy.add(q_values, masks, classes, kinds)
 
     def _flat_params(self) -> torch.Tensor:
         return torch.cat([p.detach().flatten() for p in self.net.parameters()]).clone()
@@ -225,6 +250,8 @@ class Learner:
         out["train/param_norm"] = float(params.norm())
         out["train/param_update_norm"] = float((params - self._params_at_pop).norm())
         out["train/lr"] = self.optimizer.param_groups[0]["lr"]
+        if self.scaler.is_enabled():
+            out["train/loss_scale"] = self.scaler.get_scale()  # one host sync per log, not per step
         self._params_at_pop = params
         self._totals.clear()
         self._steps = 0
@@ -304,6 +331,8 @@ class Run:
             ckpt = torch.load(self.latest, map_location=self.learner.device, weights_only=True)
             self.learner.net.load_state_dict(ckpt["policy_state"])
             self.learner.optimizer.load_state_dict(ckpt["optimizer_state"])
+            if "scaler_state" in ckpt:
+                self.learner.scaler.load_state_dict(ckpt["scaler_state"])
             state = ckpt["distill"]
             self.step, self.version = ckpt["train_step_count"], state["version"]
             self.queued, self.collected_rows = state["queued"], state["collected_rows"]
@@ -321,6 +350,7 @@ class Run:
         payload = {
             "policy_state": self.learner.net.state_dict(),
             "optimizer_state": self.learner.optimizer.state_dict(),
+            "scaler_state": self.learner.scaler.state_dict(),
             "train_step_count": self.step,
             "distill": {"version": self.version, "teacher": self.args.teacher, "queued": self.queued,
                         "collected_rows": self.collected_rows},

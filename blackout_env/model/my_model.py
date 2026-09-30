@@ -195,6 +195,7 @@ class MyModel(nn.Module):
         agent_states: torch.Tensor,
         n_quantiles: int = N_QUANTILES_DEFAULT,
         tau: torch.Tensor | None = None,
+        q_units: int = N_UNITS,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         graphic      : [B, C, H, W]
@@ -203,6 +204,10 @@ class MyModel(nn.Module):
         n_quantiles  : number of IQN quantile samples to draw (ignored if `tau` is given)
         tau          : [B, n_quantiles] fixed quantile fractions to use instead of sampling
                        (e.g. so an online/target pair can share draws where that matters)
+        q_units      : Q-values only for the first q_units unit rows (the others' rows never
+                       reach the head, which is half the forward at 32 quantiles) -- e.g. 5 for a
+                       caller that only needs the own team of a canonical-frame batch. The
+                       outputs below then have q_units rows where they say N_UNITS.
 
         Returns
         -------
@@ -247,7 +252,7 @@ class MyModel(nn.Module):
         spr_cls_out = tokens_out[:, -1, :]  # the single TYPE_SPR_CLS token, always last
 
         vision_latent = self.spr_head(spr_cls_out)
-        quantile_values, tau = self.q_head(unit_out, n_quantiles=n_quantiles, tau=tau)
+        quantile_values, tau = self.q_head(unit_out[:, :q_units], n_quantiles=n_quantiles, tau=tau)
         q_values = quantile_values.mean(dim=2)  # [B, N_UNITS, n_actions]
 
         return q_values, quantile_values, tau, vision_latent, global_out
