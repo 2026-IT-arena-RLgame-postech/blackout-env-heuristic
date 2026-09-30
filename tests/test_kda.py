@@ -31,7 +31,7 @@ def _inputs(B=2, H=3, T=37, dk=8, dv=5, dtype=torch.float64, seed=0, strong_deca
 
 @pytest.mark.parametrize("chunk", [1, 4, 8, 16, 64])
 @pytest.mark.parametrize("strong_decay", [False, True])
-@pytest.mark.parametrize("solve", ["solve", "doubling"])
+@pytest.mark.parametrize("solve", ["solve", "doubling", "tree", "blocked"])
 def test_chunk_matches_loop_reference(chunk, strong_decay, solve):
     q, k, v, la, beta, s0 = _inputs(strong_decay=strong_decay)  # T = 37: never a chunk multiple
     o_ref, s_ref = kda_recurrent_reference(q, k, v, la, beta, s0)
@@ -63,7 +63,7 @@ def test_step_by_step_matches_loop_reference():
     torch.testing.assert_close(s, s_ref)
 
 
-@pytest.mark.parametrize("solve", ["solve", "doubling"])
+@pytest.mark.parametrize("solve", ["solve", "doubling", "tree", "blocked"])
 def test_gradcheck_chunk_form(solve):
     q, k, v, la, beta, s0 = _inputs(B=1, H=1, T=7, dk=3, dv=2)
     args = [x.clone().requires_grad_(True) for x in (q, k, v, la, beta, s0)]
@@ -177,7 +177,7 @@ def test_learns_delayed_recall():
 
 
 
-@pytest.mark.parametrize("solve", ["blocked", "solve"])
+@pytest.mark.parametrize("solve", ["tree", "blocked", "solve"])
 def test_chunk_is_stable_on_repeated_keys(solve):
     """A unit standing still feeds (nearly) the same key every tick; with beta near 1 the plain
     doubling solve blew up in fp32 (error ~1e9 at chunk 64) -- the stable solvers must not."""
@@ -190,3 +190,11 @@ def test_chunk_is_stable_on_repeated_keys(solve):
     ref, _ = kda_recurrent_reference(*(x.double() for x in (q, k, v, log_alpha, beta)))
     out, _ = kda_chunk(q, k, v, log_alpha, beta, chunk_size=64, solve=solve)
     assert (out.double() - ref).abs().max() < 1e-3
+
+
+@pytest.mark.parametrize("C", [1, 5, 8, 13, 16, 37, 64])
+def test_tree_inverse_matches_triangular_solve_at_any_size(C):
+    g = torch.Generator().manual_seed(C)
+    A = torch.tril(torch.randn(3, C, C, generator=g, dtype=torch.float64) * 0.3, -1)
+    rhs = torch.randn(3, C, 4, generator=g, dtype=torch.float64)
+    assert torch.allclose(unit_lower_inverse_apply(A, rhs, "tree"), unit_lower_inverse_apply(A, rhs, "solve"), atol=1e-10)

@@ -85,41 +85,51 @@ def kda_recurrent_reference(q, k, v, log_alpha, beta, state=None, reset=None):
 def unit_lower_inverse_apply(A: torch.Tensor, rhs: torch.Tensor, method: str = "auto") -> torch.Tensor:
     """(I + A)^{-1} rhs for strictly lower-triangular A [..., C, C].
 
-    ``solve``: ``torch.linalg.solve_triangular``.  ``doubling``: the Neumann series of the
-    nilpotent -A summed by repeated squaring, (I - A)(I + A^2)(I + A^4)... -- exact after
-    ceil(log2 C) matmul pairs, and ~40x faster than MPS's solve_triangular at our shapes (which
-    does not run as a batched GPU kernel there) -- but NOT stable over a whole chunk: with nearly
-    equal keys (a unit standing still, zero padding) and beta >~ 0.5 the partial products grow
-    like binomial(C, C/2) before they cancel, and fp32 loses everything (error ~4e8 at C=64,
-    beta 0.9).  ``blocked``: doubling only inside diagonal blocks of DOUBLING_BLOCK rows (growth
-    <= binomial(8, 4) = 70), block forward substitution between them -- as stable as a triangular
-    solve.  ``auto``: blocked on MPS, solve elsewhere."""
+    Methods (examples in the 2026-10-01 comparison: 352 x 64x64 chunks, MPS, fp32; error = max
+    relative error vs fp64 on nearly repeated keys with beta 1 -- a unit standing still):
+
+    ``solve``     torch.linalg.solve_triangular.  Exact (1.8e-7), but MPS has no batched kernel:
+                  19 ms forward, 38 ms forward+backward.
+    ``doubling``  the Neumann series of the nilpotent -A by repeated squaring over the whole chunk.
+                  Fast (3.2 ms) but UNSTABLE: its partial products grow like binomial(C, C/2)
+                  before they cancel, error 7e10.  Kept only for tests.
+    ``blocked``   doubling inside DIAGONAL_BLOCK-row blocks, block forward substitution between
+                  them: 2.4e-6, but 22 ms forward+backward (a long chain of small slices).
+    ``tree``      doubling inverses of all DIAGONAL_BLOCK blocks at once, merged pairwise
+                  b -> 2b -> ... -> C by [[X11, 0], [-X22 A21 X11, X22]] (the same block
+                  inverse fla's solve_tril merges its 16x16 blocks with): 2.4e-6, 2.95 ms.
+    ``auto``      tree on MPS, solve elsewhere.
+
+    Growth inside a DIAGONAL_BLOCK = 8 block is at most binomial(8, 4) = 70, hence the fp32
+    accuracy; 16-row blocks lose ~1e-3 on repeated keys."""
     if method == "auto":
-        method = "blocked" if A.device.type == "mps" else "solve"
-    C = A.shape[-1]
+        method = "tree" if A.device.type == "mps" else "solve"
+    if method == "tree":
+        return _tree_inverse(A) @ rhs
     if method == "blocked":
-        if C <= DOUBLING_BLOCK:
-            return _doubling_apply(A, rhs)
+        C = A.shape[-1]
         parts = []
-        for i in range(0, C, DOUBLING_BLOCK):
-            j = min(C, i + DOUBLING_BLOCK)
+        for i in range(0, C, DIAGONAL_BLOCK):
+            j = min(C, i + DIAGONAL_BLOCK)
             r = rhs[..., i:j, :]
             if i:
                 r = r - A[..., i:j, :i] @ torch.cat(parts, dim=-2)
-            parts.append(_doubling_apply(A[..., i:j, i:j], r))
+            parts.append(_doubling_inverse(A[..., i:j, i:j]) @ r)
         return torch.cat(parts, dim=-2)
-    eye = torch.eye(C, dtype=A.dtype, device=A.device)
     if method == "solve":
+        eye = torch.eye(A.shape[-1], dtype=A.dtype, device=A.device)
         return torch.linalg.solve_triangular(eye + A, rhs, upper=False, unitriangular=True)
-    if method != "doubling":
-        raise ValueError(f"unknown method {method!r}")
-    return _doubling_apply(A, rhs)
+    if method == "doubling":
+        return _doubling_inverse(A) @ rhs
+    raise ValueError(f"unknown method {method!r}")
 
 
-DOUBLING_BLOCK = 8
+DIAGONAL_BLOCK = 8
 
 
-def _doubling_apply(A: torch.Tensor, rhs: torch.Tensor) -> torch.Tensor:
+def _doubling_inverse(A: torch.Tensor) -> torch.Tensor:
+    """(I + A)^{-1} = sum_j (-A)^j by repeated squaring (exact for nilpotent A; stable only for
+    small blocks, see unit_lower_inverse_apply)."""
     C = A.shape[-1]
     eye = torch.eye(C, dtype=A.dtype, device=A.device)
     power = -A
@@ -127,7 +137,32 @@ def _doubling_apply(A: torch.Tensor, rhs: torch.Tensor) -> torch.Tensor:
     for _ in range(max(0, (C - 1).bit_length() - 1)):  # doubles the number of terms each pass
         power = power @ power
         inverse = inverse + inverse @ power
-    return inverse @ rhs
+    return inverse
+
+
+def _tree_inverse(A: torch.Tensor) -> torch.Tensor:
+    """(I + A)^{-1}: diagonal DIAGONAL_BLOCK blocks by doubling, merged pairwise.  C is padded
+    with zero rows/columns to DIAGONAL_BLOCK * 2^k (identity there), then cropped."""
+    C = A.shape[-1]
+    b = DIAGONAL_BLOCK
+    size = b
+    while size < C:
+        size *= 2
+    padded = F.pad(A, (0, size - C, 0, size - C)) if size != C else A
+    lead = padded.shape[:-2]
+    n = size // b
+    blocks = padded.reshape(*lead, n, b, n, b).diagonal(dim1=-4, dim2=-2)  # [..., b, b, n]
+    inverse = _doubling_inverse(blocks.movedim(-1, -3))  # [..., n, b, b]
+    width = b
+    while width < size:
+        m = inverse.shape[-3] // 2
+        x11, x22 = inverse[..., 0::2, :, :], inverse[..., 1::2, :, :]
+        a21 = padded.reshape(*lead, m, 2 * width, m, 2 * width).diagonal(dim1=-4, dim2=-2).movedim(-1, -3)
+        a21 = a21[..., width:, :width]  # [..., m, width, width]: the lower-left block of each pair
+        x21 = -(x22 @ a21 @ x11)
+        inverse = torch.cat((torch.cat((x11, torch.zeros_like(x11)), -1), torch.cat((x21, x22), -1)), -2)
+        width *= 2
+    return inverse[..., 0, :C, :C]
 
 
 def kda_chunk(q, k, v, log_alpha, beta, state=None, chunk_size: int = 64, gate_bound: float | None = None,
