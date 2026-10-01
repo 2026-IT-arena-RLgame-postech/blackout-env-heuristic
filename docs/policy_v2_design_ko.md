@@ -33,6 +33,9 @@
   von Mises 혼합 같은 연속 분포보다 다봉(동점 방향)이 자연스럽고 학습이 안정적이라 1순위.
 - **호환성**: 헤드 교체로 헤드는 새로 배우지만 trunk는 D4/D5에서 가져온다. 8방향+STAND(현재 `--stand-action`)는
   K=8 특수 경우로 남긴다.
+- **구현(P4, §9)**: 가장 싼 변경을 택했다 — IQN 헤드를 그대로 두고 마지막 선형층 출력만 K(+STAND)개로.
+  8방향 체크포인트의 방향 행을 각도로 보간해 K구간 행을 만들므로 웜스타트 직후 **같은 방향으로 움직인다**.
+  IQN 제거는 별도 실험으로 남긴다.
 
 ## 3. 교사
 
@@ -70,7 +73,7 @@
 | P1 | `act:strategic_v19` 교사로 무상태 학생 vs KDA 학생(같은 예산) — 교사 행동 일치율, 점수차 | KDA가 상태 있는 교사를 더 잘 따라 하는가(18%의 이력 의존분을 얼마나 회수하나) |
 | P2 | 상대 식별 프로브: 학생 trunk 동결 + KDA/GRU/무상태 프로브로 상대 정책 id를 경기 2/5/10/20초에 예측 | 식별이 늦거나 격차가 없으면 상대 적응용 기억은 접는다 |
 | P3 | 상대 조건부 교사 → KDA 학생 vs 무상태 학생 | 기억의 실제 가치(점수차) |
-| P4 | 정책 헤드 교체(IQN 제거) 단독 효과: 같은 교사·같은 예산에서 속도와 일치율 | 헤드 교체가 손해 없는지 |
+| P4 | 세밀한 방향(K구간) 헤드: D6에서 시작, K=32로 v21-teach(넓힌 집합) vs `act:strategic_v21_anyangle` — 속도·일치율·점수차 (§9) | K구간이 8방향보다 나은가, 임의 각도 교사를 따라 하는가 |
 
 판단은 항상 보류 시드 평가(상대당 24경기, 짝 차이)로.
 
@@ -99,3 +102,50 @@
 
 - 전체 짝 차이 +18.3 ± 6.6 (72쌍): 기억이 상태 있는 교사 모방에 도움. 일치율 0.55–0.71 → 0.65–0.73, 방향 반전 절반 이하.
 - 그러나 둘 다 교사 V19보다 크게 약하다(V17 상대 −67). act 라벨(한 방향)만으로 20k 스텝은 부족 — 집합 라벨 교사(D6)보다 정보가 적다.
+
+## 9. P4 — K구간 방향 헤드 (`--action-bins K`, 2026-10-01 구현)
+
+무엇이 바뀌었나 (K=8이면 이전과 비트 단위로 같다 — 같은 시드의 수집 경기 18개에서 행·라벨·카운트를 이전 커밋과 비교):
+
+- **행동공간** (`blackout_env/model/direction_bins.py`): 구간 k = 각도 2πk/K, K ∈ {8,16,32,64}. 구간 0, K/8, 2K/8, …이
+  지금의 8방향과 일치. 출력 폭 n에서 K와 STAND 여부를 읽는다(n이 홀수면 마지막이 STAND). 팀 B 반사는 k → (K/4 − k) mod K.
+- **헤드**: `MyModel(n_actions=K [+1])` — IQN 헤드 유지, 마지막 `Linear`만 K행. 순전파 비용 차이는 무시할 만하다.
+- **웜스타트** (`run.load_weights`): 원본의 방향 행(가중치·편향)을 각도로 선형 보간 — 나침반 구간은 정확한 복사, 그 사이는
+  양옆 행의 보간. 로짓도 똑같이 보간되므로 K구간 argmax는 늘 원본 방향 중 하나다 → D6를 `--action-bins 32`로 불러도 0스텝에서
+  같은 행동(`tests/test_direction_bins.py`). STAND 규칙은 그대로(없던 STAND는 최저 편향 − 4).
+- **라벨**: K비트 집합, K>8이면 uint64로 저장(샤드 meta의 `action_bins`). 교사는 여전히 8방향으로 라벨하고
+  `collect.bin_labels`가 K구간으로 옮긴다.
+  - 집합 교사(v21-teach 등): 허용 방향마다 ±`--label-width-deg`(기본 22.5°, 경계 포함) 안의 구간. K=32면 방향 하나 = 5구간,
+    이웃한 두 방향은 22.5° 구간을 공유한다.
+  - act 교사: 8방향으로 스냅한 라벨이 아니라 **실제 연속 이동**(env처럼 [−1,1] 클립 후)의 가장 가까운 구간 ±`--act-arc-bins`.
+    0 이동 → 라벨 없음(STAND 대상), 이전과 같다.
+  - 교사가 조종한 틱은 교사의 정확한 이동을 실행(act 교사는 원래 연속 이동, 집합 교사는 `label_action`) — 바뀐 것 없음.
+  - 옛 uint8 샤드도 읽힌다: `DistillDataset(action_bins=K)`/`new_shards(..., action_bins)`가 불러올 때 ±22.5°로 넓힌다
+    (`convert_bits`; K→8 축소도 된다).
+- **실행 행동**: 기본은 최대 로짓 구간의 단위벡터. `--inference arc_mean`(그리고 held-out의 `--inference arc_mean`)은
+  최대 구간에서 양옆으로 로짓이 최대−1 이상인 동안 이어지는 **연속 호**의 확률가중 원형 평균 — 이웃 구간 사이 흔들림 완화.
+  `iqn/fixed_tau/tie_mean`도 K구간에서 동작. `_FastNet`(trace)과 `MyPolicy`는 출력 폭에서 K를 읽으므로 그대로,
+  `load_net`도 state dict에서 크기를 읽는다. 체크포인트 `distill` meta에 `action_bins`, `stand_action` 기록.
+- **지표**: `agree` = 학생 이동이 K구간 집합 안(v21-teach를 넓힌 집합이면 8방향 때와 같은 ±22.5° 의미, act 교사 ±1구간이면 더
+  엄격). K>8이면 `agree8/*`도 기록 — 학생 이동을 8방향으로 스냅해 교사의 원래 8방향 라벨에 넣은 것, 즉 K=8의 `agree`와 같은
+  정의라 D6와 직접 비교된다. 반전(`reversals_per_1000`)은 원래 이동 벡터의 각도(>135°)라 K와 무관. 새로
+  `mean_turn_deg/{student,teacher}`(연속 이동 사이 평균 회전각) — 이웃 구간 흔들림은 반전이 아니라 여기서 보인다.
+  `distill_report.py`의 반전 표도 샤드의 K를 읽는다. held-out 평가(`distill_heldout_eval.py`)는 기본 K=8 라벨로 기록하므로
+  K구간 학생도 D6와 같은 8방향 일치율로 비교된다.
+
+실행:
+
+```
+python -m blackout_env.train.distill.run --action-bins 32 --teacher v21-teach --init checkpoints/distill/d6/latest.pt ...
+python -m blackout_env.train.distill.run --action-bins 32 --teacher act:strategic_v21_anyangle --act-arc-bins 1 \
+    --init checkpoints/distill/d6/latest.pt ...      # --inference arc_mean: 수집·평가 학생이 원형 평균으로
+```
+
+실험 스크립트 `checkpoints/distill/launch_p4.sh`: 작업트리 `/Users/mac/project/26rl/blackout-env-p4`(P4 커밋에 고정,
+p1처럼 checkpoints·build·datasets·.venv·runs와 reports의 결과 디렉터리를 심볼릭 링크)에서, D7 체인이 끝난 뒤
+(`reports/distill_heldout/stdout_d7.log`의 `D7 CHAIN DONE`) 시작. 두 팔 `p4s`(v21-teach 넓힘), `p4a`
+(`act:strategic_v21_anyangle`, ±1구간), D6 초기화·D6 상대 풀·설정, 20k 스텝. 이어서 보류 시드 평가(D6 기록과 짝,
+iqn·arc_mean), p4a vs 임의 각도 V21 자신(`reports/p4_heldout`), OOD.
+
+스모크(2 워커, 200 스텝, D7 학습과 GPU 공유 중): §9 끝의 표 참고.
+
