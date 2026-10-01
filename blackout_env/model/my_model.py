@@ -5,12 +5,14 @@ from blackout_env.model.modules import (
     AttentionLayers,
     GraphicEncoder,
     IQNHead,
+    LogitsHead,
     RotaryEmbedding2D,
     SwiGLUBlock,
     VectorEncoder,
     build_grid_position_ids,
 )
 from blackout_env.model.derived_obs import N_PATCH_FEATURES, derived_map_channels, local_wall_features
+from blackout_env.model.modules.logits_head import state_from_iqn
 from blackout_env.model.modules.temporal_memory import TemporalMemory
 
 N_QUANTILES_DEFAULT = 32  # quantile samples used when the caller doesn't ask for a specific count
@@ -31,6 +33,9 @@ ROPE_BASE = 10.0
 TYPE_GRAPHIC, TYPE_UNIT, TYPE_GLOBAL, TYPE_SPR_CLS = 0, 1, 2, 3
 
 TEMPORAL_PREFIX = "temporal."  # every temporal-memory parameter's state_dict key starts with this
+
+POLICY_HEADS = ("iqn", "logits")
+_IQN_KEY = "q_head.tau_proj.0.weight"  # only an IQN head has it (LogitsHead: q_head.in_scale instead)
 
 
 class MyModel(nn.Module):
@@ -108,6 +113,16 @@ class MyModel(nn.Module):
 
     Memory: ``(S [B, 11, H, dk, dv], conv [B, 11, K-1, 2*H*dk + H*dv])`` fp32 tensors, in the
     canonical (own team first) frame -- a Team B caller mirrors the obs, never the memory.
+
+    Policy head (``policy_head``)
+    -----------------------------
+    ``"iqn"`` (default): the IQN quantile head above.  ``"logits"`` (P5): ``LogitsHead``, the same
+    value MLP without the tau embedding -- one evaluation instead of one per quantile, for a
+    distilled student that never needs the return distribution.  Its forward ignores
+    ``n_quantiles``/``tau`` and returns ``q_values`` = the logits, ``quantile_values`` = the
+    logits with a size-1 quantile axis, and ``tau`` = None, so ``q_values, *_ = net(...)`` callers
+    work unchanged.  ``from_state_dict(iqn_state, policy_head="logits")`` converts an IQN state
+    (``iqn_to_logits_state``).
     """
 
     def __init__(
@@ -122,10 +137,14 @@ class MyModel(nn.Module):
         temporal_heads: int = 4,
         temporal_head_dim: int = 64,
         temporal_chunk: int = 64,
+        policy_head: str = "iqn",
     ) -> None:
         super().__init__()
+        if policy_head not in POLICY_HEADS:
+            raise ValueError(f"policy_head must be one of {POLICY_HEADS}, got {policy_head!r}")
 
         self.hidden_size = hidden_size
+        self.policy_head = policy_head
 
         # encoders
         self.graphic_encoder = GraphicEncoder(hidden_size)
@@ -189,7 +208,8 @@ class MyModel(nn.Module):
         # IQN (arXiv:1806.06923) distributional Q-head, chosen over C51 so the value range
         # doesn't need a hand-tuned [Vmin, Vmax] that would need re-tuning whenever the
         # reward balance changes (see reward_config.json) — see modules/iqn_head.py.
-        self.q_head = IQNHead(hidden_size, n_actions, n_cos=64)
+        # policy_head="logits": the same value MLP without tau (see class docstring "Policy head").
+        self.q_head = IQNHead(hidden_size, n_actions, n_cos=64) if policy_head == "iqn" else LogitsHead(hidden_size, n_actions)
 
         # Created last so that a stateless model's parameter order (and optimiser state layout)
         # is unchanged; absent entirely when off, so its state_dict has no temporal keys.
@@ -210,25 +230,46 @@ class MyModel(nn.Module):
 
     @staticmethod
     def config_from_state_dict(state: dict) -> dict:
-        """Constructor kwargs that match ``state``: width, 8 or 9 actions, and -- when it has
-        ``temporal.`` keys -- the temporal block's heads and head size."""
+        """Constructor kwargs that match ``state``: width, the head's outputs (8 or K bins, +
+        STAND), the policy head (iqn iff it has tau_proj keys) and -- when it has ``temporal.``
+        keys -- the temporal block's heads and head size."""
         config = dict(hidden_size=state["token_type_emb.weight"].shape[1],
-                      n_actions=state["q_head.value_head.1.weight"].shape[0])
+                      n_actions=state["q_head.value_head.1.weight"].shape[0],
+                      policy_head="iqn" if _IQN_KEY in state else "logits")
         if any(key.startswith(TEMPORAL_PREFIX) for key in state):
             heads = state["temporal.kda.b_proj.weight"].shape[0]
             config.update(temporal=True, temporal_heads=heads,
                           temporal_head_dim=state["temporal.kda.q_proj.weight"].shape[0] // heads)
         return config
 
+    @staticmethod
+    def iqn_to_logits_state(state: dict, n_quantiles: int = N_QUANTILES_DEFAULT) -> dict:
+        """An IQN-head MyModel state -> the same model with a LogitsHead (``policy_head="logits"``):
+        every other key unchanged, the head folded at the fixed taus ``(i + 0.5) / n_quantiles``
+        that ``inference.fixed_tau`` uses (``modules/logits_head.state_from_iqn``: exact at
+        n_quantiles=1, the mean tau embedding otherwise).  A logits state is returned as is."""
+        if _IQN_KEY not in state:
+            return state
+        tau = (torch.arange(n_quantiles, dtype=torch.float32) + 0.5) / n_quantiles
+        return state_from_iqn(state, tau, prefix="q_head.")
+
     @classmethod
-    def from_state_dict(cls, state: dict, temporal: bool | None = None, **temporal_kwargs) -> "MyModel":
+    def from_state_dict(cls, state: dict, temporal: bool | None = None, policy_head: str | None = None,
+                        **temporal_kwargs) -> "MyModel":
         """A MyModel shaped like ``state`` with ``state`` loaded.
 
         ``temporal=None`` follows the state (temporal iff it has ``temporal.`` keys).
         ``temporal=True`` on a stateless state is the warm start: every stateless key is loaded
         strictly, the temporal block keeps its (identity) init -- see ``load_warm_start``.
-        ``temporal=False`` on a temporal state raises (dropping the memory changes the policy)."""
+        ``temporal=False`` on a temporal state raises (dropping the memory changes the policy).
+        ``policy_head=None`` follows the state; ``"logits"`` on an IQN state converts it
+        (``iqn_to_logits_state``); ``"iqn"`` on a logits state raises (no tau embedding to restore)."""
         config = cls.config_from_state_dict(state)
+        if policy_head == "iqn" and config["policy_head"] == "logits":
+            raise ValueError("state has a logits head; it cannot be loaded as an IQN head")
+        if policy_head == "logits" and config["policy_head"] == "iqn":
+            state = cls.iqn_to_logits_state(state)
+            config["policy_head"] = "logits"
         has_temporal = config.get("temporal", False)
         if temporal is False and has_temporal:
             raise ValueError("state has temporal keys; load it with temporal=None or True")
@@ -361,6 +402,9 @@ class MyModel(nn.Module):
         unit_out = vec_out[:, :N_UNITS]
         global_out = vec_out[:, N_UNITS]  # the single TYPE_GLOBAL (team_state) token
         vision_latent = self.spr_head(spr_cls_out)
+        if self.policy_head == "logits":  # no quantile axis: size 1, tau None (class docstring)
+            q_values = self.q_head(unit_out[:, :q_units])
+            return q_values, q_values.unsqueeze(2), None, vision_latent, global_out
         quantile_values, tau = self.q_head(unit_out[:, :q_units], n_quantiles=n_quantiles, tau=tau)
         q_values = quantile_values.mean(dim=2)  # [B, N_UNITS, n_actions]
         return q_values, quantile_values, tau, vision_latent, global_out
@@ -390,7 +434,7 @@ class MyModel(nn.Module):
 
         Returns (q_values [B, T', q_units, n_actions], quantile_values [B, T', q_units,
         n_quantiles, n_actions], tau [B, T', n_quantiles], memory after the last frame), with
-        T' = T - burn_in.
+        T' = T - burn_in.  A logits head: n_quantiles = 1 and tau None.
         """
         if self.temporal is None:
             raise ValueError("forward_sequence needs a temporal MyModel (temporal=True)")
@@ -413,7 +457,7 @@ class MyModel(nn.Module):
             tau = tau.reshape(B * T, -1)
         q_values, quantile_values, tau, _, _ = self._heads(vec_out, spr_cls_out, n_quantiles, tau, q_units)
         return (q_values.reshape(B, T, *q_values.shape[1:]), quantile_values.reshape(B, T, *quantile_values.shape[1:]),
-                tau.reshape(B, T, -1), memory)
+                None if tau is None else tau.reshape(B, T, -1), memory)
 
     def _temporal_frames(self, graphic, team_state, agent_states, memory, reset):
         """Trunk on B*T frames, temporal block over T: ((vec_out [B*T, 11, D], spr_cls [B*T, D]), memory)."""

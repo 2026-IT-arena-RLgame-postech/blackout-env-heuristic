@@ -8,6 +8,8 @@ the optimizer, and the running statistics.  Reports ms per step and rows per sec
 
   python examples/distill_step_bench.py checkpoints/distill/d4/shards --batch-sizes 256 512 1024 \\
       --quantiles 32 8 --amp none fp16
+  python examples/distill_step_bench.py checkpoints/distill/d6/shards --policy-heads iqn logits \\
+      --batch-sizes 256 --quantiles 8 --amp fp16 --compile      # P5: the IQN head vs plain logits
 
 Run it with the GPU otherwise idle: a training run sharing it distorts every number.
 """
@@ -100,7 +102,7 @@ def bench(learner: Learner, dataset: DistillDataset, batch: int, quantiles: int,
     ms = {part: 1000 * t / steps for part, t in times.items()}
     ms["forward"] = max(0.0, ms["forward"] - ms["derived"])
     total = sum(ms.values())
-    return {"batch": batch, "quantiles": quantiles, "amp": amp, "ms": ms, "total_ms": total, "rows_per_s": batch * 1000 / total}
+    return {"head": net.policy_head, "batch": batch, "quantiles": quantiles, "amp": amp, "ms": ms, "total_ms": total, "rows_per_s": batch * 1000 / total}
 
 
 def main() -> None:
@@ -113,25 +115,37 @@ def main() -> None:
     p.add_argument("--steps", type=int, default=40)
     p.add_argument("--warmup", type=int, default=10)
     p.add_argument("--q-units", type=int, nargs="+", default=[5], help="unit rows through the Q head (10 = before 2026-10)")
+    p.add_argument("--policy-heads", nargs="+", choices=("iqn", "logits"), default=["iqn"],
+                   help="logits: quantiles are ignored (one row per head)")
+    p.add_argument("--compile", action="store_true", help="torch.compile the learner's modules, as run.py --compile")
+    p.add_argument("--repeats", type=int, default=1, help="cycle through every configuration this many times "
+                   "(interleaved, so a loaded machine biases no configuration)")
     p.add_argument("--device", default=None)
     cli = p.parse_args()
 
-    args = parse_args(["--build", "unused"] + (["--device", cli.device] if cli.device else []))
-    learner = Learner(args)
+    learners = {}
+    for head in cli.policy_heads:
+        args = parse_args(["--build", "unused", "--policy-head", head] + (["--compile"] if cli.compile else [])
+                          + (["--device", cli.device] if cli.device else []))
+        learners[head] = Learner(args)
     t = time.time()
     dataset = _load(cli.shards, cli.rows)
-    print(f"[bench] {dataset.size} rows loaded in {time.time() - t:.0f}s, device {learner.device}, torch {torch.__version__}")
-    print(f"{'units':>5s} {'batch':>5s} {'quant':>5s} {'amp':>4s} " + " ".join(f"{part:>9s}" for part in PARTS) + f" {'total':>7s} {'rows/s':>7s} {'step/s':>6s}")
-    for q_units in cli.q_units:
+    device = next(iter(learners.values())).device
+    print(f"[bench] {dataset.size} rows loaded in {time.time() - t:.0f}s, device {device}, torch {torch.__version__}")
+    print(f"{'head':>6s} {'units':>5s} {'batch':>5s} {'quant':>5s} {'amp':>4s} " + " ".join(f"{part:>9s}" for part in PARTS)
+          + f" {'total':>7s} {'rows/s':>7s} {'step/s':>6s}")
+    for _ in range(cli.repeats):
+     for q_units in cli.q_units:
       for amp in cli.amp:
         for quantiles in cli.quantiles:
             for batch in cli.batch_sizes:
+              for head, learner in learners.items():
                 try:
                     r = bench(learner, dataset, batch, quantiles, amp, cli.steps, cli.warmup, q_units)
                 except RuntimeError as exc:  # e.g. an op without an fp16 MPS kernel
-                    print(f"{q_units:5d} {batch:5d} {quantiles:5d} {amp:>4s} failed: {str(exc).splitlines()[0]}")
+                    print(f"{head:>6s} {q_units:5d} {batch:5d} {quantiles:5d} {amp:>4s} failed: {str(exc).splitlines()[0]}")
                     continue
-                print(f"{q_units:5d} {batch:5d} {quantiles:5d} {amp:>4s} " + " ".join(f"{r['ms'][part]:9.1f}" for part in PARTS)
+                print(f"{head:>6s} {q_units:5d} {batch:5d} {quantiles:5d} {amp:>4s} " + " ".join(f"{r['ms'][part]:9.1f}" for part in PARTS)
                       + f" {r['total_ms']:7.1f} {r['rows_per_s']:7.0f} {1000 / r['total_ms']:6.2f}", flush=True)
 
 

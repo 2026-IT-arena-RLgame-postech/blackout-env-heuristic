@@ -17,6 +17,10 @@ width, so every mode below and the traced ``_FastNet`` work at any K unchanged.
   share the mass of one heading: the mean is smoother than the arg max, which jitters between
   them.  At K = 8 it is ``tie_mean`` restricted to adjacent directions.
 
+A logits student (P5, ``MyModel(policy_head="logits")``) has no quantile fractions: ``iqn`` and
+``fixed_tau`` are then both the plain argmax of its logits (the same move), ``tie_mean`` and
+``arc_mean`` read its logits; ``_FastNet`` neither draws nor traces a tau for it.
+
 A temporal student (``MyModel(temporal=True)``) works in every mode: ``_FastNet`` then takes and
 returns the memory, ``MyPolicy`` carries it across ticks (one memory per team, so a mirror match
 against itself is two independent players) and clears it in ``reset()`` -- call that at every
@@ -49,7 +53,7 @@ class _OwnQ(nn.Module):
         super().__init__()
         self.net = net
 
-    def forward(self, graphic, team_state, agent_states, tau):
+    def forward(self, graphic, team_state, agent_states, tau=None):
         return self.net(graphic, team_state, agent_states, tau=tau, q_units=N_TEAM)[0]
 
 
@@ -60,7 +64,7 @@ class _OwnQStep(nn.Module):
         super().__init__()
         self.net = net
 
-    def forward(self, graphic, team_state, agent_states, tau, kda_state, conv_state):
+    def forward(self, graphic, team_state, agent_states, kda_state, conv_state, tau=None):
         out = self.net(graphic, team_state, agent_states, tau=tau, q_units=N_TEAM, memory=(kda_state, conv_state))
         return out[0], out[-1][0], out[-1][1]
 
@@ -69,7 +73,8 @@ class _FastNet(nn.Module):
     """``MyModel`` for MyPolicy: ``_OwnQ`` under inference_mode, traced at batch 1 on first use.
 
     ``tau`` = None draws fresh quantile fractions every call (IQN as trained); a tensor fixes
-    them.  Returns ``(q_values,)`` so MyPolicy's ``q_values, *_ = net(...)`` still unpacks.
+    them; a logits net takes no tau (``tau``/``n_quantiles`` are ignored).  Returns
+    ``(q_values,)`` so MyPolicy's ``q_values, *_ = net(...)`` still unpacks.
 
     A temporal net: ``forward(..., memory=None)`` returns ``(q_values, memory)`` (None = zeros,
     the start of a match); the batch-1 trace takes and returns the memory tensors."""
@@ -79,29 +84,37 @@ class _FastNet(nn.Module):
         net = net.eval()
         self.is_temporal = bool(getattr(net, "is_temporal", False))
         self.own = _OwnQStep(net) if self.is_temporal else _OwnQ(net)
+        self.uses_tau = getattr(net, "policy_head", "iqn") == "iqn"
         self.fixed_tau, self.n_quantiles = tau, n_quantiles
         self._traced = None
 
+    def _tau(self, batch: int) -> tuple:
+        """The trailing tau argument of ``own``: none for a logits net."""
+        if not self.uses_tau:
+            return ()
+        return (self.fixed_tau.expand(batch, -1) if self.fixed_tau is not None else torch.rand(batch, self.n_quantiles),)
+
     def forward(self, graphic, team_state, agent_states, memory=None, **_):
         batch = graphic.shape[0]
-        tau = self.fixed_tau.expand(batch, -1) if self.fixed_tau is not None else torch.rand(batch, self.n_quantiles)
+        tau = self._tau(batch)
         if self.is_temporal:
             return self._step(graphic, team_state, agent_states, tau, memory)
         with torch.inference_mode():
+            args = (graphic, team_state, agent_states, *tau)
             if batch != 1:  # the trace is batch-1 only
-                return (self.own(graphic, team_state, agent_states, tau),)
+                return (self.own(*args),)
             if self._traced is None:
                 with warnings.catch_warnings():  # deprecation, and GroupNorm's shape check (batch 1 is fixed)
                     warnings.simplefilter("ignore")
-                    self._traced = torch.jit.trace(self.own, (graphic, team_state, agent_states, tau), check_trace=False)
-            return (self._traced(graphic, team_state, agent_states, tau),)
+                    self._traced = torch.jit.trace(self.own, args, check_trace=False)
+            return (self._traced(*args),)
 
     def _step(self, graphic, team_state, agent_states, tau, memory):
         batch = graphic.shape[0]
         with torch.inference_mode():
             if memory is None:
                 memory = self.own.net.initial_memory(batch, device=graphic.device)
-            args = (graphic, team_state, agent_states, tau, *memory)
+            args = (graphic, team_state, agent_states, *memory, *tau)
             if batch != 1:
                 q, *memory = self.own(*args)
                 return q, tuple(memory)
@@ -168,12 +181,13 @@ class _ArcMeanPolicy(MyPolicy):
         return {agent: arc_mean_move(row) for agent, row in self.action_values(obs).items()}
 
 
-def load_net(state: dict, temporal: bool | None = None) -> MyModel:
-    """A MyModel shaped like ``state``: its width, its outputs (8 or K bins, + STAND), and temporal
-    memory iff ``state`` has ``temporal.`` keys (``temporal=None``).  ``temporal=True`` also
-    accepts a stateless state: the warm start (identity-initialised memory, the same Q-values);
-    see ``MyModel.from_state_dict``."""
-    return MyModel.from_state_dict(state, temporal=temporal)
+def load_net(state: dict, temporal: bool | None = None, policy_head: str | None = None) -> MyModel:
+    """A MyModel shaped like ``state``: its width, its outputs (8 or K bins, + STAND), its policy
+    head (iqn or logits, from the keys) and temporal memory iff ``state`` has ``temporal.`` keys
+    (``temporal=None``).  ``temporal=True`` also accepts a stateless state: the warm start
+    (identity-initialised memory, the same Q-values); ``policy_head="logits"`` converts an IQN
+    state; see ``MyModel.from_state_dict``."""
+    return MyModel.from_state_dict(state, temporal=temporal, policy_head=policy_head)
 
 
 def make_student(net: MyModel, inference: str = "iqn") -> MyPolicy:

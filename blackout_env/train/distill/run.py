@@ -61,7 +61,7 @@ import numpy as np
 import torch
 
 from blackout_env.model.direction_bins import ACTION_BINS, SET_HALF_WIDTH_DEG, bins_of_width, resample_rows
-from blackout_env.model.my_model import TEMPORAL_PREFIX, MyModel
+from blackout_env.model.my_model import POLICY_HEADS, TEMPORAL_PREFIX, MyModel
 from blackout_env.train.distill.collect import CollectorPool, MatchTask, teacher_arg
 from blackout_env.train.distill.inference import INFERENCE
 from blackout_env.train.distill.dataset import FIELDS, GRAPHIC_SCALE, KIND_INDEX, N_TEAM, DistillDataset, new_shards
@@ -129,7 +129,11 @@ def parse_args(argv=None) -> argparse.Namespace:
                    "so V17's 3-Hunter composition does not crowd out the one Collector's labels")
     p.add_argument("--train-quantiles", type=int, default=32,
                    help="IQN quantiles sampled per training forward (the loss reads their mean); the Q head is "
-                   "half the forward at 32 (examples/distill_step_bench.py)")
+                   "half the forward at 32 (examples/distill_step_bench.py).  Ignored with --policy-head logits")
+    p.add_argument("--policy-head", choices=POLICY_HEADS, default="iqn",
+                   help="logits (P5): plain per-unit logits instead of the IQN quantile head, the same loss.  --init "
+                   "from an IQN checkpoint folds its tau embedding at inference's fixed taus into the head "
+                   "(MyModel.iqn_to_logits_state; train/distill/head_fit.py fits it closer)")
     p.add_argument("--amp", choices=["none", "bf16", "fp16"], default="none",
                    help="autocast precision of the training forward (weights and optimizer stay fp32)")
     p.add_argument("--compile", action="store_true", help="torch.compile COMPILED_MODULES (~11 s warm-up)")
@@ -199,10 +203,16 @@ def load_weights(net: MyModel, state: dict) -> None:
       (``direction_bins.resample_rows``; bins on a source direction are exact copies), so a
       K-bin net from an 8-way checkpoint picks the same headings as it did -- the same logits on
       the compass bins, lower ones between them;
+    * policy head: an IQN state into a logits net is folded first (``MyModel.iqn_to_logits_state``,
+      the mean tau embedding at inference's fixed taus); a logits state into an IQN net raises;
     * STAND: a state without one into a --stand-action net starts STAND's row at zero weights
       and a bias STAND_INIT_MARGIN below the lowest direction's, so the inherited student keeps
       moving until STAND is trained (at the lowest bias alone, STAND won half of the labelled
       ticks of D4's weights); a state with one keeps it."""
+    if net.policy_head == "logits":
+        state = MyModel.iqn_to_logits_state(state)
+    elif "q_head.in_scale" in state:
+        raise ValueError("a logits-head state cannot initialise an IQN-head net (--policy-head iqn)")
     key = "q_head.value_head.1"
     dst = bins_of_width(net.state_dict()[f"{key}.weight"].shape[0])
     src = bins_of_width(state[f"{key}.weight"].shape[0])
@@ -232,7 +242,8 @@ class Learner:
     def __init__(self, args):
         self.args = args
         self.device = torch.device(args.device)
-        self.net = MyModel(n_actions=args.action_bins + int(args.stand_action), temporal=args.temporal).to(self.device)
+        self.net = MyModel(n_actions=args.action_bins + int(args.stand_action), temporal=args.temporal,
+                           policy_head=args.policy_head).to(self.device)
         if args.compile:
             for name in COMPILED_MODULES:  # in place: state_dict keys stay the same
                 getattr(self.net, name).compile()
@@ -477,7 +488,8 @@ class Run:
             "train_step_count": self.step,
             "distill": {"version": self.version, "teacher": self.args.teacher, "queued": self.queued,
                         "collected_rows": self.collected_rows, "temporal": self.args.temporal,
-                        "action_bins": self.args.action_bins, "stand_action": self.args.stand_action},
+                        "action_bins": self.args.action_bins, "stand_action": self.args.stand_action,
+                        "policy_head": self.args.policy_head},
         }
         tmp = self.latest.with_suffix(".tmp")
         torch.save(payload, tmp)
