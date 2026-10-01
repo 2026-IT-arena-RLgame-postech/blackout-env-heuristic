@@ -35,7 +35,7 @@
   K=8 특수 경우로 남긴다.
 - **구현(P4, §9)**: 가장 싼 변경을 택했다 — IQN 헤드를 그대로 두고 마지막 선형층 출력만 K(+STAND)개로.
   8방향 체크포인트의 방향 행을 각도로 보간해 K구간 행을 만들므로 웜스타트 직후 **같은 방향으로 움직인다**.
-  IQN 제거는 별도 실험으로 남긴다.
+  IQN 제거는 별도 실험 P5(§10, `--policy-head logits`).
 
 ## 3. 교사
 
@@ -74,6 +74,7 @@
 | P2 | 상대 식별 프로브: 학생 trunk 동결 + KDA/GRU/무상태 프로브로 상대 정책 id를 경기 2/5/10/20초에 예측 | 식별이 늦거나 격차가 없으면 상대 적응용 기억은 접는다 |
 | P3 | 상대 조건부 교사 → KDA 학생 vs 무상태 학생 | 기억의 실제 가치(점수차) |
 | P4 | 세밀한 방향(K구간) 헤드: D6에서 시작, K=32로 v21-teach(넓힌 집합) vs `act:strategic_v21_anyangle` — 속도·일치율·점수차 (§9) | K구간이 8방향보다 나은가, 임의 각도 교사를 따라 하는가 |
+| P5 | IQN 분위수 헤드 제거 → 평범한 로짓 헤드(`--policy-head logits`): p4a와 같은 설정, D6에서 접어(fold+fit) 시작 (§10) | 분위수 장치 없이 같은 성능을 더 싸게 내는가 |
 
 판단은 항상 보류 시드 평가(상대당 24경기, 짝 차이)로.
 
@@ -159,3 +160,56 @@ D7s 학습·p3 평가와 기계 공유 중이라 절대값은 낮다):
 - D6 가중치를 K=32로 불러 D6 eval 샤드 256행에 적용: 유닛별 argmax 100% 일치, 나침반 구간 로짓 차 최대 4e-6.
 - 점수차는 2경기라 판단 근거가 아니다 — 판단은 `launch_p4.sh`의 보류 시드 평가로.
 
+## 10. P5 — IQN 제거, 평범한 로짓 헤드 (`--policy-head logits`, 2026-10-01 구현)
+
+RL 미세조정 가능성이 낮으니(§1) 분위수 표본·tau 입력은 증류에서 비용일 뿐이다. 기본은 여전히 `iqn`이고
+D6 가중치·고정 tau 출력·새 모델 초기화까지 이전 커밋과 비트 단위로 같다(SHA-1 비교).
+
+- **헤드** (`blackout_env/model/modules/logits_head.py`): `MyModel(policy_head="logits")`의 `q_head = LogitsHead` —
+  IQN의 `value_head`(RMSNorm-SwiGLU → Linear)는 그대로, tau 임베딩 `e(τ) = ReLU(tau_proj(cos(πiτ)))` 대신 학습되는
+  채널별 입력 배율 `in_scale` 하나. 분위수마다 한 번이 아니라 **한 번** 평가. 키 = IQN 키 − `tau_proj.*` + `in_scale`,
+  그래서 `config_from_state_dict`/`load_net`이 키로 헤드 종류를 알아낸다(체크포인트 `distill` meta에도 `policy_head`).
+- **반환 형태**: `q_values` = 로짓 [B, N, A], `quantile_values` = 크기 1 분위수 축 [B, N, 1, A], `tau` = None —
+  `q_values, *_ = net(...)` 호출부는 그대로. `n_quantiles`/`tau`/`--train-quantiles`는 무시된다.
+  QMIX 학습기는 IQN 전용으로 남는다(기본값이라 영향 없음).
+- **웜스타트 정확성**: 단일 τ면 `in_scale = e(τ)`로 **정확히** 같은 출력(테스트, 오차 <1e-5). 그러나 추론·학습이 읽는 건
+  고정 τ 32개에 대한 **비선형 평가 32번의 평균**이라 배율 하나로는 정확히 접히지 않는다(정확하려면 SwiGLU를 32배 넓혀야 하고,
+  그건 IQN 비용 그대로). 그래서 두 단계:
+  1. **fold** (`MyModel.iqn_to_logits_state`, `--init`/`load_weights`가 자동 적용): `in_scale` = 32개 고정 τ 임베딩의 평균.
+  2. **fit** (`python -m blackout_env.train.distill.head_fit`): trunk 고정, 캐시한 trunk 특징(D6 샤드 16k행 × 5유닛)에서
+     로짓 헤드를 IQN 고정 τ 평균 로짓에 맞춘다(softmax KL + 작은 MSE, 1500 스텝, CPU ~1분). 결과는 체크포인트로.
+
+  D6 eval 샤드 4096행 × 5유닛(학습에 안 쓴 행), 기준 = IQN 고정 τ 32개 평균:
+
+  | | 최대 로짓 차 | 평균 로짓 차 | argmax 일치 | 1·2위 차 >0.5인 유닛(95%)에서 |
+  |---|---|---|---|---|
+  | fold | 5.51 | 1.65 (대부분 행 공통 이동, 중심화 최대 4.36) | 99.63% | 100% |
+  | fit | 0.58 | 0.056 | **99.80%** | 100% |
+  | 참고: IQN 자신의 `iqn` 추론(무작위 τ 32개) | 1.10 | 0.17 | 99.42% | 100% |
+
+  즉 fold만으로도 IQN이 자기 무작위 τ 추론과 일치하는 것보다 더 잘 일치하고, 불일치는 전부 1·2위가 거의 동점인 유닛이다.
+  K=32(P4 보간 후)도 같은 숫자(보간은 선형이라 argmax 보존).
+- **추론** (`inference.py`): 로짓 헤드는 tau가 없으니 `iqn` = `fixed_tau` = 평범한 argmax(같은 이동), `tie_mean`/`arc_mean`은
+  로짓을 그대로 읽는다. `_FastNet`은 tau를 뽑지도, trace 입력으로 넣지도 않는다(무상태·`--temporal` 모두).
+- **학습** (`run.py --policy-head logits`): 손실은 같은 집합값 CE + z-loss. `--init` IQN 체크포인트 → fold → (K가 다르면) P4 보간
+  → (temporal이면) 기억 블록 항등 초기화. 로짓 체크포인트를 IQN 학생에 넣으면 거부.
+
+속도(기계를 학습 런과 공유 중 — 같은 프로세스에서 번갈아 3회씩 잰 상대값):
+
+| | IQN q8 | IQN q32 | logits |
+|---|---|---|---|
+| 학습 스텝 (MPS, B=256, fp16, compile; `distill_step_bench.py --policy-heads iqn logits --repeats 3`) | 144 ms | 164 ms | 133 ms (q8 대비 −7%, q32 대비 −19%) |
+| 워커 틱 (CPU 1스레드, 배치 1, trace, K=32, D6 eval 관측 400틱 × 12회, 최소/중앙) 무상태 | 2.67 / 3.42 ms | – | 2.23 / 2.78 ms (−0.5 ms) |
+| 같은, temporal | 3.14 / 3.72 ms | – | 2.83 / 3.49 ms (−0.3 ms) |
+
+절대값은 부하 때문에 P4 기록(84 ms/스텝)보다 크다. 이득은 IQN 헤드 몫만큼 — 학습 q8에선 작고, 학습 비용의 대부분은 역전파의 trunk다.
+
+스모크(2026-10-01, `--policy-head logits --action-bins 32 --act-arc-bins 1 --teacher act:strategic_v21_anyangle`, D6 초기화(fold),
+2 워커, 200 스텝, `--amp fp16 --compile`, P1 학습과 기계 공유): 6.2–6.6 step/s(throttle 없는 구간), eval 일치율 agree 0.77–0.80 /
+agree8 0.74–0.76(2경기씩) — P4 K=32 IQN 스모크(5.6–6.0 step/s, 0.77–0.80 / 0.73–0.76)와 같은 수준. meta `policy_head: logits` 확인.
+
+실험 스크립트 `checkpoints/distill/launch_p5.sh`: 작업트리 `/Users/mac/project/26rl/blackout-env-p5`(P5 커밋에 고정, p4와 같은 링크)에서
+P4 체인이 끝난 뒤(`reports/distill_heldout/stdout_p4.log`의 `P4 CHAIN DONE`) 시작. 한 팔 `p5a`: `head_fit`으로 D6 → 로짓 헤드
+(`checkpoints/distill/p5a/init_logits.pt`), p4a와 같은 설정(D6 상대 풀, `--action-bins 32`, `act:strategic_v21_anyangle` ±1구간,
+20k 스텝)에 `--policy-head logits`. 이어서 보류 시드 평가(`reports/distill_heldout`, v21-teach, iqn·arc_mean — D6/p4와 짝),
+p4a와 짝이 되는 자기 교사 평가(`reports/p4_heldout`), OOD. 판단: p5a − p4a 짝 차이가 0 근처면 IQN을 기본에서 뺀다.
