@@ -213,3 +213,14 @@ P4 체인이 끝난 뒤(`reports/distill_heldout/stdout_p4.log`의 `P4 CHAIN DON
 (`checkpoints/distill/p5a/init_logits.pt`), p4a와 같은 설정(D6 상대 풀, `--action-bins 32`, `act:strategic_v21_anyangle` ±1구간,
 20k 스텝)에 `--policy-head logits`. 이어서 보류 시드 평가(`reports/distill_heldout`, v21-teach, iqn·arc_mean — D6/p4와 짝),
 p4a와 짝이 되는 자기 교사 평가(`reports/p4_heldout`), OOD. 판단: p5a − p4a 짝 차이가 0 근처면 IQN을 기본에서 뺀다.
+
+### 학습률 일정 (`--lr-schedule`, 2026-10-02 구현 — D8 후속)
+
+D8에서 수렴한 D6를 3e-4로 이어 학습하면 ~10점 잃고 1e-4면 수준 유지 → 이어 학습·처음부터 학습 모두 끝에서 lr을 낮추도록.
+- `--lr-schedule {constant,cosine,linear}` (기본 `constant` = 이전과 비트 단위로 같음: 옵티마이저 lr을 아예 건드리지 않음),
+  `--lr-warmup W` (기본 0; 0에서 `--lr`까지 선형, 스텝 s<W에서 `lr·(s+1)/W`), `--lr-final F` (기본 0.1; 마지막 스텝 `--steps − 1`의 lr = `lr·F`).
+  cosine/linear는 스텝 W의 `--lr`에서 마지막 스텝의 `lr·F`까지 감쇠, 그 뒤로는 `lr·F` 유지.
+- 전역 스텝과 `--steps`만의 함수(`run.lr_at`)라 저장할 스케줄러 상태가 없다: 매 스텝 param_group lr을 덮어쓰고 `train/lr`로 기록.
+  재개하면 같은 곡선을 이어간다. **재개 때 `--steps`를 늘리면 현재 스텝에서 곡선을 다시 계산**하므로 감쇠가 늘어나 lr이 다시 올라갈 수 있다.
+- 인자는 `run_info.json`(모든 인자)과 체크포인트 `distill` meta(`lr`, `lr_schedule`, `lr_warmup`, `lr_final`, `steps`)에 남는다.
+- 스모크(cosine, W=20, F=0.1, 120 스텝, 2 워커): `train/lr` 3e-4(20) → 1.25e-4(80) → 3e-5(120), 테스트 `tests/test_lr_schedule.py`.

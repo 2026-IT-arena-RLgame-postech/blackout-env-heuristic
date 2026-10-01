@@ -48,6 +48,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import json
+import math
 import os
 import platform
 import resource
@@ -120,7 +121,15 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--probe-rows", type=int, default=2048, help="fixed teacher-state rows scored at every publish")
     # learner
     p.add_argument("--batch-size", type=int, default=256)
-    p.add_argument("--lr", type=float, default=3e-4)
+    p.add_argument("--lr", type=float, default=3e-4, help="peak learning rate (see --lr-schedule)")
+    p.add_argument("--lr-schedule", choices=LR_SCHEDULES, default="constant",
+                   help="lr over the run, a function of the global step and --steps (lr_at): constant = --lr throughout "
+                   "(the default, unchanged); cosine / linear decay from --lr after the warm-up to --lr x --lr-final "
+                   "at the last step.  Resume-safe: a resumed run continues the same curve; resuming with a larger "
+                   "--steps recomputes it from the current step (the decay stretches, so the lr can jump up)")
+    p.add_argument("--lr-warmup", type=int, default=0, help="steps of linear warm-up from 0 to --lr (any schedule)")
+    p.add_argument("--lr-final", type=float, default=0.1,
+                   help="cosine/linear: the last step's lr as a fraction of --lr")
     p.add_argument("--weight-decay", type=float, default=1e-2)
     p.add_argument("--grad-clip", type=float, default=1.0)
     p.add_argument("--z-loss", type=float, default=1e-4)
@@ -161,6 +170,37 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--max-rows", type=int, default=600_000, help="replay ring size (~8 KB per row in RAM)")
     p.add_argument("--device", default="mps" if torch.backends.mps.is_available() else "cpu")
     return p.parse_args(argv)
+
+
+LR_SCHEDULES = ("constant", "cosine", "linear")
+
+
+def lr_at(step: int, args) -> float:
+    """The lr of the gradient step taken after ``step`` completed steps (0 = the first).
+
+    Warm-up (``--lr-warmup`` W > 0): ``lr * (step + 1) / W`` for step < W, so the first step is
+    not wasted at 0 and step W - 1 reaches ``lr``.  Then constant, or cosine / linear from ``lr``
+    at step W to ``lr * --lr-final`` at the last step (``--steps - 1``), held there after it.
+    Stateless -- only the step and the args -- so nothing is saved and a resume continues it."""
+    lr, warmup = args.lr, args.lr_warmup
+    if step < warmup:
+        return lr * (step + 1) / warmup
+    if args.lr_schedule == "constant":
+        return lr
+    progress = min(1.0, max(0.0, (step - warmup) / max(1, args.steps - 1 - warmup)))
+    if args.lr_schedule == "cosine":
+        shape = 0.5 * (1.0 + math.cos(math.pi * progress))
+    elif args.lr_schedule == "linear":
+        shape = 1.0 - progress
+    else:
+        raise ValueError(f"unknown --lr-schedule {args.lr_schedule!r}")
+    return lr * (args.lr_final + (1.0 - args.lr_final) * shape)
+
+
+def lr_is_scheduled(args) -> bool:
+    """False for the default (constant, no warm-up): the optimizer's lr is then never touched,
+    bit-exact with the trainer before schedules (incl. a resume keeping the saved optimizer's lr)."""
+    return args.lr_schedule != "constant" or args.lr_warmup > 0
 
 
 def beta_for(version: int, args) -> float:
@@ -271,6 +311,13 @@ class Learner:
             masks = torch.cat((masks, stand.unsqueeze(-1)), dim=-1)
             kinds = torch.where(stand, torch.full_like(kinds, KIND_INDEX["stand"]), kinds)
         return graphic, batch["team_state"], batch["agent_states"], masks, classes, kinds
+
+    def set_lr(self, step: int) -> None:
+        """Apply the --lr-schedule value for global ``step`` to every param group."""
+        if lr_is_scheduled(self.args):
+            lr = lr_at(step, self.args)
+            for group in self.optimizer.param_groups:
+                group["lr"] = lr
 
     @property
     def rows_per_step(self) -> int:
@@ -489,7 +536,9 @@ class Run:
             "distill": {"version": self.version, "teacher": self.args.teacher, "queued": self.queued,
                         "collected_rows": self.collected_rows, "temporal": self.args.temporal,
                         "action_bins": self.args.action_bins, "stand_action": self.args.stand_action,
-                        "policy_head": self.args.policy_head},
+                        "policy_head": self.args.policy_head, "lr": self.args.lr,
+                        "lr_schedule": self.args.lr_schedule, "lr_warmup": self.args.lr_warmup,
+                        "lr_final": self.args.lr_final, "steps": self.args.steps},
         }
         tmp = self.latest.with_suffix(".tmp")
         torch.save(payload, tmp)
@@ -660,6 +709,7 @@ class Run:
             print(f"[distill] {self.dataset.size} rows, fitting", flush=True)
             window_started = self._window_started = time.time()
             while self.step < args.steps:
+                self.learner.set_lr(self.step)
                 if args.temporal:
                     self.learner.step_windows(self.dataset.sample_windows(args.windows, args.window, args.burn_in, self._rng))
                 else:  # with STAND, all-unlabelled rows are targets too (the teacher stands everywhere there)
