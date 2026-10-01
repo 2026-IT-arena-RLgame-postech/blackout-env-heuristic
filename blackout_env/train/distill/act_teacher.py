@@ -22,6 +22,9 @@ internal state follows the trajectory that is actually played, whoever drove.
 * ``act(obs)`` is the policy's own ``act`` (as an opponent, e.g. ``teacher:act:strategic_v19``).
   Never call both ``teach`` and ``act`` on one tick: each steps the policy's state.
 * ``reset()`` resets the wrapped policy (a new match).
+* K direction bins (``--action-bins``, P4): the labels here stay 8-way; ``collect.bin_labels``
+  relabels each tick from ``last_actions`` -- the raw heading's nearest bin +- ``--act-arc-bins``
+  -- so a K-bin student learns the policy's actual angle, not its compass snap.
 """
 
 from __future__ import annotations

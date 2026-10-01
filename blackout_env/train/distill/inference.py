@@ -1,4 +1,8 @@
-"""How a distilled student turns its 8 direction logits into a move, selectable per match.
+"""How a distilled student turns its direction logits into a move, selectable per match.
+
+The logits are 8 compass directions or, for a K-bin student (P4, ``--action-bins``), K heading
+bins (model/direction_bins.py), with STAND last when there is one; K is read off the net's output
+width, so every mode below and the traced ``_FastNet`` work at any K unchanged.
 
 * ``iqn`` -- ``MyPolicy`` as trained: IQN quantile fractions drawn at random every forward, argmax
   of their mean.  At D1 v5, tau noise alone changed the argmax on ~26% of the ticks where the
@@ -6,7 +10,12 @@
 * ``fixed_tau`` -- the same argmax over fixed, evenly spaced quantile fractions: deterministic;
 * ``tie_mean`` -- fixed tau, and every direction within ``TIE_MARGIN`` logits of the best counts:
   the move is their mean, like the teacher following a label *set* (a straight and a diagonal
-  move that both make progress), unless they point apart, then the best alone.
+  move that both make progress), unless they point apart, then the best alone;
+* ``arc_mean`` -- fixed tau; the best bin and its neighbours on either side, as long as each stays
+  within ``ARC_MARGIN`` logits of the best (one contiguous arc, never a second peak): the move is
+  their probability-weighted circular mean.  Meant for K-bin students, whose neighbouring bins
+  share the mass of one heading: the mean is smoother than the arg max, which jitters between
+  them.  At K = 8 it is ``tie_mean`` restricted to adjacent directions.
 
 A temporal student (``MyModel(temporal=True)``) works in every mode: ``_FastNet`` then takes and
 returns the memory, ``MyPolicy`` carries it across ticks (one memory per team, so a mirror match
@@ -23,11 +32,13 @@ import torch
 from torch import nn
 
 from blackout_env.model.my_model import N_QUANTILES_DEFAULT, MyModel
-from blackout_env.model.my_policy import ACTION_VECTORS, DIRECTION_VECTORS, STAND, MyPolicy
+from blackout_env.model.direction_bins import bin_vectors, bins_of_width
+from blackout_env.model.my_policy import MyPolicy
 from blackout_env.train.distill.dataset import N_TEAM
 
-INFERENCE = ("iqn", "fixed_tau", "tie_mean")
+INFERENCE = ("iqn", "fixed_tau", "tie_mean", "arc_mean")
 TIE_MARGIN = 1.0  # logits; e^-1 = the tied move has at least ~37% of the best one's probability
+ARC_MARGIN = 1.0  # logits: arc_mean's bins
 _CANCELLING = 0.5  # |mean of the tied unit vectors| below this = tied moves point apart
 
 
@@ -107,23 +118,58 @@ def fixed_tau(n: int = N_QUANTILES_DEFAULT) -> torch.Tensor:
     return ((torch.arange(n, dtype=torch.float32) + 0.5) / n).unsqueeze(0)
 
 
+_ZERO = np.zeros(2, dtype=np.float32)
+
+
 class _TieMeanPolicy(MyPolicy):
     def act(self, obs):
         moves = {}
         for agent, row in self.action_values(obs).items():
-            if int(np.argmax(row)) == STAND:  # a --stand-action student choosing to stay
-                moves[agent] = ACTION_VECTORS[STAND]
+            bins, _ = bins_of_width(len(row))
+            if int(np.argmax(row)) == bins:  # a --stand-action student choosing to stay
+                moves[agent] = _ZERO.copy()
                 continue
-            row = row[:len(DIRECTION_VECTORS)]
+            vectors = bin_vectors(bins)
+            row = row[:bins]
             tied = row >= row.max() - TIE_MARGIN
-            mean = DIRECTION_VECTORS[tied].mean(axis=0)
+            mean = vectors[tied].mean(axis=0)
             norm = float(np.linalg.norm(mean))
-            moves[agent] = (mean / norm).astype(np.float32) if norm >= _CANCELLING else DIRECTION_VECTORS[int(np.argmax(row))]
+            moves[agent] = (mean / norm).astype(np.float32) if norm >= _CANCELLING else vectors[int(np.argmax(row))]
         return moves
 
 
+def arc_mean_move(row: np.ndarray, margin: float = ARC_MARGIN) -> np.ndarray:
+    """``arc_mean`` for one unit's logits: STAND -> the zero move, else the circular mean of the
+    contiguous arc around the best bin (see the module docstring)."""
+    bins, _ = bins_of_width(len(row))
+    best = int(np.argmax(row))
+    if best == bins:
+        return _ZERO.copy()
+    logits = row[:bins].astype(np.float64)
+    floor = logits[best] - margin
+    arc = [best]
+    for step in (1, -1):  # grow each side while it stays near the best (at most all the way round)
+        k = best
+        while len(arc) < bins:
+            k = (k + step) % bins
+            if logits[k] < floor or k in arc:
+                break
+            arc.append(k)
+    weights = np.exp(logits[arc] - logits[best])
+    mean = (bin_vectors(bins)[arc].astype(np.float64) * weights[:, None]).sum(axis=0)
+    norm = float(np.linalg.norm(mean))
+    if norm < 1e-6:  # a full circle of ties: no heading wins
+        return bin_vectors(bins)[best].copy()
+    return (mean / norm).astype(np.float32)
+
+
+class _ArcMeanPolicy(MyPolicy):
+    def act(self, obs):
+        return {agent: arc_mean_move(row) for agent, row in self.action_values(obs).items()}
+
+
 def load_net(state: dict, temporal: bool | None = None) -> MyModel:
-    """A MyModel shaped like ``state``: its width, 8 or 9 (--stand-action) outputs, and temporal
+    """A MyModel shaped like ``state``: its width, its outputs (8 or K bins, + STAND), and temporal
     memory iff ``state`` has ``temporal.`` keys (``temporal=None``).  ``temporal=True`` also
     accepts a stateless state: the warm start (identity-initialised memory, the same Q-values);
     see ``MyModel.from_state_dict``."""
@@ -138,4 +184,6 @@ def make_student(net: MyModel, inference: str = "iqn") -> MyPolicy:
         return MyPolicy(_FastNet(net, tau=fixed_tau()))
     if inference == "tie_mean":
         return _TieMeanPolicy(_FastNet(net, tau=fixed_tau()))
+    if inference == "arc_mean":
+        return _ArcMeanPolicy(_FastNet(net, tau=fixed_tau()))
     raise ValueError(f"unknown inference {inference!r}; choose from {INFERENCE}")

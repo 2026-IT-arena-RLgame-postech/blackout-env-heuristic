@@ -26,7 +26,8 @@ import numpy as np
 import torch
 
 from blackout_env.env.constants import unit_index
-from blackout_env.model.my_policy import direction_vector_to_idx
+from blackout_env.model.direction_bins import vector_to_bin
+from blackout_env.model.my_policy import N_DIRECTIONS, direction_vector_to_idx
 from blackout_env.train.distill.dataset import KINDS, N_TEAM
 from blackout_env.train.movement_monitor import MovementMonitor
 from blackout_env.train.objective_monitor import ObjectiveMonitor
@@ -46,6 +47,11 @@ CAMP_TILES = 3.0  # an enemy Hunter this close to our base (outside its own) is 
 NEAR_BASE_TILES = 4.0  # a death this close to our base = killed on the way out
 RESPAWN_JUMP = 0.15  # normalised position jump in one tick = died and respawned (MovementMonitor's rule)
 SPAWN_ALLY_CHANNEL = 4
+
+
+def _move_bin(move: np.ndarray, bins: int) -> int:
+    """The label index a continuous move falls in: compass direction, or K-bin heading."""
+    return int(direction_vector_to_idx(move)) if bins == N_DIRECTIONS else int(vector_to_bin(move, bins))
 
 
 def _role(state: np.ndarray) -> str:
@@ -69,7 +75,11 @@ class MatchRecorder:
         self._base_cells: np.ndarray | None = None  # our base (4x4 corner around our spawn), tiles
         self._camped = False
 
-    def before_step(self, learner_obs, opponent_obs, labels, actions, student_actions, teacher_drove) -> None:
+    def before_step(self, learner_obs, opponent_obs, labels, actions, student_actions, teacher_drove, compass=None) -> None:
+        """``labels`` may be K-bin (P4): ``agree`` then asks whether the student's move falls in
+        the K-bin set.  ``compass`` -- the teacher's own 8-direction labels, given when ``labels``
+        were re-expressed over K bins -- adds ``agree8``: the student's move snapped to the
+        compass, in the 8-direction set (the K = 8 meaning of ``agree``, comparable across K)."""
         view = next(iter(learner_obs.values()))
         states, elapsed = view["agent_states"], (1.0 - float(view["team_state"][2])) * MATCH_SECONDS
         learner_rows = [unit_index(n) for n in self.learner_names]
@@ -88,10 +98,14 @@ class MatchRecorder:
             c["labels/valid"] += label.valid
             c["labels/set_size"] += int(label.mask.sum())
             if label.valid and name in student_actions:  # does the student agree where it was asked?
-                hit = bool(label.mask[int(direction_vector_to_idx(student_actions[name]))])
+                hit = bool(label.mask[_move_bin(student_actions[name], len(label.mask))])
+                hit8 = bool(compass[name].mask[int(direction_vector_to_idx(student_actions[name]))]) if compass is not None else None
                 for key in ("all", f"role_{role}", f"kind_{label.kind}", f"{controller}_driving"):
                     c[f"agree_hit/{key}"] += hit
                     c[f"agree_n/{key}"] += 1
+                    if hit8 is not None:
+                        c[f"agree8_hit/{key}"] += hit8
+                        c[f"agree8_n/{key}"] += 1
             elif name in student_actions:  # the teacher stands here: does the student?
                 c["agree_hit/stand"] += not np.any(student_actions[name])
                 c["agree_n/stand"] += 1
@@ -138,8 +152,13 @@ class MatchRecorder:
         norm = float(np.linalg.norm(move))
         previous = self._last_move.get(name)
         if norm > 1e-6:
-            if previous is not None and float(move @ previous[0]) / norm < REVERSAL_COS:
-                self.counts[f"reversals/{controller}"] += 1
+            if previous is not None:
+                cos = float(move @ previous[0]) / norm
+                if cos < REVERSAL_COS:
+                    self.counts[f"reversals/{controller}"] += 1
+                # heading change between consecutive moves: K-bin jitter shows up here, not as reversals
+                self.counts[f"turn_deg/{controller}"] += math.degrees(math.acos(min(1.0, max(-1.0, cos))))
+                self.counts[f"turn_n/{controller}"] += 1
             self._last_move[name] = (move / norm, controller)
 
     def after_step(self, next_states: np.ndarray | None) -> None:
@@ -187,6 +206,9 @@ def rates(counts: dict[str, float]) -> dict[str, float]:
         name = key.split("/", 1)[1]
         out[f"agree/{name}"] = c[f"agree_hit/{name}"] / max(1, c[key])
         out[f"agree_share/{name}"] = c[key] / max(1, c["agree_n/all"])
+    for key in [k for k in c if k.startswith("agree8_n/")]:  # K-bin labels: the 8-way agreement too
+        name = key.split("/", 1)[1]
+        out[f"agree8/{name}"] = c[f"agree8_hit/{name}"] / max(1, c[key])
     ticks = c["ticks/teacher"] + c["ticks/student"]
     out["teacher_frac"] = c["ticks/teacher"] / max(1, ticks)
     for role in ROLES:
@@ -206,6 +228,8 @@ def rates(counts: dict[str, float]) -> dict[str, float]:
     for controller in ("student", "teacher"):
         if c[f"ticks/{controller}"]:
             out[f"reversals_per_1000/{controller}"] = 1000 * c[f"reversals/{controller}"] / c[f"ticks/{controller}"]
+        if c[f"turn_n/{controller}"]:
+            out[f"mean_turn_deg/{controller}"] = c[f"turn_deg/{controller}"] / c[f"turn_n/{controller}"]
     for side in ("learner", "opponent"):
         unit_ticks = max(1, c[f"{side}/unit_ticks"])
         out[f"{side}/carry_frac"] = c[f"{side}/carry_ticks"] / unit_ticks
@@ -263,7 +287,8 @@ class LabelAccuracy:
 
     @torch.no_grad()
     def add(self, logits: torch.Tensor, masks: torch.Tensor, classes: torch.Tensor, kinds: torch.Tensor) -> None:
-        """logits [B, 5, 8], masks bool [B, 5, 8], classes [B, 5, 3] one-hot, kinds [B, 5]."""
+        """logits [B, 5, A], masks bool [B, 5, A] (A = 8, 9, or K bins [+ STAND]), classes [B, 5, 3]
+        one-hot, kinds [B, 5]."""
         valid = masks.any(dim=-1).float()
         hit = masks.gather(-1, logits.argmax(-1, keepdim=True)).squeeze(-1).float() * valid
         kind_onehot = torch.nn.functional.one_hot(kinds.long(), len(KINDS)).float()  # [B, 5, K]

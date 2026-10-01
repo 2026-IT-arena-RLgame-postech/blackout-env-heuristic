@@ -60,9 +60,10 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from blackout_env.model.direction_bins import ACTION_BINS, SET_HALF_WIDTH_DEG, bins_of_width, resample_rows
 from blackout_env.model.my_model import TEMPORAL_PREFIX, MyModel
 from blackout_env.train.distill.collect import CollectorPool, MatchTask, teacher_arg
-from blackout_env.model.my_policy import N_DIRECTIONS
+from blackout_env.train.distill.inference import INFERENCE
 from blackout_env.train.distill.dataset import FIELDS, GRAPHIC_SCALE, KIND_INDEX, N_TEAM, DistillDataset, new_shards
 from blackout_env.train.distill.loss import set_valued_cross_entropy
 from blackout_env.train.distill.metrics import CLASS_COLS, LabelAccuracy, MetricsLog, summarize_matches
@@ -136,6 +137,17 @@ def parse_args(argv=None) -> argparse.Namespace:
                    help="a 9th output, STAND, trained where the teacher has no label: it stands there (interacting, "
                    "waiting, holding a slot), and an 8-way student dithers back and forth instead -- 46%% of D4's "
                    "reversals.  --init from an 8-way checkpoint keeps its directions and adds the new row")
+    p.add_argument("--action-bins", type=int, choices=ACTION_BINS, default=8,
+                   help="K heading bins per unit (P4; bin k at 2 pi k / K, bins 0, K/8, ... = the compass): the head emits "
+                   "K logits (+ STAND), labels are K-bit sets.  --init from a checkpoint with another K interpolates its "
+                   "direction rows (the same moves at step 0).  8 = the compass, unchanged")
+    p.add_argument("--label-width-deg", type=float, default=SET_HALF_WIDTH_DEG,
+                   help="--action-bins: a set teacher's allowed direction labels the bins within this many degrees of it")
+    p.add_argument("--act-arc-bins", type=int, default=0,
+                   help="--action-bins: an act: teacher's raw heading labels its nearest bin and this many either side")
+    p.add_argument("--inference", choices=INFERENCE, default="iqn",
+                   help="how collection and eval students turn logits into a move (inference.py; arc_mean: circular "
+                   "mean of the top contiguous arc, for K bins)")
     p.add_argument("--temporal", action="store_true",
                    help="a student with memory (MyModel(temporal=True): per-slot KDA between trunk and head), trained on "
                    "windows of consecutive ticks; --init from a stateless checkpoint warm-starts it with identical outputs")
@@ -181,17 +193,32 @@ STAND_INIT_MARGIN = 4.0  # logits
 
 
 def load_weights(net: MyModel, state: dict) -> None:
-    """Load ``state`` into ``net``; an 8-way state into a --stand-action net keeps every
-    direction and starts STAND's row at zero weights and a bias STAND_INIT_MARGIN below the lowest
-    direction's, so the inherited student keeps moving until STAND is trained (at the lowest
-    bias alone, STAND won half of the labelled ticks of D4's weights)."""
+    """Load ``state`` into ``net``, adapting the head's output rows when the two differ:
+
+    * K bins: the net's bin rows are the state's direction rows interpolated in angle
+      (``direction_bins.resample_rows``; bins on a source direction are exact copies), so a
+      K-bin net from an 8-way checkpoint picks the same headings as it did -- the same logits on
+      the compass bins, lower ones between them;
+    * STAND: a state without one into a --stand-action net starts STAND's row at zero weights
+      and a bias STAND_INIT_MARGIN below the lowest direction's, so the inherited student keeps
+      moving until STAND is trained (at the lowest bias alone, STAND won half of the labelled
+      ticks of D4's weights); a state with one keeps it."""
     key = "q_head.value_head.1"
-    rows = net.state_dict()[f"{key}.weight"].shape[0]
-    if state[f"{key}.weight"].shape[0] == N_DIRECTIONS and rows == N_DIRECTIONS + 1:
+    dst = bins_of_width(net.state_dict()[f"{key}.weight"].shape[0])
+    src = bins_of_width(state[f"{key}.weight"].shape[0])
+    if src != dst:
+        (src_bins, src_stand), (dst_bins, dst_stand) = src, dst
         state = dict(state)
         weight, bias = state[f"{key}.weight"], state[f"{key}.bias"]
-        state[f"{key}.weight"] = torch.cat((weight, torch.zeros_like(weight[:1])))
-        state[f"{key}.bias"] = torch.cat((bias, (bias.min() - STAND_INIT_MARGIN).reshape(1)))
+        new_weight = resample_rows(weight[:src_bins], src_bins, dst_bins)
+        new_bias = resample_rows(bias[:src_bins], src_bins, dst_bins)
+        if dst_stand:
+            if src_stand:
+                stand_weight, stand_bias = weight[src_bins:], bias[src_bins:]
+            else:
+                stand_weight, stand_bias = torch.zeros_like(weight[:1]), (bias[:src_bins].min() - STAND_INIT_MARGIN).reshape(1)
+            new_weight, new_bias = torch.cat((new_weight, stand_weight)), torch.cat((new_bias, stand_bias))
+        state[f"{key}.weight"], state[f"{key}.bias"] = new_weight, new_bias
     if net.is_temporal and not any(k.startswith(TEMPORAL_PREFIX) for k in state):
         net.load_warm_start(state)  # a stateless checkpoint: the memory block starts as the identity
     else:
@@ -205,12 +232,12 @@ class Learner:
     def __init__(self, args):
         self.args = args
         self.device = torch.device(args.device)
-        self.net = MyModel(n_actions=N_DIRECTIONS + int(args.stand_action), temporal=args.temporal).to(self.device)
+        self.net = MyModel(n_actions=args.action_bins + int(args.stand_action), temporal=args.temporal).to(self.device)
         if args.compile:
             for name in COMPILED_MODULES:  # in place: state_dict keys stay the same
                 getattr(self.net, name).compile()
         self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-        self._bit_index = torch.arange(8, device=self.device)
+        self._bit_index = torch.arange(args.action_bins, device=self.device)
         self.accuracy = LabelAccuracy(self.device)
         self._totals = defaultdict(lambda: torch.zeros((), device=self.device))
         self._steps = 0
@@ -220,7 +247,10 @@ class Learner:
         self.mark_weights()
 
     def _tensors(self, rows: dict[str, np.ndarray]):
-        batch = {k: torch.from_numpy(rows[k]).to(self.device) for k in FIELDS}
+        # K > 8 labels are uint64 bit sets: the same bits as int64 (MPS has no uint64 shifts;
+        # an arithmetic shift still reads bit 63 right after the & 1)
+        batch = {k: torch.from_numpy(rows[k].view(np.int64) if rows[k].dtype == np.uint64 else rows[k]).to(self.device)
+                 for k in FIELDS}
         graphic = batch["graphic"].permute(0, 3, 1, 2).float() / GRAPHIC_SCALE
         masks = ((batch["labels"].long().unsqueeze(-1) >> self._bit_index) & 1) == 1  # dataset.unpack_labels
         classes = batch["agent_states"][:, :N_TEAM, CLASS_COLS]
@@ -390,7 +420,7 @@ class Run:
         info_path = self.out_dir / "run_info.json"
         history = json.loads(info_path.read_text()) if info_path.exists() else []
         info_path.write_text(json.dumps(history + [_run_info(args)], indent=1))
-        self.dataset = DistillDataset(self.shards, args.max_rows)
+        self.dataset = DistillDataset(self.shards, args.max_rows, action_bins=args.action_bins)
         self.dataset.refresh()
         self.metrics = MetricsLog(self.out_dir)
         self.match_log = open(self.out_dir / "matches.jsonl", "a")
@@ -446,7 +476,8 @@ class Run:
             "scaler_state": self.learner.scaler.state_dict(),
             "train_step_count": self.step,
             "distill": {"version": self.version, "teacher": self.args.teacher, "queued": self.queued,
-                        "collected_rows": self.collected_rows, "temporal": self.args.temporal},
+                        "collected_rows": self.collected_rows, "temporal": self.args.temporal,
+                        "action_bins": self.args.action_bins, "stand_action": self.args.stand_action},
         }
         tmp = self.latest.with_suffix(".tmp")
         torch.save(payload, tmp)
@@ -476,7 +507,9 @@ class Run:
         return MatchTask(seed=seed, swap=swap, opponent=opponent, beta=beta, teacher=self.args.teacher,
                          student=str(self.latest) if beta < 1.0 else None,
                          shard=str(folder / f"{index:06d}_{tag}_v{self.version:04d}.npz"),
-                         tag=tag, version=self.version)
+                         tag=tag, version=self.version, inference=self.args.inference,
+                         action_bins=self.args.action_bins, label_width_deg=self.args.label_width_deg,
+                         act_arc_bins=self.args.act_arc_bins)
 
     def queue_eval(self, pool: CollectorPool, tag: str = "eval") -> None:
         # the same seeds every time, so versions compare on equal maps
@@ -511,7 +544,7 @@ class Run:
         for rows, meta in self.dataset.new_shards():  # fresh = the current net has not trained on these yet
             self._score_fresh(rows, "collect")
             self.dataset.append(rows, meta.get("student_version", 0))
-        for rows, meta in new_shards(self.eval_shards, self._eval_seen):  # and never will
+        for rows, meta in new_shards(self.eval_shards, self._eval_seen, self.args.action_bins):  # and never will
             if meta.get("tag") == "eval":
                 self._score_fresh(rows, "eval")
         self.top_up(pool)

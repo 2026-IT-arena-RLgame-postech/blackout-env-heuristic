@@ -15,10 +15,21 @@ where it drives, an act-teacher's raw move is executed (beta = 1 reproduces the 
 Every full-window tick is recorded, labelled or not, in order, with ``tick`` = the index of the
 learner decision step within the match (partial windows are counted but not recorded, so a jump
 in ``tick`` marks them): recurrent students train on windows of consecutive rows.
+
+K direction bins (``MatchTask.action_bins``, P4; model/direction_bins.py): the teachers still
+label in 8 compass directions, and ``bin_labels`` re-expresses each label over the K bins before
+it is recorded -- a set teacher's directions widen to the bins within ``label_width_deg`` of them,
+an act-teacher's label becomes its *raw* heading's nearest bin +- ``act_arc_bins``.  Executed
+moves are unchanged (a relabeller's ``label_action``, an act-teacher's raw move, the student's
+bin heading); shards store bin indices for ``actions``/``student`` and K-bit label sets (uint64
+for K > 8).  The recorder's ``agree`` is then "the student's heading falls in the K-bin set";
+``agree8`` keeps the 8-way meaning (its move snapped to the compass, in the teacher's own
+8-direction label) so runs at different K compare.  K = 8 is the old path, unchanged.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import functools
 import os
 import threading
@@ -34,10 +45,13 @@ from blackout_env.env.team_frame import canonical_obs, is_team_b_view, mirror_di
 from blackout_env.heuristics import (
     StrategicHeuristicV4Teach, StrategicHeuristicV17Teach, StrategicHeuristicV20Teach, StrategicHeuristicV21Teach,
 )
-from blackout_env.heuristics.teach import label_action
-from blackout_env.model.my_policy import direction_vector_to_idx
+from blackout_env.heuristics.teach import TeachLabel, label_action
+from blackout_env.model.direction_bins import (
+    SET_HALF_WIDTH_DEG, arc_mask, label_dtype, mirror_bin, mirror_bits, pack_bits, vector_to_bin, widen_mask,
+)
+from blackout_env.model.my_policy import N_DIRECTIONS, direction_vector_to_idx
 from blackout_env.train.dead_segments import batteries_in_play
-from blackout_env.train.distill.act_teacher import ZERO_MOVE, ActTeacher, check_act_teacher, is_act_teacher
+from blackout_env.train.distill.act_teacher import ACT_KIND, ZERO_MOVE, ActTeacher, check_act_teacher, is_act_teacher
 from blackout_env.train.distill.dataset import EXTRA_FIELDS, FIELDS, KIND_INDEX, N_TEAM, encode_graphic, save_shard
 from blackout_env.train.distill.metrics import MATCH_SECONDS, STAND, MatchRecorder
 from blackout_env.train.distill.opponents import SELF, make_opponent, opponent_label
@@ -92,6 +106,31 @@ class MatchTask:
     tag: str = "collect"  # "collect" (DAgger data) or "eval" (student alone vs a fixed opponent)
     version: int = 0  # student version current when the task was queued (eval groups by it)
     inference: str = "iqn"  # how the student turns logits into a move (inference.py)
+    action_bins: int = N_DIRECTIONS  # labels and recorded moves over K heading bins (bin_labels)
+    label_width_deg: float = SET_HALF_WIDTH_DEG  # a set teacher's direction -> bins within this
+    act_arc_bins: int = 0  # an act-teacher's heading -> its nearest bin and this many either side
+
+    @property
+    def bins_are_compass(self) -> bool:
+        """K = 8 and labels as the teacher gives them: nothing to re-express."""
+        return self.action_bins == N_DIRECTIONS and self.act_arc_bins == 0 and self.label_width_deg < 45.0
+
+
+def bin_labels(labels: dict[str, TeachLabel], raw_moves: dict[str, np.ndarray] | None, task: MatchTask) -> dict[str, TeachLabel]:
+    """The teacher's 8-direction labels over ``task.action_bins`` bins (see the module docstring).
+    An act label uses the raw move (``raw_moves``, the env's [-1, 1] clip applied), not its
+    8-way snap; an invalid label stays invalid (all False)."""
+    k = task.action_bins
+    out = {}
+    for name, label in labels.items():
+        if not label.valid:
+            mask = np.zeros(k, bool)
+        elif label.kind == ACT_KIND and raw_moves is not None:
+            mask = arc_mask(np.clip(np.asarray(raw_moves[name], np.float32), -1.0, 1.0), k, task.act_arc_bins)
+        else:
+            mask = widen_mask(label.mask, k, task.label_width_deg)
+        out[name] = dataclasses.replace(label, mask=mask)
+    return out
 
 
 def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.ndarray], dict]:
@@ -135,9 +174,10 @@ def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.nda
         full_window = len(learner_obs) == len(learner_names)  # partial decision windows are not recorded
         if learner_obs:
             tick += 1
-            labels = teacher.teach(learner_obs)  # every tick: a stateful teacher must see them all
+            compass = teacher.teach(learner_obs)  # every tick: a stateful teacher must see them all
             # an act-teacher executes its own raw move; a relabeller follows its label
             teacher_moves = getattr(teacher, "last_actions", None)
+            labels = compass if task.bins_are_compass else bin_labels(compass, teacher_moves, task)
             # a temporal student is stepped every tick, even where the teacher drives, so its memory
             # follows the whole match (the same ticks its training windows see)
             asked = student is not None and (task.beta < 1.0 or getattr(student, "is_temporal", False))
@@ -147,10 +187,11 @@ def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.nda
                 if not teacher_drove[name]:
                     actions[name] = student_actions[name]
                 else:
-                    actions[name] = teacher_moves[name] if teacher_moves is not None else label_action(labels[name])
+                    actions[name] = teacher_moves[name] if teacher_moves is not None else label_action(compass[name])
             if full_window:
-                recorder.before_step(learner_obs, opponent_obs, labels, actions, student_actions, teacher_drove)
-                row = _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove)
+                recorder.before_step(learner_obs, opponent_obs, labels, actions, student_actions, teacher_drove,
+                                     compass=None if task.bins_are_compass else compass)
+                row = _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove, task.action_bins)
                 row["tick"] = np.int32(tick)
                 for field, value in row.items():  # unlabelled ticks too: context / STAND targets
                     rows[field].append(value)
@@ -187,29 +228,39 @@ def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.nda
     return arrays, summary
 
 
-def _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove) -> dict[str, np.ndarray]:
+def _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove, bins: int = N_DIRECTIONS) -> dict[str, np.ndarray]:
     """One tick in the canonical frame: own units in rows 0-4, labels and moves mirrored for
-    team B (dataset.py schema)."""
+    team B (dataset.py schema).  ``bins`` > 8: labels are K-bit sets (uint64), moves bin indices."""
     view = next(iter(learner_obs.values()))
     team_b = is_team_b_view(view["agent_states"])
     per_unit = {
-        "labels": np.zeros(2 * N_TEAM, dtype=np.uint8), "kinds": np.zeros(2 * N_TEAM, dtype=np.uint8),
+        "labels": np.zeros(2 * N_TEAM, dtype=label_dtype(bins)), "kinds": np.zeros(2 * N_TEAM, dtype=np.uint8),
         "actions": np.full(2 * N_TEAM, STAND, dtype=np.uint8), "student": np.full(2 * N_TEAM, STAND, dtype=np.uint8),
         "teacher_drove": np.zeros(2 * N_TEAM, dtype=bool),
     }
     for name, label in labels.items():
         i = unit_index(name)
-        per_unit["labels"][i] = np.packbits(label.mask, bitorder="little")[0]
+        if bins == N_DIRECTIONS:
+            per_unit["labels"][i] = np.packbits(label.mask, bitorder="little")[0]
+        else:
+            per_unit["labels"][i] = pack_bits(label.mask)
         per_unit["kinds"][i] = KIND_INDEX.get(label.kind, 0) if label.valid else 0
-        per_unit["actions"][i] = _direction(actions[name])
+        per_unit["actions"][i] = _direction(actions[name], bins)
         if name in student_actions:
-            per_unit["student"][i] = _direction(student_actions[name])
+            per_unit["student"][i] = _direction(student_actions[name], bins)
         per_unit["teacher_drove"][i] = teacher_drove[name]
     if team_b:
-        per_unit["labels"] = mirror_direction_bits(per_unit["labels"])
+        if bins == N_DIRECTIONS:
+            per_unit["labels"] = mirror_direction_bits(per_unit["labels"])
+        else:
+            per_unit["labels"] = mirror_bits(np.roll(per_unit["labels"], -N_TEAM), bins)
         for field in ("actions", "student"):
             moves = per_unit[field]
-            per_unit[field] = np.where(moves == STAND, STAND, mirror_direction_idx(np.minimum(moves, 7))).astype(np.uint8)
+            if bins == N_DIRECTIONS:
+                mirrored = mirror_direction_idx(np.minimum(moves, 7))
+            else:
+                mirrored = mirror_bin(np.minimum(moves, bins - 1), bins)
+            per_unit[field] = np.where(moves == STAND, STAND, mirrored).astype(np.uint8)
         per_unit = {field: np.roll(values, -N_TEAM) if field != "labels" else values for field, values in per_unit.items()}
     canonical = canonical_obs(view)
     return {
@@ -220,10 +271,12 @@ def _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove) 
     }
 
 
-def _direction(move: np.ndarray) -> int:
-    """Compass index of a continuous move, STAND for no movement."""
+def _direction(move: np.ndarray, bins: int = N_DIRECTIONS) -> int:
+    """Compass (or K-bin) index of a continuous move, STAND for no movement."""
     move = np.asarray(move, np.float32)
-    return STAND if float(np.linalg.norm(move)) < ZERO_MOVE else int(direction_vector_to_idx(move))
+    if float(np.linalg.norm(move)) < ZERO_MOVE:
+        return STAND
+    return int(direction_vector_to_idx(move)) if bins == N_DIRECTIONS else int(vector_to_bin(move, bins))
 
 
 def _scores_from(view, team_b: bool) -> dict:

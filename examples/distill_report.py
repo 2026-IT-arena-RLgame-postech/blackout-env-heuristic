@@ -20,6 +20,9 @@ from pathlib import Path
 
 import numpy as np
 
+from blackout_env.model.direction_bins import bits_bins, unpack_bits
+from blackout_env.train.distill.dataset import shard_meta
+
 ROLES = ("collector", "hunter", "carrier")
 TRAP_TICKS = 25
 
@@ -108,15 +111,17 @@ def reversals(out_dir: Path) -> None:
         with np.load(path) as shard:
             moves, labels, states = shard["actions"].astype(np.int16), shard["labels"], shard["agent_states"]
             time_left = shard["team_state"][:, 2]
+            bins = bits_bins(labels, shard_meta(shard).get("action_bins"))  # 8, or K for a --action-bins run
         if len(moves) < 2:
             continue
         step = -np.diff(time_left)
         consecutive = (step > 0) & (step < 1.5 * np.median(step))  # dropped (unlabelled) ticks break a pair
         prev, cur, label = moves[:-1], moves[1:], labels[1:]
-        moving = (prev < 8) & (cur < 8) & consecutive[:, None]
-        reversal = moving & np.isin((cur - prev) % 8, (3, 4, 5))
+        moving = (prev < bins) & (cur < bins) & consecutive[:, None]
+        turn = (cur - prev) % bins  # in bins: a turn of 135 degrees or more = 3K/8 .. 5K/8
+        reversal = moving & (turn >= 3 * bins // 8) & (turn <= 5 * bins // 8)
         labelled = label > 0
-        in_set = (label >> np.minimum(cur, 7).astype(np.uint8)) & 1 == 1
+        in_set = np.take_along_axis(unpack_bits(label, bins), np.minimum(cur, bins - 1)[..., None], axis=-1)[..., 0]
         hunter = states[1:, :5, 10] > 0.5
         # A trap is an unbroken run of reversals: the unit steps back and forth in place.
         trapped = np.zeros_like(reversal)

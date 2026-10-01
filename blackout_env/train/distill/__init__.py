@@ -6,6 +6,6 @@ reaches, and the net is fitted to the aggregate of all labels so far.
 
   dataset.py  shard format (one .npz per match) and the in-memory aggregate the trainer samples
   collect.py  labelled matches, and the Unity worker pool that plays them
-  loss.py     set-valued cross-entropy over the net's 8 direction logits
+  loss.py     set-valued cross-entropy over the net's direction logits (8, or K bins: model/direction_bins.py)
   run.py      the asynchronous DAgger loop (``python -m blackout_env.train.distill.run``)
 """

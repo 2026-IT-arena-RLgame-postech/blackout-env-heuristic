@@ -12,6 +12,7 @@ from blackout_env.env.team_frame import (
 )
 from blackout_env.model.action_mask import world_legal_mask
 from blackout_env.model.base import BaseModel
+from blackout_env.model.direction_bins import action_vectors, bins_of_width, mirror_bin
 from blackout_env.model.my_model import MyModel
 
 # 8 compass directions, evenly spaced starting at 0 rad (+x axis), matching MyModel's
@@ -28,6 +29,8 @@ DIRECTION_VECTORS = np.array(
 # students trained with --stand-action) has a "stay" action at index STAND: the zero move.
 STAND = N_DIRECTIONS
 ACTION_VECTORS = np.vstack([DIRECTION_VECTORS, np.zeros((1, 2), dtype=np.float32)])
+# A K-bin net (P4, model/direction_bins.py: MyModel(n_actions=K [+ 1])) has K heading bins, bin k
+# at 2 pi k / K, then STAND at index K when the width is odd; K = 8 is the layout above.
 
 
 def direction_vector_to_idx(vectors: np.ndarray) -> np.ndarray:
@@ -82,7 +85,8 @@ class MyPolicy(BaseModel):
 
     def action_values(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         """
-        Each agent's 8 Q-values, indexed by DIRECTION_VECTORS in the *world* frame.
+        Each agent's 8 Q-values, indexed by DIRECTION_VECTORS in the *world* frame (a K-bin net:
+        K bin logits, bin k at 2 pi k / K, then STAND if it has one).
 
         Exposed separately from act() so that anything wanting a different rule over the same
         Q-table -- epsilon-greedy, Boltzmann sampling, a diagnostic that reads the margin between
@@ -119,10 +123,11 @@ class MyPolicy(BaseModel):
         q_rows = q_values.squeeze(0).cpu().numpy()
 
         if team_b:
-            # Canonical action index i is world index mirror(i), so reordering the 8 columns by
+            # Canonical action index i is world index mirror(i), so reordering the K columns by
             # the mirror turns a canonical row into a world-frame one (STAND mirrors to itself).
-            order = mirror_direction_idx(np.arange(N_DIRECTIONS))
-            q_rows = q_rows[:, np.r_[order, np.arange(N_DIRECTIONS, q_rows.shape[1])]]
+            bins, _ = bins_of_width(q_rows.shape[1])
+            order = mirror_direction_idx(np.arange(N_DIRECTIONS)) if bins == N_DIRECTIONS else mirror_bin(np.arange(bins), bins)
+            q_rows = q_rows[:, np.r_[order, np.arange(bins, q_rows.shape[1])]]
         return {
             agent: q_rows[canonical_unit_row(unit_index(agent), team_b)]
             for agent in agents
@@ -130,11 +135,15 @@ class MyPolicy(BaseModel):
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         q_rows = self.action_values(obs)
+        width = len(next(iter(q_rows.values())))
+        bins, stand = bins_of_width(width)
         if self._mask_walls:
             shared_obs = obs[next(iter(obs))]
             mask = world_legal_mask(shared_obs["graphic"], shared_obs["agent_states"])  # [N_UNITS, 8]
+            nearest = np.rint(np.arange(bins) * N_DIRECTIONS / bins).astype(np.int64) % N_DIRECTIONS  # bin -> compass
             q_rows = {
-                agent: np.where(np.r_[mask[unit_index(agent)], np.ones(len(row) - N_DIRECTIONS, bool)], row, -np.inf)
+                agent: np.where(np.r_[mask[unit_index(agent)][nearest], np.ones(width - bins, bool)], row, -np.inf)
                 for agent, row in q_rows.items()
             }
-        return {agent: ACTION_VECTORS[int(np.argmax(row))] for agent, row in q_rows.items()}
+        vectors = ACTION_VECTORS if bins == N_DIRECTIONS else action_vectors(bins, stand)
+        return {agent: vectors[int(np.argmax(row))] for agent, row in q_rows.items()}

@@ -8,12 +8,14 @@ Every row is one tick of the learner's team, already in the canonical team frame
   team_state    f32   [T, 4]
   agent_states  f32   [T, 10, D]    own units in rows 0-4
   labels        uint8 [T, 5]        bit i = compass direction i is correct for own unit k
-                                    (canonical frame; 0 = no label)
+                                    (canonical frame; 0 = no label).  A K-bin run (P4,
+                                    --action-bins K > 8): uint64, bit i = heading bin i
+                                    (model/direction_bins.py); K is the meta's ``action_bins``
   kinds         uint8 [T, 5]        index into KINDS: what the label is doing
 
 For analysis only (the trainer does not load them):
 
-  actions       uint8 [T, 5]        compass index each unit executed (canonical; 255 = stood still)
+  actions       uint8 [T, 5]        compass (K-bin) index each unit executed (canonical; 255 = stood still)
   student       uint8 [T, 5]        the student's choice, whether or not it drove (255 = not asked)
   teacher_drove bool  [T, 5]        the teacher's move was executed
   meta          str                 the match summary as JSON (task, outcome, recorder counts)
@@ -27,6 +29,10 @@ Loaded into the ring beside FIELDS (for sequence windows, ``DistillDataset.sampl
 Shards written before 2026-09-30 dropped ticks without any label and have no ``tick``; loading
 reconstructs it from ``team_state[2]`` (time left, 25 decisions/s: exact to ~0.02 tick, offset by
 a per-match constant of 0 or 1 from a counted tick), or -1 = unknown when not strictly increasing.
+
+A ring (and ``new_shards``) built with ``action_bins=K`` re-expresses every shard's labels at K
+on load (``direction_bins.convert_bits``): an 8-way uint8 shard in a K-bin ring widens each
+direction to the bins within +-22.5 deg; ``action_bins=None`` keeps them as stored.
 """
 
 from __future__ import annotations
@@ -35,6 +41,8 @@ import json
 from pathlib import Path
 
 import numpy as np
+
+from blackout_env.model.direction_bins import bits_bins, convert_bits, unpack_bits
 
 GRAPHIC_SCALE = 15.0
 N_TEAM = 5
@@ -63,9 +71,19 @@ def decode_graphic(encoded: np.ndarray) -> np.ndarray:
     return encoded.astype(np.float32) / np.float32(GRAPHIC_SCALE)
 
 
-def unpack_labels(bits: np.ndarray) -> np.ndarray:
-    """[..., 5] uint8 bit sets -> [..., 5, 8] bool."""
-    return np.unpackbits(bits[..., None], axis=-1, bitorder="little").astype(bool)
+def unpack_labels(bits: np.ndarray, bins: int = 8) -> np.ndarray:
+    """[..., 5] uint8 (uint64: K-bin) bit sets -> [..., 5, 8 or K] bool."""
+    if bits.dtype == np.uint8 and bins == 8:
+        return np.unpackbits(bits[..., None], axis=-1, bitorder="little").astype(bool)
+    return unpack_bits(bits, bins)
+
+
+def labels_at(rows: dict, meta: dict, action_bins: int | None) -> np.ndarray:
+    """A shard's labels at ``action_bins`` bins (None = as stored)."""
+    labels = rows["labels"]
+    if action_bins is None:
+        return labels
+    return convert_bits(labels, bits_bins(labels, meta.get("action_bins")), action_bins)
 
 
 def save_shard(path: Path, rows: dict[str, np.ndarray], meta: dict | None = None) -> None:
@@ -96,15 +114,16 @@ def shard_meta(shard) -> dict:
     return json.loads(str(shard["meta"])) if "meta" in shard else {}
 
 
-def new_shards(root: Path, seen: set[str]):
+def new_shards(root: Path, seen: set[str], action_bins: int | None = None):
     """(rows, meta) of every complete shard under ``root`` not in ``seen``, oldest first; each is
-    added to ``seen``."""
+    added to ``seen``.  ``action_bins``: labels re-expressed at that many bins (``labels_at``)."""
     for path in sorted(Path(root).glob("*.npz")):
         if path.name in seen or path.name.endswith(".tmp.npz"):
             continue
         with np.load(path) as shard:
             rows, meta = {field: shard[field] for field in FIELDS}, shard_meta(shard)
             rows["tick"] = _ticks_of(shard)
+            rows["labels"] = labels_at(rows, meta, action_bins)
         seen.add(path.name)
         yield rows, meta
 
@@ -119,9 +138,10 @@ class DistillDataset:
     match (a running count of appended shards) and its decision tick, so ``sample_windows`` can
     cut windows of consecutive ticks that never cross a match or the ring's overwrite boundary."""
 
-    def __init__(self, root: Path, capacity: int):
+    def __init__(self, root: Path, capacity: int, action_bins: int | None = None):
         self.root = Path(root)
         self.capacity = int(capacity)
+        self.action_bins = action_bins  # labels re-expressed at K bins on load (None: as stored)
         self._arrays: dict[str, np.ndarray] | None = None
         self._version = np.zeros(self.capacity, dtype=np.int32)
         self._match = np.full(self.capacity, -1, dtype=np.int64)
@@ -134,7 +154,7 @@ class DistillDataset:
 
     def new_shards(self):
         """Yields (rows, meta) for each shard not seen yet, and marks it seen."""
-        yield from new_shards(self.root, self._loaded)
+        yield from new_shards(self.root, self._loaded, self.action_bins)
 
     def refresh(self) -> int:
         """Append every new shard; returns the number of rows added."""
