@@ -147,5 +147,15 @@ p1처럼 checkpoints·build·datasets·.venv·runs와 reports의 결과 디렉�
 (`act:strategic_v21_anyangle`, ±1구간), D6 초기화·D6 상대 풀·설정, 20k 스텝. 이어서 보류 시드 평가(D6 기록과 짝,
 iqn·arc_mean), p4a vs 임의 각도 V21 자신(`reports/p4_heldout`), OOD.
 
-스모크(2 워커, 200 스텝, D7 학습과 GPU 공유 중): §9 끝의 표 참고.
+스모크(2026-10-01, `act:strategic_v21_anyangle`, D6 초기화, 2 워커, 200 스텝, `--train-quantiles 8 --amp fp16 --compile`,
+D7s 학습·p3 평가와 기계 공유 중이라 절대값은 낮다):
+
+| | 학습 속도 (step 150–200) | eval 일치율 agree / agree8 (v2–v4, 2경기씩) |
+|---|---|---|
+| K=8 | 6.0–6.2 step/s | 0.68–0.69 / – |
+| K=32, ±1구간 | 5.6–6.0 step/s | 0.77–0.80 / 0.73–0.76 |
+
+- 속도 차이는 측정 잡음 수준(헤드 마지막 층만 커짐). 체크포인트 meta `action_bins: 32`, 샤드 라벨 uint64 확인.
+- D6 가중치를 K=32로 불러 D6 eval 샤드 256행에 적용: 유닛별 argmax 100% 일치, 나침반 구간 로짓 차 최대 4e-6.
+- 점수차는 2경기라 판단 근거가 아니다 — 판단은 `launch_p4.sh`의 보류 시드 평가로.
 
