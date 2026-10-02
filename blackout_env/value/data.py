@@ -17,7 +17,7 @@ their targets (targets.py) computed from the *whole* shard, in one memory-mapped
   match         int32 [N]      index into matches.json
   split         int8  [N]      SPLITS index
 
-Splits (by match, ``assign_split``): ``unseen`` = every match where P5a, D9 or P4a played
+Splits (by match, ``assign_split``): ``unseen`` = every match where P5a, D9, P4a or P10 played
 (learner side or opponent, by run directory or checkpoint name) or that comes from the OOD
 suite (reports/distill_ood, or an opponent only that suite uses); of the rest, a hash-random
 5% are ``heldout`` and the remainder ``train``.
@@ -35,15 +35,15 @@ from pathlib import Path
 import numpy as np
 
 from blackout_env.train.distill.dataset import shard_meta
-from blackout_env.value.targets import HORIZONS_S, match_targets, shard_ticks
+from blackout_env.value.targets import HORIZONS_S, final_scores, match_targets, shard_ticks
 
 SHARD_ROOTS = (
     "checkpoints/distill", "reports/distill_heldout", "reports/distill_ood", "reports/p4_heldout",
-    "reports/p1_heldout", "reports/anticamp", "reports/teacher_v2", "reports/v19_analysis",
+    "reports/p1_heldout", "reports/p10_heldout", "reports/anticamp", "reports/teacher_v2", "reports/v19_analysis",
 )
 SPLITS = ("train", "heldout", "unseen")
 HELDOUT_FRACTION = 0.05
-UNSEEN_POLICIES = re.compile(r"(^|[/:_])(p5a|d9|p4a)([/_.]|$)")
+UNSEEN_POLICIES = re.compile(r"(^|[/:_])(p5a|d9|p4a|p10)([/_.]|$)")
 OOD_DIR = "reports/distill_ood"
 # opponents that only the OOD suite plays (examples/distill_heldout_eval.py --opponents ood);
 # plain strategic_v21 is also a regular held-out opponent, so it does not mark a match OOD
@@ -117,7 +117,7 @@ def assign_split(entry: dict) -> str:
 
 
 def unseen_group(entry: dict) -> str:
-    """Which unseen test a match belongs to: "ood" or "policy" (P5a/D9/P4a)."""
+    """Which unseen test a match belongs to: "ood" or "policy" (P5a/D9/P4a/P10)."""
     if entry["path"].startswith(OOD_DIR) or OOD_ONLY_OPPONENTS.search(str(entry.get("opponent") or "")):
         return "ood"
     return "policy"
@@ -135,7 +135,9 @@ def _match_rows(args):
     with np.load(Path(repo) / entry["path"]) as shard:
         team_state = shard["team_state"]
         ticks = shard_ticks(shard)
-        targets = match_targets(team_state, ticks, entry)
+        last_agents = shard["agent_states"][-1]
+        targets = match_targets(team_state, ticks, entry, last_agent_states=last_agents)
+        own, opp, corrected = final_scores(entry, last_agents)
         idx = sample_rows(len(team_state), k, entry["path"])
         out = {
             "graphic": shard["graphic"][idx], "team_state": team_state[idx],
@@ -143,7 +145,7 @@ def _match_rows(args):
         }
     for name in ("delta", "delta_mask", "past_end", "final", "result", "elapsed_s"):
         out[name] = targets[name][idx]
-    return out
+    return out, {"final_learner": own, "final_opponent": opp, "final_corrected": corrected}
 
 
 def open_cache(directory: Path, mode: str = "r", n: int | None = None) -> dict[str, np.ndarray]:
@@ -167,7 +169,8 @@ def build_cache(repo: Path, index: list[dict], directory: Path, rows_per_match: 
     arrays = open_cache(directory, "w+", n)
     with ProcessPoolExecutor(workers) as pool:
         jobs = pool.map(_match_rows, [(str(repo), e, rows_per_match) for e in entries], chunksize=16)
-        for i, (entry, rows) in enumerate(zip(entries, jobs)):
+        for i, (entry, (rows, outcome)) in enumerate(zip(entries, jobs)):
+            entry.update(outcome)
             a, b = starts[i], starts[i + 1]
             if len(rows["team_state"]) != b - a:
                 raise RuntimeError(f"{entry['path']}: meta rows {entry['rows']} != shard rows")

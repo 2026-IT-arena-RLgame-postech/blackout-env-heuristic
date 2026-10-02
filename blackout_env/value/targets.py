@@ -8,8 +8,19 @@ team B's matches are the same task as team A's and need no mirroring.
 Targets per row, all in score / 100 units like ``team_state``:
 
   delta   [T, H]  lead at tick + 25 * N (N in HORIZONS_S) minus the lead now
-  final   [T]     the lead at the match end (meta learner_score - opponent_score)
+  final   [T]     the lead at the match end (meta learner_score - opponent_score, corrected
+                  for stale early wins, ``final_scores``)
   result  scalar  the learner's result: 1 win, 0 draw, -1 loss (meta ``result``)
+
+Stale early wins: Unity builds before 2026-10-02 (env commit 41caca7) report the scores of the
+last playing state on a decisive early win -- one decision step *before* the deciding deposit --
+so the winner's meta score is < 100 (80-99) although the match ended at >= 100.  The result
+itself is right (the trailing team never holds the cargo to overtake in the data).  A match that
+ended before the clock, not at an absorption (where ``stop_when_exhausted`` stops), or whose
+winner holds the cargo to reach 100, was decided that way: the winner's final score is then
+estimated as its score plus the smallest cargo of one of its units that reaches 100 at the last
+row (the deposit that ended it), or 100 when no single cargo does.  Overshoot past 100 is
+0-9 points, so the estimate is exact to a few points; the loser's score is unaffected.
 
 When the future tick lies beyond the match end, the lead is the final lead: a match ends when the
 result is decided (a decided score, the 420 s clock, or ``stop_when_exhausted`` = no battery left
@@ -32,8 +43,8 @@ from blackout_env.train.distill.dataset import UNKNOWN_TICK, reconstruct_ticks
 DECISIONS_PER_S = 25
 MATCH_SECONDS = 420
 HORIZONS_S = (2, 5, 10, 20)
-RESULT_CLASSES = (-1, 0, 1)
-LEAD_TOL = 1e-4  # leads are whole points / 100; float32 rows vs the float64 meta final  # class index = result + 1: loss, draw, win
+RESULT_CLASSES = (-1, 0, 1)  # class index = result + 1: loss, draw, win
+LEAD_TOL = 1e-4  # leads are whole points / 100; float32 rows vs the float64 meta final
 
 
 def shard_ticks(shard) -> np.ndarray:
@@ -43,8 +54,38 @@ def shard_ticks(shard) -> np.ndarray:
     return reconstruct_ticks(np.asarray(shard["team_state"])).astype(np.int64)
 
 
-def final_lead(meta: dict) -> float:
-    return (float(meta["learner_score"]) - float(meta["opponent_score"])) / 100.0
+TARGET_SCORE = 100.0
+CARGO_COL, CARGO_SCALE = 4, 15.0  # agent_states column: carried batteries / 15 (rows 0-4 own)
+CLOCK_END_S = 419.0  # a match that ran this long ended on the clock
+ABSORB_S, ABSORB_TOL_S = 20.0, 0.35  # stop_when_exhausted stops right after an absorption
+
+
+def final_scores(meta: dict, last_agent_states: np.ndarray | None = None) -> tuple[float, float, bool]:
+    """(learner, opponent) final score in points and whether a stale early win was corrected
+    (module docstring).  ``last_agent_states``: [10, D] of the last shard row (canonical frame)."""
+    own, opp = float(meta["learner_score"]), float(meta["opponent_score"])
+    result = int(meta["result"])
+    if result == 0 or max(own, opp) >= TARGET_SCORE:
+        return own, opp, False
+    win = own if result == 1 else opp
+    cargo = np.zeros(0)
+    if last_agent_states is not None:
+        units = np.asarray(last_agent_states)[:5] if result == 1 else np.asarray(last_agent_states)[5:10]
+        cargo = np.rint(np.maximum(units[:, CARGO_COL], 0) * CARGO_SCALE)
+    reach = cargo[win + cargo >= TARGET_SCORE]
+    elapsed = float(meta.get("elapsed_s") or 0.0)
+    phase = elapsed % ABSORB_S
+    at_absorption = elapsed >= ABSORB_S - ABSORB_TOL_S and (phase < ABSORB_TOL_S or phase > ABSORB_S - ABSORB_TOL_S)
+    decisive = elapsed < CLOCK_END_S and (not at_absorption or len(reach) > 0)
+    if not decisive:
+        return own, opp, False
+    new = win + float(reach.min()) if len(reach) else TARGET_SCORE
+    return (new, opp, True) if result == 1 else (own, new, True)
+
+
+def final_lead(meta: dict, last_agent_states: np.ndarray | None = None) -> float:
+    own, opp, _ = final_scores(meta, last_agent_states)
+    return (own - opp) / 100.0
 
 
 def end_tick(ticks: np.ndarray, meta: dict) -> int:
@@ -69,13 +110,16 @@ def lead_at(ticks: np.ndarray, lead: np.ndarray, query: np.ndarray, end: int, fi
 
 
 def match_targets(team_state: np.ndarray, ticks: np.ndarray, meta: dict,
-                  horizons_s=HORIZONS_S) -> dict[str, np.ndarray]:
-    """Per-row targets of one match (module docstring)."""
+                  horizons_s=HORIZONS_S, last_agent_states: np.ndarray | None = None,
+                  correct_stale: bool = True) -> dict[str, np.ndarray]:
+    """Per-row targets of one match (module docstring); ``last_agent_states`` = the last row's
+    agent_states, for the stale-win correction (``final_scores``; off: the meta scores as is)."""
     team_state = np.asarray(team_state, dtype=np.float32)
     ticks = np.asarray(ticks, dtype=np.int64)
     n = len(team_state)
     lead = team_state[:, 0] - team_state[:, 1]
-    final = final_lead(meta)
+    final = final_lead(meta, last_agent_states) if correct_stale else \
+        (float(meta["learner_score"]) - float(meta["opponent_score"])) / 100.0
     delta = np.zeros((n, len(horizons_s)), np.float32)
     mask = np.zeros((n, len(horizons_s)), bool)
     past = np.zeros((n, len(horizons_s)), bool)

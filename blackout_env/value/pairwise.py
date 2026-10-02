@@ -39,7 +39,7 @@ def aligned_rows(repo: Path, entries: list[dict], times_s=TIMES_S) -> dict:
             ticks = shard_ticks(shard)
             if ticks[0] < 0:
                 continue
-            targets = match_targets(ts, ticks, entry)
+            targets = match_targets(ts, ticks, entry, last_agent_states=shard["agent_states"][-1])
             want = np.array(times_s) * DECISIONS_PER_S
             j = np.searchsorted(ticks, want, side="right") - 1
             ok = (j >= 0) & (want - ticks[np.clip(j, 0, None)] <= DECISIONS_PER_S) & (want <= ticks[-1])

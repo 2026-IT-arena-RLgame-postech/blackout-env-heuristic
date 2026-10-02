@@ -11,7 +11,7 @@ import torch
 from blackout_env.train.distill.collect import MatchTask, play_labelled_match
 from blackout_env.train.distill.dataset import save_shard
 from blackout_env.value.data import assign_split, build_cache, open_cache, unseen_group
-from blackout_env.value.targets import DECISIONS_PER_S, lead_at, match_targets
+from blackout_env.value.targets import DECISIONS_PER_S, final_scores, lead_at, match_targets
 from tests.test_distill import _FakeEnv
 
 TICK_S = 1.0 / (420 * DECISIONS_PER_S)
@@ -32,7 +32,7 @@ def test_horizons_read_the_row_exactly_n_seconds_later_and_freeze_past_the_end()
     ticks = np.arange(300)  # 12 s of play
     own = np.where(ticks >= 100, 0.05, 0.0)  # +5 points at t = 4 s
     ts = _team_state(ticks, own, 0.0)
-    t = match_targets(ts, ticks, _meta(5.0, 0.0, 1, 299 / 25), horizons_s=(2, 5, 20))
+    t = match_targets(ts, ticks, _meta(5.0, 0.0, 1, 299 / 25), horizons_s=(2, 5, 20), correct_stale=False)
     assert t["delta_mask"].all()  # contiguous rows, and past the end the lead is the final lead
     assert t["delta"][0, 0] == 0 and t["delta"][50, 0] == pytest.approx(0.05) and t["delta"][49, 0] == 0
     assert t["delta"][0, 1] == pytest.approx(0.05) and t["delta"][100, 1] == 0
@@ -46,11 +46,11 @@ def test_final_lead_counts_past_the_last_row_up_to_the_recorded_match_end():
     ticks = np.arange(100)
     ts = _team_state(ticks, 0.1, 0.0)
     # the match ran to 6 s although the shard stops at 4 s; the lead then became 0.2
-    t = match_targets(ts, ticks, _meta(20.0, 0.0, 1, 6.0), horizons_s=(1, 5))
+    t = match_targets(ts, ticks, _meta(20.0, 0.0, 1, 6.0), horizons_s=(1, 5), correct_stale=False)
     assert not t["delta_mask"][99, 0]  # 4 s + 1 s: inside the unrecorded tail, unknown
     assert t["delta_mask"][99, 1] and t["delta"][99, 1] == pytest.approx(0.1)  # 9 s > 6 s: final
     # the same tail with an unchanged lead is known
-    t = match_targets(ts, ticks, _meta(10.0, 0.0, 1, 6.0), horizons_s=(1,))
+    t = match_targets(ts, ticks, _meta(10.0, 0.0, 1, 6.0), horizons_s=(1,), correct_stale=False)
     assert t["delta_mask"].all() and (t["delta"] == 0).all()
 
 
@@ -58,7 +58,7 @@ def test_gaps_in_old_shards_are_known_only_when_the_lead_did_not_change_across_t
     ticks = np.array([0, 1, 2, 60, 61, 62, 63])  # rows 3..59 were dropped (unlabelled)
     own = np.array([0, 0, 0, 0, 0, 0.03, 0.03])
     ts = _team_state(ticks, own, 0.0)
-    t = match_targets(ts, ticks, _meta(3.0, 0.0, 1, 63 / 25), horizons_s=(1,))  # 25 ticks later
+    t = match_targets(ts, ticks, _meta(3.0, 0.0, 1, 63 / 25), horizons_s=(1,), correct_stale=False)  # 25 ticks later
     assert t["delta_mask"][0] and t["delta"][0, 0] == 0  # tick 25 falls in a gap with lead 0 on both sides
     v, known, past = lead_at(ticks, own.astype(np.float32), np.array([30, 61, 62, 100]), 63, 0.03)
     assert known.tolist() == [True, True, True, True] and past.tolist() == [False, False, False, True]
@@ -69,13 +69,52 @@ def test_gaps_in_old_shards_are_known_only_when_the_lead_did_not_change_across_t
 
 def test_unknown_ticks_mask_every_horizon_but_keep_the_outcome():
     ts = _team_state(np.arange(5), 0.0, 0.1)
-    t = match_targets(ts, np.full(5, -1), _meta(0.0, 10.0, -1, 1.0))
+    t = match_targets(ts, np.full(5, -1), _meta(0.0, 10.0, -1, 1.0), correct_stale=False)
     assert not t["delta_mask"].any() and np.allclose(t["final"], -0.1) and (t["result"] == -1).all()
+
+
+def _agents(own_cargo=(), enemy_cargo=()):
+    a = np.zeros((10, 12), np.float32)
+    for i, c in enumerate(own_cargo):
+        a[i, 4] = c / 15
+    for i, c in enumerate(enemy_cargo):
+        a[5 + i, 4] = c / 15
+    return a
+
+
+def test_stale_early_win_gets_the_deciding_deposit():
+    # learner won at 31.4 s with a recorded 97-20: the unit carrying 6 deposited -> 103 (not the 2-cargo unit)
+    own, opp, fixed = final_scores(_meta(97.0, 20.0, 1, 31.4), _agents(own_cargo=(2, 6, 0)))
+    assert fixed and (own, opp) == (103.0, 20.0)
+    # the opponent won; its smallest sufficient cargo is 5 (95 + 5 = 100)
+    own, opp, fixed = final_scores(_meta(40.0, 95.0, -1, 50.0), _agents(own_cargo=(9,), enemy_cargo=(7, 5)))
+    assert fixed and (own, opp) == (40.0, 100.0)
+    # no cargo known: the winner reached at least 100
+    assert final_scores(_meta(90.0, 10.0, 1, 33.3))[:2] == (100.0, 10.0)
+    # targets: the last rows see the deposit past the end
+    ticks = np.arange(100)
+    ts = _team_state(ticks, 0.97, 0.20)
+    t = match_targets(ts, ticks, _meta(97.0, 20.0, 1, 99 / 25), horizons_s=(2,), last_agent_states=_agents((6,)))
+    assert np.allclose(t["final"], 0.83) and t["delta"][99, 0] == pytest.approx(0.06) and t["delta"][0, 0] == 0
+
+
+def test_clock_and_exhaustion_ends_and_new_builds_are_not_corrected():
+    assert final_scores(_meta(60.0, 70.0, -1, 420.0), _agents(enemy_cargo=(40,))) == (60.0, 70.0, False)
+    # stop_when_exhausted: right at an absorption, nobody can reach 100
+    assert final_scores(_meta(80.0, 70.0, 1, 80.0), _agents((3,))) == (80.0, 70.0, False)
+    assert final_scores(_meta(80.0, 70.0, 1, 59.9), _agents((3,)))[2] is False
+    # a decisive deposit that happens to coincide with an absorption is still caught by the cargo
+    assert final_scores(_meta(96.0, 70.0, 1, 60.0), _agents((5,))) == (101.0, 70.0, True)
+    # builds with the terminal snapshot report >= 100 already; draws are never decisive
+    assert final_scores(_meta(102.0, 50.0, 1, 40.0), _agents((5,))) == (102.0, 50.0, False)
+    assert final_scores(_meta(50.0, 50.0, 0, 40.0))[2] is False
 
 
 @pytest.mark.parametrize("swap", [False, True])
 def test_shard_targets_are_in_the_learner_frame(tmp_path, swap):
-    """_FakeEnv: team A wins 30-10.  The learner's final lead is +20 points as team A, -20 as B."""
+    """_FakeEnv: team A wins 30-10 early.  The learner's final lead is the winner's corrected
+    score (an early end reads as a stale decisive win, final_scores) minus 10 as team A, its
+    negative as team B."""
     task = MatchTask(seed=1, swap=swap, opponent="strategic_v4", beta=1.0, teacher="v17-teach", student=None, shard=None)
     rows, summary = play_labelled_match(_FakeEnv(), task, None)
     path = tmp_path / "checkpoints/distill/x/shards/a.npz"
@@ -85,8 +124,12 @@ def test_shard_targets_are_in_the_learner_frame(tmp_path, swap):
     n = build_cache(tmp_path, [entry], tmp_path / "cache", rows_per_match=8, workers=1, log=lambda m: None)
     cache = open_cache(tmp_path / "cache")
     assert n == len(rows["labels"])
-    expect = -0.2 if swap else 0.2
-    assert np.allclose(cache["final"], expect) and (cache["result"] == (-1 if swap else 1)).all()
+    m = json.loads((tmp_path / "cache/matches.json").read_text())[0]
+    assert m["final_corrected"] and (m["final_opponent"] if swap else m["final_learner"]) >= 100
+    assert (m["final_learner"] if swap else m["final_opponent"]) == 10.0
+    expect = (m["final_learner"] - m["final_opponent"]) / 100
+    assert (expect < 0) == swap and np.allclose(cache["final"], expect)
+    assert (cache["result"] == (-1 if swap else 1)).all()
     assert (cache["agent_states"][:, :5, 2] > 0).all()  # own units first: canonical frame
 
 
@@ -100,6 +143,9 @@ def test_unseen_split_catches_every_listed_policy_and_the_ood_suite():
         "reports/distill_heldout/shards/d9_latest__iqn__strategic_v17__1_A.npz": {"student": "checkpoints/distill/d9/latest.pt"},
         "reports/p4_heldout/shards/x.npz": {"student": "checkpoints/distill/p4a/latest.pt"},
         "reports/distill_ood/shards/y.npz": {},
+        "reports/p10_heldout/shards/z.npz": {},
+        "checkpoints/distill/p10/shards/5.npz": {},
+        "checkpoints/distill/d8c/shards/6.npz": {"opponent": "ckpt:checkpoints/distill/frozen/p10_v22.pt"},
         "checkpoints/distill/d2/shards/4.npz": {"opponent": "ckpt:checkpoints/offline/20260919-010456_42178/final.pt"},
     }
     for path, override in cases.items():
