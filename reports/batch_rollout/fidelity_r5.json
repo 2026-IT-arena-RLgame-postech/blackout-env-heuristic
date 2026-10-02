@@ -1,0 +1,98 @@
+[
+ {
+  "candidate": "p11",
+  "opponent": "v23",
+  "n": 48,
+  "margin": -6.229166666666667,
+  "margin_se": 9.654227732231718,
+  "win": 0.3958333333333333,
+  "loss": 0.5625,
+  "race_won/tie/lost": [
+   1,
+   47,
+   0
+  ]
+ },
+ {
+  "candidate": "small:checkpoints/rollout_net/r5.pt",
+  "opponent": "v23",
+  "n": 48,
+  "margin": 7.5625,
+  "margin_se": 8.793680548980486,
+  "win": 0.625,
+  "loss": 0.375,
+  "race_won/tie/lost": [
+   2,
+   46,
+   0
+  ],
+  "vs_p11_dmargin": 13.791666666666666,
+  "vs_p11_dmargin_se": 10.621383753951262,
+  "vs_p11_same_race": 0.9791666666666666
+ },
+ {
+  "candidate": "hybrid:checkpoints/rollout_net/r5.pt",
+  "opponent": "v23",
+  "n": 48,
+  "margin": -21.354166666666668,
+  "margin_se": 9.524487364666545,
+  "win": 0.375,
+  "loss": 0.6041666666666666,
+  "race_won/tie/lost": [
+   1,
+   47,
+   0
+  ],
+  "vs_p11_dmargin": -15.125,
+  "vs_p11_dmargin_se": 4.375202629552761,
+  "vs_p11_same_race": 1.0
+ },
+ {
+  "candidate": "p11",
+  "opponent": "p11",
+  "n": 48,
+  "margin": 0.0,
+  "margin_se": 9.957133299604827,
+  "win": 0.5,
+  "loss": 0.5,
+  "race_won/tie/lost": [
+   0,
+   48,
+   0
+  ]
+ },
+ {
+  "candidate": "small:checkpoints/rollout_net/r5.pt",
+  "opponent": "p11",
+  "n": 48,
+  "margin": 1.7708333333333333,
+  "margin_se": 9.644075441429125,
+  "win": 0.4791666666666667,
+  "loss": 0.5208333333333334,
+  "race_won/tie/lost": [
+   2,
+   46,
+   0
+  ],
+  "vs_p11_dmargin": 1.7708333333333333,
+  "vs_p11_dmargin_se": 12.995984089998498,
+  "vs_p11_same_race": 0.9583333333333334
+ },
+ {
+  "candidate": "hybrid:checkpoints/rollout_net/r5.pt",
+  "opponent": "p11",
+  "n": 48,
+  "margin": -8.645833333333334,
+  "margin_se": 10.005915341896326,
+  "win": 0.5,
+  "loss": 0.5,
+  "race_won/tie/lost": [
+   0,
+   48,
+   0
+  ],
+  "vs_p11_dmargin": -8.645833333333334,
+  "vs_p11_dmargin_se": 2.5016819844220874,
+  "vs_p11_same_race": 1.0
+ }
+]

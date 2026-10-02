@@ -1,0 +1,35 @@
+[
+ {
+  "policy": "small:checkpoints/rollout_net/r4.pt",
+  "device": "mps",
+  "precision": "fp32",
+  "N": 256,
+  "game_decisions_per_s": 20396.823091958264,
+  "us_per_game_decision": 49.02724289422622,
+  "render_us": 3.906497331627179,
+  "policy_us": 41.01265632925788,
+  "step_us": 3.405192146601621
+ },
+ {
+  "policy": "small:checkpoints/rollout_net/r4.pt",
+  "device": "mps",
+  "precision": "fp32",
+  "N": 1024,
+  "game_decisions_per_s": 25954.40941211896,
+  "us_per_game_decision": 38.52909862526355,
+  "render_us": 3.7188850700487857,
+  "policy_us": 31.205428882913257,
+  "step_us": 3.0256589380931795
+ },
+ {
+  "policy": "small:checkpoints/rollout_net/r4.pt",
+  "device": "mps",
+  "precision": "fp32",
+  "N": 2048,
+  "game_decisions_per_s": 31822.343932895237,
+  "us_per_game_decision": 31.424460816234376,
+  "render_us": 4.373544512226822,
+  "policy_us": 23.694447335064545,
+  "step_us": 2.9346510878499577
+ }
+]

@@ -1,0 +1,159 @@
+[
+ {
+  "device": "cpu",
+  "precision": "fp32",
+  "N": 1,
+  "game_decisions_per_s": 127.93484823867495,
+  "us_per_game_decision": 7816.478573018685,
+  "render_us": 11.648669722490013,
+  "policy_us": 7740.798907354474,
+  "step_us": 27.646803413517773
+ },
+ {
+  "device": "cpu",
+  "precision": "fp32",
+  "N": 16,
+  "game_decisions_per_s": 270.911204848788,
+  "us_per_game_decision": 3691.246364498511,
+  "render_us": 9.824073174968362,
+  "policy_us": 3667.313281679526,
+  "step_us": 11.006107670255005
+ },
+ {
+  "device": "cpu",
+  "precision": "fp32",
+  "N": 64,
+  "game_decisions_per_s": 372.5685120470954,
+  "us_per_game_decision": 2684.07009090879,
+  "render_us": 4.101937520317733,
+  "policy_us": 2674.57183697843,
+  "step_us": 4.430313420016319
+ },
+ {
+  "device": "cpu",
+  "precision": "fp32",
+  "N": 256,
+  "game_decisions_per_s": 444.92121692191245,
+  "us_per_game_decision": 2247.58892578393,
+  "render_us": 2.3139258701121435,
+  "policy_us": 2242.475035600364,
+  "step_us": 2.342262596357614
+ },
+ {
+  "device": "cpu",
+  "precision": "fp32",
+  "N": 1024,
+  "game_decisions_per_s": 471.7961226137775,
+  "us_per_game_decision": 2119.5595980313337,
+  "render_us": 1.4898124547982208,
+  "policy_us": 2116.0398619350312,
+  "step_us": 1.7199804058452486
+ },
+ {
+  "device": "mps",
+  "precision": "fp32",
+  "N": 1,
+  "game_decisions_per_s": 97.68550069660273,
+  "us_per_game_decision": 10236.933760577813,
+  "render_us": 12.427881709299982,
+  "policy_us": 10160.297224996611,
+  "step_us": 28.333897469565272
+ },
+ {
+  "device": "mps",
+  "precision": "fp32",
+  "N": 16,
+  "game_decisions_per_s": 1164.836470053838,
+  "us_per_game_decision": 858.4896040847525,
+  "render_us": 8.21813743095845,
+  "policy_us": 835.1834886707366,
+  "step_us": 12.406791094690561
+ },
+ {
+  "device": "mps",
+  "precision": "fp32",
+  "N": 64,
+  "game_decisions_per_s": 2689.993393502853,
+  "us_per_game_decision": 371.74812488956377,
+  "render_us": 3.405769821256399,
+  "policy_us": 363.45299493405037,
+  "step_us": 3.7273573980201036
+ },
+ {
+  "device": "mps",
+  "precision": "fp32",
+  "N": 256,
+  "game_decisions_per_s": 3247.6779759380993,
+  "us_per_game_decision": 307.9123014686047,
+  "render_us": 3.3597651781747118,
+  "policy_us": 300.12014034582535,
+  "step_us": 3.7341015558922663
+ },
+ {
+  "device": "mps",
+  "precision": "fp32",
+  "N": 1024,
+  "game_decisions_per_s": 2452.179687977129,
+  "us_per_game_decision": 407.80045805898,
+  "render_us": 2.133538725977604,
+  "policy_us": 403.22034903196214,
+  "step_us": 1.9949817174604954
+ },
+ {
+  "device": "mps",
+  "precision": "fp16",
+  "N": 1,
+  "game_decisions_per_s": 78.35612710929303,
+  "us_per_game_decision": 12762.243833276443,
+  "render_us": 13.77545006107539,
+  "policy_us": 12674.81709329877,
+  "step_us": 31.97109221946448
+ },
+ {
+  "device": "mps",
+  "precision": "fp16",
+  "N": 16,
+  "game_decisions_per_s": 1548.8294377800055,
+  "us_per_game_decision": 645.6488852854818,
+  "render_us": 4.849737626500428,
+  "policy_us": 631.5431896364316,
+  "step_us": 6.042956840246916
+ },
+ {
+  "device": "mps",
+  "precision": "fp16",
+  "N": 64,
+  "game_decisions_per_s": 3579.877009700797,
+  "us_per_game_decision": 279.33920559007674,
+  "render_us": 3.2667968480382115,
+  "policy_us": 271.49737026775256,
+  "step_us": 3.4463024348951876
+ },
+ {
+  "device": "mps",
+  "precision": "fp16",
+  "N": 256,
+  "game_decisions_per_s": 5193.287852190531,
+  "us_per_game_decision": 192.5562434553285,
+  "render_us": 2.1991832909407094,
+  "policy_us": 187.6970342709683,
+  "step_us": 2.115787829097826
+ },
+ {
+  "device": "mps",
+  "precision": "fp16",
+  "N": 1024,
+  "game_decisions_per_s": 3890.441187952115,
+  "us_per_game_decision": 257.0402562816761,
+  "render_us": 1.7139781342885068,
+  "policy_us": 253.29005864582157,
+  "step_us": 1.6374356555816307
+ },
+ {
+  "device": "cpu",
+  "precision": "heuristic_v23",
+  "N": 16,
+  "game_decisions_per_s": 575.3590612327744,
+  "us_per_game_decision": 1738.0451050121337
+ }
+]
