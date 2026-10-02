@@ -77,7 +77,7 @@ def predict_sym(net, states: dict, idx: np.ndarray, device) -> dict:
     return symmetrize(own, mir)
 
 
-def soft_value_loss(out, t: dict, lead):
+def soft_value_loss(out, t: dict, lead, final_beta=None):
     """value_loss with a soft result target ``t['p']`` [B, 3] and per-row weights."""
     import torch
     from torch.nn import functional as F
@@ -90,7 +90,11 @@ def soft_value_loss(out, t: dict, lead):
     reg = F.smooth_l1_loss(out[:, :h], t["delta"].float() * REG_SCALE, beta=HUBER_BETA, reduction="none")
     per_h = (reg * mask).sum(0) / mask.sum(0).clamp_min(1.0)
     delta_loss = per_h.mean()
-    final_loss = F.smooth_l1_loss(out[:, h], (t["final"].float() - lead.float()) * REG_SCALE, beta=HUBER_BETA)
+    # final_beta: Huber beta of the final-lead head (tenths of points).  The default 1 (10 pts) is
+    # nearly L1, whose minimiser on a bimodal outcome (e.g. a symmetric opening: +80 or -80) is
+    # anything in between -- not the mean; a large beta (-> MSE) targets the mean.
+    final_loss = F.smooth_l1_loss(out[:, h], (t["final"].float() - lead.float()) * REG_SCALE,
+                                  beta=HUBER_BETA if final_beta is None else final_beta)
     ce = -(t["p"].float() * torch.log_softmax(out[:, h + 1:], dim=-1)).sum(-1).mean()
     loss = delta_loss + final_loss + ce
     return loss, {"loss": loss.detach(), "delta": delta_loss.detach(), "final": final_loss.detach(), "ce": ce.detach()}
@@ -311,7 +315,7 @@ def cmd_train(args):
             with ctx:
                 out = net.forward_u8(b["graphic"], b["team_state"], b["agent_states"])
             lead_b = b["team_state"][:, 0] - b["team_state"][:, 1]
-            loss, stats = soft_value_loss(out, b, lead_b)
+            loss, stats = soft_value_loss(out, b, lead_b, args.final_beta)
             if args.rank_weight > 0:
                 rl = rank_loss(out, b, lead_b)
                 loss = loss + args.rank_weight * rl
@@ -554,6 +558,7 @@ def main():
     t.add_argument("--start-iter", type=int, default=1, help="first iteration number (resuming from --init = iter k-1)")
     t.add_argument("--group-roots", type=int, default=0, help="roots per batch with all their branches (rank term)")
     t.add_argument("--rank-weight", type=float, default=0.0)
+    t.add_argument("--final-beta", type=float, default=None, help="Huber beta of the final head (tenths of pts)")
     t.add_argument("--steps", type=int, default=4000, help="per iteration")
     t.add_argument("--batch-size", type=int, default=256)
     t.add_argument("--lr", type=float, default=1e-4)
