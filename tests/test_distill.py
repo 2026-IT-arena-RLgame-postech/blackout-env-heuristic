@@ -334,7 +334,7 @@ def test_stand_targets_where_the_teacher_has_no_label():
         "agent_states": np.zeros((2, 10, 12), np.float32),
         "labels": np.array([[1, 0, 3, 0, 0], [0, 0, 0, 0, 128]], np.uint8), "kinds": np.array([[1, 0, 1, 0, 0], [0] * 4 + [2]], np.uint8),
     }
-    _, _, _, masks, _, kinds = learner._tensors(rows)
+    _, _, _, masks, _, kinds, _ = learner._tensors(rows)
     assert masks.shape == (2, 5, 9)
     assert masks[0, 1].tolist() == [False] * 8 + [True] and masks[0, 0, 8].item() is False
     assert kinds[0, 1].item() == 11 and kinds[1, 4].item() == 2

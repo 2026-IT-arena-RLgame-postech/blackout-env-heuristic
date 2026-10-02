@@ -26,7 +26,7 @@ import numpy as np
 import torch
 
 from blackout_env.env.constants import unit_index
-from blackout_env.model.direction_bins import vector_to_bin
+from blackout_env.model.direction_bins import bins_of_width, move_angle, vector_to_bin, wrap_angle
 from blackout_env.model.my_policy import N_DIRECTIONS, direction_vector_to_idx
 from blackout_env.train.distill.dataset import KINDS, N_TEAM
 from blackout_env.train.movement_monitor import MovementMonitor
@@ -47,6 +47,12 @@ CAMP_TILES = 3.0  # an enemy Hunter this close to our base (outside its own) is 
 NEAR_BASE_TILES = 4.0  # a death this close to our base = killed on the way out
 RESPAWN_JUMP = 0.15  # normalised position jump in one tick = died and respawned (MovementMonitor's rule)
 SPAWN_ALLY_CHANNEL = 4
+# P11: the opening race to the central sanctuary is settled by single 0.04 s ticks, and only the
+# first ~10 s are precision-critical (docs/experiments_index_ko.md, P10 analysis); 2 degrees is
+# the angle error the simulator showed still keeps tied races
+OPENING_SECONDS = 10.0
+ANGLE_TOL_DEG = 2.0
+ANGLE_SPLITS = ("all", "opening")
 
 
 def _move_bin(move: np.ndarray, bins: int) -> int:
@@ -75,11 +81,15 @@ class MatchRecorder:
         self._base_cells: np.ndarray | None = None  # our base (4x4 corner around our spawn), tiles
         self._camped = False
 
-    def before_step(self, learner_obs, opponent_obs, labels, actions, student_actions, teacher_drove, compass=None) -> None:
+    def before_step(self, learner_obs, opponent_obs, labels, actions, student_actions, teacher_drove, compass=None,
+                    teacher_moves=None) -> None:
         """``labels`` may be K-bin (P4): ``agree`` then asks whether the student's move falls in
         the K-bin set.  ``compass`` -- the teacher's own 8-direction labels, given when ``labels``
         were re-expressed over K bins -- adds ``agree8``: the student's move snapped to the
-        compass, in the 8-direction set (the K = 8 meaning of ``agree``, comparable across K)."""
+        compass, in the 8-direction set (the K = 8 meaning of ``agree``, comparable across K).
+        ``teacher_moves`` -- an act-teacher's raw moves -- adds the student's heading error against
+        them (P11: ``angle_err_deg``, ``angle_within2``, overall and in the first OPENING_SECONDS;
+        a student standing where the teacher moves counts 180 degrees)."""
         view = next(iter(learner_obs.values()))
         states, elapsed = view["agent_states"], (1.0 - float(view["team_state"][2])) * MATCH_SECONDS
         learner_rows = [unit_index(n) for n in self.learner_names]
@@ -106,6 +116,8 @@ class MatchRecorder:
                     if hit8 is not None:
                         c[f"agree8_hit/{key}"] += hit8
                         c[f"agree8_n/{key}"] += 1
+                if teacher_moves is not None and label.kind == "act" and name in teacher_moves:
+                    self._count_angle(student_actions[name], teacher_moves[name], elapsed)
             elif name in student_actions:  # the teacher stands here: does the student?
                 c["agree_hit/stand"] += not np.any(student_actions[name])
                 c["agree_n/stand"] += 1
@@ -125,6 +137,17 @@ class MatchRecorder:
                 self.margins[f"margin_{at}s"] = round((float(view["team_state"][0]) - float(view["team_state"][1])) * 100, 1)
         self._observe_camping(view["graphic"], states)
         self._pending = (view["graphic"], states.copy(), {n: actions[n] for n in learner_obs})
+
+    def _count_angle(self, student_move, teacher_move, elapsed: float) -> None:
+        teacher = move_angle(np.clip(np.asarray(teacher_move, np.float32), -1.0, 1.0))
+        if math.isnan(teacher):
+            return
+        student = move_angle(student_move)
+        err = 180.0 if math.isnan(student) else abs(math.degrees(wrap_angle(student - teacher)))
+        for split in ANGLE_SPLITS[: 1 + (elapsed < OPENING_SECONDS)]:
+            self.counts[f"angle_err_sum/{split}"] += err
+            self.counts[f"angle_within2_hit/{split}"] += err <= ANGLE_TOL_DEG
+            self.counts[f"angle_n/{split}"] += 1
 
     def _tiles_to_base(self, graphic: np.ndarray, positions: np.ndarray) -> np.ndarray:
         """Straight-line tiles from each position to our base."""
@@ -209,6 +232,10 @@ def rates(counts: dict[str, float]) -> dict[str, float]:
     for key in [k for k in c if k.startswith("agree8_n/")]:  # K-bin labels: the 8-way agreement too
         name = key.split("/", 1)[1]
         out[f"agree8/{name}"] = c[f"agree8_hit/{name}"] / max(1, c[key])
+    for split in ANGLE_SPLITS:  # P11: the student's heading vs the act-teacher's raw one
+        if c[f"angle_n/{split}"]:
+            out[f"angle_err_deg/{split}"] = c[f"angle_err_sum/{split}"] / c[f"angle_n/{split}"]
+            out[f"angle_within2/{split}"] = c[f"angle_within2_hit/{split}"] / c[f"angle_n/{split}"]
     ticks = c["ticks/teacher"] + c["ticks/student"]
     out["teacher_frac"] = c["ticks/teacher"] / max(1, ticks)
     for role in ROLES:
@@ -275,7 +302,17 @@ def summarize_matches(summaries: list[dict]) -> dict[str, float]:
 
 
 class LabelAccuracy:
-    """Label accuracy by role and label kind, summed on-device (no host sync until ``pop``)."""
+    """Label accuracy by role and label kind, summed on-device (no host sync until ``pop``).
+
+    Given the teacher's raw ``angles`` (P11; NaN = none), also the heading error of what the
+    student would execute -- its arg max bin's centre plus that bin's offset (``offsets``; none =
+    the bin centres, so a bin-only student is measured the same way) -- overall and in the first
+    OPENING_SECONDS (``elapsed`` seconds of play per row): ``angle_err_deg`` (mean absolute),
+    ``angle_within2`` (share within ANGLE_TOL_DEG), ``angle_bin_hit`` (arg max = the bin holding
+    the angle) and ``angle_res_err_deg`` (the offset of that bin against the angle's residual:
+    the angle head alone, whatever bin won)."""
+
+    ANGLE_STATS = ("n", "err", "within2", "bin_hit", "res_err")
 
     def __init__(self, device: torch.device):
         self.device = device
@@ -284,11 +321,17 @@ class LabelAccuracy:
     def reset(self) -> None:
         self.hits = torch.zeros(len(ROLES), len(KINDS), device=self.device)
         self.labels = torch.zeros(len(ROLES), len(KINDS), device=self.device)
+        self.angle = torch.zeros(len(ANGLE_SPLITS), len(self.ANGLE_STATS), device=self.device)
 
     @torch.no_grad()
-    def add(self, logits: torch.Tensor, masks: torch.Tensor, classes: torch.Tensor, kinds: torch.Tensor) -> None:
+    def add(self, logits: torch.Tensor, masks: torch.Tensor, classes: torch.Tensor, kinds: torch.Tensor,
+            angles: torch.Tensor | None = None, offsets: torch.Tensor | None = None,
+            elapsed: torch.Tensor | None = None) -> None:
         """logits [B, 5, A], masks bool [B, 5, A] (A = 8, 9, or K bins [+ STAND]), classes [B, 5, 3]
-        one-hot, kinds [B, 5]."""
+        one-hot, kinds [B, 5]; angles [B, 5] radians (NaN = none), offsets [B, 5, K] radians,
+        elapsed [B] seconds."""
+        if angles is not None:
+            self._add_angles(logits, angles, offsets, elapsed)
         valid = masks.any(dim=-1).float()
         hit = masks.gather(-1, logits.argmax(-1, keepdim=True)).squeeze(-1).float() * valid
         kind_onehot = torch.nn.functional.one_hot(kinds.long(), len(KINDS)).float()  # [B, 5, K]
@@ -296,13 +339,43 @@ class LabelAccuracy:
         self.hits += (hit[..., None, None] * role_kind).sum(dim=(0, 1))
         self.labels += (valid[..., None, None] * role_kind).sum(dim=(0, 1))
 
+    def _add_angles(self, logits, angles, offsets, elapsed) -> None:
+        k, _ = bins_of_width(logits.shape[-1])
+        width = 2 * math.pi / k
+        valid = torch.isfinite(angles)
+        angle = torch.where(valid, angles.float(), torch.zeros_like(angles, dtype=torch.float32))
+        best = logits.argmax(-1)
+        stands = best >= k
+        target = torch.round(angle / width).long() % k
+        if offsets is None:
+            offsets = torch.zeros(*logits.shape[:-1], k, device=logits.device)
+        offsets = offsets.float()
+        chosen = best.clamp_max(k - 1)
+        pred = chosen.float() * width + offsets.gather(-1, chosen.unsqueeze(-1)).squeeze(-1)
+        err = torch.where(stands, torch.full_like(pred, 180.0), torch.rad2deg(wrap_angle(pred - angle).abs()))
+        residual = wrap_angle(angle - target.float() * width)
+        res_err = torch.rad2deg(wrap_angle(offsets.gather(-1, target.unsqueeze(-1)).squeeze(-1) - residual).abs())
+        stats = torch.stack([valid.float(), err, (err <= ANGLE_TOL_DEG).float(), (best == target).float(), res_err], -1)
+        stats = stats * valid.unsqueeze(-1)  # [B, 5, S]
+        self.angle[0] += stats.sum(dim=(0, 1))
+        if elapsed is not None:
+            opening = (elapsed < OPENING_SECONDS).float()[:, None, None]
+            self.angle[1] += (stats * opening).sum(dim=(0, 1))
+
     def pop(self, prefix: str) -> dict[str, float]:
-        hits, labels = self.hits.cpu().numpy(), self.labels.cpu().numpy()
+        hits, labels, angle = self.hits.cpu().numpy(), self.labels.cpu().numpy(), self.angle.cpu().numpy()
         self.reset()
+        out = {}
+        for split, row in zip(ANGLE_SPLITS, angle):
+            if row[0]:
+                for name, value in zip(self.ANGLE_STATS[1:], row[1:]):
+                    key = f"angle_{name}_deg" if name.endswith("err") else f"angle_{name}"
+                    out[f"{prefix}/{key}/{split}"] = float(value / row[0])
+                out[f"{prefix}/angle_n/{split}"] = float(row[0])
         total = labels.sum()
         if not total:
-            return {}
-        out = {f"{prefix}/accuracy": float(hits.sum() / total), f"{prefix}/labels": float(total)}
+            return out
+        out.update({f"{prefix}/accuracy": float(hits.sum() / total), f"{prefix}/labels": float(total)})
         for axis, names, tag in ((1, ROLES, "role"), (0, KINDS, "kind")):
             h, n = hits.sum(axis=axis), labels.sum(axis=axis)
             for name, hi, ni in zip(names, h, n):

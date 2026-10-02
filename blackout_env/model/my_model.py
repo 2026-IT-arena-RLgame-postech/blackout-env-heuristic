@@ -12,7 +12,7 @@ from blackout_env.model.modules import (
     build_grid_position_ids,
 )
 from blackout_env.model.derived_obs import N_PATCH_FEATURES, derived_map_channels, local_wall_features
-from blackout_env.model.modules.logits_head import state_from_iqn
+from blackout_env.model.modules.logits_head import arc_bins_of_scale, state_from_iqn
 from blackout_env.model.modules.temporal_memory import TemporalMemory
 
 N_QUANTILES_DEFAULT = 32  # quantile samples used when the caller doesn't ask for a specific count
@@ -36,6 +36,8 @@ TEMPORAL_PREFIX = "temporal."  # every temporal-memory parameter's state_dict ke
 
 POLICY_HEADS = ("iqn", "logits")
 _IQN_KEY = "q_head.tau_proj.0.weight"  # only an IQN head has it (LogitsHead: q_head.in_scale instead)
+ANGLE_KEY_PREFIX = "q_head.angle_"  # only a logits head with an angle head (P11) has them
+_ANGLE_SCALE_KEY = "q_head.angle_scale"
 
 
 class MyModel(nn.Module):
@@ -123,6 +125,18 @@ class MyModel(nn.Module):
     logits with a size-1 quantile axis, and ``tau`` = None, so ``q_values, *_ = net(...)`` callers
     work unchanged.  ``from_state_dict(iqn_state, policy_head="logits")`` converts an IQN state
     (``iqn_to_logits_state``).
+
+    Angle head (``angle_head``, P11, logits head and K bins only)
+    --------------------------------------------------------------
+    ``LogitsHead``'s per-bin offsets (modules/logits_head.py): bin k executes ``2 pi k / K +
+    offset_k``.  Only computed when asked: ``forward(..., angle=True)`` returns the offsets
+    [B, q_units, K] (radians, canonical frame) as an extra element after the five outputs and
+    before the memory; ``forward_sequence(..., angle=True)`` likewise, before the memory.
+    Without ``angle=True`` every output is exactly the net without an angle head, and at init
+    (zero ``angle_out``) the offsets are 0, so ``from_state_dict(state, angle_head=True)`` on a
+    state without one moves exactly like it.  ``angle_arc_bins`` N: each offset spans +-(N + 1/2)
+    bins, so a bin next to the teacher's (an arc label's arg max) can still reach its angle
+    (recorded in the state as ``q_head.angle_scale``).
     """
 
     def __init__(
@@ -138,10 +152,15 @@ class MyModel(nn.Module):
         temporal_head_dim: int = 64,
         temporal_chunk: int = 64,
         policy_head: str = "iqn",
+        angle_head: bool = False,
+        angle_arc_bins: int = 0,
     ) -> None:
         super().__init__()
         if policy_head not in POLICY_HEADS:
             raise ValueError(f"policy_head must be one of {POLICY_HEADS}, got {policy_head!r}")
+        if angle_head and policy_head != "logits":
+            raise ValueError("angle_head needs policy_head='logits'")
+        self.angle_head = bool(angle_head)
 
         self.hidden_size = hidden_size
         self.policy_head = policy_head
@@ -209,7 +228,12 @@ class MyModel(nn.Module):
         # doesn't need a hand-tuned [Vmin, Vmax] that would need re-tuning whenever the
         # reward balance changes (see reward_config.json) — see modules/iqn_head.py.
         # policy_head="logits": the same value MLP without tau (see class docstring "Policy head").
-        self.q_head = IQNHead(hidden_size, n_actions, n_cos=64) if policy_head == "iqn" else LogitsHead(hidden_size, n_actions)
+        if policy_head == "iqn":
+            self.q_head = IQNHead(hidden_size, n_actions, n_cos=64)
+        else:  # the angle head's offsets: one per heading bin (STAND, if any, has none)
+            angle_bins = (n_actions - n_actions % 2) if angle_head else 0
+            self.q_head = LogitsHead(hidden_size, n_actions, angle_bins=angle_bins, angle_arc_bins=angle_arc_bins)
+        self.angle_arc_bins = int(angle_arc_bins) if angle_head else 0
 
         # Created last so that a stateless model's parameter order (and optimiser state layout)
         # is unchanged; absent entirely when off, so its state_dict has no temporal keys.
@@ -236,6 +260,10 @@ class MyModel(nn.Module):
         config = dict(hidden_size=state["token_type_emb.weight"].shape[1],
                       n_actions=state["q_head.value_head.1.weight"].shape[0],
                       policy_head="iqn" if _IQN_KEY in state else "logits")
+        if any(key.startswith(ANGLE_KEY_PREFIX) for key in state):
+            config["angle_head"] = True
+            if _ANGLE_SCALE_KEY in state:  # the offsets' range, in bins around their own
+                config["angle_arc_bins"] = arc_bins_of_scale(state[_ANGLE_SCALE_KEY], config["n_actions"] - config["n_actions"] % 2)
         if any(key.startswith(TEMPORAL_PREFIX) for key in state):
             heads = state["temporal.kda.b_proj.weight"].shape[0]
             config.update(temporal=True, temporal_heads=heads,
@@ -255,7 +283,7 @@ class MyModel(nn.Module):
 
     @classmethod
     def from_state_dict(cls, state: dict, temporal: bool | None = None, policy_head: str | None = None,
-                        **temporal_kwargs) -> "MyModel":
+                        angle_head: bool | None = None, **temporal_kwargs) -> "MyModel":
         """A MyModel shaped like ``state`` with ``state`` loaded.
 
         ``temporal=None`` follows the state (temporal iff it has ``temporal.`` keys).
@@ -263,13 +291,19 @@ class MyModel(nn.Module):
         strictly, the temporal block keeps its (identity) init -- see ``load_warm_start``.
         ``temporal=False`` on a temporal state raises (dropping the memory changes the policy).
         ``policy_head=None`` follows the state; ``"logits"`` on an IQN state converts it
-        (``iqn_to_logits_state``); ``"iqn"`` on a logits state raises (no tau embedding to restore)."""
+        (``iqn_to_logits_state``); ``"iqn"`` on a logits state raises (no tau embedding to restore).
+        ``angle_head=None`` follows the state; True on a state without one adds it zero-initialised
+        (the same moves); False on a state with one raises."""
         config = cls.config_from_state_dict(state)
         if policy_head == "iqn" and config["policy_head"] == "logits":
             raise ValueError("state has a logits head; it cannot be loaded as an IQN head")
         if policy_head == "logits" and config["policy_head"] == "iqn":
             state = cls.iqn_to_logits_state(state)
             config["policy_head"] = "logits"
+        if angle_head is False and config.get("angle_head"):
+            raise ValueError("state has an angle head; load it with angle_head=None or True")
+        if angle_head:
+            config["angle_head"] = True
         has_temporal = config.get("temporal", False)
         if temporal is False and has_temporal:
             raise ValueError("state has temporal keys; load it with temporal=None or True")
@@ -281,12 +315,26 @@ class MyModel(nn.Module):
         net.load_warm_start(state)
         return net
 
+    def with_init_angle_keys(self, state: dict) -> dict:
+        """``state`` plus this net's angle-head keys it lacks: an angle-head net warm-started from a
+        state without one keeps its zero init (and a state without ``angle_scale`` its default,
+        the half-bin range every angle head had before that buffer)."""
+        if not self.angle_head:
+            return state
+        missing = [k for k in self.state_dict() if k.startswith(ANGLE_KEY_PREFIX) and k not in state]
+        if not missing:
+            return state
+        own = self.state_dict()
+        return {**state, **{k: own[k].clone() for k in missing}}
+
     def load_warm_start(self, state: dict) -> list[str]:
         """Load ``state`` -- a stateless or a temporal state dict -- into this model.
 
         Every non-temporal key must match exactly (missing or unexpected ones raise, like
         ``load_state_dict(strict=True)``); temporal keys absent from ``state`` keep their init,
-        which for a fresh model is the identity.  Returns those initialised temporal keys."""
+        which for a fresh model is the identity.  Returns those initialised temporal keys.  An
+        angle head absent from ``state`` keeps its zero init too."""
+        state = self.with_init_angle_keys(state)
         if any(key.startswith(TEMPORAL_PREFIX) for key in state):  # a temporal state: all of it
             self.load_state_dict(state)
             return []
@@ -328,6 +376,7 @@ class MyModel(nn.Module):
         tau: torch.Tensor | None = None,
         q_units: int = N_UNITS,
         memory=None,
+        angle: bool = False,
     ) -> tuple:
         """
         graphic      : [B, C, H, W]
@@ -370,7 +419,7 @@ class MyModel(nn.Module):
             vec_out = vec_out.squeeze(1)
         elif memory is not None:
             raise ValueError("memory was given to a stateless MyModel (temporal=False)")
-        outputs = self._heads(vec_out, tokens_out[:, -1], n_quantiles, tau, q_units)
+        outputs = self._heads(vec_out, tokens_out[:, -1], n_quantiles, tau, q_units, angle)
         return outputs if self.temporal is None else (*outputs, new_memory)
 
     def _trunk(self, graphic, team_state, agent_states) -> torch.Tensor:
@@ -396,13 +445,18 @@ class MyModel(nn.Module):
         rope_cos, rope_sin = self.rope(row_ids, col_ids)
         return self.attention(tokens_in, rope=(rope_cos, rope_sin))
 
-    def _heads(self, vec_out, spr_cls_out, n_quantiles, tau, q_units):
+    def _heads(self, vec_out, spr_cls_out, n_quantiles, tau, q_units, angle=False):
         """vec_out [B, 11, hidden] (10 units + team_state), spr_cls_out [B, hidden] -> forward's
-        five outputs."""
+        five outputs (+ the angle offsets with ``angle``)."""
         unit_out = vec_out[:, :N_UNITS]
         global_out = vec_out[:, N_UNITS]  # the single TYPE_GLOBAL (team_state) token
         vision_latent = self.spr_head(spr_cls_out)
+        if angle and not self.angle_head:
+            raise ValueError("angle=True needs a MyModel with angle_head=True")
         if self.policy_head == "logits":  # no quantile axis: size 1, tau None (class docstring)
+            if angle:
+                q_values, offsets = self.q_head(unit_out[:, :q_units], angle=True)
+                return q_values, q_values.unsqueeze(2), None, vision_latent, global_out, offsets
             q_values = self.q_head(unit_out[:, :q_units])
             return q_values, q_values.unsqueeze(2), None, vision_latent, global_out
         quantile_values, tau = self.q_head(unit_out[:, :q_units], n_quantiles=n_quantiles, tau=tau)
@@ -420,6 +474,7 @@ class MyModel(nn.Module):
         tau: torch.Tensor | None = None,
         q_units: int = N_UNITS,
         burn_in: int = 0,
+        angle: bool = False,
     ):
         """
         A temporal model over whole sequences (training / prefill).
@@ -434,7 +489,8 @@ class MyModel(nn.Module):
 
         Returns (q_values [B, T', q_units, n_actions], quantile_values [B, T', q_units,
         n_quantiles, n_actions], tau [B, T', n_quantiles], memory after the last frame), with
-        T' = T - burn_in.  A logits head: n_quantiles = 1 and tau None.
+        T' = T - burn_in.  A logits head: n_quantiles = 1 and tau None.  ``angle``: the angle offsets
+        [B, T', q_units, K] as a fourth element, before the memory.
         """
         if self.temporal is None:
             raise ValueError("forward_sequence needs a temporal MyModel (temporal=True)")
@@ -455,9 +511,10 @@ class MyModel(nn.Module):
         if tau is not None:
             tau = tau.unsqueeze(1).expand(B, T, tau.shape[-1]) if tau.dim() == 2 else tau
             tau = tau.reshape(B * T, -1)
-        q_values, quantile_values, tau, _, _ = self._heads(vec_out, spr_cls_out, n_quantiles, tau, q_units)
+        q_values, quantile_values, tau, _, _, *offsets = self._heads(vec_out, spr_cls_out, n_quantiles, tau, q_units, angle)
+        offsets = tuple(o.reshape(B, T, *o.shape[1:]) for o in offsets)
         return (q_values.reshape(B, T, *q_values.shape[1:]), quantile_values.reshape(B, T, *quantile_values.shape[1:]),
-                None if tau is None else tau.reshape(B, T, -1), memory)
+                None if tau is None else tau.reshape(B, T, -1), *offsets, memory)
 
     def _temporal_frames(self, graphic, team_state, agent_states, memory, reset):
         """Trunk on B*T frames, temporal block over T: ((vec_out [B*T, 11, D], spr_cls [B*T, D]), memory)."""

@@ -209,7 +209,7 @@ def test_learner_trains_on_k_bit_labels(k, stand):
         "agent_states": np.zeros((2, 10, 12), np.float32), "labels": pack_bits(masks), "kinds": np.ones((2, 5), np.uint8),
     }
     rows["agent_states"][..., 9] = 1
-    _, _, _, got, _, _ = learner._tensors(rows)
+    _, _, _, got, _, _, _ = learner._tensors(rows)
     assert got.shape == (2, 5, k + int(stand)) and torch.equal(got[..., :k], torch.from_numpy(masks))
     if stand:
         assert got[0, 1, k] and not got[0, 0, k]
