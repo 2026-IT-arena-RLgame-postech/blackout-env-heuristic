@@ -34,22 +34,34 @@ N_CLS = 3
 
 class RolloutNet(nn.Module):
     def __init__(self, c1: int = 32, c2: int = 32, c3: int = 64, glob: int = 128, hidden: int = 256,
-                 k: int = K_BINS, angle_arc_bins: int = 1):
+                 k: int = K_BINS, angle_arc_bins: int = 1, arch: str = "mlp", d: int = 128, layers: int = 2,
+                 heads: int = 4):
         super().__init__()
-        self.config = dict(c1=c1, c2=c2, c3=c3, glob=glob, hidden=hidden, k=k, angle_arc_bins=angle_arc_bins)
-        self.k = k
+        self.config = dict(c1=c1, c2=c2, c3=c3, glob=glob, hidden=hidden, k=k, angle_arc_bins=angle_arc_bins,
+                           arch=arch, d=d, layers=layers, heads=heads)
+        self.k, self.arch = k, arch
         self.conv1 = nn.Conv2d(13 + 2 * N_CLS, c1, 3, padding=1)
         self.conv2 = nn.Conv2d(c1, c2, 3, stride=2, padding=1)
         self.conv3 = nn.Conv2d(c2, c3, 3, stride=2, padding=1)
         self.glob = nn.Linear(c3 * 36, glob)
-        unit_in = 12 + c1 + c2 + glob + 4 + N_TEAM + (N_UNITS - 1) * 5 + N_PATCH_FEATURES
+        self.register_buffer("angle_scale", torch.tensor((angle_arc_bins + 0.5) * 2 * math.pi / k))
+        self.register_buffer("slot", torch.eye(N_TEAM))
+        self.register_buffer("slot10", torch.eye(N_UNITS), persistent=False)
+        self.angle_head = True
+        if arch == "attn":  # 10 unit tokens + 1 global token, a small transformer, own tokens -> head
+            self.unit_proj = nn.Linear(12 + c1 + c2 + N_PATCH_FEATURES + N_UNITS, d)
+            self.glob_proj = nn.Linear(glob + 4, d)
+            layer = nn.TransformerEncoderLayer(d, heads, 2 * d, dropout=0.0, activation="gelu", batch_first=True,
+                                               norm_first=True)
+            self.trunk = nn.TransformerEncoder(layer, layers, enable_nested_tensor=False)
+            self.norm = nn.LayerNorm(d)
+            self.head = nn.Sequential(nn.Linear(d, hidden), nn.SiLU(), nn.Linear(hidden, 2 * k))
+            return
+        unit_in = 12 + c1 + c2 + glob + 4 + N_TEAM + N_UNITS * 5 + N_PATCH_FEATURES
         self.unit_in = unit_in
         self.mlp1 = nn.Sequential(nn.Linear(unit_in, hidden), nn.SiLU(), nn.Linear(hidden, hidden), nn.SiLU())
         self.mlp2 = nn.Sequential(nn.Linear(3 * hidden, hidden), nn.SiLU(), nn.Linear(hidden, hidden), nn.SiLU())
         self.out = nn.Linear(hidden, 2 * k)
-        self.register_buffer("angle_scale", torch.tensor((angle_arc_bins + 0.5) * 2 * math.pi / k))
-        self.register_buffer("slot", torch.eye(N_TEAM))
-        self.angle_head = True
 
     def _rasters(self, agent_states, height, width):
         """[B, 6, H, W]: own / enemy unit counts per class on their tiles."""
@@ -66,6 +78,12 @@ class RolloutNet(nn.Module):
         return out.view(b, 2 * N_CLS, height, width), row, col
 
     def forward(self, graphic, team_state, agent_states, q_units: int = N_TEAM, angle: bool = True):
+        if graphic.device.type == "cpu":  # NNPACK's small-channel convs are ~2.5x slower than the default path
+            with torch.backends.nnpack.flags(enabled=False):
+                return self._forward(graphic, team_state, agent_states, q_units, angle)
+        return self._forward(graphic, team_state, agent_states, q_units, angle)
+
+    def _forward(self, graphic, team_state, agent_states, q_units, angle):
         b, _, height, width = graphic.shape
         raster, row, col = self._rasters(agent_states, height, width)
         x = torch.cat([graphic, raster], 1)
@@ -73,18 +91,17 @@ class RolloutNet(nn.Module):
         f2 = F.silu(self.conv2(f1))                   # [B, c2, 12, 12]
         f3 = F.silu(self.conv3(f2))                   # [B, c3, 6, 6]
         g = F.silu(self.glob(f3.flatten(1)))          # [B, glob]
+        if self.arch == "attn":
+            return self._attn(graphic, team_state, agent_states, q_units, angle, f1, f2, g, row, col)
         r, c = row[:, :q_units], col[:, :q_units]
         t1 = f1.flatten(2).gather(2, (r * width + c).unsqueeze(1).expand(-1, f1.shape[1], -1)).transpose(1, 2)
         t2 = f2.flatten(2).gather(2, ((r // 2) * (width // 2) + c // 2).unsqueeze(1).expand(-1, f2.shape[1], -1)).transpose(1, 2)
         walls = local_wall_features(graphic, agent_states)[:, :q_units]  # [B, q, 25]
         own = agent_states[:, :q_units]
-        # every other unit relative to this one: dx, dy, class one-hot (fixed slot order)
-        rel = []
-        for u in range(q_units):
-            others = torch.cat([agent_states[:, :u], agent_states[:, u + 1:]], 1)  # [B, 9, 12]
-            d = others[..., :2] - agent_states[:, u:u + 1, :2]
-            rel.append(torch.cat([d, others[..., 9:12]], -1).flatten(1))
-        rel = torch.stack(rel, 1)  # [B, q, 45]
+        # every unit relative to this one (dx, dy, class one-hot; fixed slot order, self = 0 offset)
+        d = agent_states[:, None, :, :2] - own[:, :, None, :2]                       # [B, q, 10, 2]
+        cls = agent_states[:, None, :, 9:12].expand(-1, q_units, -1, -1)            # [B, q, 10, 3]
+        rel = torch.cat([d, cls], -1).flatten(2)                                     # [B, q, 50]
         feats = torch.cat([own, t1, t2, g.unsqueeze(1).expand(-1, q_units, -1),
                            team_state.unsqueeze(1).expand(-1, q_units, -1),
                            self.slot[:q_units].unsqueeze(0).expand(b, -1, -1), rel, walls], -1)
@@ -92,6 +109,18 @@ class RolloutNet(nn.Module):
         ctx = torch.cat([h, h.mean(1, keepdim=True).expand_as(h), h.amax(1, keepdim=True).expand_as(h)], -1)
         h = self.mlp2(ctx) + h
         out = self.out(h)
+        logits, off = out[..., : self.k], torch.tanh(out[..., self.k:]) * self.angle_scale
+        return (logits, off) if angle else logits
+
+    def _attn(self, graphic, team_state, agent_states, q_units, angle, f1, f2, g, row, col):
+        b, width = graphic.shape[0], graphic.shape[-1]
+        t1 = f1.flatten(2).gather(2, (row * width + col).unsqueeze(1).expand(-1, f1.shape[1], -1)).transpose(1, 2)
+        t2 = f2.flatten(2).gather(2, ((row // 2) * (width // 2) + col // 2).unsqueeze(1).expand(-1, f2.shape[1], -1)).transpose(1, 2)
+        walls = local_wall_features(graphic, agent_states)  # [B, 10, 25]
+        units = self.unit_proj(torch.cat([agent_states, t1, t2, walls, self.slot10.unsqueeze(0).expand(b, -1, -1)], -1))
+        glob = self.glob_proj(torch.cat([g, team_state], -1)).unsqueeze(1)
+        h = self.norm(self.trunk(torch.cat([units, glob], 1)))
+        out = self.head(h[:, :q_units])
         logits, off = out[..., : self.k], torch.tanh(out[..., self.k:]) * self.angle_scale
         return (logits, off) if angle else logits
 

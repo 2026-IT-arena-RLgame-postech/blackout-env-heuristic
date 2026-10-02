@@ -263,6 +263,42 @@ def cmd_fidelity(args):
     json.dump(out, open(Path(args.out) / f"fidelity{args.tag}.json", "w"), indent=1)
 
 
+def cmd_short(args):
+    """5 s continuations from mid-game roots (roots.pkl, 10-60 s), both teams one policy spec:
+    agreement of the lead change over the rollout with the reference (first spec)."""
+    import pickle
+
+    _threads(args.threads)
+    roots = pickle.load(open(Path(args.roots), "rb"))
+    pick = np.random.default_rng(0).choice(len(roots), size=min(args.roots_n, len(roots)), replace=False)
+    sub = [roots[i] for i in pick]
+    lead0 = np.array([r.scores[0] - r.scores[1] for r in sub])
+    rs = [int(1000 + i) for i in pick]
+    arms = {}
+    for spec in args.specs:
+        name, _, rep = spec.partition("@")
+        prec = "fp16" if name.endswith("~fp16") else args.precision
+        pol = make_policy(name.replace("~fp16", ""), args.device, prec == "fp16")
+        k = int(rep or 1)
+        arm = play_arm(pol, pol, sub, args.rollout_s * DPS, rs, (k, k))
+        arm["dlead"] = arm["lead"] - lead0
+        arms[spec] = arm
+        print(spec, f"{arm['game_decisions_per_s']:.0f} dec/s", flush=True)
+    ref = arms[args.specs[0]]
+    out = []
+    for spec, arm in arms.items():
+        d = arm["dlead"] - ref["dlead"]
+        row = {"spec": spec, "n": len(d), "dlead_mean": float(arm["dlead"].mean()),
+               "same_dlead": float(np.mean(d == 0)), "mean_abs_diff": float(np.abs(d).mean()),
+               "bias": float(d.mean()), "bias_se": float(d.std(ddof=1) / np.sqrt(len(d))),
+               "corr": float(np.corrcoef(arm["dlead"], ref["dlead"])[0, 1]) if d.any() else 1.0,
+               "game_decisions_per_s": arm["game_decisions_per_s"]}
+        out.append(row)
+        print(json.dumps(row), flush=True)
+    Path(args.out).mkdir(parents=True, exist_ok=True)
+    json.dump(out, open(Path(args.out) / f"short{args.tag}.json", "w"), indent=1)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -300,8 +336,19 @@ def main():
     p.add_argument("--threads", type=int, default=6)
     p.add_argument("--tag", default="")
     p.add_argument("--out", default="reports/batch_rollout")
+    p = sub.add_parser("short")
+    p.add_argument("--specs", nargs="+", default=["p11", "p11~fp16", "p11@2", "v23"],
+                   help="policy spec (make_policy) [~fp16] [@repeat]; first = reference")
+    p.add_argument("--roots", default="reports/batch_rollout/roots.pkl")
+    p.add_argument("--roots-n", type=int, default=300)
+    p.add_argument("--rollout-s", type=int, default=5)
+    p.add_argument("--device", default="mps")
+    p.add_argument("--precision", default="fp32")
+    p.add_argument("--threads", type=int, default=6)
+    p.add_argument("--tag", default="")
+    p.add_argument("--out", default="reports/batch_rollout")
     args = parser.parse_args()
-    {"throughput": cmd_throughput, "repeat": cmd_repeat, "fidelity": cmd_fidelity}[args.cmd](args)
+    {"throughput": cmd_throughput, "repeat": cmd_repeat, "fidelity": cmd_fidelity, "short": cmd_short}[args.cmd](args)
 
 
 if __name__ == "__main__":

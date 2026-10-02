@@ -1,0 +1,303 @@
+{
+ "config": {
+  "cmd": "repeat",
+  "games": 200,
+  "seed0": 980000,
+  "arms": [
+   "1,1",
+   "2,2",
+   "4,4",
+   "2,1",
+   "4,1"
+  ],
+  "noise": "cpu:fp32",
+  "device": "mps",
+  "precision": "fp32",
+  "cap_s": 150,
+  "rollout_s": 5,
+  "roots": "reports/batch_rollout/roots.pkl",
+  "threads": 6,
+  "tag": "",
+  "out": "reports/batch_rollout"
+ },
+ "full": {
+  "(1, 1)": {
+   "lead_A_mean": -2.615,
+   "lead_A_se": 4.856377858499338,
+   "A_win": 0.485,
+   "B_win": 0.515,
+   "race_A/tie/B": [
+    1,
+    199,
+    0
+   ],
+   "over": 0.82,
+   "mean_steps": 1457.745,
+   "game_decisions_per_s": 2816.6035001840914,
+   "policy_calls_per_decision": 1.0,
+   "vs_k1": {
+    "same_winner": 1.0,
+    "same_lead": 1.0,
+    "mean_abs_dlead": 0.0,
+    "dlead_mean": 0.0,
+    "dlead_se": 0.0,
+    "same_race": 1.0
+   }
+  },
+  "(2, 2)": {
+   "lead_A_mean": -3.0,
+   "lead_A_se": 4.800062813659356,
+   "A_win": 0.49,
+   "B_win": 0.505,
+   "race_A/tie/B": [
+    1,
+    199,
+    0
+   ],
+   "over": 0.835,
+   "mean_steps": 1446.93,
+   "game_decisions_per_s": 5487.995681509984,
+   "policy_calls_per_decision": 0.586282681263088,
+   "vs_k1": {
+    "same_winner": 0.95,
+    "same_lead": 0.06,
+    "mean_abs_dlead": 13.045,
+    "dlead_mean": -0.385,
+    "dlead_se": 1.4993411869800928,
+    "same_race": 1.0
+   }
+  },
+  "(4, 4)": {
+   "lead_A_mean": -1.54,
+   "lead_A_se": 4.9053188238705845,
+   "A_win": 0.52,
+   "B_win": 0.48,
+   "race_A/tie/B": [
+    1,
+    199,
+    0
+   ],
+   "over": 0.845,
+   "mean_steps": 1401.22,
+   "game_decisions_per_s": 8768.508705933886,
+   "policy_calls_per_decision": 0.3836442528653602,
+   "vs_k1": {
+    "same_winner": 0.965,
+    "same_lead": 0.03,
+    "mean_abs_dlead": 13.125,
+    "dlead_mean": 1.075,
+    "dlead_se": 1.5399852753325942,
+    "same_race": 1.0
+   }
+  },
+  "(2, 1)": {
+   "lead_A_mean": -4.13,
+   "lead_A_se": 4.920929100899585,
+   "A_win": 0.49,
+   "B_win": 0.505,
+   "race_A/tie/B": [
+    1,
+    199,
+    0
+   ],
+   "over": 0.845,
+   "mean_steps": 1376.215,
+   "game_decisions_per_s": 3274.595201669644,
+   "policy_calls_per_decision": 1.0,
+   "vs_k1": {
+    "same_winner": 0.96,
+    "same_lead": 0.045,
+    "mean_abs_dlead": 11.955,
+    "dlead_mean": -1.515,
+    "dlead_se": 1.3651435674679038,
+    "same_race": 1.0
+   }
+  },
+  "(4, 1)": {
+   "lead_A_mean": -9.995,
+   "lead_A_se": 4.878053083395271,
+   "A_win": 0.445,
+   "B_win": 0.555,
+   "race_A/tie/B": [
+    1,
+    199,
+    0
+   ],
+   "over": 0.82,
+   "mean_steps": 1477.42,
+   "game_decisions_per_s": 2376.691902260384,
+   "policy_calls_per_decision": 1.0,
+   "vs_k1": {
+    "same_winner": 0.94,
+    "same_lead": 0.07,
+    "mean_abs_dlead": 13.97,
+    "dlead_mean": -7.38,
+    "dlead_se": 1.700850511453478,
+    "same_race": 1.0
+   }
+  },
+  "noise": {
+   "lead_A_mean": -2.495,
+   "lead_A_se": 4.8419699752483005,
+   "A_win": 0.49,
+   "B_win": 0.51,
+   "race_A/tie/B": [
+    1,
+    199,
+    0
+   ],
+   "over": 0.815,
+   "mean_steps": 1476.19,
+   "game_decisions_per_s": 339.5003738277844,
+   "policy_calls_per_decision": 1.0,
+   "vs_k1": {
+    "same_winner": 0.995,
+    "same_lead": 0.915,
+    "mean_abs_dlead": 0.52,
+    "dlead_mean": 0.12,
+    "dlead_se": 0.21059380034492609,
+    "same_race": 1.0
+   }
+  }
+ },
+ "rollout5s": {
+  "(1, 1)": {
+   "lead_A_mean": -1.035,
+   "lead_A_se": 3.7146077083772493,
+   "A_win": 0.49,
+   "B_win": 0.505,
+   "race_A/tie/B": [
+    80,
+    28,
+    92
+   ],
+   "over": 0.165,
+   "mean_steps": 114.695,
+   "game_decisions_per_s": 2140.5390047111373,
+   "policy_calls_per_decision": 1.0,
+   "vs_k1": {
+    "same_winner": 1.0,
+    "same_lead": 1.0,
+    "mean_abs_dlead": 0.0,
+    "dlead_mean": 0.0,
+    "dlead_se": 0.0,
+    "same_race": 1.0
+   }
+  },
+  "(2, 2)": {
+   "lead_A_mean": -1.345,
+   "lead_A_se": 3.6823741351683403,
+   "A_win": 0.485,
+   "B_win": 0.515,
+   "race_A/tie/B": [
+    80,
+    28,
+    92
+   ],
+   "over": 0.16,
+   "mean_steps": 114.665,
+   "game_decisions_per_s": 4422.719696858313,
+   "policy_calls_per_decision": 0.5040334888588497,
+   "vs_k1": {
+    "same_winner": 0.97,
+    "same_lead": 0.665,
+    "mean_abs_dlead": 2.24,
+    "dlead_mean": -0.31,
+    "dlead_se": 0.3747287125911238,
+    "same_race": 1.0
+   }
+  },
+  "(4, 4)": {
+   "lead_A_mean": -1.15,
+   "lead_A_se": 3.652993196884222,
+   "A_win": 0.48,
+   "B_win": 0.515,
+   "race_A/tie/B": [
+    80,
+    28,
+    92
+   ],
+   "over": 0.14,
+   "mean_steps": 115.56,
+   "game_decisions_per_s": 8831.63773309327,
+   "policy_calls_per_decision": 0.25614399446175146,
+   "vs_k1": {
+    "same_winner": 0.97,
+    "same_lead": 0.525,
+    "mean_abs_dlead": 2.835,
+    "dlead_mean": -0.115,
+    "dlead_se": 0.38089932591488274,
+    "same_race": 1.0
+   }
+  },
+  "(2, 1)": {
+   "lead_A_mean": -1.72,
+   "lead_A_se": 3.6951085417993332,
+   "A_win": 0.48,
+   "B_win": 0.515,
+   "race_A/tie/B": [
+    80,
+    28,
+    92
+   ],
+   "over": 0.16,
+   "mean_steps": 114.61,
+   "game_decisions_per_s": 2795.068437287363,
+   "policy_calls_per_decision": 1.0,
+   "vs_k1": {
+    "same_winner": 0.975,
+    "same_lead": 0.7,
+    "mean_abs_dlead": 1.835,
+    "dlead_mean": -0.685,
+    "dlead_se": 0.3117931201113067,
+    "same_race": 1.0
+   }
+  },
+  "(4, 1)": {
+   "lead_A_mean": -1.855,
+   "lead_A_se": 3.695089757581392,
+   "A_win": 0.49,
+   "B_win": 0.5,
+   "race_A/tie/B": [
+    80,
+    28,
+    92
+   ],
+   "over": 0.16,
+   "mean_steps": 114.52,
+   "game_decisions_per_s": 3444.001145706119,
+   "policy_calls_per_decision": 1.0,
+   "vs_k1": {
+    "same_winner": 0.975,
+    "same_lead": 0.64,
+    "mean_abs_dlead": 2.16,
+    "dlead_mean": -0.82,
+    "dlead_se": 0.34566664162987776,
+    "same_race": 1.0
+   }
+  },
+  "noise": {
+   "lead_A_mean": -1.085,
+   "lead_A_se": 3.71304760101957,
+   "A_win": 0.49,
+   "B_win": 0.505,
+   "race_A/tie/B": [
+    80,
+    28,
+    92
+   ],
+   "over": 0.165,
+   "mean_steps": 114.695,
+   "game_decisions_per_s": 370.235415329008,
+   "policy_calls_per_decision": 1.0,
+   "vs_k1": {
+    "same_winner": 1.0,
+    "same_lead": 0.995,
+    "mean_abs_dlead": 0.05,
+    "dlead_mean": -0.05,
+    "dlead_se": 0.04999999999999999,
+    "same_race": 1.0
+   }
+  }
+ }
+}
