@@ -167,3 +167,15 @@ def test_action_repeat_and_hybrid_schedule():
     BatchRollout(HybridPolicy(first, then), HybridPolicy(first, then)).run([early, late], 5)
     # one HybridPolicy object per team would be called twice per game; here the two are distinct
     assert first.calls[0] > 0 and first.calls[1] == 0 and then.calls[1] > 0 and then.calls[0] == 0
+
+
+def test_heuristic_policy_both_teams_move():
+    """One HeuristicPolicy for both teams keeps an instance per team (a shared V23 instance
+    returns zero moves for the second team it sees)."""
+    from blackout_env.sim.batch import HeuristicPolicy
+
+    pol = HeuristicPolicy("strategic_v23")
+    res = BatchRollout(pol, pol).run([SimState.from_seed(7)], 10, record=True)
+    start = SimState.from_seed(7).uf
+    moved = np.abs(res.positions[-1, 0] - start).sum(axis=1) > 0
+    assert moved[:5].any() and moved[5:].any()

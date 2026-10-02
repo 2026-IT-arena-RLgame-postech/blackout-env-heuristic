@@ -367,19 +367,27 @@ class NetPolicy(BatchPolicy):
 
 
 class HeuristicPolicy(BatchPolicy):
-    """Any ``make_opponent`` descriptor, one instance per game (history-dependent heuristics keep
-    their own state), fed ``obs_from_raw`` dicts: the slow reference path and a fallback."""
+    """Any ``make_opponent`` descriptor, one instance per game *and team* (a heuristic instance binds
+    to the team it first acts for: a V23 shared by both teams returns zero moves for the second;
+    history-dependent heuristics keep their own state), fed ``obs_from_raw`` dicts: the slow
+    reference path and a fallback."""
 
     needs_inputs = False
 
     def __init__(self, descriptor: str, seed: int = 0):
         self.descriptor, self.seed = descriptor, seed
-        self.instances: list = []
+        self.instances: dict = {}
 
     def reset(self, n: int) -> None:
-        from blackout_env.train.distill.opponents import make_opponent
+        self.instances = {}
 
-        self.instances = [make_opponent(self.descriptor, self.seed + b) for b in range(n)]
+    def _instance(self, b: int, team: int):
+        key = (b, team)
+        if key not in self.instances:
+            from blackout_env.train.distill.opponents import make_opponent
+
+            self.instances[key] = make_opponent(self.descriptor, self.seed + 2 * b + team)
+        return self.instances[key]
 
     def moves(self, bsim, idx, teams, inputs):
         out = {tm: np.zeros((len(idx), 5, 2), np.float32) for tm in teams}
@@ -387,7 +395,7 @@ class HeuristicPolicy(BatchPolicy):
             obs = obs_from_raw(*bsim.raw(int(b)))
             for tm in teams:
                 names = [f"unit_{i}" for i in range(5 * tm, 5 * tm + 5)]
-                acts = self.instances[b].act({n: obs[n] for n in names})
+                acts = self._instance(int(b), tm).act({n: obs[n] for n in names})
                 for n_, a in acts.items():
                     out[tm][j, int(n_.split("_")[1]) - 5 * tm] = np.clip(np.asarray(a, np.float32), -1, 1)
         return out

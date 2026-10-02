@@ -187,9 +187,17 @@ def cmd_train(args):
     val = dict(np.load(Path(args.data) / "val.npz"))
     labelled = unpack_labels(train["labels"]).any(-1).any(-1)
     pool = np.nonzero(labelled)[0]
+    if args.extra:  # e.g. simulator DAgger rows (rollout_net_collect.py): a fixed fraction of each batch
+        extra = dict(np.load(args.extra))
+        n0 = len(train["tick"])
+        keys = [k for k in train if k in extra]
+        train = {k: np.concatenate([train[k], extra[k]]) for k in keys}
+        epool = n0 + np.nonzero(unpack_labels(extra["labels"]).any(-1).any(-1))[0]
+        print("extra rows", len(extra["tick"]), "labelled", len(epool), flush=True)
+        del extra
     print("train rows", len(train["tick"]), "labelled", len(pool), "val", len(val["tick"]), flush=True)
     cfg = json.loads(args.config) if args.config else {}
-    net = RolloutNet(**cfg).to(device)
+    net = RolloutNet.from_checkpoint(args.init).train().to(device) if args.init else RolloutNet(**cfg).to(device)
     print("params", sum(p.numel() for p in net.parameters()), cfg, flush=True)
     opt = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=args.lr, total_steps=args.steps, pct_start=0.05)
@@ -197,7 +205,11 @@ def cmd_train(args):
     t0 = time.time()
     log = []
     for step in range(1, args.steps + 1):
-        idx = np.sort(rng.choice(pool, args.batch))
+        if args.extra:
+            ne = int(args.batch * args.extra_frac)
+            idx = np.sort(np.concatenate([rng.choice(pool, args.batch - ne), rng.choice(epool, ne)]))
+        else:
+            idx = np.sort(rng.choice(pool, args.batch))
         g, ts, ag = batch_tensors(train, idx, device, torch)
         labels = torch.from_numpy(unpack_labels(train["labels"][idx])).to(device)
         ang = torch.from_numpy(train["angles"][idx]).to(device)
@@ -283,6 +295,9 @@ def main():
     p.add_argument("--opening-weight", type=float, default=1.5)
     p.add_argument("--p11-kl", type=float, default=0.0)
     p.add_argument("--amp", action="store_true")
+    p.add_argument("--extra", default="", help="another packed train.npz mixed into every batch")
+    p.add_argument("--extra-frac", type=float, default=0.5)
+    p.add_argument("--init", default="", help="start from this RolloutNet checkpoint (its config)")
     p.add_argument("--device", default="mps")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--log-every", type=int, default=500)
