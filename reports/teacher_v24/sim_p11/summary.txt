@@ -1,0 +1,14 @@
+== strategic_v23
+  /distill/frozen/p11_v22.pt  n=144  margin   -6.5  W-L -0.07  unfinished 0.22
+== strategic_v24
+  /distill/frozen/p11_v22.pt  n=144  margin   -6.6  W-L -0.08  unfinished 0.21  gap  -0.10±1.73 (+27/-19)
+                         all  pairs 144  gap  -0.10±1.73 (+27/-19)
+== strategic_v24:base_exit=false
+  /distill/frozen/p11_v22.pt  n=144  margin   -7.0  W-L -0.10  unfinished 0.17  gap  -0.49±1.64 (+13/-8)
+                         all  pairs 144  gap  -0.49±1.64 (+13/-8)
+== strategic_v24:reenter=false
+  /distill/frozen/p11_v22.pt  n=144  margin   -7.4  W-L -0.08  unfinished 0.23  gap  -0.87±1.58 (+25/-19)
+                         all  pairs 144  gap  -0.87±1.58 (+25/-19)
+== strategic_v24:relief=false
+  /distill/frozen/p11_v22.pt  n=144  margin   -5.6  W-L -0.04  unfinished 0.23  gap  +0.90±1.41 (+22/-17)
+                         all  pairs 144  gap  +0.90±1.41 (+22/-17)

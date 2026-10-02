@@ -1,0 +1,7 @@
+== strategic_v23
+               strategic_v22  n= 48  margin  +23.5  W-L +0.29  unfinished 0.19
+               strategic_v23  n= 48  margin   +0.0  W-L +0.00  unfinished 0.25
+== strategic_v24
+               strategic_v22  n= 48  margin  +26.6  W-L +0.33  unfinished 0.17  gap  +3.08±1.80 (+8/-3)
+               strategic_v23  n= 48  margin   +2.1  W-L +0.00  unfinished 0.21  gap  +2.06±2.43 (+7/-6)
+                         all  pairs 96  gap  +2.57±1.51 (+15/-9)
