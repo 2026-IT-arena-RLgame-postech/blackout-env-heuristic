@@ -1,0 +1,101 @@
+[
+ {
+  "policy": "p11",
+  "device": "mps",
+  "precision": "fp32",
+  "N": 256,
+  "game_decisions_per_s": 4179.359101367068,
+  "us_per_game_decision": 239.27113601530436,
+  "render_us": 1.8654297673492692,
+  "policy_us": 235.63839495182037,
+  "step_us": 1.3408241284196265
+ },
+ {
+  "policy": "p11",
+  "device": "mps",
+  "precision": "fp32",
+  "N": 1024,
+  "game_decisions_per_s": 3396.0156765321135,
+  "us_per_game_decision": 294.4627160912176,
+  "render_us": 1.9160135548460624,
+  "policy_us": 290.96433411479154,
+  "step_us": 1.2416131710937681
+ },
+ {
+  "policy": "p11",
+  "device": "mps",
+  "precision": "fp32",
+  "N": 2048,
+  "game_decisions_per_s": 3441.5801969115796,
+  "us_per_game_decision": 290.5642009729671,
+  "render_us": 1.9199068025409223,
+  "policy_us": 287.2415042787053,
+  "step_us": 1.1346933306222151
+ },
+ {
+  "policy": "p11",
+  "device": "mps",
+  "precision": "fp16",
+  "N": 256,
+  "game_decisions_per_s": 6058.537182182069,
+  "us_per_game_decision": 165.05634444911266,
+  "render_us": 1.8680533685255796,
+  "policy_us": 161.63054377102526,
+  "step_us": 1.2060516746714711
+ },
+ {
+  "policy": "p11",
+  "device": "mps",
+  "precision": "fp16",
+  "N": 1024,
+  "game_decisions_per_s": 5888.112196025725,
+  "us_per_game_decision": 169.8337203348411,
+  "render_us": 1.743064808999313,
+  "policy_us": 166.55984732869757,
+  "step_us": 1.2296723495639181
+ },
+ {
+  "policy": "p11",
+  "device": "mps",
+  "precision": "fp16",
+  "N": 2048,
+  "game_decisions_per_s": 5979.197790677371,
+  "us_per_game_decision": 167.24651617298514,
+  "render_us": 1.8985848756406034,
+  "policy_us": 163.9413666294413,
+  "step_us": 1.1559236941016373
+ },
+ {
+  "policy": "p11",
+  "device": "cpu",
+  "precision": "fp32",
+  "N": 256,
+  "game_decisions_per_s": 758.662385276644,
+  "us_per_game_decision": 1318.1093717139447,
+  "render_us": 1.7802705406211317,
+  "policy_us": 1314.46698862419,
+  "step_us": 1.4115948943071999
+ },
+ {
+  "policy": "p11",
+  "device": "cpu",
+  "precision": "fp32",
+  "N": 1024,
+  "game_decisions_per_s": 770.6452133526179,
+  "us_per_game_decision": 1297.6139767995135,
+  "render_us": 1.5981697084003712,
+  "policy_us": 1294.6113703463382,
+  "step_us": 1.1075140824882779
+ },
+ {
+  "policy": "p11",
+  "device": "cpu",
+  "precision": "fp32",
+  "N": 2048,
+  "game_decisions_per_s": 769.2962451575579,
+  "us_per_game_decision": 1299.8893551016774,
+  "render_us": 1.5620816949826613,
+  "policy_us": 1297.0165394497647,
+  "step_us": 1.066000391307966
+ }
+]

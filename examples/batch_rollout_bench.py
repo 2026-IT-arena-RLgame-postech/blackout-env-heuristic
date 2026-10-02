@@ -4,7 +4,8 @@
     PYTHONPATH=. .venv/bin/python examples/batch_rollout_bench.py throughput --out reports/batch_rollout
     PYTHONPATH=. .venv/bin/python examples/batch_rollout_bench.py exact
     PYTHONPATH=. .venv/bin/python examples/batch_rollout_bench.py repeat --games 200
-    PYTHONPATH=. .venv/bin/python examples/batch_rollout_bench.py fidelity --small checkpoints/rollout_net/r1.pt
+    PYTHONPATH=. .venv/bin/python examples/batch_rollout_bench.py fidelity --candidates p11 small:checkpoints/rollout_net/r5.pt
+    PYTHONPATH=. .venv/bin/python examples/batch_rollout_bench.py short --specs p11 v23 small:checkpoints/rollout_net/r5.pt
 
 Roots for throughput: mid-game states (10-60 s) of P11-vs-P11 sim games from seeds 970000+.
 """
