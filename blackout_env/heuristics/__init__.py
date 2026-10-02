@@ -22,6 +22,7 @@ from .v17_teach import StrategicHeuristicV17Teach
 from .v20_anticamp import StrategicHeuristicV20, StrategicHeuristicV20Teach
 from .v21_safe_transform import StrategicHeuristicV21, StrategicHeuristicV21Teach
 from .any_angle import AnyAngleMixin, StrategicHeuristicV21AnyAngle
+from .v22_teacher import StrategicHeuristicV22, StrategicHeuristicV22Teach
 from .raider import StrategicRaider
 from .cargo_hunter import StrategicCargoHunter
 from .early_rush import StrategicEarlyRush
@@ -43,7 +44,7 @@ __all__ = [
     "StrategicHeuristicV9",
     "StrategicHeuristicV10", "StrategicHeuristicV11", "StrategicHeuristicV12",
     "StrategicHeuristicV13", "StrategicHeuristicV14", "StrategicHeuristicV15", "StrategicHeuristicV16",
-    "StrategicHeuristicV17", "StrategicHeuristicV18", "StrategicHeuristicV19", "StrategicHeuristicV20", "StrategicHeuristicV21", "StrategicHeuristicV21AnyAngle", "AnyAngleMixin",
+    "StrategicHeuristicV17", "StrategicHeuristicV18", "StrategicHeuristicV19", "StrategicHeuristicV20", "StrategicHeuristicV21", "StrategicHeuristicV21AnyAngle", "AnyAngleMixin", "StrategicHeuristicV22", "StrategicHeuristicV22Teach",
     "StrategicRaider", "StrategicCargoHunter", "StrategicEarlyRush", "StrategicFortress", "StrategicDuelist",
     "RecommendedStrategicHeuristic",
     "StrategicHeuristicV4Teach", "StrategicHeuristicV17Teach", "StrategicHeuristicV20Teach", "StrategicHeuristicV21Teach", "TeachLabel", "TeachLabeller",

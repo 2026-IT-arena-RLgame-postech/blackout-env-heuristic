@@ -28,6 +28,7 @@ from .v19_counter import StrategicHeuristicV19
 from .v20_anticamp import StrategicHeuristicV20
 from .v21_safe_transform import StrategicHeuristicV21
 from .any_angle import StrategicHeuristicV21AnyAngle
+from .v22_teacher import StrategicHeuristicV22
 from .raider import StrategicRaider
 from .cargo_hunter import StrategicCargoHunter
 from .early_rush import StrategicEarlyRush
@@ -68,6 +69,7 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
     "strategic_v20": StrategicHeuristicV20,  # not in the mixture's default weights
     "strategic_v21": StrategicHeuristicV21,  # not in the mixture's default weights
     "strategic_v21_anyangle": StrategicHeuristicV21AnyAngle,  # any-angle moves; not in the default weights
+    "strategic_v22": StrategicHeuristicV22,  # any-angle V21 that wins the opening race; not in the default weights
     # Named strategies on the V17 planner, each on a strategic axis the V-series lacks (held-out
     # opponents for distillation; not in the mixture's default weights):
     "strategic_raider": StrategicRaider,  # steal-first economy, Hunter escorts the thieves
