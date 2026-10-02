@@ -385,6 +385,8 @@ class StrategicHeuristicV22Teach(StrategicHeuristicV21Teach):
 class StrategicHeuristicV22(AnyAngleMixin, StrategicHeuristicV22Teach):
     """V22 as a player: any-angle moves (as ``strategic_v21_anyangle``) plus region approaches."""
 
+    region_inset = REGION_INSET  # tiles inside the region boundary a region approach aims for (V23 varies it)
+
     def __init__(self, *, region_approach: bool = True, **kwargs):
         super().__init__(**kwargs)
         self.region_approach = bool(region_approach)
@@ -410,7 +412,7 @@ class StrategicHeuristicV22(AnyAngleMixin, StrategicHeuristicV22Teach):
         position = pixel_position(state, shape)
         radius = CONTACT_RADIUS.get(self._class_id(state), 0.325)
         required = min(radius + self.clearance_margin, point_clearance(walkable, position) - 1e-3) + 0.5 * SAMPLE_STEP
-        lo = 0.5 - REGION_INSET
+        lo = 0.5 - self.region_inset
         points = []
         for ty, tx in tiles:
             py = min(max(position[0], ty - lo), ty + lo)
