@@ -357,9 +357,10 @@ class NetPolicy(BatchPolicy):
         graphic, team, agents = inputs
         n = len(idx)
         sel = list(teams)
-        g = graphic[:n, sel].reshape(n * len(sel), N_CH, H, W)
-        t = team[:n, sel].reshape(n * len(sel), 4)
-        a = agents[:n, sel].reshape(n * len(sel), 10, N_AGENT_COLS)
+        cut = (slice(None) if sel == [0, 1] else sel)  # both teams: a view, no copy of the batch
+        g = graphic[:n][:, cut].reshape(n * len(sel), N_CH, H, W)
+        t = team[:n][:, cut].reshape(n * len(sel), 4)
+        a = agents[:n][:, cut].reshape(n * len(sel), 10, N_AGENT_COLS)
         q, off = self.forward(g, t, a)
         team_b = np.tile(np.asarray(sel) == 1, n)
         mv = decode_moves(q, off, team_b).reshape(n, len(sel), 5, 2)

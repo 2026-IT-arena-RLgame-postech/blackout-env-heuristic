@@ -78,7 +78,7 @@ def cmd_throughput(args):
     rows = []
     configs = [c.split(":") for c in args.configs]
     for dev, prec in configs:
-        pol = p11_policy(dev, prec == "fp16")
+        pol = make_policy(args.policy, dev, prec == "fp16")
         roll = BatchRollout(pol, pol)
         for n in args.sizes:
             batch = [roots[i % len(roots)] for i in range(n)]
@@ -92,7 +92,7 @@ def cmd_throughput(args):
                     tot[k] += roll.timing[k]
             wall = time.perf_counter() - t0
             gd = tot["game_decisions"]
-            row = {"device": dev, "precision": prec, "N": n, "game_decisions_per_s": gd / wall,
+            row = {"policy": args.policy, "device": dev, "precision": prec, "N": n, "game_decisions_per_s": gd / wall,
                    "us_per_game_decision": wall / gd * 1e6,
                    **{f"{k}_us": tot[k] / gd * 1e6 for k in ("render", "policy", "step")}}
             rows.append(row)
@@ -309,6 +309,7 @@ def main():
     p.add_argument("--min-decisions", type=int, default=4000)
     p.add_argument("--threads", type=int, default=6)
     p.add_argument("--heuristic", action="store_true")
+    p.add_argument("--policy", default="p11", help="make_policy spec")
     p.add_argument("--tag", default="")
     p.add_argument("--out", default="reports/batch_rollout")
     p = sub.add_parser("repeat")
