@@ -19,7 +19,9 @@ docs/distill_plan_ko.md §6 (``OOD_OPPONENTS``):
 
 Results append to ``<out>/matches.jsonl`` (a rerun skips matches already there).  The table --
 plus each checkpoint's margin minus the teacher's on the same seed and side, the paired gap -- is
-printed and written to ``<out>/summary.txt``.
+printed and written to ``<out>/summary.txt``.  With an ``act:`` teacher the table also has the
+student's heading error against the teacher's raw move (P11; metrics.py ``angle_err_deg``): mean
+absolute degrees and the share within 2 degrees, overall and in the first 10 s (``ang10``).
 """
 
 from __future__ import annotations
@@ -169,7 +171,7 @@ def main() -> None:
         groups[(d["candidate"], d["inference"], d["opponent"])].append(d)
     lines = [f"{'candidate':42s} {'inference':9s} {'opponent':44s} {'n':>3s} {'margin':>7s} {'±se':>5s} {'win':>5s} "
              f"{'H<30s':>5s} {'H<60s':>5s} {'H<120':>5s} {'Ca<60':>5s} {'end_s':>5s} {'agree':>6s} {'deliv/1k':>8s} {'rev/1k':>7s} "
-             f"{'die/1k':>6s} {'@base':>5s} {'camped':>6s}"]
+             f"{'die/1k':>6s} {'@base':>5s} {'camped':>6s} {'ang':>5s} {'<=2':>4s} {'ang10':>5s} {'<=2@10':>6s}"]
     for (candidate, inference, opponent), group in sorted(groups.items()):
         s = summarize_matches(group)
         rev = s.get("reversals_per_1000/student", s.get("reversals_per_1000/teacher", float("nan")))
@@ -179,7 +181,9 @@ def main() -> None:
                      f"{s.get('units_hunter_60_120s', float('nan')):5.1f} {s.get('units_carrier_30_60s', float('nan')):5.1f} {s['match_seconds']:5.0f} "
                      f"{s.get('agree/all', float('nan')):6.2f} {s['learner/deliveries_per_1000']:8.1f} {rev:7.0f} "
                      f"{s.get('deaths_per_1000', float('nan')):6.2f} {s.get('deaths_near_base_frac', float('nan')):5.2f} "
-                     f"{s.get('camped_frac', float('nan')):6.2f}")
+                     f"{s.get('camped_frac', float('nan')):6.2f} {s.get('angle_err_deg/all', float('nan')):5.1f} "
+                     f"{s.get('angle_within2/all', float('nan')):4.2f} {s.get('angle_err_deg/opening', float('nan')):5.1f} "
+                     f"{s.get('angle_within2/opening', float('nan')):6.2f}")
     table = "\n".join(lines + [""] + _paired_gaps(groups, teacher_name))
     print(table)
     (args.out / "summary.txt").write_text(table + "\n")

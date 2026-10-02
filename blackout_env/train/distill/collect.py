@@ -25,6 +25,12 @@ bin heading); shards store bin indices for ``actions``/``student`` and K-bit lab
 for K > 8).  The recorder's ``agree`` is then "the student's heading falls in the K-bin set";
 ``agree8`` keeps the 8-way meaning (its move snapped to the compass, in the teacher's own
 8-direction label) so runs at different K compare.  K = 8 is the old path, unchanged.
+
+Continuous angles (P11): every row also keeps, per own unit, the act-teacher's raw heading
+(``angles``, radians, canonical frame -- team B's mirrored ``t -> pi/2 - t`` exactly like its bin
+label, ``direction_bins.mirror_angle``) and the student's executed heading (``student_angles``);
+NaN where there is none (a relabelling teacher, an invalid label / standing, a student not asked).
+The recorder compares the two (``angle_err_deg``, ``angle_within2``).
 """
 
 from __future__ import annotations
@@ -47,7 +53,8 @@ from blackout_env.heuristics import (
 )
 from blackout_env.heuristics.teach import TeachLabel, label_action
 from blackout_env.model.direction_bins import (
-    SET_HALF_WIDTH_DEG, arc_mask, label_dtype, mirror_bin, mirror_bits, pack_bits, vector_to_bin, widen_mask,
+    SET_HALF_WIDTH_DEG, arc_mask, label_dtype, mirror_angle, mirror_bin, mirror_bits, move_angle, pack_bits,
+    vector_to_bin, widen_mask,
 )
 from blackout_env.model.my_policy import N_DIRECTIONS, direction_vector_to_idx
 from blackout_env.train.dead_segments import batteries_in_play
@@ -190,8 +197,9 @@ def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.nda
                     actions[name] = teacher_moves[name] if teacher_moves is not None else label_action(compass[name])
             if full_window:
                 recorder.before_step(learner_obs, opponent_obs, labels, actions, student_actions, teacher_drove,
-                                     compass=None if task.bins_are_compass else compass)
-                row = _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove, task.action_bins)
+                                     compass=None if task.bins_are_compass else compass, teacher_moves=teacher_moves)
+                row = _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove, task.action_bins,
+                                    teacher_moves=teacher_moves)
                 row["tick"] = np.int32(tick)
                 for field, value in row.items():  # unlabelled ticks too: context / STAND targets
                     rows[field].append(value)
@@ -228,15 +236,27 @@ def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.nda
     return arrays, summary
 
 
-def _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove, bins: int = N_DIRECTIONS) -> dict[str, np.ndarray]:
+def teacher_angle(label: TeachLabel, raw_move) -> float:
+    """The act-teacher's raw heading behind ``label`` (radians, world frame, the env's [-1, 1]
+    clip applied), NaN unless it is a valid act label with its raw move."""
+    if raw_move is None or not label.valid or label.kind != ACT_KIND:
+        return float("nan")
+    return move_angle(np.clip(np.asarray(raw_move, np.float32), -1.0, 1.0))
+
+
+def _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove, bins: int = N_DIRECTIONS,
+                  teacher_moves: dict | None = None) -> dict[str, np.ndarray]:
     """One tick in the canonical frame: own units in rows 0-4, labels and moves mirrored for
-    team B (dataset.py schema).  ``bins`` > 8: labels are K-bit sets (uint64), moves bin indices."""
+    team B (dataset.py schema).  ``bins`` > 8: labels are K-bit sets (uint64), moves bin indices.
+    ``teacher_moves``: an act-teacher's raw moves, kept as ``angles`` (NaN without)."""
     view = next(iter(learner_obs.values()))
     team_b = is_team_b_view(view["agent_states"])
     per_unit = {
         "labels": np.zeros(2 * N_TEAM, dtype=label_dtype(bins)), "kinds": np.zeros(2 * N_TEAM, dtype=np.uint8),
         "actions": np.full(2 * N_TEAM, STAND, dtype=np.uint8), "student": np.full(2 * N_TEAM, STAND, dtype=np.uint8),
         "teacher_drove": np.zeros(2 * N_TEAM, dtype=bool),
+        "angles": np.full(2 * N_TEAM, np.nan, dtype=np.float32),
+        "student_angles": np.full(2 * N_TEAM, np.nan, dtype=np.float32),
     }
     for name, label in labels.items():
         i = unit_index(name)
@@ -248,6 +268,8 @@ def _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove, 
         per_unit["actions"][i] = _direction(actions[name], bins)
         if name in student_actions:
             per_unit["student"][i] = _direction(student_actions[name], bins)
+            per_unit["student_angles"][i] = move_angle(student_actions[name])
+        per_unit["angles"][i] = teacher_angle(label, None if teacher_moves is None else teacher_moves.get(name))
         per_unit["teacher_drove"][i] = teacher_drove[name]
     if team_b:
         if bins == N_DIRECTIONS:
@@ -261,6 +283,8 @@ def _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove, 
             else:
                 mirrored = mirror_bin(np.minimum(moves, bins - 1), bins)
             per_unit[field] = np.where(moves == STAND, STAND, mirrored).astype(np.uint8)
+        for field in ("angles", "student_angles"):  # the same reflection as the bins (NaN stays NaN)
+            per_unit[field] = mirror_angle(per_unit[field]).astype(np.float32)
         per_unit = {field: np.roll(values, -N_TEAM) if field != "labels" else values for field, values in per_unit.items()}
     canonical = canonical_obs(view)
     return {

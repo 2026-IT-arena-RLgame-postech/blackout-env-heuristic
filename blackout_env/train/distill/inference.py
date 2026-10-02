@@ -25,6 +25,12 @@ A temporal student (``MyModel(temporal=True)``) works in every mode: ``_FastNet`
 returns the memory, ``MyPolicy`` carries it across ticks (one memory per team, so a mirror match
 against itself is two independent players) and clears it in ``reset()`` -- call that at every
 match start, as ``play_labelled_match`` does.
+
+An angle-head student (P11, ``MyModel(angle_head=True)``: per-bin offsets, model/my_model.py)
+works in every mode too: ``_FastNet`` returns the offsets after the logits (before the memory),
+and each mode moves along its bins' *offset* headings -- ``iqn``/``fixed_tau`` the arg max bin's
+centre plus its offset (the teacher's exact angle, not the bin centre), ``tie_mean``/``arc_mean``
+the same means over the offset headings.  Without an angle head nothing changes.
 """
 
 from __future__ import annotations
@@ -54,6 +60,9 @@ class _OwnQ(nn.Module):
         self.net = net
 
     def forward(self, graphic, team_state, agent_states, tau=None):
+        if self.net.angle_head:  # (logits, offsets)
+            out = self.net(graphic, team_state, agent_states, tau=tau, q_units=N_TEAM, angle=True)
+            return out[0], out[-1]
         return self.net(graphic, team_state, agent_states, tau=tau, q_units=N_TEAM)[0]
 
 
@@ -65,7 +74,10 @@ class _OwnQStep(nn.Module):
         self.net = net
 
     def forward(self, graphic, team_state, agent_states, kda_state, conv_state, tau=None):
-        out = self.net(graphic, team_state, agent_states, tau=tau, q_units=N_TEAM, memory=(kda_state, conv_state))
+        angle = bool(self.net.angle_head)
+        out = self.net(graphic, team_state, agent_states, tau=tau, q_units=N_TEAM, memory=(kda_state, conv_state), angle=angle)
+        if angle:  # q, offsets, memory
+            return out[0], out[-2], out[-1][0], out[-1][1]
         return out[0], out[-1][0], out[-1][1]
 
 
@@ -77,7 +89,10 @@ class _FastNet(nn.Module):
     ``(q_values,)`` so MyPolicy's ``q_values, *_ = net(...)`` still unpacks.
 
     A temporal net: ``forward(..., memory=None)`` returns ``(q_values, memory)`` (None = zeros,
-    the start of a match); the batch-1 trace takes and returns the memory tensors."""
+    the start of a match); the batch-1 trace takes and returns the memory tensors.
+
+    An angle-head net: the offsets follow the q-values -- ``(q_values, offsets)``, temporal
+    ``(q_values, offsets, memory)`` -- whatever ``angle`` the caller passes (MyPolicy reads them)."""
 
     def __init__(self, net: MyModel, tau: torch.Tensor | None = None, n_quantiles: int = N_QUANTILES_DEFAULT):
         super().__init__()
@@ -85,6 +100,7 @@ class _FastNet(nn.Module):
         self.is_temporal = bool(getattr(net, "is_temporal", False))
         self.own = _OwnQStep(net) if self.is_temporal else _OwnQ(net)
         self.uses_tau = getattr(net, "policy_head", "iqn") == "iqn"
+        self.angle_head = bool(getattr(net, "angle_head", False))
         self.fixed_tau, self.n_quantiles = tau, n_quantiles
         self._traced = None
 
@@ -102,12 +118,14 @@ class _FastNet(nn.Module):
         with torch.inference_mode():
             args = (graphic, team_state, agent_states, *tau)
             if batch != 1:  # the trace is batch-1 only
-                return (self.own(*args),)
-            if self._traced is None:
-                with warnings.catch_warnings():  # deprecation, and GroupNorm's shape check (batch 1 is fixed)
-                    warnings.simplefilter("ignore")
-                    self._traced = torch.jit.trace(self.own, args, check_trace=False)
-            return (self._traced(*args),)
+                out = self.own(*args)
+            else:
+                if self._traced is None:
+                    with warnings.catch_warnings():  # deprecation, and GroupNorm's shape check (batch 1 is fixed)
+                        warnings.simplefilter("ignore")
+                        self._traced = torch.jit.trace(self.own, args, check_trace=False)
+                out = self._traced(*args)
+            return tuple(out) if self.angle_head else (out,)
 
     def _step(self, graphic, team_state, agent_states, tau, memory):
         batch = graphic.shape[0]
@@ -116,13 +134,17 @@ class _FastNet(nn.Module):
                 memory = self.own.net.initial_memory(batch, device=graphic.device)
             args = (graphic, team_state, agent_states, *memory, *tau)
             if batch != 1:
-                q, *memory = self.own(*args)
-                return q, tuple(memory)
-            if self._traced is None:
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    self._traced = torch.jit.trace(self.own, args, check_trace=False)
-            q, *memory = self._traced(*args)
+                out = self.own(*args)
+            else:
+                if self._traced is None:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        self._traced = torch.jit.trace(self.own, args, check_trace=False)
+                out = self._traced(*args)
+            if self.angle_head:
+                q, offsets, *memory = out
+                return q, offsets, tuple(memory)
+            q, *memory = out
             return q, tuple(memory)
 
 
@@ -142,7 +164,7 @@ class _TieMeanPolicy(MyPolicy):
             if int(np.argmax(row)) == bins:  # a --stand-action student choosing to stay
                 moves[agent] = _ZERO.copy()
                 continue
-            vectors = bin_vectors(bins)
+            vectors = self.bin_headings(agent, len(row))[:bins]  # an angle head: the offset headings
             row = row[:bins]
             tied = row >= row.max() - TIE_MARGIN
             mean = vectors[tied].mean(axis=0)
@@ -151,10 +173,12 @@ class _TieMeanPolicy(MyPolicy):
         return moves
 
 
-def arc_mean_move(row: np.ndarray, margin: float = ARC_MARGIN) -> np.ndarray:
+def arc_mean_move(row: np.ndarray, margin: float = ARC_MARGIN, headings: np.ndarray | None = None) -> np.ndarray:
     """``arc_mean`` for one unit's logits: STAND -> the zero move, else the circular mean of the
-    contiguous arc around the best bin (see the module docstring)."""
+    contiguous arc around the best bin (see the module docstring).  ``headings`` [K(+1), 2]: what
+    each bin executes (an angle head's offset headings; default the bin centres)."""
     bins, _ = bins_of_width(len(row))
+    vectors = bin_vectors(bins) if headings is None else np.asarray(headings, np.float32)[:bins]
     best = int(np.argmax(row))
     if best == bins:
         return _ZERO.copy()
@@ -169,16 +193,18 @@ def arc_mean_move(row: np.ndarray, margin: float = ARC_MARGIN) -> np.ndarray:
                 break
             arc.append(k)
     weights = np.exp(logits[arc] - logits[best])
-    mean = (bin_vectors(bins)[arc].astype(np.float64) * weights[:, None]).sum(axis=0)
+    mean = (vectors[arc].astype(np.float64) * weights[:, None]).sum(axis=0)
     norm = float(np.linalg.norm(mean))
     if norm < 1e-6:  # a full circle of ties: no heading wins
-        return bin_vectors(bins)[best].copy()
+        return vectors[best].copy()
     return (mean / norm).astype(np.float32)
 
 
 class _ArcMeanPolicy(MyPolicy):
     def act(self, obs):
-        return {agent: arc_mean_move(row) for agent, row in self.action_values(obs).items()}
+        rows = self.action_values(obs)
+        return {agent: arc_mean_move(row, headings=self.bin_headings(agent, len(row)) if self.last_offsets else None)
+                for agent, row in rows.items()}
 
 
 def load_net(state: dict, temporal: bool | None = None, policy_head: str | None = None) -> MyModel:

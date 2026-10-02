@@ -72,7 +72,7 @@ def bench(learner: Learner, dataset: DistillDataset, batch: int, quantiles: int,
 
         rows = dataset.sample(batch, rng)
         mark()
-        graphic, team_state, agent_states, masks, classes, kinds = learner._tensors(rows)
+        graphic, team_state, agent_states, masks, classes, kinds, _ = learner._tensors(rows)
         mark()
         with autocast:
             # the same features MyModel.forward derives first, timed on their own

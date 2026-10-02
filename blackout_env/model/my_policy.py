@@ -12,7 +12,7 @@ from blackout_env.env.team_frame import (
 )
 from blackout_env.model.action_mask import world_legal_mask
 from blackout_env.model.base import BaseModel
-from blackout_env.model.direction_bins import action_vectors, bins_of_width, mirror_bin
+from blackout_env.model.direction_bins import action_vectors, bins_of_width, mirror_bin, offset_vectors
 from blackout_env.model.my_model import MyModel
 
 # 8 compass directions, evenly spaced starting at 0 rad (+x axis), matching MyModel's
@@ -64,6 +64,11 @@ class MyPolicy(BaseModel):
     the memory the net returned last tick back in.  The memory lives in the canonical frame and
     is kept per team (Team A / Team B view), so one policy object can play both sides of a
     mirror match.  ``reset()`` forgets it -- call it at the start of every match.
+
+    An angle-head net (``net.angle_head``, P11: MyModel or inference._FastNet around one) also
+    gives each bin an offset; ``action_values`` then keeps them, in the world frame, in
+    ``last_offsets`` (agent -> [K] radians) and ``act`` executes the chosen bin's heading plus its
+    offset (``bin_headings``) instead of the bin centre.
     """
 
     def __init__(self, net: MyModel, device: str | torch.device = "cpu", mask_walls: bool = False) -> None:
@@ -73,7 +78,9 @@ class MyPolicy(BaseModel):
         # targets were computed under is a different policy (see model/action_mask.py).
         self._mask_walls = mask_walls
         self._temporal = bool(getattr(net, "is_temporal", False))
+        self._angle = bool(getattr(net, "angle_head", False))
         self._memory: dict[bool, object] = {}  # team_b -> the net's memory after the last tick
+        self.last_offsets: dict[str, np.ndarray] | None = None  # angle head: the last call's offsets
 
     @property
     def is_temporal(self) -> bool:
@@ -114,13 +121,18 @@ class MyPolicy(BaseModel):
             canonical["agent_states"], dtype=torch.float32, device=self._device
         ).unsqueeze(0)
 
+        offsets = None
         with torch.no_grad():
+            angle = {"angle": True} if self._angle else {}
             if self._temporal:
-                out = self._net(graphic, team_state, agent_states, memory=self._memory.get(team_b))
+                out = self._net(graphic, team_state, agent_states, memory=self._memory.get(team_b), **angle)
                 q_values, self._memory[team_b] = out[0], out[-1]
+                offsets = out[-2] if self._angle else None
             else:
-                q_values, *_ = self._net(graphic, team_state, agent_states)  # [1, N_UNITS, 8]
+                out = self._net(graphic, team_state, agent_states, **angle)  # [1, N_UNITS, 8]
+                q_values, offsets = out[0], (out[-1] if self._angle else None)  # offsets: last
         q_rows = q_values.squeeze(0).cpu().numpy()
+        off_rows = offsets.squeeze(0).float().cpu().numpy() if offsets is not None else None
 
         if team_b:
             # Canonical action index i is world index mirror(i), so reordering the K columns by
@@ -128,10 +140,20 @@ class MyPolicy(BaseModel):
             bins, _ = bins_of_width(q_rows.shape[1])
             order = mirror_direction_idx(np.arange(N_DIRECTIONS)) if bins == N_DIRECTIONS else mirror_bin(np.arange(bins), bins)
             q_rows = q_rows[:, np.r_[order, np.arange(bins, q_rows.shape[1])]]
-        return {
-            agent: q_rows[canonical_unit_row(unit_index(agent), team_b)]
-            for agent in agents
-        }
+            if off_rows is not None:  # the reflection t -> 90 deg - t also turns each offset around
+                off_rows = -off_rows[:, order]
+        rows = {agent: canonical_unit_row(unit_index(agent), team_b) for agent in agents}
+        self.last_offsets = None if off_rows is None else {agent: off_rows[r] for agent, r in rows.items()}
+        return {agent: q_rows[r] for agent, r in rows.items()}
+
+    def bin_headings(self, agent: str, width: int) -> np.ndarray:
+        """What each output index of ``agent``'s last row executes: the bin headings (plus the
+        last call's offsets for an angle head), then the zero move for STAND."""
+        bins, stand = bins_of_width(width)
+        if self.last_offsets is None or agent not in self.last_offsets:
+            return ACTION_VECTORS if bins == N_DIRECTIONS and stand else action_vectors(bins, stand)
+        vectors = offset_vectors(self.last_offsets[agent])
+        return np.vstack([vectors, np.zeros((1, 2), np.float32)]) if stand else vectors
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         q_rows = self.action_values(obs)
@@ -145,5 +167,7 @@ class MyPolicy(BaseModel):
                 agent: np.where(np.r_[mask[unit_index(agent)][nearest], np.ones(width - bins, bool)], row, -np.inf)
                 for agent, row in q_rows.items()
             }
+        if self.last_offsets is not None:
+            return {agent: self.bin_headings(agent, width)[int(np.argmax(row))] for agent, row in q_rows.items()}
         vectors = ACTION_VECTORS if bins == N_DIRECTIONS else action_vectors(bins, stand)
         return {agent: vectors[int(np.argmax(row))] for agent, row in q_rows.items()}

@@ -62,12 +62,16 @@ import numpy as np
 import torch
 
 from blackout_env.model.direction_bins import ACTION_BINS, SET_HALF_WIDTH_DEG, bins_of_width, resample_rows
-from blackout_env.model.my_model import POLICY_HEADS, TEMPORAL_PREFIX, MyModel
+from blackout_env.model.my_model import ANGLE_KEY_PREFIX, POLICY_HEADS, TEMPORAL_PREFIX, MyModel
 from blackout_env.train.distill.collect import CollectorPool, MatchTask, teacher_arg
 from blackout_env.train.distill.inference import INFERENCE
-from blackout_env.train.distill.dataset import FIELDS, GRAPHIC_SCALE, KIND_INDEX, N_TEAM, DistillDataset, new_shards
-from blackout_env.train.distill.loss import set_valued_cross_entropy
-from blackout_env.train.distill.metrics import CLASS_COLS, LabelAccuracy, MetricsLog, summarize_matches
+from blackout_env.train.distill.dataset import (
+    ANGLES, FIELDS, GRAPHIC_SCALE, KIND_INDEX, N_TEAM, DistillDataset, angles_of, new_shards,
+)
+from blackout_env.train.distill.loss import angle_offset_loss, set_valued_cross_entropy
+from blackout_env.train.distill.metrics import (
+    CLASS_COLS, MATCH_SECONDS, OPENING_SECONDS, LabelAccuracy, MetricsLog, summarize_matches,
+)
 from blackout_env.train.distill.opponents import (
     check_opponent, compatible_checkpoints, draw_opponent, opponent_category, parse_pool,
 )
@@ -158,6 +162,23 @@ def parse_args(argv=None) -> argparse.Namespace:
                    help="--action-bins: a set teacher's allowed direction labels the bins within this many degrees of it")
     p.add_argument("--act-arc-bins", type=int, default=0,
                    help="--action-bins: an act: teacher's raw heading labels its nearest bin and this many either side")
+    p.add_argument("--angle-head", action="store_true",
+                   help="P11 (--policy-head logits): beside the K bin logits, a per-bin offset within +-half a bin "
+                   "(zero-initialised: an --init without one moves exactly as before), trained on act: teachers' raw "
+                   "headings (shard field angles); inference executes the arg max bin's centre + its offset")
+    p.add_argument("--angle-loss-weight", type=float, default=1.0,
+                   help="--angle-head: weight of the offset loss (squared error in half-bin units, loss.angle_offset_loss: "
+                   "1/3 untrained, 0.13 at 2 deg for K = 32 -- the cross-entropy's order)")
+    p.add_argument("--angle-arc-bins", type=int, default=0,
+                   help="--angle-head: each offset spans +-(N + 1/2) bins and the N bins either side of the teacher's are "
+                   "trained to point at its angle too -- with --act-arc-bins N the set-valued CE makes any bin of the arc "
+                   "the arg max (P10: a neighbour 34%% of the time), which a half-bin offset cannot correct.  0 = the "
+                   "teacher's bin only, +-half a bin")
+    p.add_argument("--opening-weight", type=float, default=1.0,
+                   help="multiplies the per-row loss (cross-entropy and angle) of rows in the first --opening-seconds of "
+                   "play (the race to the sanctuary); 1 = off")
+    p.add_argument("--opening-seconds", type=float, default=OPENING_SECONDS,
+                   help="--opening-weight's window: seconds of play, from team_state's time left")
     p.add_argument("--inference", choices=INFERENCE, default="iqn",
                    help="how collection and eval students turn logits into a move (inference.py; arc_mean: circular "
                    "mean of the top contiguous arc, for K bins)")
@@ -169,7 +190,10 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--burn-in", type=int, default=32, help="--temporal: ticks before each window that only build memory")
     p.add_argument("--max-rows", type=int, default=600_000, help="replay ring size (~8 KB per row in RAM)")
     p.add_argument("--device", default="mps" if torch.backends.mps.is_available() else "cpu")
-    return p.parse_args(argv)
+    args = p.parse_args(argv)
+    if args.angle_head and args.policy_head != "logits":
+        p.error("--angle-head needs --policy-head logits")
+    return args
 
 
 LR_SCHEDULES = ("constant", "cosine", "linear")
@@ -248,11 +272,18 @@ def load_weights(net: MyModel, state: dict) -> None:
     * STAND: a state without one into a --stand-action net starts STAND's row at zero weights
       and a bias STAND_INIT_MARGIN below the lowest direction's, so the inherited student keeps
       moving until STAND is trained (at the lowest bias alone, STAND won half of the labelled
-      ticks of D4's weights); a state with one keeps it."""
+      ticks of D4's weights); a state with one keeps it;
+    * angle head (P11): a state without one into an --angle-head net keeps the net's zero init
+      (the same moves at step 0); a state with one into a net without drops it (with a note)."""
     if net.policy_head == "logits":
         state = MyModel.iqn_to_logits_state(state)
     elif "q_head.in_scale" in state:
         raise ValueError("a logits-head state cannot initialise an IQN-head net (--policy-head iqn)")
+    angle_keys = [k for k in state if k.startswith(ANGLE_KEY_PREFIX)]
+    if angle_keys and not net.angle_head:
+        print("[distill] --init has an angle head; this net has none: its offsets are dropped", flush=True)
+        state = {k: v for k, v in state.items() if k not in angle_keys}
+        angle_keys = []
     key = "q_head.value_head.1"
     dst = bins_of_width(net.state_dict()[f"{key}.weight"].shape[0])
     src = bins_of_width(state[f"{key}.weight"].shape[0])
@@ -269,6 +300,11 @@ def load_weights(net: MyModel, state: dict) -> None:
                 stand_weight, stand_bias = torch.zeros_like(weight[:1]), (bias[:src_bins].min() - STAND_INIT_MARGIN).reshape(1)
             new_weight, new_bias = torch.cat((new_weight, stand_weight)), torch.cat((new_bias, stand_bias))
         state[f"{key}.weight"], state[f"{key}.bias"] = new_weight, new_bias
+        if angle_keys:  # offsets per bin of another K: start them over
+            state = {k: v for k, v in state.items() if k not in angle_keys}
+    if "q_head.angle_scale" in state and net.angle_head:  # this run's --angle-arc-bins sets the range
+        state = {**state, "q_head.angle_scale": net.state_dict()["q_head.angle_scale"]}
+    state = net.with_init_angle_keys(state)
     if net.is_temporal and not any(k.startswith(TEMPORAL_PREFIX) for k in state):
         net.load_warm_start(state)  # a stateless checkpoint: the memory block starts as the identity
     else:
@@ -283,7 +319,9 @@ class Learner:
         self.args = args
         self.device = torch.device(args.device)
         self.net = MyModel(n_actions=args.action_bins + int(args.stand_action), temporal=args.temporal,
-                           policy_head=args.policy_head).to(self.device)
+                           policy_head=args.policy_head, angle_head=args.angle_head,
+                           angle_arc_bins=args.angle_arc_bins).to(self.device)
+        self.angle = bool(args.angle_head)
         if args.compile:
             for name in COMPILED_MODULES:  # in place: state_dict keys stay the same
                 getattr(self.net, name).compile()
@@ -310,7 +348,10 @@ class Learner:
             stand = batch["labels"] == 0
             masks = torch.cat((masks, stand.unsqueeze(-1)), dim=-1)
             kinds = torch.where(stand, torch.full_like(kinds, KIND_INDEX["stand"]), kinds)
-        return graphic, batch["team_state"], batch["agent_states"], masks, classes, kinds
+        # P11: the teacher's raw headings (NaN = none) and seconds of play (team_state[2] = time left)
+        aux = {"angles": torch.from_numpy(np.ascontiguousarray(angles_of(rows))).to(self.device),
+               "elapsed": (1.0 - batch["team_state"][:, 2].float()) * MATCH_SECONDS}
+        return graphic, batch["team_state"], batch["agent_states"], masks, classes, kinds, aux
 
     def set_lr(self, step: int) -> None:
         """Apply the --lr-schedule value for global ``step`` to every param group."""
@@ -330,39 +371,65 @@ class Learner:
     def step(self, rows: dict[str, np.ndarray]) -> None:
         """One gradient step on independent rows (a stateless student)."""
         self.net.train()
-        graphic, team_state, agent_states, masks, classes, kinds = self._tensors(rows)
+        graphic, team_state, agent_states, masks, classes, kinds, aux = self._tensors(rows)
         with self._autocast():  # the loss and statistics below stay fp32
-            q_values, *_ = self.net(graphic, team_state, agent_states, n_quantiles=self.args.train_quantiles, q_units=N_TEAM)
-        self._fit(q_values.float(), masks, classes, kinds)
+            out = self.net(graphic, team_state, agent_states, n_quantiles=self.args.train_quantiles, q_units=N_TEAM,
+                           **self._angle_kw)
+        offsets = out[5].float() if self.angle else None
+        self._fit(out[0].float(), masks, classes, kinds, aux, offsets)
+
+    @property
+    def _angle_kw(self) -> dict:
+        return {"angle": True} if self.angle else {}
 
     def _window_tensors(self, windows: dict[str, np.ndarray]):
         """dataset.sample_windows output -> [B, T, ...] tensors; label masks are cleared where
         ``loss_mask`` is off (padding, burn-in), so those positions carry no target."""
         b, t = windows["valid"].shape
-        flat = {k: windows[k].reshape(b * t, *windows[k].shape[2:]) for k in FIELDS}
-        graphic, team_state, agent_states, masks, classes, kinds = self._tensors(flat)
+        flat = {k: windows[k].reshape(b * t, *windows[k].shape[2:]) for k in FIELDS + (ANGLES,) if k in windows}
+        graphic, team_state, agent_states, masks, classes, kinds, aux = self._tensors(flat)
         seq = lambda x: x.reshape(b, t, *x.shape[1:])
         loss_mask = torch.from_numpy(windows["loss_mask"]).to(self.device)
         masks = seq(masks) & loss_mask[:, :, None, None]
+        angles = torch.where(loss_mask[:, :, None], seq(aux["angles"]), torch.full_like(seq(aux["angles"]), float("nan")))
+        aux = {"angles": angles, "elapsed": seq(aux["elapsed"])}
         reset = torch.from_numpy(windows["reset"]).to(self.device)
-        return seq(graphic), seq(team_state), seq(agent_states), masks, seq(classes), seq(kinds), reset
+        return seq(graphic), seq(team_state), seq(agent_states), masks, seq(classes), seq(kinds), reset, aux
 
     def step_windows(self, windows: dict[str, np.ndarray]) -> None:
         """One gradient step on windows of consecutive ticks (a --temporal student): memory is
         built over the burn-in without gradients, then trained through the window."""
         self.net.train()
-        graphic, team_state, agent_states, masks, classes, kinds, reset = self._window_tensors(windows)
+        graphic, team_state, agent_states, masks, classes, kinds, reset, aux = self._window_tensors(windows)
         burn = self.args.burn_in
         with self._autocast():
-            q_values, *_ = self.net.forward_sequence(graphic, team_state, agent_states, reset=reset, burn_in=burn,
-                                                     n_quantiles=self.args.train_quantiles, q_units=N_TEAM)
+            out = self.net.forward_sequence(graphic, team_state, agent_states, reset=reset, burn_in=burn,
+                                            n_quantiles=self.args.train_quantiles, q_units=N_TEAM, **self._angle_kw)
+        q_values = out[0]
         flat = lambda x: x[:, burn:].reshape(-1, *x.shape[2:])
-        self._fit(q_values.float().reshape(-1, *q_values.shape[2:]), flat(masks), flat(classes), flat(kinds))
+        offsets = out[3].float().reshape(-1, *out[3].shape[2:]) if self.angle else None
+        self._fit(q_values.float().reshape(-1, *q_values.shape[2:]), flat(masks), flat(classes), flat(kinds),
+                  {k: flat(v) for k, v in aux.items()}, offsets)
 
-    def _fit(self, logits: torch.Tensor, masks: torch.Tensor, classes: torch.Tensor, kinds: torch.Tensor) -> None:
-        valid = masks.any(dim=-1).float()
+    def row_weights(self, valid: torch.Tensor, classes: torch.Tensor, elapsed: torch.Tensor) -> torch.Tensor | None:
+        """[B, 5] per-unit loss weights: --class-weighting times --opening-weight on the opening rows
+        (None = uniform)."""
         weights = class_weights(classes, valid) if self.args.class_weighting == "balanced" else None
+        if self.args.opening_weight != 1.0:
+            opening = torch.where(elapsed < self.args.opening_seconds, self.args.opening_weight, 1.0)[:, None]
+            weights = opening.expand_as(valid) if weights is None else weights * opening
+        return weights
+
+    def _fit(self, logits: torch.Tensor, masks: torch.Tensor, classes: torch.Tensor, kinds: torch.Tensor,
+             aux: dict | None = None, offsets: torch.Tensor | None = None) -> None:
+        valid = masks.any(dim=-1).float()
+        elapsed = aux["elapsed"] if aux is not None else torch.full(valid.shape[:1], MATCH_SECONDS, device=valid.device)
+        weights = self.row_weights(valid, classes, elapsed)
         loss, stats = set_valued_cross_entropy(logits, masks, weights, self.args.z_loss)
+        if offsets is not None and self.args.angle_loss_weight > 0:
+            angle_loss, angle_stats = angle_offset_loss(offsets, aux["angles"], weights, self.args.angle_arc_bins)
+            loss = loss + self.args.angle_loss_weight * angle_loss
+            stats.update(angle_stats)
 
         self.optimizer.zero_grad(set_to_none=True)
         self.scaler.scale(loss).backward()
@@ -386,7 +453,8 @@ class Learner:
             self._totals["logit_std"] += logits.std(dim=-1).mean()
             self._totals["logit_abs_max"] += logits.abs().amax()
             self._totals["valid_labels_per_row"] += valid.sum(-1).mean()
-            self.accuracy.add(logits, masks, classes, kinds)
+            angles = aux["angles"] if aux is not None else None
+            self.accuracy.add(logits, masks, classes, kinds, angles, offsets, elapsed)
         self._steps += 1
 
     @torch.no_grad()
@@ -394,10 +462,10 @@ class Learner:
         """Label accuracy of the current net on ``rows`` (no training)."""
         self.net.eval()
         for start in range(0, len(rows["labels"]), chunk):
-            part = {k: rows[k][start:start + chunk] for k in FIELDS}
-            graphic, team_state, agent_states, masks, classes, kinds = self._tensors(part)
-            q_values, *_ = self.net(graphic, team_state, agent_states, q_units=N_TEAM)  # temporal: from empty memory
-            accuracy.add(q_values, masks, classes, kinds)
+            part = {k: rows[k][start:start + chunk] for k in FIELDS + (ANGLES,) if k in rows}
+            graphic, team_state, agent_states, masks, classes, kinds, aux = self._tensors(part)
+            out = self.net(graphic, team_state, agent_states, q_units=N_TEAM, **self._angle_kw)  # temporal: from empty memory
+            accuracy.add(out[0], masks, classes, kinds, aux["angles"], out[5] if self.angle else None, aux["elapsed"])
 
     @torch.no_grad()
     def score_sequence(self, rows: dict[str, np.ndarray], accuracy: LabelAccuracy, burn_in: int) -> None:
@@ -405,14 +473,16 @@ class Learner:
         ``burn_in`` only building memory."""
         self.net.eval()
         n = len(rows["labels"])
-        windows = {k: rows[k][None] for k in FIELDS}
+        windows = {k: rows[k][None] for k in FIELDS + (ANGLES,) if k in rows}
         windows["valid"] = np.ones((1, n), bool)
         windows["reset"] = np.zeros((1, n), bool)
         windows["loss_mask"] = windows["valid"].copy()
         windows["loss_mask"][:, :burn_in] = False
-        graphic, team_state, agent_states, masks, classes, kinds, reset = self._window_tensors(windows)
-        q_values, *_ = self.net.forward_sequence(graphic, team_state, agent_states, reset=reset, burn_in=burn_in, q_units=N_TEAM)
-        accuracy.add(q_values[0], masks[0, burn_in:], classes[0, burn_in:], kinds[0, burn_in:])
+        graphic, team_state, agent_states, masks, classes, kinds, reset, aux = self._window_tensors(windows)
+        out = self.net.forward_sequence(graphic, team_state, agent_states, reset=reset, burn_in=burn_in, q_units=N_TEAM,
+                                        **self._angle_kw)
+        accuracy.add(out[0][0], masks[0, burn_in:], classes[0, burn_in:], kinds[0, burn_in:], aux["angles"][0, burn_in:],
+                     out[3][0] if self.angle else None, aux["elapsed"][0, burn_in:])
 
     def _flat_params(self) -> torch.Tensor:
         return torch.cat([p.detach().flatten() for p in self.net.parameters()]).clone()
@@ -537,6 +607,9 @@ class Run:
                         "collected_rows": self.collected_rows, "temporal": self.args.temporal,
                         "action_bins": self.args.action_bins, "stand_action": self.args.stand_action,
                         "policy_head": self.args.policy_head, "lr": self.args.lr,
+                        "angle_head": self.args.angle_head, "angle_loss_weight": self.args.angle_loss_weight,
+                        "angle_arc_bins": self.args.angle_arc_bins,
+                        "opening_weight": self.args.opening_weight, "opening_seconds": self.args.opening_seconds,
                         "lr_schedule": self.args.lr_schedule, "lr_warmup": self.args.lr_warmup,
                         "lr_final": self.args.lr_final, "steps": self.args.steps},
         }
@@ -558,6 +631,7 @@ class Run:
             np.savez_compressed(path, **self.dataset.sample(self.args.probe_rows, np.random.default_rng(self.args.seed)))
         with np.load(path) as probe:
             self.probe = {field: probe[field] for field in FIELDS}
+            self.probe[ANGLES] = angles_of(probe)  # all NaN for a probe from before P11
 
     # ------------------------------------------------------------------------- collection
 
@@ -617,10 +691,11 @@ class Run:
                 length = min(n, self.args.burn_in + self.args.fresh_rows)
                 start = int(self._rng.integers(n - length + 1))
                 burn = min(self.args.burn_in, length - 1)
-                self.learner.score_sequence({k: rows[k][start:start + length] for k in FIELDS}, self.fresh[tag], burn)
+                self.learner.score_sequence({k: rows[k][start:start + length] for k in FIELDS + (ANGLES,)},
+                                            self.fresh[tag], burn)
                 return
             pick = self._rng.choice(n, min(self.args.fresh_rows, n), replace=False)
-            self.learner.score({k: rows[k][np.sort(pick)] for k in FIELDS}, self.fresh[tag])
+            self.learner.score({k: rows[k][np.sort(pick)] for k in FIELDS + (ANGLES,)}, self.fresh[tag])
 
     def _record(self, summaries: list[dict]) -> None:
         for summary in summaries:
@@ -656,6 +731,9 @@ class Run:
               f"{stats['units_carrier']:.1f}/{stats['units_collector']:.1f} | agree {stats.get('agree/all', float('nan')):.2f} "
               f"| deliv/1k {stats['learner/deliveries_per_1000']:.1f} lost/1k {stats['learner/cargo_lost_per_1000']:.1f} "
               f"| blocked/1k {stats['movement/blocked_per_1000']:.1f}"
+              + (f" | angle {stats['angle_err_deg/all']:.1f} deg (<=2: {stats['angle_within2/all']:.2f}), first 10 s "
+                 f"{stats.get('angle_err_deg/opening', float('nan')):.1f} ({stats.get('angle_within2/opening', float('nan')):.2f})"
+                 if "angle_err_deg/all" in stats else "")
               + ("" if len(group) == 2 * self.args.eval_seeds else f" (incomplete: {len(group)} matches)"), flush=True)
 
     def log(self, started: float, window_started: float) -> None:
@@ -689,6 +767,9 @@ class Run:
                 self.metrics.write(f"collect_{category}", self.step, {"version": self.version, **summarize_matches(group)})
             self._collect_window = []
         fresh = f" fresh {stats['fresh_collect/accuracy']:.3f}" if "fresh_collect/accuracy" in stats else ""
+        if "fresh_collect/angle_err_deg/all" in stats:
+            fresh += (f" angle {stats['fresh_collect/angle_err_deg/all']:.2f} deg"
+                      f" (<=2 {stats['fresh_collect/angle_within2/all']:.2f}, 10 s {stats.get('fresh_collect/angle_err_deg/opening', float('nan')):.2f})")
         print(f"[distill] step {self.step} v{self.version} beta {stats['beta']:.2f} rows {self.dataset.size} "
               f"ratio {stats['replay_ratio']:.1f} | ce {stats['train/ce']:.3f} acc {stats['train/accuracy']:.3f}{fresh} "
               f"| {stats['pipeline/steps_per_s']:.1f} step/s, workers {stats['pipeline/worker_utilization']:.0%} "

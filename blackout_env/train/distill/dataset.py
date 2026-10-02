@@ -25,6 +25,13 @@ Loaded into the ring beside FIELDS (for sequence windows, ``DistillDataset.sampl
   tick          int32 [T]           learner decision step within the match (0 = first).  Every
                                     full-window tick is stored in order, labelled or not; partial
                                     windows are counted but not stored, so a jump > 1 marks one.
+  angles        f32   [T, 5]        P11: an act-teacher's raw heading per own unit, radians in the
+                                    bins' canonical frame (team B mirrored like its label); NaN =
+                                    none (no move, not an act teacher, or a shard from before P11:
+                                    loaded as all NaN, so those rows carry no angle loss)
+
+For analysis only, too: ``student_angles`` f32 [T, 5], the student's executed heading (NaN = not
+asked or stood).
 
 Shards written before 2026-09-30 dropped ticks without any label and have no ``tick``; loading
 reconstructs it from ``team_state[2]`` (time left, 25 decisions/s: exact to ~0.02 tick, offset by
@@ -54,8 +61,9 @@ KINDS = (
 )
 KIND_INDEX = {kind: i for i, kind in enumerate(KINDS)}
 FIELDS = ("graphic", "team_state", "agent_states", "labels", "kinds")
-EXTRA_FIELDS = ("actions", "student", "teacher_drove", "tick")
+EXTRA_FIELDS = ("actions", "student", "teacher_drove", "tick", "angles", "student_angles")
 SEQUENCE_FIELDS = ("tick",)  # loaded into the ring beside FIELDS (not fed to the net)
+ANGLES = "angles"  # loaded into the ring beside FIELDS and sampled with them (P11's angle loss)
 MATCH_TICKS = 420 * 25  # match seconds x decisions per second
 UNKNOWN_TICK = -1
 
@@ -110,6 +118,13 @@ def _ticks_of(rows) -> np.ndarray:
     return reconstruct_ticks(np.asarray(rows["team_state"]))
 
 
+def angles_of(rows) -> np.ndarray:
+    """A shard's ``angles`` [T, 5] float32, all NaN for a shard without them (before P11)."""
+    if ANGLES in rows:
+        return np.asarray(rows[ANGLES], dtype=np.float32)
+    return np.full((len(rows["labels"]), N_TEAM), np.nan, dtype=np.float32)
+
+
 def shard_meta(shard) -> dict:
     return json.loads(str(shard["meta"])) if "meta" in shard else {}
 
@@ -123,6 +138,7 @@ def new_shards(root: Path, seen: set[str], action_bins: int | None = None):
         with np.load(path) as shard:
             rows, meta = {field: shard[field] for field in FIELDS}, shard_meta(shard)
             rows["tick"] = _ticks_of(shard)
+            rows[ANGLES] = angles_of(shard)
             rows["labels"] = labels_at(rows, meta, action_bins)
         seen.add(path.name)
         yield rows, meta
@@ -146,6 +162,7 @@ class DistillDataset:
         self._version = np.zeros(self.capacity, dtype=np.int32)
         self._match = np.full(self.capacity, -1, dtype=np.int64)
         self._tick = np.full(self.capacity, UNKNOWN_TICK, dtype=np.int32)
+        self._angles = np.full((self.capacity, N_TEAM), np.nan, dtype=np.float32)
         self._labelled = np.zeros(self.capacity, dtype=bool)
         self._matches = 0
         self._loaded: set[str] = set()
@@ -174,6 +191,7 @@ class DistillDataset:
         self._version[idx] = version
         self._match[idx] = self._matches
         self._tick[idx] = _ticks_of(rows)[start:]
+        self._angles[idx] = angles_of(rows)[start:]
         self._labelled[idx] = rows["labels"][start:].reshape(n - start, -1).any(axis=1)
         self._matches += 1
         self._next = int((self._next + n - start) % self.capacity)
@@ -190,7 +208,7 @@ class DistillDataset:
         if labelled_only:
             idx = self._labelled_draw(idx, batch_size, rng)
         idx = np.sort(idx)
-        return {field: self._arrays[field][idx] for field in FIELDS}
+        return {**{field: self._arrays[field][idx] for field in FIELDS}, ANGLES: self._angles[idx]}
 
     def _labelled_draw(self, idx: np.ndarray, batch_size: int, rng: np.random.Generator) -> np.ndarray:
         keep = idx[self._labelled[idx]]
@@ -219,6 +237,7 @@ class DistillDataset:
         windows), never past the ring's oldest row (the overwritten boundary) or its newest.
 
         Returns FIELDS as [B, T, ...] (zeros where invalid) plus
+          angles    f32   [B, T, 5] the teacher's raw headings (NaN where invalid or none)
           tick      int32 [B, T]  decision tick (-1 where invalid or unknown)
           match     int64 [B, T]  ring match id (-1 where invalid)
           valid     bool  [B, T]  a real row of the target's run
@@ -256,6 +275,9 @@ class DistillDataset:
             values = self._arrays[field][rows]
             values[invalid] = 0
             out[field] = values.reshape(batch_size, span, *values.shape[1:])
+        angles = self._angles[rows]
+        angles[invalid] = np.nan
+        out[ANGLES] = angles.reshape(batch_size, span, N_TEAM)
         out["tick"] = np.where(valid, tick[:, 1:], UNKNOWN_TICK).astype(np.int32)
         out["match"] = np.where(valid, match[:, 1:], -1)
         out.update(valid=valid, reset=reset, loss_mask=loss_mask)
@@ -273,6 +295,7 @@ class DistillDataset:
             "ring/teacher_only_frac": float(np.mean(versions == 0)),
             "ring/mean_version_age": float(np.mean(current_version - versions)),
             "ring/labelled_unit_frac": float(labelled.mean()),
+            "ring/angle_unit_frac": float(np.isfinite(self._angles[: self.size]).mean()),  # P11 angle targets
         }
         for index, kind in enumerate(KINDS):
             if kind:

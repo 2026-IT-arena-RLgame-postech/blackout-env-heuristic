@@ -174,3 +174,49 @@ def resample_rows(rows, src_bins: int, dst_bins: int):
     import torch
 
     return torch.stack(out)
+
+
+# ------------------------------------------------------------------------------ continuous angle (P11)
+#
+# An angle head (``MyModel(angle_head=True)``, P11) adds to every bin k an offset in
+# [-pi/K, pi/K]: the heading it executes is ``2 pi k / K + offset_k``.  Angles here are radians
+# in the same frame as the bins (0 = +x, counter-clockwise).  The team-B mirror ``t -> pi/2 - t``
+# takes bin k to ``mirror_bin(k)`` and negates its offset.
+
+
+def wrap_angle(angle):
+    """Radians wrapped to [-pi, pi) (numpy or torch)."""
+    return (angle + math.pi) % (2 * math.pi) - math.pi
+
+
+def move_angle(move: np.ndarray) -> float:
+    """Heading of one continuous move in radians, NaN for a move that stands (see act_teacher.ZERO_MOVE)."""
+    move = np.asarray(move, np.float64)
+    if float(np.hypot(move[0], move[1])) < 1e-5:
+        return math.nan
+    return math.atan2(move[1], move[0])
+
+
+def mirror_angle(angle):
+    """Team-B reflection of headings (radians, NaN stays NaN): t -> pi/2 - t, wrapped."""
+    return wrap_angle(math.pi / 2 - np.asarray(angle, np.float64))
+
+
+def angle_bin(angle, k: int):
+    """The bin whose centre is nearest each heading (radians; NaN -> 0, mask it yourself)."""
+    angle = np.nan_to_num(np.asarray(angle, np.float64))
+    return np.rint(angle * k / (2 * math.pi)).astype(np.int64) % k
+
+
+def angle_residual(angle, k: int):
+    """Heading minus its nearest bin's centre, in [-pi/K, pi/K] (radians)."""
+    angle = np.asarray(angle, np.float64)
+    return wrap_angle(angle - angle_bin(angle, k) * 2 * math.pi / k)
+
+
+def offset_vectors(offsets: np.ndarray) -> np.ndarray:
+    """[..., K] per-bin offsets (radians) -> [..., K, 2] float32 unit headings 2 pi k / K + offset_k."""
+    offsets = np.asarray(offsets, np.float64)
+    k = offsets.shape[-1]
+    angles = 2 * math.pi * np.arange(k) / k + offsets
+    return np.stack([np.cos(angles), np.sin(angles)], axis=-1).astype(np.float32)
