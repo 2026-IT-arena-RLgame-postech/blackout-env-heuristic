@@ -116,6 +116,23 @@ def _kill_stray_unity_processes(port: int) -> None:
                 pass
 
 
+# A time-expiry ending is seen at most one decision step (2 ticks, ~1e-4 of a 600 s match) after
+# the last playing-state broadcast; a terminal step with more time left than this was a decisive win.
+_TIME_EXPIRY_MARGIN = 1e-3
+
+
+def _winner_from_terminal_bonus(rewards: dict[str, float], terminations: dict[str, bool]) -> int | None:
+    """Team (0 = A, 1 = B) with the larger mean terminal reward, None if tied or a team is missing."""
+    team_rewards: tuple[list[float], list[float]] = ([], [])
+    for name, done in terminations.items():
+        if done:
+            team_rewards[0 if unit_index(name) < N_TEAM_A else 1].append(rewards[name])
+    if not (team_rewards[0] and team_rewards[1]):
+        return None
+    gap = float(np.mean(team_rewards[0]) - np.mean(team_rewards[1]))
+    return 0 if gap > 0 else 1 if gap < 0 else None
+
+
 class BlackOutEnv(ParallelEnv):
     """
     PettingZoo Parallel API wrapper for the BlackOut Unity environment.
@@ -376,10 +393,12 @@ class BlackOutEnv(ParallelEnv):
         rewards: dict[str, float] = {a: 0.0 for a in self.agents}
         terminations: dict[str, bool] = {a: False for a in self.agents}
 
-        # Unit agents call EndEpisode immediately on game end.  Depending on ML-Agents
-        # scheduling, MapObsAgent can already expose the freshly reset episode (scores=0,
-        # time_left=1) in the same Python poll.  Retain the last playing-state scalars so
-        # terminal infos report the match that just ended rather than the next reset.
+        # Unit agents call EndEpisode immediately on game end, which resets the match before
+        # MapObsAgent's terminal broadcast is collected (on the next Academy step). Builds with
+        # MapObsAgent.CaptureTerminalState replay the frozen final state in that broadcast; older
+        # builds expose the freshly reset episode (scores=0, time_left=1) instead.  For those,
+        # retain the last playing-state scalars so terminal infos report the match that just
+        # ended rather than the next reset (one decision step stale -- see the winner below).
         previous_scalars = dict(self._latest_scalars)
         self._collect_map_obs()
 
@@ -406,6 +425,7 @@ class BlackOutEnv(ParallelEnv):
 
         self._latest_rewards = rewards
         self._latest_terminations = terminations
+        reset_leaked = False
         if any(terminations.values()) and previous_scalars:
             previous_time = previous_scalars.get("time_left", 0.0)
             current_time = self._latest_scalars.get("time_left", 0.0)
@@ -434,6 +454,7 @@ class BlackOutEnv(ParallelEnv):
             # new match had already moved off (0, 0), reporting e.g. 0-2 as the final score.
             if current_time > previous_time + 1e-4 or reset_to_zero:
                 self._latest_scalars = previous_scalars
+                reset_leaked = True
         if any(terminations.values()) and self._latest_winner is None:
             # Winner is decided purely by final score, mirroring MatchManager.cs's own
             # tie-break (ScoreA>ScoreB -> TeamA, ScoreB>ScoreA -> TeamB, equal -> draw).
@@ -450,6 +471,16 @@ class BlackOutEnv(ParallelEnv):
                 self._latest_winner = 1
             else:
                 self._latest_winner = -1
+            # On a build without the terminal snapshot those scores are one decision step stale
+            # and miss the deciding deposit, so a trailing team that wins by depositing past
+            # TargetScore (A=98, B=99, A deposits 3) would read as a loss.  A match that ends
+            # with time left was decided by that deposit, and the only thing separating the two
+            # teams' terminal rewards then is the ±1 bonus (exactly ±1 under -noRewardShaping,
+            # whose event rewards are all 0) -- the one place the reward is the best evidence.
+            if reset_leaked and previous_scalars.get("time_left", 0.0) > _TIME_EXPIRY_MARGIN:
+                bonus_winner = _winner_from_terminal_bonus(rewards, terminations)
+                if bonus_winner is not None:
+                    self._latest_winner = bonus_winner
         return obs
 
     def _collect_map_obs(self) -> None:
