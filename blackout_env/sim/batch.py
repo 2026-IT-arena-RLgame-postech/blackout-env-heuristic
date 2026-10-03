@@ -643,7 +643,7 @@ class BatchRollout:
         is left to score.  ``trace_steps``: decision counts after which team A's lead is recorded."""
         if bsim is None:
             bsim = BatchSim(roots)
-        else:
+        elif roots is not None:  # roots None: play ``bsim`` as it is
             bsim.load(roots)
         if reseeds is not None:
             bsim.reseed(reseeds)
