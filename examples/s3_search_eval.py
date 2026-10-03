@@ -36,12 +36,12 @@ VALUE = "checkpoints/value/frozen/s2v_iter5.pt"
 P11 = "checkpoints/distill/frozen/p11_v22.pt"
 
 
-def make_opponent_policy(name: str, our, device: str):
+def make_opponent_policy(name: str, our, device: str, same_net: bool = True):
     from blackout_env.sim.batch import HeuristicPolicy, NetPolicy
     from blackout_env.sim.rollout_net import RolloutNet
 
-    if name == "r5":
-        return our  # the same net: one merged forward
+    if name == "r5":  # the same net: one merged forward (unless ours is another net, e.g. r6 vs r5)
+        return our if same_net else NetPolicy(RolloutNet.from_checkpoint(str(REPO / R5)), device=device)
     if name == "p11":
         return NetPolicy.from_checkpoint(str(REPO / P11), device=device)
     if name.startswith("rnet:"):  # another rollout net checkpoint
@@ -65,6 +65,8 @@ def cmd_play(args):
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     net = NetPolicy(RolloutNet.from_checkpoint(args.net), device=args.device)
+    is_r5 = Path(args.net).resolve() == (REPO / R5).resolve()
+    net_plain = net if is_r5 else NetPolicy(RolloutNet.from_checkpoint(str(REPO / R5)), device=args.device)
     branches = parse_branches(args.branches)
     leaf = ValueNetLeaf(str(REPO / args.value), args.device)
     searcher = Searcher(ModNetPolicy(net), leaf, branches, window=args.window, margin=args.margin)
@@ -75,14 +77,14 @@ def cmd_play(args):
             "margin": args.margin, "net": args.net, "value": args.value, "cap_s": args.cap_s}
     print(json.dumps(meta), flush=True)
     rec_parts = []
-    for tag, srch in (("plain", None), (args.tag, searcher)):
+    for tag, srch in (("plain", None), (args.tag, None if args.no_search else searcher)):
         if tag == "plain" and args.no_plain:
             continue
         todo = [t for t in tasks if (tag, args.opponent, t[0], t[1]) not in done]
         for c in range(0, len(todo), args.chunk):
             chunk = todo[c:c + args.chunk]
-            our = ModNetPolicy(net)
-            opp = make_opponent_policy(args.opponent, our, args.device)
+            our = ModNetPolicy(net_plain if tag == "plain" else net)  # "plain" rows are always plain r5
+            opp = make_opponent_policy(args.opponent, our, args.device, same_net=tag == "plain" or is_r5)
             t0 = time.time()
             cfg.record = bool(args.record) and srch is not None
             res = play_matches([s for s, _ in chunk], [sd for _, sd in chunk], our, opp, srch, cfg,
@@ -90,7 +92,7 @@ def cmd_play(args):
             wall = time.time() - t0
             with (out / "matches.jsonl").open("a") as fh:
                 for j, (s, sd) in enumerate(chunk):
-                    row = {"tag": tag, "opponent": args.opponent, "seed": s, "side": sd,
+                    row = {"tag": tag, "net": args.net if tag != "plain" else R5, "opponent": args.opponent, "seed": s, "side": sd,
                            "margin": int(res["margin"][j]), "ours": int(res["ours"][j]), "opp": int(res["opp"][j]),
                            "over": bool(res["over"][j]), "ticks": int(res["ticks"][j]),
                            "first_ours": int(res["first_ours"][j]), "first_opp": int(res["first_opp"][j]),
@@ -143,9 +145,9 @@ def cmd_report(args):
         ms = [d[k]["margin"] for k in keys]
         mb = [base[k]["margin"] for k in keys]
         rs, rb = race_counts([d[k] for k in keys]), race_counts([base[k] for k in keys])
-        meta = next(d[k]["meta"] for k in keys if d[k].get("meta"))
+        meta = next((d[k]["meta"] for k in keys if d[k].get("meta")), None) or {"branches": ["base"], "every": 0, "window": 0, "margin": 0}
         chosen = np.sum([d[k]["chosen"] for k in keys], 0)
-        share = {n: round(float(c / chosen.sum()), 3) for n, c in zip(meta["branches"], chosen)}
+        share = {n: round(float(c / max(1, chosen.sum())), 3) for n, c in zip(meta["branches"], chosen)}
         wall = np.mean([d[k]["chunk_wall_s"] / d[k]["chunk_n"] for k in keys])
         wall_b = np.mean([base[k]["chunk_wall_s"] / base[k]["chunk_n"] for k in keys])
         win_s = np.mean([np.sign(x) for x in ms])
@@ -178,6 +180,7 @@ def main():
     q.add_argument("--cap-s", type=int, default=150)
     q.add_argument("--tag", required=True)
     q.add_argument("--no-plain", action="store_true")
+    q.add_argument("--no-search", action="store_true", help="play --net plain under --tag (e.g. r6 vs the plain r5 rows)")
     q.add_argument("--record", action="store_true")
     q.add_argument("--device", default="mps")
     q.add_argument("--verbose", action="store_true")
