@@ -34,16 +34,15 @@ def to_device(batch: dict, device) -> dict[str, torch.Tensor]:
 
 
 def compile_value_net(net: ValueNet, device: torch.device) -> None:
-    """--compile, in place (state_dict keys unchanged).  CUDA: the whole net (its gradients match
-    eager, tests/test_accel.py); elsewhere only TRUNK_MODULES (inductor on MPS scales the
-    gradient of batch-broadcast embeddings by the batch size).  ``dynamic=False``: one static graph
-    per batch size -- the dynamic-shape graph inductor (torch 2.11) builds once a second size shows
-    up (an eval's last partial batch) gave NaN / wrong outputs for some rows in fp16."""
-    if device.type == "cuda":
-        net.compile(dynamic=False)
-    else:
-        for name in TRUNK_MODULES:
-            getattr(net.trunk, name).compile()
+    """--compile, in place (state_dict keys unchanged): TRUNK_MODULES on every device.  MPS: inductor
+    scales the gradient of batch-broadcast embeddings by the batch size.  CUDA (torch 2.11): the whole
+    net compiled gets the gradients right in fp32 (tests/test_accel.py) but under fp16 autocast the
+    compiled MyModel._trunk graph gives wrong, run-to-run different outputs (up to ~70 on tokens of
+    ~380; NaN in S1 held-out rows), while each submodule compiled alone matches eager to fp16 noise
+    -- so the glue (derived features, embeddings, RoPE ids) stays eager here too
+    (docs/cuda_training_ko.md)."""
+    for name in TRUNK_MODULES:
+        getattr(net.trunk, name).compile()
 
 
 def u8_graphic(graphic_u8: torch.Tensor) -> torch.Tensor:

@@ -82,8 +82,8 @@ HELDOUT_SEEDS = range(900_000, 1_000_000)
 # an embedding broadcast over the batch (token_type_emb, vec_slot_emb, spr_cls_emb) by the batch
 # size, so the embeddings stay eager; compiled this way every gradient matches CPU eager.
 COMPILED_MODULES = ("graphic_encoder", "vector_encoder", "attention", "q_head")  # examples/distill_heldout_eval.py
-# On CUDA the bug does not occur (tests/test_accel.py: whole-MyModel compiled gradients = eager),
-# so a stateless student is compiled whole there (one graph, embeddings and derived features included).
+# On CUDA that bug does not occur (tests/test_accel.py), but the whole MyModel compiled under fp16
+# autocast gives wrong outputs there (value/train.compile_value_net), so CUDA compiles these too.
 
 
 def parse_args(argv=None) -> argparse.Namespace:
@@ -326,11 +326,7 @@ class Learner:
                            policy_head=args.policy_head, angle_head=args.angle_head,
                            angle_arc_bins=args.angle_arc_bins).to(self.device)
         self.angle = bool(args.angle_head)
-        if args.compile and self.device.type == "cuda" and not args.temporal:
-            # in place: state_dict keys stay the same (COMPILED_MODULES comment); static shapes: the
-            # dynamic-shape graph (score()'s last partial chunk) gave wrong fp16 rows (value/train.py)
-            self.net.compile(dynamic=False)
-        elif args.compile:
+        if args.compile:
             for name in COMPILED_MODULES:  # in place: state_dict keys stay the same
                 getattr(self.net, name).compile()
         self.optimizer = adamw(self.net.parameters(), self.device, lr=args.lr, weight_decay=args.weight_decay)
