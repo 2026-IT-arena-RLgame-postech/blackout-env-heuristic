@@ -82,7 +82,12 @@ def test_v26_is_a_function_of_the_observation():
 def test_deficit_and_camper_modes():
     far = _hunter(_obs({1: (12, 6), 2: (16, 3)}, camper=(6, 14)), 1)   # one each, theirs far from our spawn
     near = _hunter(_obs({1: (12, 6), 2: (16, 3)}, camper=(4, 5)), 1)   # theirs camping our exit
-    for obs, mode, traded in ((far, "deficit", False), (far, "camper", False), (near, "camper", True)):
+    two = _hunter(_hunter(_obs({1: (12, 6), 2: (16, 3)}, camper=(6, 14)), 1), 2)
+    for obs, mode, traded in ((far, "deficit", False), (far, "camper", False), (near, "camper", True),
+                              (far, "surplus", False)):
         played = StrategicHeuristicV26(trade_mode=mode)
         played.teach(obs)
         assert (played.traders == ["unit_1"]) is traded, (mode, played.traders)
+    played = StrategicHeuristicV26(trade_mode="surplus")
+    played.teach(two)
+    assert len(played.traders) == 1

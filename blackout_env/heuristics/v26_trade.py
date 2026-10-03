@@ -18,7 +18,8 @@ Rules (all off = V25 exactly, ``tests/test_v26_trade.py``):
   one of our Hunters, which hunts it instead of its V17/V22 goal.  ``trade_mode``: ``"parity"``
   only while we do not have more Hunters than they do (the race-lost situation), ``"deficit"``
   only while we have fewer, ``"always"`` whenever an enemy Hunter is out, ``"camper"`` only enemy
-  Hunters within ``trade_camp_radius`` tiles of our spawn (camping our exit; any counts).  ``trade_until`` seconds into the match (inf = any
+  Hunters within ``trade_camp_radius`` tiles of our spawn (camping our exit; any counts),
+  ``"surplus"`` only while we have more (we keep a Hunter after trading all of theirs).  ``trade_until`` seconds into the match (inf = any
   time; e.g. 20 = opening only).  ``trade_radius`` tiles of path at most (inf = any distance).
 * ``trade_walk_reach`` -- while we have no Hunter and an enemy Hunter is out, the Collector
   (no special item) with the shortest exact path to the sanctuary within this many tiles is sent
@@ -44,7 +45,7 @@ from .v17_planner import MATCH_SECONDS
 from .v22_teacher import CONTACT_RADIUS
 from .v25_race import StrategicHeuristicV25
 
-TRADE_MODES = ("parity", "deficit", "always", "camper")
+TRADE_MODES = ("parity", "deficit", "always", "camper", "surplus")
 CAMP_RADIUS = 7.0  # tiles from our spawn: V17 values an enemy Hunter there at 12 (a camper)
 WALK_COUNTS = ("one", "deficit")
 
@@ -89,6 +90,8 @@ class StrategicHeuristicV26(StrategicHeuristicV25):
         if self.trade_mode == "parity" and len(hunters) > theirs:
             return goals
         if self.trade_mode == "deficit" and len(hunters) >= theirs:
+            return goals
+        if self.trade_mode == "surplus" and len(hunters) <= theirs:
             return goals
         if self.trade_mode == "camper":
             spawn = ctx["ally_spawn"]
