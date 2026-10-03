@@ -10,27 +10,40 @@ reachable at decision 99 with ~0.13 tiles to spare.
 
 One decision ahead is decisive against V23-like opponents: their walkers, a hair from the
 sanctuary, see our new Hunter and turn away (threat evasion) instead of stepping in, and are
-caught.  ``race_walk`` changes nothing else: while ``_racing`` a Collector whose label is a
-transform toward the Hunter sanctuary heads along ``RacePlanner.heading`` on the planning map
+caught.  ``race_commit`` is the defence against that: an own Collector within ``commit_reach``
+tiles of the Hunter sanctuary (exact distance to the region) that enters before any enemy Hunter
+running straight at it could touch it is sent in and committed (no evasion) -- once a Hunter, a
+contact is a trade, not three lost walkers.
+
+``race_walk`` changes nothing else: while ``_racing`` a Collector whose label is a transform
+toward the Hunter sanctuary heads along ``RacePlanner.heading`` on the planning map
 (the same map V23's controller uses, field items not blocked: ``race_cargo`` keeps a walker
 walking with a battery).  Every rule stays a function of the observation.
 """
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 from .any_angle import UNIT_RADIUS, pixel_position
 from .race_path import RacePlanner
-from .strategic import COLLECTOR, SITE_HUNTER
+from .strategic import COLLECTOR, HUNTER, SITE_HUNTER
+from .v22_teacher import CONTACT_RADIUS
 from .v23_opening import StrategicHeuristicV23
 
 
 class StrategicHeuristicV25(StrategicHeuristicV23):
-    """V23 + exact race walk (``race_walk``); ``race_lookahead`` picks headings by an emulated move."""
+    """V23 + exact race walk (``race_walk``) + last-step commit (``race_commit``);
+    ``race_lookahead`` picks race headings by an emulated move (no gain measured, off)."""
 
-    def __init__(self, *, race_walk: bool = True, race_lookahead: bool = False, race_delta: float = 2e-3, **kwargs):
+    def __init__(self, *, race_walk: bool = True, race_lookahead: bool = False, race_delta: float = 2e-3,
+                 race_commit: bool = True, commit_reach: float = 1.0, **kwargs):
         super().__init__(**kwargs)
+        self.race_commit = bool(race_commit)
+        self.commit_reach = float(commit_reach)
+        self.last_step: list[str] = []  # for inspection: walkers committed by race_commit this tick
         self.race_walk = bool(race_walk)
         self.race_lookahead = bool(race_lookahead)
         self.race_delta = float(race_delta)
@@ -59,3 +72,38 @@ class StrategicHeuristicV25(StrategicHeuristicV23):
                     self._count("race_walk")
                     return heading
         return super()._any_angle(label, state, states, goals, walkable, shape)
+
+    def _composition_goals(self, controlled, row_for, states, graphic, walkable):
+        goals = super()._composition_goals(controlled, row_for, states, graphic, walkable)
+        self.last_step = []
+        if not self.race_commit:
+            return goals
+        ctx = self._teach_ctx
+        hunters = [e for e in ctx["enemies"] if e.cls == HUNTER and not e.in_base]
+        if not hunters:
+            return goals
+        tiles = tuple(sorted((int(y), int(x)) for y, x in np.argwhere((graphic[..., SITE_HUNTER] > 0.5) & walkable)))
+        if not tiles:
+            return goals
+        shape = graphic.shape[:2]
+        planner = self._planner(np.ascontiguousarray(walkable, dtype=bool), tiles, UNIT_RADIUS[COLLECTOR])
+        v_me = self._speed(ctx, COLLECTOR)
+        v_them = self._speed(ctx, HUNTER, enemy=True)
+        contact = CONTACT_RADIUS[HUNTER] * ctx["enemy_size"] + CONTACT_RADIUS[COLLECTOR] * ctx["own_size"]
+        for name in controlled:
+            state = states[row_for[name]]
+            if self._class_id(state) != COLLECTOR or name in self.committed or float(state[5:9].max()) >= 0.5:
+                continue  # not a Collector, already committed, or holding a special
+            here = pixel_position(state, shape)
+            d = planner.distance(here)
+            if not (0.0 < d <= self.commit_reach):
+                continue
+            arrive = d / v_me + self.commit_margin
+            caught = min((math.hypot(*np.subtract(pixel_position(states[e.row], shape), here)) - contact) / (v_them + v_me)
+                         for e in hunters)
+            if arrive < caught:
+                goals[name] = ((tiles, "transform"),)
+                self.committed.append(name)
+                self._committed_xy.add((float(state[0]), float(state[1])))
+                self.last_step.append(name)
+        return goals
