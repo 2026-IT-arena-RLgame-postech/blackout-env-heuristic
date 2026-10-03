@@ -347,7 +347,7 @@ def cmd_train(args):
     scaler = grad_scaler(device, amp)
     step_fn = dist.wrap(train_step_module(torch)(net, args, amp, device))
     if args.compile:
-        step_fn = torch.compile(step_fn, mode=None if args.compile_mode == "default" else args.compile_mode)
+        step_fn = torch.compile(step_fn, mode=None if args.compile_mode == "default" else args.compile_mode, dynamic=False)
     # rank r draws its own rows (seed + 1000 r); the global batch is --batch split over the ranks
     if args.gpu_data is None:  # auto: on cuda when the (train + extra) arrays fit in half the free memory
         need = split_bytes(train, keys) + (split_bytes(extra, keys) if extra is not None else 0)
@@ -446,7 +446,7 @@ def cmd_bench(args):
         args.amp = amp
         step_fn = train_step_module(torch)(net, args, amp, device)
         if comp:
-            step_fn = torch.compile(step_fn, mode=None if args.compile_mode == "default" else args.compile_mode)
+            step_fn = torch.compile(step_fn, mode=None if args.compile_mode == "default" else args.compile_mode, dynamic=False)
         source = BatchSource(train, None, pool, None, batch, 0.0, 0, keys)
 
         def device_step(b):

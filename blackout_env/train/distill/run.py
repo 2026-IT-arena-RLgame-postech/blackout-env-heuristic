@@ -327,7 +327,9 @@ class Learner:
                            angle_arc_bins=args.angle_arc_bins).to(self.device)
         self.angle = bool(args.angle_head)
         if args.compile and self.device.type == "cuda" and not args.temporal:
-            self.net.compile()  # in place: state_dict keys stay the same (COMPILED_MODULES comment)
+            # in place: state_dict keys stay the same (COMPILED_MODULES comment); static shapes: the
+            # dynamic-shape graph (score()'s last partial chunk) gave wrong fp16 rows (value/train.py)
+            self.net.compile(dynamic=False)
         elif args.compile:
             for name in COMPILED_MODULES:  # in place: state_dict keys stay the same
                 getattr(self.net, name).compile()

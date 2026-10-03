@@ -36,9 +36,11 @@ def to_device(batch: dict, device) -> dict[str, torch.Tensor]:
 def compile_value_net(net: ValueNet, device: torch.device) -> None:
     """--compile, in place (state_dict keys unchanged).  CUDA: the whole net (its gradients match
     eager, tests/test_accel.py); elsewhere only TRUNK_MODULES (inductor on MPS scales the
-    gradient of batch-broadcast embeddings by the batch size)."""
+    gradient of batch-broadcast embeddings by the batch size).  ``dynamic=False``: one static graph
+    per batch size -- the dynamic-shape graph inductor (torch 2.11) builds once a second size shows
+    up (an eval's last partial batch) gave NaN / wrong outputs for some rows in fp16."""
     if device.type == "cuda":
-        net.compile()
+        net.compile(dynamic=False)
     else:
         for name in TRUNK_MODULES:
             getattr(net.trunk, name).compile()

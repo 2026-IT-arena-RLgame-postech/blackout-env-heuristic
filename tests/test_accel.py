@@ -290,3 +290,25 @@ def test_device_source_matches_batch_source_cuda():
         a, b = host(), dev()
         for k in keys:
             assert np.array_equal(a[k], b[k].cpu().numpy(), equal_nan=True), k
+
+
+@cuda
+def test_static_compile_value_net_eval_sizes_cuda():
+    """compile_value_net (cuda: whole net, dynamic=False) in fp16 eval over several batch sizes =
+    eager fp16 (the dynamic-shape graph gave NaN rows after a partial batch)."""
+    from blackout_env.value.model import ValueNet
+    from blackout_env.value.train import compile_value_net
+
+    device = torch.device("cuda")
+    torch.manual_seed(0)
+    net = ValueNet().to(device).eval()
+    ref = ValueNet().to(device).eval()
+    ref.load_state_dict(net.state_dict())
+    compile_value_net(net, device)
+    graphic, team, agents = _mymodel_batch(96, device)
+    for n in (64, 40, 64, 17):
+        with torch.no_grad(), torch.autocast("cuda", dtype=torch.float16):
+            a = net(graphic[:n], team[:n], agents[:n]).float()
+            b = ref(graphic[:n], team[:n], agents[:n]).float()
+        assert torch.isfinite(a).all()
+        assert (a - b).abs().max() <= 2e-2 * b.abs().max() + 1e-3, n
