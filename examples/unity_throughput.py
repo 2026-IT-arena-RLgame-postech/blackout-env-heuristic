@@ -71,7 +71,9 @@ def _policy(name: str, seed: int):
         from blackout_env.model.my_policy import MyPolicy
         from blackout_env.train.distill.inference import _FastNet, load_checkpoint_net
 
-        return MyPolicy(_OnGPU(_FastNet(load_checkpoint_net(str(REPO / P11)).to("cuda"))), device="cpu")
+        fast = _FastNet(load_checkpoint_net(str(REPO / P11)).to("cuda"))
+        fast._traced = fast.own  # no jit trace on CUDA: it bakes a shape-derived clamp bound as a CPU tensor
+        return MyPolicy(_OnGPU(fast), device="cpu")
     return make_opponent(SHORT.get(name, name), seed)
 
 

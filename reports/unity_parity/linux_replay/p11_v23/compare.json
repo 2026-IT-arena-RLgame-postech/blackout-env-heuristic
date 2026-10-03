@@ -1,8 +1,8 @@
 {
  "a": "reports/unity_parity/mac/p11_v23",
  "b": "reports/unity_parity/linux_replay/p11_v23",
- "matches": 4,
- "identical": 4,
+ "matches": 28,
+ "identical": 28,
  "first_diff_kind": {
   "state": 0,
   "map": 0,
@@ -27,6 +27,9 @@
    ],
    "identical": true,
    "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
    "blank_map_frames": [
     0,
     0
@@ -60,6 +63,9 @@
    ],
    "identical": true,
    "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
    "blank_map_frames": [
     0,
     0
@@ -93,6 +99,9 @@
    ],
    "identical": true,
    "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
    "blank_map_frames": [
     0,
     0
@@ -126,6 +135,9 @@
    ],
    "identical": true,
    "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
    "blank_map_frames": [
     0,
     0
@@ -148,6 +160,870 @@
    "margin": [
     -53.0,
     -53.0
+   ]
+  },
+  {
+   "file": "seed_3000004.npz",
+   "seed": 3000004,
+   "steps": [
+    1343,
+    1343
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     0.36000001430511475,
+     1.0099999904632568
+    ],
+    [
+     0.36000001430511475,
+     1.0099999904632568
+    ]
+   ],
+   "margin": [
+    -65.0,
+    -65.0
+   ]
+  },
+  {
+   "file": "seed_3000005.npz",
+   "seed": 3000005,
+   "steps": [
+    864,
+    864
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     0.28999999165534973,
+     1.0399999618530273
+    ],
+    [
+     0.28999999165534973,
+     1.0399999618530273
+    ]
+   ],
+   "margin": [
+    -75.0,
+    -75.0
+   ]
+  },
+  {
+   "file": "seed_3000006.npz",
+   "seed": 3000006,
+   "steps": [
+    834,
+    834
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     1.0,
+     0.30000001192092896
+    ],
+    [
+     1.0,
+     0.30000001192092896
+    ]
+   ],
+   "margin": [
+    70.0,
+    70.0
+   ]
+  },
+  {
+   "file": "seed_3000007.npz",
+   "seed": 3000007,
+   "steps": [
+    1052,
+    1052
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     1.0199999809265137,
+     0.30000001192092896
+    ],
+    [
+     1.0199999809265137,
+     0.30000001192092896
+    ]
+   ],
+   "margin": [
+    72.0,
+    72.0
+   ]
+  },
+  {
+   "file": "seed_3000008.npz",
+   "seed": 3000008,
+   "steps": [
+    610,
+    610
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     1.0099999904632568,
+     0.3199999928474426
+    ],
+    [
+     1.0099999904632568,
+     0.3199999928474426
+    ]
+   ],
+   "margin": [
+    69.0,
+    69.0
+   ]
+  },
+  {
+   "file": "seed_3000009.npz",
+   "seed": 3000009,
+   "steps": [
+    1279,
+    1279
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     1.0099999904632568,
+     0.5
+    ],
+    [
+     1.0099999904632568,
+     0.5
+    ]
+   ],
+   "margin": [
+    51.0,
+    51.0
+   ]
+  },
+  {
+   "file": "seed_3000010.npz",
+   "seed": 3000010,
+   "steps": [
+    1222,
+    1222
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     1.0099999904632568,
+     0.44999998807907104
+    ],
+    [
+     1.0099999904632568,
+     0.44999998807907104
+    ]
+   ],
+   "margin": [
+    56.0,
+    56.0
+   ]
+  },
+  {
+   "file": "seed_3000011.npz",
+   "seed": 3000011,
+   "steps": [
+    1060,
+    1060
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     0.25,
+     1.0
+    ],
+    [
+     0.25,
+     1.0
+    ]
+   ],
+   "margin": [
+    -75.0,
+    -75.0
+   ]
+  },
+  {
+   "file": "seed_3000012.npz",
+   "seed": 3000012,
+   "steps": [
+    987,
+    987
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     0.25999999046325684,
+     1.0
+    ],
+    [
+     0.25999999046325684,
+     1.0
+    ]
+   ],
+   "margin": [
+    -74.0,
+    -74.0
+   ]
+  },
+  {
+   "file": "seed_3000013.npz",
+   "seed": 3000013,
+   "steps": [
+    10502,
+    10502
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     0.6299999952316284,
+     0.9900000095367432
+    ],
+    [
+     0.6299999952316284,
+     0.9900000095367432
+    ]
+   ],
+   "margin": [
+    -36.0,
+    -36.0
+   ]
+  },
+  {
+   "file": "seed_3000014.npz",
+   "seed": 3000014,
+   "steps": [
+    1213,
+    1213
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     1.0099999904632568,
+     0.27000001072883606
+    ],
+    [
+     1.0099999904632568,
+     0.27000001072883606
+    ]
+   ],
+   "margin": [
+    74.0,
+    74.0
+   ]
+  },
+  {
+   "file": "seed_3000015.npz",
+   "seed": 3000015,
+   "steps": [
+    695,
+    695
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     1.0,
+     0.20000000298023224
+    ],
+    [
+     1.0,
+     0.20000000298023224
+    ]
+   ],
+   "margin": [
+    80.0,
+    80.0
+   ]
+  },
+  {
+   "file": "seed_3000016.npz",
+   "seed": 3000016,
+   "steps": [
+    469,
+    469
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     1.0099999904632568,
+     0.3400000035762787
+    ],
+    [
+     1.0099999904632568,
+     0.3400000035762787
+    ]
+   ],
+   "margin": [
+    67.0,
+    67.0
+   ]
+  },
+  {
+   "file": "seed_3000017.npz",
+   "seed": 3000017,
+   "steps": [
+    936,
+    936
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     0.27000001072883606,
+     1.059999942779541
+    ],
+    [
+     0.27000001072883606,
+     1.059999942779541
+    ]
+   ],
+   "margin": [
+    -79.0,
+    -79.0
+   ]
+  },
+  {
+   "file": "seed_3000018.npz",
+   "seed": 3000018,
+   "steps": [
+    10502,
+    10502
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     0.47999998927116394,
+     0.7599999904632568
+    ],
+    [
+     0.47999998927116394,
+     0.7599999904632568
+    ]
+   ],
+   "margin": [
+    -28.0,
+    -28.0
+   ]
+  },
+  {
+   "file": "seed_3000019.npz",
+   "seed": 3000019,
+   "steps": [
+    543,
+    543
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     1.0199999809265137,
+     0.2800000011920929
+    ],
+    [
+     1.0199999809265137,
+     0.2800000011920929
+    ]
+   ],
+   "margin": [
+    74.0,
+    74.0
+   ]
+  },
+  {
+   "file": "seed_3000020.npz",
+   "seed": 3000020,
+   "steps": [
+    807,
+    807
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     1.0,
+     0.2800000011920929
+    ],
+    [
+     1.0,
+     0.2800000011920929
+    ]
+   ],
+   "margin": [
+    72.0,
+    72.0
+   ]
+  },
+  {
+   "file": "seed_3000021.npz",
+   "seed": 3000021,
+   "steps": [
+    1160,
+    1160
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     0.1899999976158142,
+     1.0
+    ],
+    [
+     0.1899999976158142,
+     1.0
+    ]
+   ],
+   "margin": [
+    -81.0,
+    -81.0
+   ]
+  },
+  {
+   "file": "seed_3000022.npz",
+   "seed": 3000022,
+   "steps": [
+    898,
+    898
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     0.18000000715255737,
+     1.0199999809265137
+    ],
+    [
+     0.18000000715255737,
+     1.0199999809265137
+    ]
+   ],
+   "margin": [
+    -84.0,
+    -84.0
+   ]
+  },
+  {
+   "file": "seed_3000023.npz",
+   "seed": 3000023,
+   "steps": [
+    1075,
+    1075
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     0.28999999165534973,
+     1.0399999618530273
+    ],
+    [
+     0.28999999165534973,
+     1.0399999618530273
+    ]
+   ],
+   "margin": [
+    -75.0,
+    -75.0
+   ]
+  },
+  {
+   "file": "seed_3000024.npz",
+   "seed": 3000024,
+   "steps": [
+    10502,
+    10502
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     0.6100000143051147,
+     0.9300000071525574
+    ],
+    [
+     0.6100000143051147,
+     0.9300000071525574
+    ]
+   ],
+   "margin": [
+    -32.0,
+    -32.0
+   ]
+  },
+  {
+   "file": "seed_3000025.npz",
+   "seed": 3000025,
+   "steps": [
+    501,
+    501
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     0.25999999046325684,
+     1.0
+    ],
+    [
+     0.25999999046325684,
+     1.0
+    ]
+   ],
+   "margin": [
+    -74.0,
+    -74.0
+   ]
+  },
+  {
+   "file": "seed_3000026.npz",
+   "seed": 3000026,
+   "steps": [
+    1121,
+    1121
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     0.28999999165534973,
+     1.0
+    ],
+    [
+     0.28999999165534973,
+     1.0
+    ]
+   ],
+   "margin": [
+    -71.0,
+    -71.0
+   ]
+  },
+  {
+   "file": "seed_3000027.npz",
+   "seed": 3000027,
+   "steps": [
+    1096,
+    1096
+   ],
+   "identical": true,
+   "first_diff": null,
+   "obs_diff_ticks": 0,
+   "move_diff_ticks": 0,
+   "first_obs_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     0.2199999988079071,
+     1.0499999523162842
+    ],
+    [
+     0.2199999988079071,
+     1.0499999523162842
+    ]
+   ],
+   "margin": [
+    -83.0,
+    -83.0
    ]
   }
  ]
