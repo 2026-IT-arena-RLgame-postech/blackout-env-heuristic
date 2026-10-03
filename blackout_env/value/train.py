@@ -156,8 +156,12 @@ def train(args) -> None:
     totals: dict[str, torch.Tensor] = {}
     n_since = 0
     started = time.time()
+    eval_s = 0.0  # time spent evaluating (ms_step below excludes it)
+    t_window, last_eval = time.time(), 0
     for step in range(args.steps + 1):
         if step % args.eval_every == 0 or step == args.steps:
+            ms_step = 1000 * (time.time() - t_window) / max(1, step - last_eval)
+            t_eval = time.time()
             train_stats = {}
             for k, v in sorted(totals.items()):
                 train_stats[k] = float(dist.all_reduce_sum(v.clone())) / (max(1, n_since) * dist.world)
@@ -169,7 +173,8 @@ def train(args) -> None:
                 select = quick["heldout"]  # checkpoint selection: held-out matches only, never the unseen sets
                 score = sum(1 - (select[f"r2_{h}"] or 0) for h in ("2s", "5s", "10s", "20s")) + 4 * select["brier"]
                 entry = {"step": step, "elapsed_s": round(time.time() - started, 1), "lr": lr_at(step, args),
-                         "train": train_stats, **quick, "select_score": score}
+                         "ms_step": round(ms_step, 2), "rows_s": round(args.batch_size * 1000 / ms_step),
+                         "eval_s": round(eval_s, 1), "train": train_stats, **quick, "select_score": score}
                 with log_path.open("a") as f:
                     f.write(json.dumps(entry) + "\n")
                 print(json.dumps({"step": step, "t": entry["elapsed_s"], "loss": train_stats.get("loss"),
@@ -181,6 +186,8 @@ def train(args) -> None:
                     best = score
                     save_value_net(out_dir / "best.pt", net, meta)
             dist.barrier()
+            eval_s += time.time() - t_eval
+            t_window, last_eval = time.time(), step
             if step == args.steps:
                 break
         lr = lr_at(step, args)
