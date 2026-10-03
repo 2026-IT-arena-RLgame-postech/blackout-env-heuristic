@@ -442,8 +442,10 @@ def view_buckets(max_views: int) -> list[int]:
 
 def build_searcher(rollout: str = R5, value: str = VALUE, branches: str = "alt*,samp:1.0x2", window: int = 25,
                    leaf_decisions: int = 125, device: str = "cuda", cuda_graphs: bool = True,
-                   max_roots: int = 32, repo: str | None = None, packed: bool = True):
-    """The Searcher the Unity eval uses (unity_search_eval._init_worker), graphs bucketed for a server."""
+                   max_roots: int = 32, repo: str | None = None, packed: bool = True, deep: dict | None = None):
+    """The Searcher the Unity eval uses (unity_search_eval._init_worker), graphs bucketed for a server.
+    ``deep``: S4 options (``search.searcher_kwargs`` keys: opp_branches, opp_agg, opp_left, children,
+    child_window, expand; branch lists as specs)."""
     from .batch import NetPolicy
     from .rollout_net import RolloutNet
     from .search import ModNetPolicy, Searcher, ValueNetLeaf, parse_branches
@@ -451,12 +453,18 @@ def build_searcher(rollout: str = R5, value: str = VALUE, branches: str = "alt*,
     def at(p):
         return p if repo is None or os.path.isabs(p) else os.path.join(repo, p)
 
+    from .search import searcher_kwargs
+
     br = parse_branches(branches)
-    buckets = view_buckets(2 * len(br) * max_roots) if cuda_graphs else None
+    kw = searcher_kwargs(deep)
+    leaf_decisions = kw.pop("leaf_decisions", leaf_decisions)
+    probe = Searcher(None, None, br, window=window, **kw)  # games per root only (no nets)
+    # graphs up to 2048 views (bigger batches: eager kernels, launches no longer dominate)
+    buckets = view_buckets(min(2 * probe.games_per_root() * max_roots, 2048)) if cuda_graphs else None
     pol = ModNetPolicy(NetPolicy(RolloutNet.from_checkpoint(at(rollout)), device=device, cuda_graphs=cuda_graphs,
                                  graph_buckets=buckets))
     return Searcher(pol, ValueNetLeaf(at(value), device), br, window=window, leaf_decisions=leaf_decisions,
-                    packed=packed)
+                    packed=packed, **kw)
 
 
 def _serve(args):
@@ -466,8 +474,11 @@ def _serve(args):
     import numba
 
     numba.set_num_threads(min(args.threads, numba.config.NUMBA_NUM_THREADS))
+    import json
+
     searcher = build_searcher(args.rollout, args.value, args.branches, args.window, args.leaf, args.device,
-                              not args.no_cuda_graphs, args.max_roots, repo=args.repo)
+                              not args.no_cuda_graphs, args.max_roots, repo=args.repo,
+                              deep=json.loads(args.deep) if args.deep else None)
     # warm-up off the clock: numba compile, the bucketed CUDA graphs for 1 and max_roots roots
     for n in (1, args.max_roots):
         searcher.search([SimState.from_seed(1 + k) for k in range(n)], [k % 2 for k in range(n)], list(range(n)))
@@ -495,6 +506,7 @@ def main(argv=None):
     q.add_argument("--branches", default="alt*,samp:1.0x2")
     q.add_argument("--window", type=int, default=25)
     q.add_argument("--leaf", type=int, default=125)
+    q.add_argument("--deep", default="", help="S4 search options as JSON (search.searcher_kwargs keys)")
     q.add_argument("--device", default="cuda")
     q.add_argument("--no-cuda-graphs", action="store_true")
     q.add_argument("--max-roots", type=int, default=32)

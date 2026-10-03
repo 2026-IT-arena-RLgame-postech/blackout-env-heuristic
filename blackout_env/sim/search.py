@@ -388,13 +388,46 @@ class Searcher:
 
     def config(self) -> dict:
         """What a search result depends on besides the nets (``search_server`` handshake)."""
-        out = {"branches": [b.name for b in self.branches], "window": self.window,
-               "leaf_decisions": self.leaf_decisions}
+        return search_config(self.branches, self.window, self.leaf_decisions, self.opp_branches, self.opp_agg,
+                             self.opp_left, self.children, self.child_window, self.expand)
+
+    def games_per_root(self) -> int:
+        """Rollout games per root of the largest stage (CUDA-graph bucket sizing)."""
+        nb = len(self.branches)
         if self.opp_branches:
-            out |= {"opp_branches": [b.name for b in self.opp_branches], "opp_agg": self.opp_agg, "opp_left": self.opp_left}
+            return nb * len(self.opp_branches)
         if self.children:
-            out |= {"children": [b.name for b in self.children], "child_window": self.child_window, "expand": self.expand}
-        return out
+            return max(nb, (self.expand + 1 if self.expand else nb) * len(self.children))
+        return nb
+
+
+DEEP_KEYS = ("leaf_decisions", "opp_branches", "opp_agg", "opp_left", "children", "child_window", "expand")
+
+
+def searcher_kwargs(deep: dict | None) -> dict:
+    """S4 options (branch lists as ``parse_branches`` specs, ``None``/empty = off) -> ``Searcher`` kwargs."""
+    kw = {}
+    for k, v in (deep or {}).items():
+        if k not in DEEP_KEYS:
+            raise ValueError(f"unknown search option {k!r}")
+        if v in (None, ""):
+            continue
+        kw[k] = parse_branches(v) if k in ("opp_branches", "children") else v
+    return kw
+
+
+def search_config(branches, window=25, leaf_decisions=125, opp_branches=None, opp_agg="min", opp_left=None,
+                  children=None, child_window=None, expand=0) -> dict:
+    """``Searcher.config()`` from its arguments (branch lists or specs for ``parse_branches``)."""
+    names = lambda b: [x.name for x in (parse_branches(b) if isinstance(b, str) else b)]  # noqa: E731
+    out = {"branches": names(branches), "window": int(window), "leaf_decisions": int(leaf_decisions)}
+    ob = names(opp_branches) if opp_branches else []
+    if len(ob) > 1:
+        out |= {"opp_branches": ob, "opp_agg": opp_agg, "opp_left": int(window if opp_left is None else opp_left)}
+    ch = names(children) if children else []
+    if len(ch) > 1:
+        out |= {"children": ch, "child_window": int(window if child_window is None else child_window), "expand": int(expand)}
+    return out
 
 
 def take_games(bsim: BatchSim, idx) -> BatchSim:

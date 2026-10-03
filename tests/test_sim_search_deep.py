@@ -131,3 +131,17 @@ def test_opp_variants_and_tree_reduce_to_one_ply():
     fin = np.isfinite(t.values)
     assert np.allclose(t.values[fin], full.values[fin], atol=1e-5)
     assert t.timing["games"] == 2 * 6 + 2 * 2 * 6 and full.timing["games"] == 2 * 6 + 2 * 6 * 6
+
+
+def test_deep_options_through_the_server_config():
+    from blackout_env.sim.search import search_config, searcher_kwargs
+
+    deep = {"children": "alt*,samp:1.0x2", "expand": 2, "opp_branches": ""}
+    kw = searcher_kwargs(deep)
+    s = Searcher(ModNetPolicy(_net()), ValueNetLeaf(_value()), parse_branches("alt*,samp:1.0x2"), **kw)
+    assert s.config() == search_config("alt*,samp:1.0x2", 25, **{"leaf_decisions": 125, **deep})
+    assert s.config()["children"][0] == "base" and s.games_per_root() == 3 * 8
+    o = Searcher(ModNetPolicy(_net()), ValueNetLeaf(_value()), parse_branches("alt*"),
+                 **searcher_kwargs({"opp_branches": "samp:1.0x3", "leaf_decisions": 200}))
+    assert o.games_per_root() == 24 and o.config()["leaf_decisions"] == 200 and o.config()["opp_left"] == 25
+    assert Searcher(None, None, parse_branches("alt*")).config() == search_config("alt*")

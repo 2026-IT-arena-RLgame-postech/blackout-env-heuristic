@@ -22,7 +22,7 @@ from blackout_env.sim.search_server import SearchClient, SearchServer, decode_st
 BRANCHES = "alt0,alt3,samp:1.0x1"
 
 
-def _searcher():
+def _searcher(**deep):
     torch.manual_seed(1)
     net = RolloutNet(arch="attn", d=32, layers=1, heads=2, hidden=32, c1=8, c2=8, c3=8, glob=16).eval()
     from blackout_env.value.model import ValueNet
@@ -31,7 +31,10 @@ def _searcher():
     vnet = ValueNet(hidden_size=64).eval()
     # batch-1 forwards everywhere: a root's result cannot depend on what it was batched with
     pol = ModNetPolicy(NetPolicy(net, per_sample=True))
-    return Searcher(pol, ValueNetLeaf(vnet, batch=1), parse_branches(BRANCHES), window=6, leaf_decisions=8)
+    from blackout_env.sim.search import searcher_kwargs
+
+    return Searcher(pol, ValueNetLeaf(vnet, batch=1), parse_branches(BRANCHES), window=6, leaf_decisions=8,
+                    **searcher_kwargs(deep))
 
 
 def _roots(n=5, steps=40):
@@ -223,3 +226,21 @@ def test_unpack_graphic_every_code():
     ok = (it >= 1) & (it <= 4)
     ref[8 + it[ok], np.nonzero(ok)[0]] = 1.0
     assert g.tobytes() == ref.tobytes()
+
+
+@pytest.mark.parametrize("deep", [{"children": "alt1,samp:1.0x1", "expand": 1}, {"children": "alt2"},
+                                  {"opp_branches": "samp:1.0x2", "opp_agg": "mean"}])
+def test_deep_search_through_the_server(deep):
+    """S4 trees / opponent variants: a batch of roots through the server = each root searched alone."""
+    path = _sock()
+    ref_s = _searcher(**deep)
+    roots = _roots(3)
+    teams, reseeds = [0, 1, 0], [5, 6, 7]
+    ref = [ref_s.search([r.copy()], [t], [k]) for r, t, k in zip(roots, teams, reseeds)]
+    th = _Thread(SearchServer(_searcher(**deep), path, max_roots=16, linger_s=0.5, startup_s=30))
+    cli = SearchClient(path, expect=ref_s.config(), connect_timeout=20)
+    got = cli.search(roots, teams, reseeds, margin=0.0)
+    cli.close()
+    th.t.join(10)
+    assert got is not None and ref_s.config().keys() >= set(deep)
+    assert got.values.tobytes() == np.concatenate([r.values for r in ref]).tobytes()
