@@ -49,6 +49,13 @@ from blackout_env.value.targets import HORIZONS_S  # noqa: E402
 INPUTS = ("graphic", "team_state", "agent_states")
 
 
+def _u8(g):
+    """Graphic rows in the net's uint8 [n, H, W, 13]; packed uint16 [n, H, W] (load_raw(packed=True)) unpacked."""
+    from blackout_env.value.branch import unpack_graphic_u8
+
+    return unpack_graphic_u8(g) if g.ndim == 3 else g
+
+
 # ------------------------------------------------------------------------------ net helpers
 
 
@@ -63,7 +70,7 @@ def predict_states(net, states: dict, idx: np.ndarray, device, batch: int = 1024
     with torch.no_grad():
         for a in range(0, len(idx), batch):
             j = idx[a:a + batch]
-            g = torch.from_numpy(states["graphic"][j]).to(device)
+            g = torch.from_numpy(_u8(states["graphic"][j])).to(device)
             ts = torch.from_numpy(states["team_state"][j]).to(device)
             ag = torch.from_numpy(states["agent_states"][j]).to(device)
             parts.append(decode_outputs(net.forward_u8(g, ts, ag).float(), ts[:, 0] - ts[:, 1]))
@@ -155,6 +162,7 @@ class Sampler:
         for k in INPUTS:
             own, mir = self.data["states"]["own"][k], self.data["states"]["mir"][k]
             out[k] = np.where(view.reshape(-1, *([1] * (own.ndim - 1))) == 0, own[st_idx], mir[st_idx])
+        out["graphic"] = _u8(out["graphic"])
         for k in ("delta", "delta_mask", "final", "p"):
             a, b = self.targets["own"][k][r], self.targets["mir"][k][r]
             out[k] = np.where(view.reshape(-1, *([1] * (a.ndim - 1))) == 0, a, b)
@@ -276,7 +284,7 @@ def cmd_train(args):
     (out_dir / "config.json").write_text(json.dumps({k: str(v) for k, v in vars(args).items() if k != "fn"}, indent=1))
     log = (out_dir / "log.jsonl").open("a")
     t0 = time.time()
-    data = load_raw(Path(args.data) / "raw")
+    data = load_raw(Path(args.data) / "raw", packed=args.packed)
     rows = data["rows"]
     finals = {m["task"]["id"]: m["final"] for m in data["metas"]}
     rows["match_final"] = np.array([data["metas"][m]["final"] for m in rows["match"]], np.float32)
@@ -577,6 +585,7 @@ def main():
     t.add_argument("--compile", action="store_true")
     t.add_argument("--log-every", type=int, default=500)
     t.add_argument("--seed", type=int, default=0)
+    t.add_argument("--packed", action="store_true", help="keep state graphics packed uint16 in RAM (6.5x less)")
     t.set_defaults(fn=cmd_train)
     r = sub.add_parser("regen")
     r.add_argument("--s15", type=Path, default=MAIN / "reports/value_s1/branch")

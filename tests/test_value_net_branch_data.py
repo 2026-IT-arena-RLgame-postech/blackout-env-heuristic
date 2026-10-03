@@ -60,3 +60,19 @@ def test_play_chunk_rows_are_consistent(tmp_path):
     # root match's state at root + window is that same state (traj rows every second)
     t_root = r["root"][r["kind"] == 1]
     assert (t_root >= 0).all() and (r["root"][r["kind"] == 0] == -1).all()
+
+
+def test_packed_graphic_roundtrip_and_load_raw(tmp_path):
+    from blackout_env.value.branch import pack_graphic_u8, unpack_graphic_u8
+
+    states = _trace_states(40)
+    enc = np.stack([encode_view(team_view(s.obs(), t))[0] for s in states for t in (0, 1)])
+    assert np.array_equal(unpack_graphic_u8(pack_graphic_u8(enc)), enc)
+    torch.manual_seed(0)
+    net = NetPolicy(RolloutNet(arch="attn", d=32, layers=1, heads=2), device="cpu")
+    args = SimpleNamespace(cap_s=6.0, window=10, seed0=1, verbose=False, net="random", branches="alt0")
+    res = vd.play_chunk([11], [1], "self", net, None, parse_branches(args.branches), args)
+    vd.save_matches(tmp_path, [11], [1], "self", res, args)
+    a, b = load_raw(tmp_path / "raw"), load_raw(tmp_path / "raw", packed=True)
+    for v in ("own", "mir"):
+        assert np.array_equal(unpack_graphic_u8(b["states"][v]["graphic"]), a["states"][v]["graphic"])
