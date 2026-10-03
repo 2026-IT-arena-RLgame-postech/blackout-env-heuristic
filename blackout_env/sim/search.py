@@ -45,6 +45,17 @@ KIND_NAMES = {K_BASE: "base", K_ALT: "alt", K_ROT: "rot", K_SAMP: "samp", K_STOP
 NOISE_SEEDS, NOISE_STEPS = 64, 256
 
 
+def default_device() -> str:
+    """cuda > mps > cpu."""
+    import torch
+
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 def _gumbel_table(k: int = 32) -> np.ndarray:
     rng = np.random.default_rng(20261003)
     u = rng.random((NOISE_SEEDS, NOISE_STEPS, 5, k))

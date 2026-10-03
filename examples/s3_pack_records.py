@@ -36,8 +36,12 @@ def main():
     p.add_argument("--every", type=int, default=1, help="keep every n-th decision of a match")
     p.add_argument("--drop-branches", default="", help="comma list of branch indices whose rows are dropped (e.g. sampled branches: noise labels)")
     p.add_argument("--r5-kl", default="", help="rollout net checkpoint whose logits fill p11_q / p11_off")
-    p.add_argument("--device", default="mps")
+    p.add_argument("--device", default="", help="default: cuda > mps > cpu")
     args = p.parse_args()
+    if not args.device:
+        from blackout_env.sim.search import default_device
+
+        args.device = default_device()
     from rollout_net_collect import label_rows
 
     parts = [dict(np.load(f)) for f in sorted(glob.glob(args.records))]

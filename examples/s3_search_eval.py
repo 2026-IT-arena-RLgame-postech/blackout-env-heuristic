@@ -182,12 +182,16 @@ def main():
     q.add_argument("--no-plain", action="store_true")
     q.add_argument("--no-search", action="store_true", help="play --net plain under --tag (e.g. r6 vs the plain r5 rows)")
     q.add_argument("--record", action="store_true")
-    q.add_argument("--device", default="mps")
+    q.add_argument("--device", default="", help="default: cuda > mps > cpu")
     q.add_argument("--verbose", action="store_true")
     q.add_argument("--out", default=str(REPO / "reports/s3_search"))
     q = sub.add_parser("report")
     q.add_argument("--out", default=str(REPO / "reports/s3_search"))
     args = p.parse_args()
+    if getattr(args, "device", None) == "":
+        from blackout_env.sim.search import default_device
+
+        args.device = default_device()
     {"play": cmd_play, "report": cmd_report}[args.cmd](args)
 
 
