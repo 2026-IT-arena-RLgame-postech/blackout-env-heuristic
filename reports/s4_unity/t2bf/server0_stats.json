@@ -1,0 +1,47 @@
+{
+ "batches": 2250,
+ "roots": 8978,
+ "requests": 8978,
+ "search_s": 8787.454683521762,
+ "max_batch_roots": 7,
+ "batch_hist": {
+  "1": 8,
+  "2": 14,
+  "3": 1097,
+  "4": 15,
+  "5": 1106,
+  "6": 9,
+  "7": 1
+ },
+ "queue_s": 59.671655484242365,
+ "clients_seen": 9,
+ "config": {
+  "branches": [
+   "base",
+   "alt0",
+   "alt1",
+   "alt2",
+   "alt3",
+   "alt4",
+   "samp1s0",
+   "samp1s1"
+  ],
+  "window": 25,
+  "leaf_decisions": 125,
+  "children": [
+   "base",
+   "alt0",
+   "alt1",
+   "alt2",
+   "alt3",
+   "alt4",
+   "samp1s0",
+   "samp1s1"
+  ],
+  "child_window": 25,
+  "expand": 2,
+  "rollout": "r5.pt",
+  "value": "s2v_iter5.pt",
+  "proto": 1
+ }
+}

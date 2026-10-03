@@ -1,7 +1,11 @@
 s8e25m3        vs p11              n= 256 seeds= 128  search  +28.4  plain   +0.3  diff  +28.1 ±  4.8  win(sign) +0.42 vs +0.05  race w/t/l (73, 179, 4) vs (25, 230, 1)  capped 0.23/0.23  len 133s  wall 4.6s/match (plain 1.35)  e25 w25 m3.0 B8
                   base share 0.70; alt0 0.05, alt1 0.04, alt2 0.04, alt3 0.04, alt4 0.04, samp1s0 0.04, samp1s1 0.04
+s8e25m3        vs strategic_v23    n= 256 seeds= 128  search  +30.0  plain   -1.8  diff  +31.8 ±  4.5  win(sign) +0.45 vs +0.04  race w/t/l (68, 181, 7) vs (22, 225, 9)  capped 0.22/0.31  len 137s  wall 15.6s/match (plain 7.87)  e25 w25 m3.0 B8
+                  base share 0.71; alt0 0.05, alt1 0.04, alt2 0.03, alt3 0.04, alt4 0.04, samp1s0 0.04, samp1s1 0.04
 t2bf           vs p11              n= 128 seeds=  64  search  +43.1  plain   +1.3  diff  +41.9 ±  6.4  win(sign) +0.66 vs +0.05  race w/t/l (41, 87, 0) vs (15, 113, 0)  capped 0.19/0.22  len 131s  wall 12.6s/match (plain 1.23)  e25 w25 m3.0 B8
                   base share 0.84; alt0 0.03, alt1 0.02, alt2 0.02, alt3 0.02, alt4 0.02, samp1s0 0.03, samp1s1 0.02
+t2bf           vs strategic_v23    n= 128 seeds=  64  search  +34.7  plain   -0.9  diff  +35.6 ±  5.0  win(sign) +0.50 vs +0.06  race w/t/l (38, 85, 5) vs (13, 111, 4)  capped 0.22/0.27  len 132s  wall 23.1s/match (plain 8.44)  e25 w25 m3.0 B8
+                  base share 0.81; alt0 0.03, alt1 0.03, alt2 0.02, alt3 0.03, alt4 0.03, samp1s0 0.03, samp1s1 0.03
 w12s           vs strategic_v23    n= 128 seeds=  64  search  +36.6  plain   -0.9  diff  +37.4 ±  5.8  win(sign) +0.53 vs +0.06  race w/t/l (38, 86, 4) vs (13, 111, 4)  capped 0.27/0.27  len 143s  wall 14.3s/match (plain 8.44)  e25 w25 m3.0 B12
                   base share 0.70; alt0 0.04, alt1 0.03, alt2 0.03, alt3 0.03, alt4 0.03, samp1s0 0.03, samp1s1 0.03, samp1s2 0.03, samp1s3 0.03, samp1s4 0.03, samp1s5 0.02
 w13stop        vs p11              n= 256 seeds= 128  search  +37.6  plain   +0.3  diff  +37.3 ±  4.6  win(sign) +0.54 vs +0.05  race w/t/l (84, 171, 1) vs (25, 230, 1)  capped 0.23/0.23  len 137s  wall 6.3s/match (plain 1.35)  e25 w25 m3.0 B13
@@ -13,6 +17,8 @@ w50            vs p11              n= 256 seeds= 128  search  +28.5  plain   +0.
 
 paired vs s8e25m3 (same opponent, seed, side); cost = search s/match and roots/s
 t2bf                   vs p11              n= 128  diff  +20.8 ±  5.8  same 0.00  search   11.6 s/match (x2.99)     5.7 roots/s (ref 17.9)  games/root   4583 (x3.94)
+t2bf                   vs strategic_v23    n= 128  diff   +7.6 ±  4.8  same 0.03  search   14.7 s/match (x2.15)     4.5 roots/s (ref 10.6)  games/root   4606 (x3.95)
+w12s                   vs strategic_v23    n= 128  diff   +9.4 ±  4.9  same 0.04  search    5.9 s/match (x0.86)    12.1 roots/s (ref 10.6)  games/root   1746 (x1.50)
 w13stop                vs p11              n= 256  diff   +9.2 ±  4.3  same 0.03  search    5.3 s/match (x1.51)    13.1 roots/s (ref 19.2)  games/root   1887 (x1.63)
 w18pair                vs p11              n= 256  diff   -1.7 ±  5.1  same 0.02  search    7.2 s/match (x2.07)     9.2 roots/s (ref 19.2)  games/root   2608 (x2.25)
 w50                    vs p11              n= 256  diff   +0.1 ±  4.8  same 0.00  search    3.9 s/match (x1.11)    16.2 roots/s (ref 19.2)  games/root   1337 (x1.15)
