@@ -4,6 +4,7 @@
 set -u
 GPU=$1; OUT=$2; shift 2
 PY=~/blackout-env/.venv/bin/python
+export NUMBA_NUM_THREADS=${NUMBA_NUM_THREADS:-4} OMP_NUM_THREADS=${OMP_NUM_THREADS:-4}
 for spec in "$@"; do
   IFS='|' read -r tag net value opp seeds extra <<< "$spec"
   echo "=== $(date +%T) $tag net=$net value=$value vs $opp seeds=$seeds $extra"
