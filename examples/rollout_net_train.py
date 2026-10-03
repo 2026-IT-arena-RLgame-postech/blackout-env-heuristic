@@ -80,14 +80,16 @@ def cmd_pack(args):
 # ------------------------------------------------------------------------------ tensors
 
 
-def expand_map(packed, torch):
-    """uint16-as-int32 [B, H, W] -> float32 [B, 13, H, W] (the env graphic, canonical)."""
+def expand_map(packed, torch, channels_last: bool = False):
+    """uint16-as-int32 (or int16) [B, H, W] -> float32 [B, 13, H, W] (the env graphic, canonical);
+    ``channels_last``: in that memory format (the [B, H, W, 13] build, not copied)."""
     p = packed.long()
     base = torch.nn.functional.one_hot(p & 7, 8)
     bat = ((p >> 3) & 15).float().unsqueeze(-1) / 15.0
     item = (p >> 7) & 7
     items = torch.nn.functional.one_hot(item, 8)[..., 1:5]
-    return torch.cat([base.float(), bat, items.float()], -1).permute(0, 3, 1, 2).contiguous()
+    g = torch.cat([base.float(), bat, items.float()], -1).permute(0, 3, 1, 2)
+    return g if channels_last else g.contiguous()
 
 
 def unpack_labels(bits: np.ndarray) -> np.ndarray:
@@ -230,7 +232,7 @@ def train_step_module(torch):
             from blackout_env.train.accel import autocast
 
             args = self.args
-            g = expand_map(map, torch)
+            g = expand_map(map, torch, channels_last=getattr(args, "channels_last", False))
             masks = ((labels.unsqueeze(-1) >> self.shifts) & 1) == 1
             opening = (tick >= 0) & (tick < OPENING_TICKS)
             w = torch.where(opening, args.opening_weight, 1.0).float()[:, None].expand(-1, 5)
@@ -293,14 +295,19 @@ def cmd_train(args):
         raise SystemExit(f"--batch {args.batch} is not divisible by {dist.world} ranks")
     cfg = json.loads(args.config) if args.config else {}
     net = RolloutNet.from_checkpoint(args.init).train().to(device) if args.init else RolloutNet(**cfg).to(device)
+    if args.channels_last is None:  # cuda: NHWC convs (cuDNN's fp16 tensor-core kernels) ~5% faster
+        args.channels_last = device.type == "cuda"
+    if args.channels_last:
+        net = net.to(memory_format=torch.channels_last)
     log_main("params", sum(p.numel() for p in net.parameters()), cfg, f"device {device} x{dist.world} amp {amp}"
-             f"{' compile' if args.compile else ''}", flush=True)
+             f"{' compile ' + args.compile_mode if args.compile else ''}{' channels_last' if args.channels_last else ''}",
+             flush=True)
     opt = adamw(net.parameters(), device, lr=args.lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=args.lr, total_steps=args.steps, pct_start=0.05)
     scaler = grad_scaler(device, amp)
     step_fn = dist.wrap(train_step_module(torch)(net, args, amp, device))
     if args.compile:
-        step_fn = torch.compile(step_fn)
+        step_fn = torch.compile(step_fn, mode=None if args.compile_mode == "default" else args.compile_mode)
     # rank r draws its own rows (seed + 1000 r); the global batch is --batch split over the ranks
     source = BatchSource(train, extra, pool, epool, args.batch // dist.world, args.extra_frac,
                          args.seed + 1000 * dist.rank, keys)
@@ -358,7 +365,7 @@ def save_rollout_net(path, net, args, **extra):
     import torch
 
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    torch.save({"config": net.config, "state": {k: v.cpu() for k, v in net.state_dict().items()},
+    torch.save({"config": net.config, "state": {k: v.cpu().contiguous() for k, v in net.state_dict().items()},
                 "args": vars(args), **extra}, path)
 
 
@@ -379,16 +386,19 @@ def cmd_bench(args):
     pool = labelled_rows(train["labels"])
     keys = ["map", "team_state", "agent_states", "labels", "angles", "tick"] + (["p11_q", "p11_off"] if args.p11_kl > 0 else [])
     print(f"bench: {len(pool)} labelled rows, device {device}, torch {torch.__version__}", flush=True)
+    print(f"channels_last {args.channels_last}, compile mode {args.compile_mode}")
     print(f"{'amp':>4s} {'comp':>4s} {'batch':>5s} {'host':>7s} {'h2d':>7s} {'step':>7s} {'loop':>7s} {'rows/s':>8s}", flush=True)
     for amp, comp, batch in itertools.product(args.amps, args.compiles, args.batches):
         torch.manual_seed(0)
         net = RolloutNet.from_checkpoint(args.init).train().to(device) if args.init else RolloutNet(**json.loads(args.config or "{}")).to(device)
+        if args.channels_last:
+            net = net.to(memory_format=torch.channels_last)
         opt = adamw(net.parameters(), device, lr=1e-4, weight_decay=1e-4)
         scaler = grad_scaler(device, amp)
         args.amp = amp
         step_fn = train_step_module(torch)(net, args, amp, device)
         if comp:
-            step_fn = torch.compile(step_fn)
+            step_fn = torch.compile(step_fn, mode=None if args.compile_mode == "default" else args.compile_mode)
         source = BatchSource(train, None, pool, None, batch, 0.0, 0, keys)
 
         def device_step(b):
@@ -479,6 +489,9 @@ def main():
                    help="autocast of the forward; bare --amp = bf16 (as before; MPS).  CUDA 2080 Ti: fp16 "
                    "(+ GradScaler; Turing has no bf16)")
     p.add_argument("--compile", action="store_true", help="torch.compile the whole step (decode + net + losses)")
+    p.add_argument("--compile-mode", default="default", choices=["default", "reduce-overhead", "max-autotune-no-cudagraphs"],
+                   help="reduce-overhead = CUDA graphs: one GPU only, steadier on a loaded host")
+    p.add_argument("--channels-last", type=int, default=None, help="NHWC convs (default: on for cuda)")
     p.add_argument("--prefetch", type=int, default=4, help="batches built ahead in a thread (0 = inline)")
     p.add_argument("--in-memory", action="store_true", help="read the splits into RAM instead of memory-mapping")
     p.add_argument("--extra", default="", help="another packed train.npz mixed into every batch")
@@ -506,6 +519,8 @@ def main():
     p.add_argument("--angle-weight", type=float, default=1.0)
     p.add_argument("--opening-weight", type=float, default=1.5)
     p.add_argument("--in-memory", action="store_true")
+    p.add_argument("--channels-last", type=int, default=0)
+    p.add_argument("--compile-mode", default="default")
     p.add_argument("--device", default="auto")
     args = parser.parse_args()
     {"pack": cmd_pack, "train": cmd_train, "eval": cmd_eval, "bench": cmd_bench}[args.cmd](args)
