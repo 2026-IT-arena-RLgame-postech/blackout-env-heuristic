@@ -170,13 +170,14 @@ class ValueNetLeaf:
     """Leaf scorer: the value net's final-lead head, mirror-symmetric ((V(own) - V(other)) / 2), points,
     on the batch renderer's canonical inputs (= value/evaluate.encode_view's frame)."""
 
-    def __init__(self, path: str, device: str = "cpu", batch: int = 2048, fp16: bool = False):
+    def __init__(self, path_or_net, device: str = "cpu", batch: int = 2048, fp16: bool = False):
         import torch
 
         from blackout_env.value.model import load_value_net
 
         self.torch, self.device = torch, torch.device(device)
-        self.net = load_value_net(path, device=self.device)
+        self.net = (load_value_net(path_or_net, device=self.device) if isinstance(path_or_net, (str, bytes))
+                    or hasattr(path_or_net, "__fspath__") else path_or_net.to(self.device).eval())
         self.batch, self.fp16 = int(batch), fp16
 
     def final(self, graphic, team, agents) -> np.ndarray:
