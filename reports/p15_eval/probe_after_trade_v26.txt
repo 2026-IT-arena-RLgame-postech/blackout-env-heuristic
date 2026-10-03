@@ -1,0 +1,4 @@
+strategic_v26:race_walk=false vs strategic_v25 trades after 110: 139 per game 1.0859375
+ (our H, their H before) -> next Hunter first: [((3, 1, 'us'), 34), ((1, 1, 'them'), 26), ((1, 3, 'them'), 24), ((1, 2, 'them'), 16), ((1, 1, 'us'), 7), ((1, 2, 'us'), 5), ((1, 3, 'us'), 4), ((3, 3, 'them'), 4), ((0, 2, 'them'), 3), ((3, 2, 'us'), 3)]
+ next first {'us': 56, 'them': 82, None: 1}
+ Collectors lost in 10 s after (ours, theirs): [5.42446043 3.        ]

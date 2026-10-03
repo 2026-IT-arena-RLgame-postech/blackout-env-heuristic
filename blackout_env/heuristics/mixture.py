@@ -78,7 +78,7 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
     "strategic_v23": StrategicHeuristicV23,  # V22 racing on the exact any-angle field; not in the default weights
     "strategic_v24": StrategicHeuristicV24,  # V23 + late-game rules (Hunters relieve pinned cargo); not in the default weights
     "strategic_v25": StrategicHeuristicV25,  # V23 + exact taut race walk (enters at decision 99); not in the default weights
-    "strategic_v26": StrategicHeuristicV26,  # V25 + Hunter-for-Hunter trades after a lost race (P15); not in the default weights
+    "strategic_v26": StrategicHeuristicV26,  # V25 + Hunter-for-Hunter trades after a lost race (P15: no gain, -9.9 vs V25); not in the default weights
     # Named strategies on the V17 planner, each on a strategic axis the V-series lacks (held-out
     # opponents for distillation; not in the mixture's default weights):
     "strategic_raider": StrategicRaider,  # steal-first economy, Hunter escorts the thieves

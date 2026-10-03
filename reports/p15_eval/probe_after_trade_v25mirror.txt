@@ -1,0 +1,4 @@
+strategic_v25 vs strategic_v25 trades after 110: 134 per game 1.046875
+ (our H, their H before) -> next Hunter first: [((3, 1, 'us'), 47), ((1, 3, 'them'), 47), ((2, 3, 'them'), 4), ((3, 2, 'us'), 4), ((1, 3, 'us'), 3), ((3, 1, 'them'), 3), ((1, 1, 'them'), 2), ((1, 1, 'us'), 2), ((2, 2, 'us'), 2), ((2, 2, 'them'), 2)]
+ next first {'them': 63, 'us': 63, None: 8}
+ Collectors lost in 10 s after (ours, theirs): [4.85074627 4.85074627]

@@ -223,8 +223,17 @@ def cmd_trace(args):
 
 
 def load_rows(out: Path) -> list[dict]:
-    path = out / "matches.jsonl"
-    return [json.loads(x) for x in path.read_text().splitlines() if x.strip()] if path.exists() else []
+    """``matches.jsonl`` (or the committed ``matches.jsonl.gz`` when there is no plain file)."""
+    import gzip
+
+    path, packed = out / "matches.jsonl", out / "matches.jsonl.gz"
+    if path.exists():
+        text = path.read_text()
+    elif packed.exists():
+        text = gzip.decompress(packed.read_bytes()).decode()
+    else:
+        return []
+    return [json.loads(x) for x in text.splitlines() if x.strip()]
 
 
 def cmd_play(args):
@@ -317,7 +326,8 @@ def cmd_report(args):
             lines.append(line)
     txt = "\n".join(lines)
     print(txt)
-    (Path(args.out) / "report.txt").write_text(txt + "\n")
+    name = "report_" + "".join(c if c.isalnum() or c in "_=" else "-" for c in args.base) + ".txt"
+    (Path(args.out) / name).write_text(txt + "\n")
 
 
 def main():

@@ -12,6 +12,11 @@ of ours that seeks it out and annihilates with it removes that advantage.  V17's
 enemy Hunter only near our spawn (12) or next to exposed storage (4) and the single Hunter is a
 camper that ignores Hunters, so V25 rarely trades on purpose.
 
+Result (§30, simulator, 256 paired matches): no variant helps.  ``parity`` (the default) vs V25
+-9.9 +- 2.5, in race-lost games of V23 + race_commit -14.2 +- 2.9; the best (``surplus``) +1.0 +- 1.3.
+The trade that pays (+61.7 in race-lost games) is the opening one on the sanctuary threshold,
+which V25's ``race_commit`` already makes.  Experimental only -- keep V25 as the teacher.
+
 Rules (all off = V25 exactly, ``tests/test_v26_trade.py``):
 
 * ``late_trade`` -- each enemy Hunter outside its base is matched (greedy, shortest path first) to
