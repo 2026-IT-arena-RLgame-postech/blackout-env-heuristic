@@ -123,6 +123,10 @@ class GroupedQueryAttention(nn.Module):
         return logits.pow(2).mean().sqrt().item()
 
     def _flash_gqa(self, q, k, v, attn_mask, is_causal):
+        if q.is_cuda and not _cuda_flash_ok(q):
+            # e.g. Turing (sm_75) or fp32: no Flash kernel.  Go straight to the fallback -- raising
+            # and catching per call is slow, and torch.compile cannot trace through the failure.
+            return self._repeat_kv_sdpa(q, k, v, attn_mask, is_causal)
         try:
             # torch>=2.5: enable_gqa=True 이면 K/V를 미리 repeat 하지 않아도
             # SDPA가 내부적으로 broadcast 하여 Flash Attention 커널로 바로 전달
@@ -137,14 +141,23 @@ class GroupedQueryAttention(nn.Module):
         except (RuntimeError, TypeError):
             # torch<2.5 이거나 Flash 백엔드를 못 쓰는 환경(예: CPU, 지원 안 하는
             # head_dim/dtype)에서는 K/V head를 수동으로 repeat_interleave 해서 사용
-            k = k.repeat_interleave(self.num_groups, dim=1)
-            v = v.repeat_interleave(self.num_groups, dim=1)
-            return F.scaled_dot_product_attention(
-                q, k, v,
-                attn_mask=attn_mask,
-                dropout_p=self.dropout if self.training else 0.0,
-                is_causal=is_causal,
-            )
+            return self._repeat_kv_sdpa(q, k, v, attn_mask, is_causal)
+
+    def _repeat_kv_sdpa(self, q, k, v, attn_mask, is_causal):
+        k = k.repeat_interleave(self.num_groups, dim=1)
+        v = v.repeat_interleave(self.num_groups, dim=1)
+        return F.scaled_dot_product_attention(
+            q, k, v,
+            attn_mask=attn_mask,
+            dropout_p=self.dropout if self.training else 0.0,
+            is_causal=is_causal,
+        )
+
+
+def _cuda_flash_ok(q: torch.Tensor) -> bool:
+    """Flash Attention (SDPA's FLASH backend) runs on Ampere+ (sm_80+) in fp16/bf16 only."""
+    return (q.dtype in (torch.float16, torch.bfloat16) and q.shape[-1] <= 256
+            and torch.cuda.get_device_capability(q.device) >= (8, 0))
 
 
 class AttentionBlock(nn.Module):
