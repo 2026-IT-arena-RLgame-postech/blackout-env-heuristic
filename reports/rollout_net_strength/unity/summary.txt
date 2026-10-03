@@ -1,0 +1,8 @@
+candidate                                  inference opponent                                       n  margin   ±se   win H<30s H<60s H<120 Ca<60 end_s  agree deliv/1k  rev/1k die/1k @base camped   ang  <=2 ang10 <=2@10
+frozen/p11_v22.pt                          iqn       strategic_v19                                400   +77.7   1.0  0.98   2.4   2.2   1.1   1.0    34   0.88      4.4     350   0.97  0.41   0.12  10.2 0.68   4.1   0.77
+frozen/p11_v22.pt                          iqn       strategic_v23                                400    -2.7   3.4  0.49   1.2   1.8   2.1   0.8    65   0.86      1.9     230   4.41  0.65   0.44  11.1 0.61   6.1   0.70
+rollout_net/r5.pt                          iqn       ckpt-frozen-p11_v22                          400    -3.6   3.3  0.50   1.4   2.2   2.9   0.9    99   0.74      1.3     330   2.74  0.65   0.27  26.4 0.51  12.0   0.63
+rollout_net/r5.pt                          iqn       strategic_v19                                400   +70.3   1.3  0.96   2.5   2.8   2.8   1.0   103   0.62      1.5     661   0.51  0.44   0.06  41.5 0.47  11.6   0.66
+rollout_net/r5.pt                          iqn       strategic_v23                                400    -1.2   3.1  0.51   1.4   2.3   2.8   0.9   133   0.72      1.0     456   2.27  0.64   0.25  29.9 0.53  12.0   0.63
+
+paired gap (candidate - teacher)           inference opponent                                     seeds     gap   ±se
