@@ -125,11 +125,12 @@ def pinned(array: np.ndarray, device: torch.device) -> torch.Tensor:
 
 
 def to_device(batch: dict, device: torch.device) -> dict[str, torch.Tensor]:
-    """numpy arrays or (pinned) host tensors -> device tensors (asynchronous from pinned memory)."""
+    """numpy arrays or (pinned) host tensors -> device tensors: asynchronous only from pinned
+    memory (cuda); a pageable source is copied synchronously (MPS / CPU behave as before)."""
     out = {}
     for k, v in batch.items():
         t = torch.from_numpy(np.ascontiguousarray(v)) if isinstance(v, np.ndarray) else v
-        out[k] = t.to(device, non_blocking=True)
+        out[k] = t.to(device, non_blocking=device.type == "cuda" and t.is_pinned())
     return out
 
 

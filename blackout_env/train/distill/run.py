@@ -346,7 +346,7 @@ class Learner:
         # an arithmetic shift still reads bit 63 right after the & 1)
         # (cuda: pinned host copies, so the copies to the GPU are asynchronous)
         batch = {k: pinned(rows[k].view(np.int64) if rows[k].dtype == np.uint64 else rows[k], self.device)
-                 .to(self.device, non_blocking=True) for k in FIELDS}
+                 .to(self.device, non_blocking=self.device.type == "cuda") for k in FIELDS}
         graphic = batch["graphic"].permute(0, 3, 1, 2).float() / GRAPHIC_SCALE
         masks = ((batch["labels"].long().unsqueeze(-1) >> self._bit_index) & 1) == 1  # dataset.unpack_labels
         classes = batch["agent_states"][:, :N_TEAM, CLASS_COLS]
@@ -356,7 +356,7 @@ class Learner:
             masks = torch.cat((masks, stand.unsqueeze(-1)), dim=-1)
             kinds = torch.where(stand, torch.full_like(kinds, KIND_INDEX["stand"]), kinds)
         # P11: the teacher's raw headings (NaN = none) and seconds of play (team_state[2] = time left)
-        aux = {"angles": pinned(angles_of(rows), self.device).to(self.device, non_blocking=True),
+        aux = {"angles": pinned(angles_of(rows), self.device).to(self.device, non_blocking=self.device.type == "cuda"),
                "elapsed": (1.0 - batch["team_state"][:, 2].float()) * MATCH_SECONDS}
         return graphic, batch["team_state"], batch["agent_states"], masks, classes, kinds, aux
 
