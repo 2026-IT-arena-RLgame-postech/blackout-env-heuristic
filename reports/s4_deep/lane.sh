@@ -7,7 +7,7 @@ PY=~/blackout-env/.venv/bin/python
 export CUDA_VISIBLE_DEVICES=$G NUMBA_NUM_THREADS=${NT:-4} OMP_NUM_THREADS=${NT:-4}
 while IFS='|' read -r tag opp seeds extra; do
   [[ -z "$tag" || "$tag" == \#* ]] && continue
-  out=reports/s4_deep/runs/${tag}_${opp}
+  out=reports/s4_deep/parts/${tag}_${opp}
   plain=--no-plain; [[ "$tag" == s8e25m3 ]] && plain=
   echo "=== $tag vs $opp ($seeds seeds) $(date +%T) load $(cut -d' ' -f1 /proc/loadavg)"
   PYTHONPATH=. $PY examples/s3_search_eval.py play --opponent $opp --seeds $seeds --seed0 2000000 --chunk 128 \
