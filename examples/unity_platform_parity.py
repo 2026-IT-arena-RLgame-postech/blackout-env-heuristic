@@ -166,7 +166,7 @@ def _first_diff(a, b, n):
 
 
 def compare_pair(pa: Path, pb: Path) -> dict:
-    A, B = np.load(pa), np.load(pb)
+    A, B = dict(np.load(pa)), dict(np.load(pb))  # decompress once
     ma, mb = json.loads(str(A["meta"])), json.loads(str(B["meta"]))
     n = min(len(A["raw_state"]), len(B["raw_state"]))
     d_state = _first_diff(A["raw_state"], B["raw_state"], n)
@@ -183,6 +183,9 @@ def compare_pair(pa: Path, pb: Path) -> dict:
         first = {"tick": obs_first, "kind": "state" if obs_first == d_state else "map"}
     else:
         first = None
+    obs_diff_ticks = int(sum(not (np.array_equal(A["raw_state"][t], B["raw_state"][t])
+                                  and np.array_equal(A["raw_map"][t], B["raw_map"][t])) for t in range(n)))
+    move_diff_ticks = int(np.any(A["moves"][:n] != B["moves"][:n], axis=(1, 2)).sum())
     blank = [int((A["raw_map"] == 0).all(axis=(1, 2)).sum()), int((B["raw_map"] == 0).all(axis=(1, 2)).sum())]
     const = [int((A["raw_map"] == A["raw_map"][:, :1, :1]).all(axis=(1, 2)).sum()),
              int((B["raw_map"] == B["raw_map"][:, :1, :1]).all(axis=(1, 2)).sum())]
@@ -191,6 +194,8 @@ def compare_pair(pa: Path, pb: Path) -> dict:
     margin = lambda s: None if s[0] is None else round(100 * (s[0] - s[1]), 1)  # noqa: E731
     return {"file": pa.name, "seed": ma["seed"], "steps": [len(A["raw_state"]), len(B["raw_state"])],
             "identical": first is None and len(A["raw_state"]) == len(B["raw_state"]), "first_diff": first,
+            "obs_diff_ticks": obs_diff_ticks, "move_diff_ticks": move_diff_ticks,
+            "first_obs_diff": None if obs_first >= n else int(obs_first),
             "blank_map_frames": blank, "constant_map_frames": const,
             "map_bits_equal_frac": float(np.mean([np.array_equal(A["raw_map"][t], B["raw_map"][t]) for t in range(n)])),
             "scores": [sa, sb], "margin": [margin(sa), margin(sb)]}
