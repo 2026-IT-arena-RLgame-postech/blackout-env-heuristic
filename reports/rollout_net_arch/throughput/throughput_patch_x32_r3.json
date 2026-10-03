@@ -1,0 +1,46 @@
+[
+ {
+  "policy": "small:checkpoints/rollout_net_arch/init/patch_x32.pt",
+  "device": "cuda",
+  "precision": "fp32",
+  "N": 1024,
+  "game_decisions_per_s": 26769.13146438342,
+  "us_per_game_decision": 37.35646041899078,
+  "render_us": 2.4349721404022753,
+  "policy_us": 30.80697695291065,
+  "step_us": 3.0067008622385005
+ },
+ {
+  "policy": "small:checkpoints/rollout_net_arch/init/patch_x32.pt",
+  "device": "cuda",
+  "precision": "fp32",
+  "N": 2048,
+  "game_decisions_per_s": 25217.337072309234,
+  "us_per_game_decision": 39.65525769563054,
+  "render_us": 3.0483515003656776,
+  "policy_us": 29.844088268132733,
+  "step_us": 5.8369173919142785
+ },
+ {
+  "policy": "small:checkpoints/rollout_net_arch/init/patch_x32.pt",
+  "device": "cuda",
+  "precision": "fp16",
+  "N": 1024,
+  "game_decisions_per_s": 31787.236930450163,
+  "us_per_game_decision": 31.459167155295063,
+  "render_us": 2.5631573161051864,
+  "policy_us": 24.39911260959544,
+  "step_us": 3.527491100251882
+ },
+ {
+  "policy": "small:checkpoints/rollout_net_arch/init/patch_x32.pt",
+  "device": "cuda",
+  "precision": "fp16",
+  "N": 2048,
+  "game_decisions_per_s": 29460.953092183227,
+  "us_per_game_decision": 33.94323316258653,
+  "render_us": 3.1161189906786597,
+  "policy_us": 24.6895034862218,
+  "step_us": 4.973426194958314
+ }
+]

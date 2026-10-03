@@ -6,3 +6,20 @@ checkpoints/rollout_net_arch/dagger_base/part_004.npz 60896 over 0.69 1309s
 checkpoints/rollout_net_arch/dagger_base/part_005.npz 65274 over 0.69 1452s
 checkpoints/rollout_net_arch/dagger_base/part_006.npz 56336 over 0.78 1452s
 checkpoints/rollout_net_arch/dagger_base/part_007.npz 67430 over 0.59 1620s
+checkpoints/rollout_net_arch/dagger_base/part_008.npz 74426 over 0.56 2025s
+checkpoints/rollout_net_arch/dagger_base/part_009.npz 49876 over 0.81 2025s
+checkpoints/rollout_net_arch/dagger_base/part_010.npz 55722 over 0.72 2025s
+checkpoints/rollout_net_arch/dagger_base/part_011.npz 53958 over 0.78 2025s
+checkpoints/rollout_net_arch/dagger_base/part_012.npz 61836 over 0.66 2358s
+checkpoints/rollout_net_arch/dagger_base/part_013.npz 71714 over 0.56 2652s
+checkpoints/rollout_net_arch/dagger_base/part_014.npz 64450 over 0.66 2688s
+checkpoints/rollout_net_arch/dagger_base/part_015.npz 55804 over 0.72 2688s
+checkpoints/rollout_net_arch/dagger_base/part_016.npz 45392 over 0.88 2802s
+checkpoints/rollout_net_arch/dagger_base/part_017.npz 58062 over 0.72 3013s
+checkpoints/rollout_net_arch/dagger_base/part_018.npz 58478 over 0.78 3142s
+checkpoints/rollout_net_arch/dagger_base/part_019.npz 48146 over 0.84 3142s
+checkpoints/rollout_net_arch/dagger_base/part_020.npz 55920 over 0.78 3164s
+checkpoints/rollout_net_arch/dagger_base/part_021.npz 67836 over 0.62 3473s
+checkpoints/rollout_net_arch/dagger_base/part_022.npz 54676 over 0.78 3473s
+checkpoints/rollout_net_arch/dagger_base/part_023.npz 66806 over 0.66 3605s
+rows 1435752 3612s
