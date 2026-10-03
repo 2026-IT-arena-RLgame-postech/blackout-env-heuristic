@@ -1,0 +1,2 @@
+s8e25          vs strategic_v23    n= 256 seeds= 128  search  +23.9  plain   -1.5  diff  +25.4 ±  4.2  win(sign) +0.38 vs +0.02  race w/t/l (66, 182, 8) vs (21, 226, 9)  capped 0.24/0.33  len 141s  wall 10.8s/match (plain 4.17)  e25 w25 m0.0 B8
+                  base share 0.16; alt0 0.13, alt1 0.12, alt2 0.12, alt3 0.12, alt4 0.12, samp1s0 0.12, samp1s1 0.12
