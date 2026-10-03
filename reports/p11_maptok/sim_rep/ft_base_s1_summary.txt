@@ -1,0 +1,6 @@
+candidate  opponent       n  margin   ±se        W/D/L %     race W/T/L   Δ vs p11   ±se same race
+net:runs/models/ft_base_s1.pt v23         1000    +6.6   2.1   56/  0/ 44       72/885/43 
+
+paired Δ lead vs p11 by match time (s):        10        20        30        45        60        90       120       150       240       300      final
+
+net:runs/models/ft_base_s1.pt vs v23        length  80.1s (p90 182.0) target/timeout 0.88 exhausted 0.12 | margin by race: raceW +76.4(n72) raceT +4.9(n885) raceL -77.0(n43)
