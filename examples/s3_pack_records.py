@@ -34,6 +34,7 @@ def main():
     p.add_argument("--val-frac", type=float, default=0.05)
     p.add_argument("--branch-weight", type=int, default=1)
     p.add_argument("--every", type=int, default=1, help="keep every n-th decision of a match")
+    p.add_argument("--drop-branches", default="", help="comma list of branch indices whose rows are dropped (e.g. sampled branches: noise labels)")
     p.add_argument("--r5-kl", default="", help="rollout net checkpoint whose logits fill p11_q / p11_off")
     p.add_argument("--device", default="mps")
     args = p.parse_args()
@@ -42,6 +43,8 @@ def main():
     parts = [dict(np.load(f)) for f in sorted(glob.glob(args.records))]
     data = {k: np.concatenate([q[k] for q in parts]) for k in parts[0]}
     keep = data["tick"] % args.every == 0
+    for b in filter(None, args.drop_branches.split(",")):
+        keep &= data["branch"] != int(b)
     data = {k: v[keep] for k, v in data.items()}
     n = len(data["tick"])
     labels = np.zeros((n, 5), np.uint64)
