@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # H1 in Unity (docs §22 "Unity 확인"): P11 and the two map-token nets vs V23 / V19 / P5a, then the
-# small nets head-to-head vs P11.  Seeds 1200000-199 x both sides (= §19's r5 Unity run), 12 Unity
-# workers on poscat_gpu1, P11 / P5a on GPU0 (BLACKOUT_CUDA_NETS), the small nets on the CPU.
+# small nets head-to-head vs P11.  Seeds 1200000-199 x both sides (= §19's r5 Unity run), 10 Unity
+# workers on poscat_gpu2 (moved from gpu1 at 1055 matches; resumed), P11 / P5a on GPU0 (BLACKOUT_CUDA_NETS), the small nets on the CPU.
 # Run with setsid nohup from ~/blackout-env-newnet; a rerun skips matches already in matches.jsonl.
 set -u
 cd ~/blackout-env-newnet
@@ -13,7 +13,7 @@ P11=checkpoints/distill/frozen/p11_v22.pt
 P5A=checkpoints/distill/frozen/p5a_v22.pt
 D256=checkpoints/rollout_net/arch/d256_f3_x32_d2.pt
 F3X=checkpoints/rollout_net/arch/f3_x_d2.pt
-COMMON="--teacher act:strategic_v23 --no-teacher-baseline --seeds ${SEEDS:-200} --seed-base 1200000 --workers 12
+COMMON="--teacher act:strategic_v23 --no-teacher-baseline --seeds ${SEEDS:-200} --seed-base 1200000 --workers ${WORKERS:-10}
         --build build/linux_server/BlackOut.x86_64"
 mkdir -p $OUT
 echo "start $(date)" >> $OUT/stdout.log
