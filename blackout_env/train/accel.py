@@ -13,6 +13,7 @@ RTX 2080 Ti: Turing sm_75, fp16 tensor cores, no bf16 / TF32) without changing w
   ranks of one machine share one page-cache copy instead of each holding the arrays in RAM.
 * ``Prefetcher``: builds batches in a background thread (numpy fancy indexing releases the
   GIL), pins them, and ``to_device`` copies with ``non_blocking``.
+* ``pick_device`` on cuda also caps torch's CPU threads (``cuda_host_threads``).
 * ``Dist``: torchrun's environment -> process group (nccl on cuda, gloo otherwise), rank /
   world, ``all_reduce_sum``, ``barrier``, ``wrap`` in DistributedDataParallel; a single
   process when not launched by torchrun (world 1, every call a no-op).
@@ -52,7 +53,23 @@ def pick_device(name: str | None = "auto") -> torch.device:
     if device.type == "cuda":
         torch.cuda.set_device(device)
         torch.backends.cudnn.benchmark = True  # fixed input shapes: pick the fastest conv algorithm once
+        cuda_host_threads()
     return device
+
+
+CUDA_HOST_THREADS = 4
+
+
+def cuda_host_threads() -> None:
+    """Intra-op CPU threads for a CUDA trainer: CUDA_HOST_THREADS unless OMP_NUM_THREADS was set by
+    hand (torchrun's own OMP_NUM_THREADS=1 does not count).  Measured on the shared 28-core servers
+    (RolloutNet step, 2080 Ti): 1 thread halved the step rate on an idle host (host-side copies and
+    CPU ops around the optimizer), while torch's default (one per core) made it 3-4x slower once
+    the host was oversubscribed (load 60+: OpenMP teams spinning against everyone else); 2-4 was
+    fast in both cases."""
+    omp = os.environ.get("OMP_NUM_THREADS")
+    if omp is None or (omp == "1" and "TORCHELASTIC_RUN_ID" in os.environ):
+        torch.set_num_threads(CUDA_HOST_THREADS)
 
 
 def sync(device: torch.device) -> None:
@@ -183,10 +200,6 @@ class Dist:
         self.rank = int(os.environ.get("RANK", 0))
         self.device = device
         self.enabled = self.world > 1
-        if self.enabled and os.environ.get("OMP_NUM_THREADS") == "1" and torch.get_num_threads() == 1:
-            # torchrun sets OMP_NUM_THREADS=1; with one intra-op thread the host side of a step
-            # (pinned copies, CPU ops around the optimizer) halves a 2080 Ti's step rate (measured)
-            torch.set_num_threads(max(1, min(8, (os.cpu_count() or 8) // self.world)))
         if self.enabled and not torch.distributed.is_initialized():
             backend = "nccl" if device.type == "cuda" else "gloo"
             torch.distributed.init_process_group(backend, device_id=device if device.type == "cuda" else None)
