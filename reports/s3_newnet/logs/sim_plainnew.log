@@ -1,0 +1,4 @@
+=== 16:42:08 plain_new net=checkpoints/rollout_net/arch/f3_x_d2.pt value=checkpoints/value/frozen/s2v_iter5.pt vs p11 seeds=384 --no-plain --no-search
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4", "samp1s0", "samp1s1"], "every": 25, "window": 25, "margin": 3.0, "net": "checkpoints/rollout_net/arch/f3_x_d2.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": ""}
+[plain_new vs p11] 128/768 margin +5.8 wall 147s (1.1s/match, search 0s)
+[plain_new vs p11] 256/768 margin +8.8 wall 151s (1.2s/match, search 0s)

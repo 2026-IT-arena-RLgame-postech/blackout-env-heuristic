@@ -1,0 +1,5 @@
+=== 22:53:35 search_d256 net=checkpoints/rollout_net/arch/d256_f3_x32_d2.pt value=checkpoints/value/frozen/s2v_iter5.pt vs p11 seeds=128 --no-plain
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4", "samp1s0", "samp1s1"], "every": 25, "window": 25, "margin": 3.0, "net": "checkpoints/rollout_net/arch/d256_f3_x32_d2.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": ""}
+[search_d256 vs p11] 128/256 margin +45.8 wall 844s (6.6s/match, search 679s)
+[search_d256 vs p11] 256/256 margin +42.1 wall 809s (6.3s/match, search 643s)
+=== 23:21:14 done

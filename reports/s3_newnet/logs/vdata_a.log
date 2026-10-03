@@ -1,0 +1,6 @@
+opponent self: 640 matches, 640 to play
+[self] 128/640: 34840 rows (traj 12050, branch 22790), 54 root ticks, match len 95s, chunk 291s (branches 214s); total 34840 rows, 303s
+[self] 256/640: 37660 rows (traj 13022, branch 24638), 53 root ticks, match len 102s, chunk 302s (branches 236s); total 72500 rows, 618s
+[self] 384/640: 44351 rows (traj 15674, branch 28677), 55 root ticks, match len 124s, chunk 296s (branches 242s); total 116851 rows, 925s
+[self] 512/640: 45413 rows (traj 16952, branch 28461), 53 root ticks, match len 134s, chunk 276s (branches 215s); total 162264 rows, 1211s
+[self] 640/640: 44986 rows (traj 15690, branch 29296), 57 root ticks, match len 124s, chunk 251s (branches 207s); total 207250 rows, 1474s

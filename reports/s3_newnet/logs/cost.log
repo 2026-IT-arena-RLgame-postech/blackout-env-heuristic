@@ -1,0 +1,62 @@
+0 {"r5": {"server_1": 0.278, "server_8": 2.544, "server_32": 3.406, "lockstep_128": 13.496}, "new": {"server_1": 0.324, "server_8": 2.81, "server_32": 4.531, "lockstep_128": 13.958}, "d256": {"server_1": 0.427, "server_8": 1.786, "server_32": 4.512, "lockstep_128": 15.101}}
+1 {"r5": {"server_1": 0.361, "server_8": 1.503, "server_32": 3.11, "lockstep_128": 12.45}, "new": {"server_1": 0.411, "server_8": 1.951, "server_32": 4.291, "lockstep_128": 15.438}, "d256": {"server_1": 0.346, "server_8": 2.822, "server_32": 4.952, "lockstep_128": 14.73}}
+2 {"r5": {"server_1": 0.306, "server_8": 1.703, "server_32": 3.99, "lockstep_128": 12.536}, "new": {"server_1": 0.311, "server_8": 2.537, "server_32": 3.245, "lockstep_128": 14.048}, "d256": {"server_1": 0.402, "server_8": 1.862, "server_32": 4.756, "lockstep_128": 15.043}}
+3 {"r5": {"server_1": 0.286, "server_8": 1.458, "server_32": 2.847, "lockstep_128": 12.542}, "new": {"server_1": 0.356, "server_8": 2.771, "server_32": 4.081, "lockstep_128": 13.503}, "d256": {"server_1": 0.35, "server_8": 2.528, "server_32": 4.888, "lockstep_128": 14.942}}
+4 {"r5": {"server_1": 0.411, "server_8": 1.395, "server_32": 3.299, "lockstep_128": 12.528}, "new": {"server_1": 0.346, "server_8": 1.684, "server_32": 3.898, "lockstep_128": 14.329}, "d256": {"server_1": 0.417, "server_8": 1.953, "server_32": 4.037, "lockstep_128": 14.597}}
+{
+ "r5": {
+  "server_1": {
+   "median_s": 0.3059637739788741,
+   "per_root_ms": 305.9637739788741
+  },
+  "server_8": {
+   "median_s": 1.5032321729231626,
+   "per_root_ms": 187.90402161539532
+  },
+  "server_32": {
+   "median_s": 3.299185408046469,
+   "per_root_ms": 103.09954400145216
+  },
+  "lockstep_128": {
+   "median_s": 12.536187128163874,
+   "per_root_ms": 97.93896193878027
+  }
+ },
+ "new": {
+  "server_1": {
+   "median_s": 0.3462255608756095,
+   "per_root_ms": 346.2255608756095
+  },
+  "server_8": {
+   "median_s": 2.536941956030205,
+   "per_root_ms": 317.1177445037756
+  },
+  "server_32": {
+   "median_s": 4.080566092859954,
+   "per_root_ms": 127.51769040187355
+  },
+  "lockstep_128": {
+   "median_s": 14.048057058127597,
+   "per_root_ms": 109.75044576662185
+  }
+ },
+ "d256": {
+  "server_1": {
+   "median_s": 0.40192583994939923,
+   "per_root_ms": 401.92583994939923
+  },
+  "server_8": {
+   "median_s": 1.9526345210615546,
+   "per_root_ms": 244.07931513269432
+  },
+  "server_32": {
+   "median_s": 4.7560161461587995,
+   "per_root_ms": 148.62550456746249
+  },
+  "lockstep_128": {
+   "median_s": 14.942315995926037,
+   "per_root_ms": 116.73684371817217
+  }
+ },
+ "roots": 128
+}

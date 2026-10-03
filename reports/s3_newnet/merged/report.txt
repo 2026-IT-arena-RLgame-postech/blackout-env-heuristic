@@ -1,14 +1,34 @@
 plain_new      vs p11              n= 256 seeds= 128  search   +7.3  plain   +0.3  diff   +7.0 ±  4.5  win(sign) +0.12 vs +0.05  race w/t/l (11, 244, 1) vs (25, 230, 1)  capped 0.24/0.23  len 131s  wall 1.2s/match (plain 1.07)  e0 w0 m0 B1
                   base share 0.00; 
+plain_new      vs strategic_v23    n= 256 seeds= 128  search   +4.7  plain   -1.8  diff   +6.5 ±  4.5  win(sign) +0.10 vs +0.04  race w/t/l (13, 234, 9) vs (22, 225, 9)  capped 0.29/0.31  len 143s  wall 15.1s/match (plain 11.59)  e0 w0 m0 B1
+                  base share 0.00; 
+search_d256    vs p11              n= 256 seeds= 128  search  +43.9  plain   +0.3  diff  +43.7 ±  4.9  win(sign) +0.60 vs +0.05  race w/t/l (18, 237, 1) vs (25, 230, 1)  capped 0.18/0.23  len 117s  wall 6.5s/match (plain 1.07)  e25 w25 m3.0 B8
+                  base share 0.72; alt0 0.05, alt1 0.04, alt2 0.04, alt3 0.04, alt4 0.04, samp1s0 0.04, samp1s1 0.04
 search_new     vs p11              n= 768 seeds= 384  search  +42.4  plain   -5.0  diff  +47.3 ±  2.5  win(sign) +0.62 vs -0.04  race w/t/l (86, 670, 12) vs (55, 705, 8)  capped 0.23/0.26  len 134s  wall 9.2s/match (plain 1.02)  e25 w25 m3.0 B8
                   base share 0.76; alt0 0.04, alt1 0.03, alt2 0.03, alt3 0.03, alt4 0.04, samp1s0 0.03, samp1s1 0.03
+search_new     vs strategic_v23    n= 256 seeds= 128  search  +43.3  plain   -1.8  diff  +45.1 ±  4.4  win(sign) +0.67 vs +0.04  race w/t/l (30, 217, 9) vs (22, 225, 9)  capped 0.20/0.31  len 129s  wall 22.9s/match (plain 11.59)  e25 w25 m3.0 B8
+                  base share 0.75; alt0 0.04, alt1 0.03, alt2 0.03, alt3 0.04, alt4 0.04, samp1s0 0.04, samp1s1 0.03
+search_new_v5  vs p11              n= 256 seeds= 128  search  +45.4  plain   +0.3  diff  +45.2 ±  4.9  win(sign) +0.68 vs +0.05  race w/t/l (33, 219, 4) vs (25, 230, 1)  capped 0.22/0.23  len 133s  wall 7.4s/match (plain 1.07)  e25 w25 m3.0 B8
+                  base share 0.72; alt0 0.05, alt1 0.04, alt2 0.04, alt3 0.04, alt4 0.04, samp1s0 0.04, samp1s1 0.04
 search_r5      vs p11              n= 768 seeds= 384  search  +30.4  plain   -5.0  diff  +35.4 ±  2.7  win(sign) +0.44 vs -0.04  race w/t/l (214, 544, 10) vs (55, 705, 8)  capped 0.24/0.26  len 139s  wall 7.0s/match (plain 1.02)  e25 w25 m3.0 B8
                   base share 0.72; alt0 0.04, alt1 0.04, alt2 0.04, alt3 0.04, alt4 0.04, samp1s0 0.04, samp1s1 0.04
 search_r5      vs rnet:checkpoints/rollout_net/arch/f3_x_d2.pt n= 384 seeds= 192  search  +28.0  plain   -7.7  diff  +35.7 ±  4.0  win(sign) +0.39 vs -0.11  race w/t/l (97, 277, 10) vs (27, 344, 13)  capped 0.24/0.31  len 137s  wall 10.7s/match (plain 2.21)  e25 w25 m3.0 B8
                   base share 0.72; alt0 0.04, alt1 0.04, alt2 0.04, alt3 0.04, alt4 0.04, samp1s0 0.04, samp1s1 0.04
+search_r5      vs strategic_v23    n= 256 seeds= 128  search  +29.7  plain   -1.8  diff  +31.5 ±  4.6  win(sign) +0.44 vs +0.04  race w/t/l (68, 181, 7) vs (22, 225, 9)  capped 0.24/0.31  len 140s  wall 23.6s/match (plain 11.59)  e25 w25 m3.0 B8
+                  base share 0.71; alt0 0.05, alt1 0.04, alt2 0.04, alt3 0.04, alt4 0.04, samp1s0 0.04, samp1s1 0.04
 PAIR search_new - search_r5 vs p11              n= 768 seeds= 384   +42.4 vs  +30.4  diff  +11.9 ±  2.7  race w/t/l (86, 670, 12) vs (214, 544, 10)  search s/match 7.49 vs 5.55
+PAIR search_new - search_r5 vs strategic_v23    n= 256 seeds= 128   +43.3 vs  +29.7  diff  +13.6 ±  4.5  race w/t/l (30, 217, 9) vs (68, 181, 7)  search s/match 10.26 vs 10.55
 PAIR search_new - plain vs p11              n= 768 seeds= 384   +42.4 vs   -5.0  diff  +47.3 ±  2.5  race w/t/l (86, 670, 12) vs (55, 705, 8)  search s/match 7.49 vs 0.00
+PAIR search_new - plain vs strategic_v23    n= 256 seeds= 128   +43.3 vs   -1.8  diff  +45.1 ±  4.4  race w/t/l (30, 217, 9) vs (22, 225, 9)  search s/match 10.26 vs 0.00
 PAIR search_r5 - plain vs p11              n= 768 seeds= 384   +30.4 vs   -5.0  diff  +35.4 ±  2.7  race w/t/l (214, 544, 10) vs (55, 705, 8)  search s/match 5.55 vs 0.00
 PAIR search_r5 - plain vs rnet:checkpoints/rollout_net/arch/f3_x_d2.pt n= 384 seeds= 192   +28.0 vs   -7.7  diff  +35.7 ±  4.0  race w/t/l (97, 277, 10) vs (27, 344, 13)  search s/match 9.08 vs 0.00
+PAIR search_r5 - plain vs strategic_v23    n= 256 seeds= 128   +29.7 vs   -1.8  diff  +31.5 ±  4.6  race w/t/l (68, 181, 7) vs (22, 225, 9)  search s/match 10.55 vs 0.00
 PAIR plain_new - plain vs p11              n= 256 seeds= 128    +7.3 vs   +0.3  diff   +7.0 ±  4.5  race w/t/l (11, 244, 1) vs (25, 230, 1)  search s/match 0.00 vs 0.00
+PAIR plain_new - plain vs strategic_v23    n= 256 seeds= 128    +4.7 vs   -1.8  diff   +6.5 ±  4.5  race w/t/l (13, 234, 9) vs (22, 225, 9)  search s/match 0.00 vs 0.00
 PAIR search_new - plain_new vs p11              n= 256 seeds= 128   +43.4 vs   +7.3  diff  +36.1 ±  4.4  race w/t/l (34, 218, 4) vs (11, 244, 1)  search s/match 7.45 vs 0.00
+PAIR search_new - plain_new vs rnet:checkpoints/rollout_net/r5.pt n= 384 seeds= 192   +48.0 vs   +8.0  diff  +40.0 ±  3.8  race w/t/l (43, 319, 22) vs (13, 344, 27)  search s/match 7.27 vs 0.00
+PAIR search_new - plain_new vs strategic_v23    n= 256 seeds= 128   +43.3 vs   +4.7  diff  +38.6 ±  4.4  race w/t/l (30, 217, 9) vs (13, 234, 9)  search s/match 10.26 vs 0.00
+PAIR search_new - search_new_v5 vs p11              n= 256 seeds= 128   +43.4 vs  +45.4  diff   -2.0 ±  3.1  race w/t/l (34, 218, 4) vs (33, 219, 4)  search s/match 7.45 vs 5.94
+PAIR search_new_v5 - search_r5 vs p11              n= 256 seeds= 128   +45.4 vs  +28.1  diff  +17.3 ±  4.9  race w/t/l (33, 219, 4) vs (73, 179, 4)  search s/match 5.94 vs 2.95
+PAIR search_d256 - search_r5 vs p11              n= 256 seeds= 128   +43.9 vs  +28.1  diff  +15.8 ±  4.8  race w/t/l (18, 237, 1) vs (73, 179, 4)  search s/match 5.17 vs 2.95
+PAIR search_d256 - search_new vs p11              n= 256 seeds= 128   +43.9 vs  +43.4  diff   +0.5 ±  4.0  race w/t/l (18, 237, 1) vs (34, 218, 4)  search s/match 5.17 vs 7.45
