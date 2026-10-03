@@ -1,0 +1,4 @@
+w13stop|p11|128|--branches alt*,samp:1.0x2,stop*
+o4full|strategic_v23|128|--opp-branches samp:1.0x3 --opp-agg min --opp-left 150
+o4fmean|p11|128|--opp-branches samp:1.0x3 --opp-agg mean --opp-left 150
+o4fmean|strategic_v23|128|--opp-branches samp:1.0x3 --opp-agg mean --opp-left 150

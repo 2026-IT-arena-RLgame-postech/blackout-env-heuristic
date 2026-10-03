@@ -1,0 +1,5 @@
+w50|p11|128|--window 50
+w13r1|strategic_v23|128|--branches alt*,alt*:1,samp:1.0x2
+o4full|p11|128|--opp-branches samp:1.0x3 --opp-agg min --opp-left 150
+l200|p11|128|--leaf 200
+w13stop|strategic_v23|128|--branches alt*,samp:1.0x2,stop*

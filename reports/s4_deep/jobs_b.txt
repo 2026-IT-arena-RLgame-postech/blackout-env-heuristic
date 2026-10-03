@@ -1,0 +1,5 @@
+s8e25m3|strategic_v23|128|
+w18pair|strategic_v23|128|--branches alt*,pair*,samp:1.0x2
+o4min|p11|128|--opp-branches samp:1.0x3 --opp-agg min
+t2full|strategic_v23|128|--children alt*
+w12s|p11|128|--branches alt*,samp:1.0x6

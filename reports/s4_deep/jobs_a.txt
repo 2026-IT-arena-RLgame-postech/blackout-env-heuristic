@@ -1,0 +1,5 @@
+s8e25m3|p11|128|
+w13r1|p11|128|--branches alt*,alt*:1,samp:1.0x2
+t2bf|p11|128|--children alt*,samp:1.0x2 --expand 2
+o4min|strategic_v23|128|--opp-branches samp:1.0x3 --opp-agg min
+l200|strategic_v23|128|--leaf 200
