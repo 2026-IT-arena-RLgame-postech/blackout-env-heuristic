@@ -1,0 +1,19 @@
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4"], "every": 25, "window": 25, "margin": 0.0, "net": "checkpoints/rollout_net_arch/q8.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": "checkpoints/rollout_net_arch/q8.pt"}
+[plain vs r5] 128/256 margin +0.0 wall 30s (0.2s/match, search 0s)
+[plain vs r5] 256/256 margin +0.0 wall 28s (0.2s/match, search 0s)
+[q8_m0 vs r5] 128/256 margin -12.2 wall 67s (0.5s/match, search 2s)
+[q8_m0 vs r5] 256/256 margin -12.2 wall 65s (0.5s/match, search 2s)
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4"], "every": 25, "window": 25, "margin": 0.0, "net": "checkpoints/rollout_net_arch/q8.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": "checkpoints/rollout_net_arch/q8.pt"}
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory efficient kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:986.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory Efficient attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/sdp_utils_cpp.h:552.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:988.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention only supports gpu architectures in the range [sm80, sm121]. Attempting to run on a sm 7.5 gpu. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:342.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:990.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:706.)
+  return F.scaled_dot_product_attention(
+[plain vs p11] 128/256 margin -2.4 wall 98s (0.8s/match, search 0s)

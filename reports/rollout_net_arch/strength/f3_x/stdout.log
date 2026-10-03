@@ -1,0 +1,120 @@
+60 chunks, 3000 games, 6 workers
+[1/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 0 50 games, 138s, elapsed 141s
+[2/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 0 50 games, 140s, elapsed 144s
+[3/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 0 50 games, 143s, elapsed 147s
+[4/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 0 50 games, 146s, elapsed 149s
+[5/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 0 50 games, 152s, elapsed 155s
+[6/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 0 50 games, 210s, elapsed 214s
+[7/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 0 50 games, 88s, elapsed 231s
+[8/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 0 50 games, 147s, elapsed 296s
+[9/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 1 50 games, 93s, elapsed 306s
+[10/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 0 50 games, 175s, elapsed 316s
+[11/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 0 50 games, 171s, elapsed 317s
+[12/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 1 50 games, 164s, elapsed 319s
+[13/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 1 50 games, 139s, elapsed 371s
+[14/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 1 50 games, 100s, elapsed 416s
+[15/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 1 50 games, 182s, elapsed 489s
+[16/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 1 50 games, 224s, elapsed 521s
+[17/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 1 50 games, 206s, elapsed 523s
+[18/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 1 50 games, 259s, elapsed 578s
+[19/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 1 50 games, 249s, elapsed 619s
+[20/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v19 side 1 50 games, 242s, elapsed 659s
+[21/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 0 50 games, 412s, elapsed 933s
+[22/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 0 50 games, 560s, elapsed 1138s
+[23/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 0 50 games, 678s, elapsed 1201s
+[24/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 0 50 games, 870s, elapsed 1359s
+[25/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 0 50 games, 745s, elapsed 1404s
+[26/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 0 50 games, 849s, elapsed 1468s
+[27/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 0 50 games, 668s, elapsed 1601s
+[28/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 0 50 games, 603s, elapsed 1741s
+[29/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 0 50 games, 633s, elapsed 1834s
+[30/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 1 50 games, 637s, elapsed 2105s
+[31/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 0 50 games, 870s, elapsed 2229s
+[32/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 1 50 games, 828s, elapsed 2231s
+[33/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 1 50 games, 1060s, elapsed 2661s
+[34/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 1 50 games, 1206s, elapsed 2947s
+[35/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 1 50 games, 1223s, elapsed 3057s
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory efficient kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:986.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory Efficient attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/sdp_utils_cpp.h:552.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:988.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention only supports gpu architectures in the range [sm80, sm121]. Attempting to run on a sm 7.5 gpu. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:342.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:990.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:706.)
+  return F.scaled_dot_product_attention(
+[36/60] small:checkpoints/rollout_net_arch/f3_x.pt vs p5a side 0 50 games, 123s, elapsed 3180s
+[37/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 1 50 games, 1152s, elapsed 3257s
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory efficient kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:986.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory Efficient attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/sdp_utils_cpp.h:552.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:988.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention only supports gpu architectures in the range [sm80, sm121]. Attempting to run on a sm 7.5 gpu. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:342.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:990.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:706.)
+  return F.scaled_dot_product_attention(
+[38/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 1 50 games, 1258s, elapsed 3487s
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory efficient kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:986.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory Efficient attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/sdp_utils_cpp.h:552.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:988.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention only supports gpu architectures in the range [sm80, sm121]. Attempting to run on a sm 7.5 gpu. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:342.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:990.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:706.)
+  return F.scaled_dot_product_attention(
+[39/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 1 50 games, 1266s, elapsed 3497s
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory efficient kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:986.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory Efficient attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/sdp_utils_cpp.h:552.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:988.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention only supports gpu architectures in the range [sm80, sm121]. Attempting to run on a sm 7.5 gpu. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:342.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:990.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:706.)
+  return F.scaled_dot_product_attention(
+[40/60] small:checkpoints/rollout_net_arch/f3_x.pt vs p5a side 0 50 games, 347s, elapsed 3527s
+[41/60] small:checkpoints/rollout_net_arch/f3_x.pt vs p5a side 0 50 games, 374s, elapsed 3632s
+[42/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 1 50 games, 1211s, elapsed 3872s
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory efficient kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:986.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory Efficient attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/sdp_utils_cpp.h:552.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:988.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention only supports gpu architectures in the range [sm80, sm121]. Attempting to run on a sm 7.5 gpu. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:342.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:990.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:706.)
+  return F.scaled_dot_product_attention(
+[43/60] small:checkpoints/rollout_net_arch/f3_x.pt vs p5a side 0 50 games, 417s, elapsed 3905s
+[44/60] small:checkpoints/rollout_net_arch/f3_x.pt vs p5a side 0 50 games, 392s, elapsed 3919s
+[45/60] small:checkpoints/rollout_net_arch/f3_x.pt vs p5a side 0 50 games, 426s, elapsed 3924s
+[46/60] small:checkpoints/rollout_net_arch/f3_x.pt vs p5a side 0 50 games, 387s, elapsed 4019s
+[47/60] small:checkpoints/rollout_net_arch/f3_x.pt vs v23 side 1 50 games, 1259s, elapsed 4207s
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory efficient kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:986.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory Efficient attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/sdp_utils_cpp.h:552.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:988.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention only supports gpu architectures in the range [sm80, sm121]. Attempting to run on a sm 7.5 gpu. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:342.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:990.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:706.)
+  return F.scaled_dot_product_attention(

@@ -1,0 +1,9 @@
+60 chunks, 3000 games, 6 workers
+[1/60] small:checkpoints/rollout_net/r5.pt vs v19 side 0 50 games, 188s, elapsed 193s
+[2/60] small:checkpoints/rollout_net/r5.pt vs v19 side 0 50 games, 221s, elapsed 227s
+[3/60] small:checkpoints/rollout_net/r5.pt vs v19 side 0 50 games, 227s, elapsed 232s
+[4/60] small:checkpoints/rollout_net/r5.pt vs v19 side 0 50 games, 227s, elapsed 233s
+[5/60] small:checkpoints/rollout_net/r5.pt vs v19 side 0 50 games, 244s, elapsed 249s
+[6/60] small:checkpoints/rollout_net/r5.pt vs v19 side 0 50 games, 246s, elapsed 251s
+/usr/lib/python3.12/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 5 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

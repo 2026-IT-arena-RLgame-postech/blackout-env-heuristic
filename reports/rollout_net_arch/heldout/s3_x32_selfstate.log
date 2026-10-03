@@ -1,0 +1,6 @@
+checkpoints/rollout_net_arch/selfstate_s3_x32/part_000.npz 28516 over 0.69 235s
+checkpoints/rollout_net_arch/selfstate_s3_x32/part_001.npz 28208 over 0.69 238s
+checkpoints/rollout_net_arch/selfstate_s3_x32/part_002.npz 42198 over 0.50 322s
+checkpoints/rollout_net_arch/selfstate_s3_x32/part_003.npz 30826 over 0.75 322s
+rows 129748 322s
+checkpoints/rollout_net_arch/s3_x32.pt {"val": {"hit": 0.9102560448705526, "err": 9.877645069222728, "w2": 0.6812406662182652, "hit_open": 0.9369050921339409, "err_open": 6.284866907321181, "w2_open": 0.7054725579552209, "hit_late": 0.929304720481003, "err_late": 8.49074275740367, "p11_agree": 0.7961861208056629, "p11_err": 10.683984080117721}, "simval/val": {"hit": 0.8299537608113859, "err": 12.477317054037092, "w2": 0.5739971289864167, "hit_open": 0.8695640892579138, "err_open": 11.083886870783601, "w2_open": 0.6381421899325376, "hit_late": 0.8288234785366275, "err_late": 11.450939923458357, "p11_agree": 0.7143951883739391, "p11_err": 12.560130656751847}, "selfstate_s3_x32/train": {"hit": 0.7873307572099297, "err": 20.099583677729047, "w2": 0.5506055280618408, "hit_open": 0.8666226092365107, "err_open": 11.401460263503319, "w2_open": 0.6436142642409164, "hit_late": 0.7692220539632361, "err_late": 22.596817888758856, "p11_agree": NaN, "p11_err": NaN}, "params": 769664}

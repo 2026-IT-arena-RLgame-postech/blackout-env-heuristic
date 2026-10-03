@@ -1,0 +1,48 @@
+60 chunks, 3000 games, 6 workers
+[1/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 0 50 games, 200s, elapsed 204s
+[2/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 0 50 games, 206s, elapsed 210s
+[3/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 0 50 games, 211s, elapsed 214s
+[4/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 0 50 games, 218s, elapsed 222s
+[5/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 0 50 games, 222s, elapsed 226s
+[6/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 0 50 games, 229s, elapsed 233s
+[7/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 1 50 games, 187s, elapsed 413s
+[8/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 0 50 games, 261s, elapsed 465s
+[9/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 0 50 games, 262s, elapsed 483s
+[10/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 0 50 games, 323s, elapsed 533s
+[11/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 0 50 games, 343s, elapsed 557s
+[12/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 1 50 games, 397s, elapsed 630s
+[13/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 1 50 games, 302s, elapsed 716s
+[14/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 1 50 games, 311s, elapsed 776s
+[15/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 1 50 games, 260s, elapsed 793s
+[16/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 1 50 games, 280s, elapsed 836s
+[17/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 1 50 games, 378s, elapsed 861s
+[18/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 1 50 games, 245s, elapsed 876s
+[19/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 1 50 games, 219s, elapsed 934s
+[20/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v19 side 1 50 games, 288s, elapsed 1064s
+[21/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 0 50 games, 602s, elapsed 1463s
+[22/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 0 50 games, 654s, elapsed 1530s
+[23/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 0 50 games, 700s, elapsed 1536s
+[24/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 0 50 games, 1009s, elapsed 1801s
+[25/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 0 50 games, 872s, elapsed 1936s
+[26/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 0 50 games, 1023s, elapsed 1957s
+[27/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 0 50 games, 1244s, elapsed 2708s
+[28/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 0 50 games, 1211s, elapsed 2747s
+[29/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 0 50 games, 1366s, elapsed 2895s
+[30/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 0 50 games, 1225s, elapsed 3026s
+[31/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 1 50 games, 1117s, elapsed 3053s
+[32/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 1 50 games, 1336s, elapsed 3293s
+[33/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 1 50 games, 1090s, elapsed 3797s
+[34/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 1 50 games, 928s, elapsed 3954s
+[35/60] small:checkpoints/rollout_net_arch/s3_x32.pt vs v23 side 1 50 games, 1265s, elapsed 4160s
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory efficient kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:986.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory Efficient attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/sdp_utils_cpp.h:552.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:988.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention only supports gpu architectures in the range [sm80, sm121]. Attempting to run on a sm 7.5 gpu. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:342.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:990.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:706.)
+  return F.scaled_dot_product_attention(

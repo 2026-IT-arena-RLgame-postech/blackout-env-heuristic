@@ -93,6 +93,71 @@ def cmd_recipe(args):
           f"--extra-frac 0.5 --amp {args.amp}")
 
 
+def cmd_table(args):
+    """One row per variant: params, MAC/view, rollout throughput (2080 Ti, full BatchRollout loop, N=2048,
+    fp32) and its ratio to r5 = "search-equivalent" branches at a fixed search budget (B8 x ratio), held-out
+    hit / heading error (P11 val, sim DAgger val, own self-play states), sim strength paired vs P11 and vs r5."""
+    import math
+
+    sys.path.insert(0, str(REPO / "examples"))
+    from rollout_net_strength import summarize
+
+    root = Path(args.root)
+    macs = json.load(open(root / "macs.json"))
+    thr = {}
+    for f in (root / "throughput").glob("throughput_*.json"):
+        for r in json.load(open(f)):
+            if r["N"] == 2048:
+                thr[(f.stem.removeprefix("throughput_"), r["precision"])] = r["game_decisions_per_s"]
+    rows = []
+    names = args.variants or sorted({p.stem.removesuffix("_full") for p in (root / "heldout").glob("*_full.json")})
+    for v in names:
+        row = {"variant": v}
+        key = "base" if v in ("r5",) else v
+        if key in macs:
+            row.update(params_m=macs[key]["params"] / 1e6, mmac=macs[key]["mmac"])
+        t = thr.get((key, "fp32"))
+        if t:
+            row["thr_fp32"] = t
+            row["thr_fp16"] = thr.get((key, "fp16"))
+            row["cost_x"] = thr[("base", "fp32")] / t
+            row["search_B_eq"] = 8 * t / thr[("base", "fp32")]
+        hf = root / "heldout" / f"{v}_full.json"
+        if hf.exists():
+            d = next(iter(json.load(open(hf)).values()))
+            for k, x in d.items():
+                if isinstance(x, dict):
+                    tag = "val" if k == "val" else ("sim" if k.startswith("simval") else "self")
+                    for m in ("hit", "err", "w2", "hit_open", "err_open", "w2_open", "hit_late", "err_late"):
+                        row[f"{tag}_{m}"] = x.get(m)
+        gj = root / "strength" / v / "games.jsonl"
+        if gj.exists():
+            games = [json.loads(x) for x in gj.read_text().splitlines()]
+            cand = [c for c in {g["candidate"] for g in games} if c not in ("p11", "r5")] or ["r5"]
+            for ref in ("p11", "r5"):
+                for r in summarize(games, ref):
+                    if r["candidate"] == cand[0] and "dmargin" in r:
+                        row[f"d_{ref}_{r['opponent']}"] = (r["dmargin"], r["dmargin_se"], r["n"])
+                    if r["candidate"] == cand[0]:
+                        row[f"race_{r['opponent']}"] = r["race"]
+        rows.append(row)
+    json.dump(rows, open(root / "table.json", "w"), indent=1)
+    f = lambda x, fmt: (fmt % x) if x is not None and not (isinstance(x, float) and math.isnan(x)) else "-"  # noqa: E731
+    lines = ["| 변형 | 파라미터 | MMAC/뷰 | 처리량 fp32 (×r5 비용) | 탐색 등가 B | 보류 hit/오차 (첫 10초) | sim DAgger hit/오차 | 자기 상태 hit/오차 (30초+) | "
+             "Δ P11: V19 / P5a / V23 | Δ r5: V19 / P5a / V23 |", "|" + "---|" * 10]
+    for r in rows:
+        dp = " / ".join(f"{r[k][0]:+.1f}±{r[k][1]:.1f}" if k in r else "-" for k in ("d_p11_v19", "d_p11_p5a", "d_p11_v23"))
+        dr = " / ".join(f"{r[k][0]:+.1f}±{r[k][1]:.1f}" if k in r else "-" for k in ("d_r5_v19", "d_r5_p5a", "d_r5_v23"))
+        lines.append(f"| {r['variant']} | {f(r.get('params_m'), '%.2fM')} | {f(r.get('mmac'), '%.1f')} | "
+                     f"{f(r.get('thr_fp32'), '%.0f')} ({f(r.get('cost_x'), '%.2f')}) | {f(r.get('search_B_eq'), '%.1f')} | "
+                     f"{f(r.get('val_hit'), '%.3f')}/{f(r.get('val_err'), '%.1f')}° ({f(r.get('val_hit_open'), '%.3f')}/{f(r.get('val_err_open'), '%.1f')}°) | "
+                     f"{f(r.get('sim_hit'), '%.3f')}/{f(r.get('sim_err'), '%.1f')}° | "
+                     f"{f(r.get('self_hit'), '%.3f')}/{f(r.get('self_err'), '%.1f')}° ({f(r.get('self_hit_late'), '%.3f')}/{f(r.get('self_err_late'), '%.1f')}°) | {dp} | {dr} |")
+    txt = "\n".join(lines)
+    print(txt)
+    (root / "table.md").write_text(txt + "\n")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -107,8 +172,11 @@ def main():
     q.add_argument("--extra", default="checkpoints/rollout_net/simdata/train_ex23.npz")
     q.add_argument("--out", default="checkpoints/rollout_net_arch")
     q.add_argument("--amp", default="fp16")
+    q = sub.add_parser("table")
+    q.add_argument("--root", default="reports/rollout_net_arch")
+    q.add_argument("--variants", nargs="*", default=[])
     args = p.parse_args()
-    {"list": cmd_list, "init": cmd_init, "recipe": cmd_recipe}[args.cmd](args)
+    {"list": cmd_list, "init": cmd_init, "recipe": cmd_recipe, "table": cmd_table}[args.cmd](args)
 
 
 if __name__ == "__main__":
