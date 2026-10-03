@@ -1,0 +1,14 @@
+plain_new      vs p11              n= 256 seeds= 128  search   +7.3  plain   +0.3  diff   +7.0 ±  4.5  win(sign) +0.12 vs +0.05  race w/t/l (11, 244, 1) vs (25, 230, 1)  capped 0.24/0.23  len 131s  wall 1.2s/match (plain 1.07)  e0 w0 m0 B1
+                  base share 0.00; 
+search_new     vs p11              n= 768 seeds= 384  search  +42.4  plain   -5.0  diff  +47.3 ±  2.5  win(sign) +0.62 vs -0.04  race w/t/l (86, 670, 12) vs (55, 705, 8)  capped 0.23/0.26  len 134s  wall 9.2s/match (plain 1.02)  e25 w25 m3.0 B8
+                  base share 0.76; alt0 0.04, alt1 0.03, alt2 0.03, alt3 0.03, alt4 0.04, samp1s0 0.03, samp1s1 0.03
+search_r5      vs p11              n= 768 seeds= 384  search  +30.4  plain   -5.0  diff  +35.4 ±  2.7  win(sign) +0.44 vs -0.04  race w/t/l (214, 544, 10) vs (55, 705, 8)  capped 0.24/0.26  len 139s  wall 7.0s/match (plain 1.02)  e25 w25 m3.0 B8
+                  base share 0.72; alt0 0.04, alt1 0.04, alt2 0.04, alt3 0.04, alt4 0.04, samp1s0 0.04, samp1s1 0.04
+search_r5      vs rnet:checkpoints/rollout_net/arch/f3_x_d2.pt n= 384 seeds= 192  search  +28.0  plain   -7.7  diff  +35.7 ±  4.0  win(sign) +0.39 vs -0.11  race w/t/l (97, 277, 10) vs (27, 344, 13)  capped 0.24/0.31  len 137s  wall 10.7s/match (plain 2.21)  e25 w25 m3.0 B8
+                  base share 0.72; alt0 0.04, alt1 0.04, alt2 0.04, alt3 0.04, alt4 0.04, samp1s0 0.04, samp1s1 0.04
+PAIR search_new - search_r5 vs p11              n= 768 seeds= 384   +42.4 vs  +30.4  diff  +11.9 ±  2.7  race w/t/l (86, 670, 12) vs (214, 544, 10)  search s/match 7.49 vs 5.55
+PAIR search_new - plain vs p11              n= 768 seeds= 384   +42.4 vs   -5.0  diff  +47.3 ±  2.5  race w/t/l (86, 670, 12) vs (55, 705, 8)  search s/match 7.49 vs 0.00
+PAIR search_r5 - plain vs p11              n= 768 seeds= 384   +30.4 vs   -5.0  diff  +35.4 ±  2.7  race w/t/l (214, 544, 10) vs (55, 705, 8)  search s/match 5.55 vs 0.00
+PAIR search_r5 - plain vs rnet:checkpoints/rollout_net/arch/f3_x_d2.pt n= 384 seeds= 192   +28.0 vs   -7.7  diff  +35.7 ±  4.0  race w/t/l (97, 277, 10) vs (27, 344, 13)  search s/match 9.08 vs 0.00
+PAIR plain_new - plain vs p11              n= 256 seeds= 128    +7.3 vs   +0.3  diff   +7.0 ±  4.5  race w/t/l (11, 244, 1) vs (25, 230, 1)  search s/match 0.00 vs 0.00
+PAIR search_new - plain_new vs p11              n= 256 seeds= 128   +43.4 vs   +7.3  diff  +36.1 ±  4.4  race w/t/l (34, 218, 4) vs (11, 244, 1)  search s/match 7.45 vs 0.00
