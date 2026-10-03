@@ -260,10 +260,21 @@ class Searcher:
         c1 = time.perf_counter()
         vals = self.leaf(res.bsim, gteam).reshape(r, nb)
         c2 = time.perf_counter()
-        best = vals.argmax(1)
-        gain = vals[np.arange(r), best] - vals[:, 0]
-        choice = np.where(gain > self.margin, best, 0)
-        return SearchOut(choice, vals, {"rollout_s": c1 - c0, "leaf_s": c2 - c1, "games": len(sims)})
+        return SearchOut(choose(vals, self.margin), vals, {"rollout_s": c1 - c0, "leaf_s": c2 - c1, "games": len(sims)})
+
+    def config(self) -> dict:
+        """What a search result depends on besides the nets (``search_server`` handshake)."""
+        return {"branches": [b.name for b in self.branches], "window": self.window,
+                "leaf_decisions": self.leaf_decisions}
+
+
+def choose(values: np.ndarray, margin) -> np.ndarray:
+    """[R, B] leaf values -> [R] chosen branch: the best one if it beats the base branch (0) by more
+    than ``margin`` points (scalar or [R]), else the base branch."""
+    values = np.asarray(values)
+    best = values.argmax(1)
+    gain = values[np.arange(len(values)), best] - values[:, 0]
+    return np.where(gain > np.asarray(margin, np.float64), best, 0)
 
 
 # ---------------------------------------------------------------------------------- matches

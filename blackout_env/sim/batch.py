@@ -322,7 +322,7 @@ class NetPolicy(BatchPolicy):
     the single-game path even on CPU (tests/test_sim_batch.py, docs "S3 준비")."""
 
     def __init__(self, net, device: str = "cpu", fp16: bool = False, max_batch: int = 2048,
-                 per_sample: bool = False, cuda_graphs: bool = False):
+                 per_sample: bool = False, cuda_graphs: bool = False, graph_buckets=None):
         import torch
 
         from blackout_env.train.distill.inference import _OwnQ
@@ -337,15 +337,29 @@ class NetPolicy(BatchPolicy):
         self.fp16 = fp16
         self.max_batch = 1 if per_sample else max_batch
         # CUDA graphs per batch size (small-batch search: kernel launches dominate); same kernels -> same values
+        # ``graph_buckets`` (sorted sizes): one graph per bucket, a batch is padded up to the next bucket
+        # (the pad rows hold earlier real inputs; their outputs are dropped) -- a search server's batch
+        # size changes every call, exact-size graphs would capture hundreds of graphs.  Larger -> eager.
         self.cuda_graphs = bool(cuda_graphs) and self.device.type == "cuda"
+        self.graph_buckets = sorted(int(b) for b in graph_buckets) if graph_buckets else None
         self._graphs: dict = {}
+
+    def _bucket(self, m: int):
+        if self.graph_buckets is None:
+            return m
+        for b in self.graph_buckets:
+            if b >= m:
+                return b
+        return None
 
     def _graph_forward(self, g, t, a):
         torch = self.torch
         m = g.shape[0]
-        ent = self._graphs.get(m)
+        size = self._bucket(m)
+        ent = self._graphs.get(size)
         if ent is None:
-            sg, st, sa = (torch.from_numpy(x.copy()).to(self.device) for x in (g, t, a))
+            pad = lambda x: np.concatenate([x, np.repeat(x[:1], size - m, 0)]) if size > m else x.copy()  # noqa: E731
+            sg, st, sa = (torch.from_numpy(pad(x)).to(self.device) for x in (g, t, a))
             stream = torch.cuda.Stream()
             stream.wait_stream(torch.cuda.current_stream())
             with torch.cuda.stream(stream), torch.inference_mode():
@@ -355,14 +369,14 @@ class NetPolicy(BatchPolicy):
             graph = torch.cuda.CUDAGraph()
             with torch.inference_mode(), torch.cuda.graph(graph):
                 out = self.own(sg, st, sa)
-            ent = self._graphs[m] = (graph, sg, st, sa, out)
+            ent = self._graphs[size] = (graph, sg, st, sa, out)
         graph, sg, st, sa, out = ent
-        sg.copy_(torch.from_numpy(g))
-        st.copy_(torch.from_numpy(t))
-        sa.copy_(torch.from_numpy(a))
+        sg[:m].copy_(torch.from_numpy(g))
+        st[:m].copy_(torch.from_numpy(t))
+        sa[:m].copy_(torch.from_numpy(a))
         graph.replay()
         q, off = out if self.angle else (out, None)
-        return q.float().cpu().numpy(), (off.float().cpu().numpy() if off is not None else None)
+        return q[:m].float().cpu().numpy(), (off[:m].float().cpu().numpy() if off is not None else None)
 
     @classmethod
     def from_checkpoint(cls, path: str, **kw) -> "NetPolicy":
@@ -375,7 +389,8 @@ class NetPolicy(BatchPolicy):
     def forward(self, graphic, team, agents) -> tuple[np.ndarray, np.ndarray | None]:
         """[m, 13, H, W], [m, 4], [m, 10, 12] float32 numpy -> logits, offsets [m, 5, K]."""
         torch = self.torch
-        if self.cuda_graphs and len(graphic) <= self.max_batch and not self.fp16:
+        if (self.cuda_graphs and len(graphic) <= self.max_batch and not self.fp16
+                and self._bucket(len(graphic)) is not None):
             return self._graph_forward(np.ascontiguousarray(graphic), np.ascontiguousarray(team),
                                        np.ascontiguousarray(agents))
         qs, offs = [], []
