@@ -153,6 +153,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--amp", choices=["none", "bf16", "fp16"], default="none",
                    help="autocast precision of the training forward (weights and optimizer stay fp32)")
     p.add_argument("--compile", action="store_true", help="torch.compile COMPILED_MODULES (~11 s warm-up)")
+    p.add_argument("--tf32", action="store_true",
+                   help="CUDA Ampere+: fp32 matmuls/convs on TF32 tensor cores (outside autocast; P14 on the RTX 3060)")
     p.add_argument("--stand-action", action="store_true",
                    help="a 9th output, STAND, trained where the teacher has no label: it stands there (interacting, "
                    "waiting, holding a slot), and an 8-way student dithers back and forth instead -- 46%% of D4's "
@@ -322,6 +324,9 @@ class Learner:
         self.args = args
         self.device = pick_device(args.device)
         check_amp(self.device, args.amp)
+        if getattr(args, "tf32", False) and self.device.type == "cuda":
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
         self.net = MyModel(n_actions=args.action_bins + int(args.stand_action), temporal=args.temporal,
                            policy_head=args.policy_head, angle_head=args.angle_head,
                            angle_arc_bins=args.angle_arc_bins).to(self.device)
