@@ -190,13 +190,27 @@ def labelled_rows(labels: np.ndarray) -> np.ndarray:
     return np.flatnonzero(((labels & np.uint64(0xFFFFFFFF)) != 0).any(-1))
 
 
-def load_split(path, in_memory: bool = False) -> dict:
-    """A packed split (train.npz / val.npz): memory-mapped (np.savez stores it uncompressed), so
-    torchrun ranks on one machine share the page cache; ``in_memory`` reads it into RAM."""
+def load_split(path, in_memory: bool | None = False) -> dict:
+    """A packed split (train.npz / val.npz), read into RAM (``in_memory``; as before the CUDA work)
+    or memory-mapped (np.savez stores it uncompressed) so that torchrun ranks on one machine share
+    one page-cache copy.  None = auto: RAM for a single process, memory maps under torchrun, read
+    through once (sequentially) so the random batch gathers do not page-fault from disk -- a cold
+    9 GB r5 split made the first steps ~2x slower than the in-RAM path."""
+    import os
+
     from blackout_env.train.accel import load_npz
 
+    if in_memory is None:
+        in_memory = int(os.environ.get("WORLD_SIZE", 1)) == 1
     data = load_npz(path, mmap=True)
-    return {k: np.array(v) for k, v in data.items()} if in_memory else data
+    if in_memory:
+        return {k: np.array(v) for k, v in data.items()}
+    for v in data.values():  # warm the page cache: one sequential pass
+        if isinstance(v, np.memmap):
+            flat = v.reshape(-1) if v.flags.c_contiguous else v
+            for i in range(0, len(flat), 1 << 26):
+                flat[i:i + (1 << 26)].max()
+    return data
 
 
 class BatchSource:
@@ -549,7 +563,9 @@ def main():
                    help="reduce-overhead = CUDA graphs: one GPU only, steadier on a loaded host")
     p.add_argument("--channels-last", type=int, default=None, help="NHWC convs (default: on for cuda)")
     p.add_argument("--prefetch", type=int, default=4, help="batches built ahead in a thread (0 = inline)")
-    p.add_argument("--in-memory", action="store_true", help="read the splits into RAM instead of memory-mapping")
+    p.add_argument("--in-memory", type=int, default=None,
+                   help="1: read the splits into RAM; 0: memory-map them (default: RAM for one process, maps "
+                   "shared through the page cache under torchrun)")
     p.add_argument("--gpu-data", type=int, default=None,
                    help="1: keep the train (+ extra) arrays on the GPU, gather there (default: cuda and they fit "
                    "in half the free memory)")
