@@ -273,9 +273,13 @@ class QSearcher:
     (``search(roots, teams, reseeds)`` -> SearchOut over ``branches`` = base + alt0..4), so
     ``play_matches`` executes the choice exactly like a search decision.  No rollouts."""
 
-    def __init__(self, net, device: str, margin: float = 3.0, detach: bool = True):
+    def __init__(self, net, device: str, margin: float = 3.0, detach: bool = True, random_rate: float = 0.0, seed: int = 0):
+        """``random_rate`` > 0: a control -- ignore the head, switch a uniformly random unit with this
+        probability per search point (same deviation rate, no information)."""
         import torch
 
+        self.random_rate = float(random_rate)
+        self.rng = np.random.default_rng(seed)
         self.torch, self.device = torch, torch.device(device)
         self.net = net.to(self.device).eval()
         self.branches = parse_branches("alt*")
@@ -292,6 +296,10 @@ class QSearcher:
     def search(self, roots: list[SimState], teams, reseeds=None) -> SearchOut:
         r = len(roots)
         teams = np.asarray(teams, np.int64)
+        if self.random_rate > 0:
+            go = self.rng.random(r) < self.random_rate
+            choice = np.where(go, 1 + self.rng.integers(0, 5, r), 0)
+            return SearchOut(choice, np.zeros((r, 6)), {"games": r})
         bs = BatchSim(roots)
         gr = np.zeros((r, 2, N_CH, H, W), F32)
         tm = np.zeros((r, 2, 4), F32)

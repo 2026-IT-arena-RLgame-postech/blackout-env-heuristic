@@ -73,7 +73,7 @@ def cmd_play(args):
         qnet = RolloutNet.from_checkpoint(args.qhead)
         net = NetPolicy(qnet, device=args.device)
         is_r5 = False
-        searcher = QSearcher(qnet, args.device, margin=args.margin)
+        searcher = QSearcher(qnet, args.device, margin=args.margin, random_rate=args.q_random)
         branches = searcher.branches
     else:
         branches = parse_branches(args.branches)
@@ -204,6 +204,7 @@ def main():
     q.add_argument("--no-search", action="store_true", help="play --net plain under --tag (e.g. r6 vs the plain r5 rows)")
     q.add_argument("--record", action="store_true")
     q.add_argument("--record-roots", action="store_true", help="store every search root: input + all branch leaf values (Q-head data)")
+    q.add_argument("--q-random", type=float, default=0.0, help="--qhead control: random alt switch at this rate per search point")
     q.add_argument("--qhead", default="", help="RolloutNet checkpoint with a Q head: act by it instead of searching")
     q.add_argument("--device", default="", help="default: cuda > mps > cpu")
     q.add_argument("--verbose", action="store_true")
