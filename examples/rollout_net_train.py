@@ -175,80 +175,191 @@ def evaluate(net_fn, data, device, torch, n=None, batch=4096):
     return {k: (v[0] / v[1] if v[1] else float("nan")) for k, v in acc.items()}
 
 
+def labelled_rows(labels: np.ndarray) -> np.ndarray:
+    """Rows with a label (any of the 32 bins) on at least one own unit."""
+    return np.flatnonzero(((labels & np.uint64(0xFFFFFFFF)) != 0).any(-1))
+
+
+def load_split(path, in_memory: bool = False) -> dict:
+    """A packed split (train.npz / val.npz): memory-mapped (np.savez stores it uncompressed), so
+    torchrun ranks on one machine share the page cache; ``in_memory`` reads it into RAM."""
+    from blackout_env.train.accel import load_npz
+
+    data = load_npz(path, mmap=True)
+    return {k: np.array(v) for k, v in data.items()} if in_memory else data
+
+
+class BatchSource:
+    """Host side of a training batch: row indices (the same RNG draws, so the same batches as
+    before the CUDA work) gathered from the train split and the ``--extra`` split.  Called from
+    the prefetch thread.  uint16 maps / uint64 label bits travel as int16 / int64 views (torch
+    has no unsigned shifts on every device); they are decoded on the device (``TrainStep``)."""
+
+    def __init__(self, train, extra, pool, epool, batch, extra_frac, seed, keys):
+        self.train, self.extra, self.pool, self.epool = train, extra, pool, epool
+        self.batch, self.extra_frac, self.keys = batch, extra_frac, keys
+        self.rng = np.random.default_rng(seed)
+
+    def __call__(self) -> dict:
+        if self.extra is not None:  # a fixed fraction of each batch from the extra rows
+            ne = int(self.batch * self.extra_frac)
+            parts = [(self.train, np.sort(self.rng.choice(self.pool, self.batch - ne))),
+                     (self.extra, np.sort(self.rng.choice(self.epool, ne)))]
+        else:
+            parts = [(self.train, np.sort(self.rng.choice(self.pool, self.batch)))]
+        out = {k: np.concatenate([src[k][i] for src, i in parts]) for k in self.keys}
+        out["map"] = out["map"].view(np.int16)
+        out["labels"] = out["labels"].view(np.int64)
+        return out
+
+
+def train_step_module(torch):
+    from blackout_env.train.distill.loss import angle_offset_loss, set_valued_cross_entropy
+
+    class TrainStep(torch.nn.Module):
+        """Device side of a step: decode the packed batch, forward (autocast), losses.  One module
+        so that ``--compile`` makes one graph of it (and DDP wraps it whole)."""
+
+        def __init__(self, net, args, amp, device):
+            super().__init__()
+            self.net, self.args, self.amp, self.device_type = net, args, amp, device.type
+            self.register_buffer("shifts", torch.arange(32, device=device), persistent=False)
+
+        def forward(self, map, team_state, agent_states, labels, angles, tick, p11_q=None, p11_off=None,
+                    ce_total=None, angle_total=None):
+            from blackout_env.train.accel import autocast
+
+            args = self.args
+            g = expand_map(map, torch)
+            masks = ((labels.unsqueeze(-1) >> self.shifts) & 1) == 1
+            opening = (tick >= 0) & (tick < OPENING_TICKS)
+            w = torch.where(opening, args.opening_weight, 1.0).float()[:, None].expand(-1, 5)
+            with autocast(torch.device(self.device_type), self.amp):
+                logits, off = self.net(g, team_state, agent_states)
+            logits, off = logits.float(), off.float()
+            ce, st = set_valued_cross_entropy(logits, masks, w, total=ce_total)
+            al, ast = angle_offset_loss(off, angles, w, arc_bins=self.net.config["angle_arc_bins"], total=angle_total)
+            loss = ce + args.angle_weight * al
+            if args.p11_kl > 0:
+                pq, po = p11_q.float(), p11_off.float()
+                kl = torch.nn.functional.kl_div(torch.log_softmax(logits, -1), torch.log_softmax(pq, -1),
+                                                log_target=True, reduction="none").sum(-1).mean()
+                j = pq.argmax(-1, keepdim=True)
+                oreg = (((off.gather(-1, j) - po.gather(-1, j)) / (math.pi / 32)) ** 2).mean()
+                loss = loss + args.p11_kl * (kl + oreg)
+            stats = torch.stack([loss.detach(), st["ce"], st["accuracy"], ast["angle_loss"]])
+            return loss, stats
+
+    return TrainStep
+
+
+def global_totals(b, args, dist, torch):
+    """DDP: the loss normalisers (sum of row weights over labelled units / over rows with an
+    angle) summed over every rank, divided by the world size -- so that DDP's mean of the ranks'
+    gradients is exactly the gradient of the global batch's weighted mean (not a mean of means)."""
+    if not dist.enabled:
+        return None, None
+    w = torch.where((b["tick"] >= 0) & (b["tick"] < OPENING_TICKS), args.opening_weight, 1.0).float()[:, None]
+    t = torch.stack([(w * (b["labels"] != 0)).sum(), (w * torch.isfinite(b["angles"])).sum()])
+    dist.all_reduce_sum(t)
+    t = t / dist.world
+    return t[0].clamp_min(1e-8), t[1].clamp_min(1e-8)
+
+
 def cmd_train(args):
     import torch
 
     from blackout_env.sim.rollout_net import RolloutNet
-    from blackout_env.train.distill.loss import angle_offset_loss, set_valued_cross_entropy
+    from blackout_env.train.accel import Dist, Prefetcher, adamw, check_amp, grad_scaler, pick_device, to_device
 
+    device = pick_device(args.device)
+    dist = Dist(device)
+    amp = check_amp(device, args.amp)
     torch.manual_seed(args.seed)
-    device = args.device
-    train = dict(np.load(Path(args.data) / "train.npz"))
-    val = dict(np.load(Path(args.data) / "val.npz"))
-    labelled = unpack_labels(train["labels"]).any(-1).any(-1)
-    pool = np.nonzero(labelled)[0]
+    log_main = print if dist.main else (lambda *a, **k: None)
+    train = load_split(Path(args.data) / "train.npz", args.in_memory)
+    val = load_split(Path(args.data) / "val.npz", True) if dist.main else None
+    pool = labelled_rows(train["labels"])
+    extra = epool = None
+    keys = ["map", "team_state", "agent_states", "labels", "angles", "tick"] + (["p11_q", "p11_off"] if args.p11_kl > 0 else [])
     if args.extra:  # e.g. simulator DAgger rows (rollout_net_collect.py): a fixed fraction of each batch
-        extra = dict(np.load(args.extra))
-        n0 = len(train["tick"])
-        keys = [k for k in train if k in extra]
-        train = {k: np.concatenate([train[k], extra[k]]) for k in keys}
-        epool = n0 + np.nonzero(unpack_labels(extra["labels"]).any(-1).any(-1))[0]
-        print("extra rows", len(extra["tick"]), "labelled", len(epool), flush=True)
-        del extra
-    print("train rows", len(train["tick"]), "labelled", len(pool), "val", len(val["tick"]), flush=True)
+        extra = load_split(args.extra, args.in_memory)
+        epool = labelled_rows(extra["labels"])
+        keys = [k for k in keys if k in extra]
+        log_main("extra rows", len(extra["tick"]), "labelled", len(epool), flush=True)
+    log_main("train rows", len(train["tick"]) + (len(extra["tick"]) if extra is not None else 0), "labelled", len(pool),
+             "val", len(val["tick"]) if val is not None else 0, flush=True)
+    if args.batch % dist.world:
+        raise SystemExit(f"--batch {args.batch} is not divisible by {dist.world} ranks")
     cfg = json.loads(args.config) if args.config else {}
     net = RolloutNet.from_checkpoint(args.init).train().to(device) if args.init else RolloutNet(**cfg).to(device)
-    print("params", sum(p.numel() for p in net.parameters()), cfg, flush=True)
-    opt = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=1e-4)
+    log_main("params", sum(p.numel() for p in net.parameters()), cfg, f"device {device} x{dist.world} amp {amp}"
+             f"{' compile' if args.compile else ''}", flush=True)
+    opt = adamw(net.parameters(), device, lr=args.lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=args.lr, total_steps=args.steps, pct_start=0.05)
-    rng = np.random.default_rng(args.seed)
-    t0 = time.time()
+    scaler = grad_scaler(device, amp)
+    step_fn = dist.wrap(train_step_module(torch)(net, args, amp, device))
+    if args.compile:
+        step_fn = torch.compile(step_fn)
+    # rank r draws its own rows (seed + 1000 r); the global batch is --batch split over the ranks
+    source = BatchSource(train, extra, pool, epool, args.batch // dist.world, args.extra_frac,
+                         args.seed + 1000 * dist.rank, keys)
+    batches = Prefetcher(source, device, depth=args.prefetch) if args.prefetch > 0 else None
+    t0 = t_win = time.time()
     log = []
+    last_logged = 0
+    stat_sum = torch.zeros(4, device=device)
     for step in range(1, args.steps + 1):
-        if args.extra:
-            ne = int(args.batch * args.extra_frac)
-            idx = np.sort(np.concatenate([rng.choice(pool, args.batch - ne), rng.choice(epool, ne)]))
-        else:
-            idx = np.sort(rng.choice(pool, args.batch))
-        g, ts, ag = batch_tensors(train, idx, device, torch)
-        labels = torch.from_numpy(unpack_labels(train["labels"][idx])).to(device)
-        ang = torch.from_numpy(train["angles"][idx]).to(device)
-        tick = train["tick"][idx]
-        w = torch.from_numpy(np.where((tick >= 0) & (tick < OPENING_TICKS), args.opening_weight, 1.0).astype(np.float32)).to(device)
-        w = w[:, None].expand(-1, 5)
-        with torch.autocast(device_type=device, dtype=torch.bfloat16, enabled=args.amp):
-            logits, off = net(g, ts, ag)
-        logits, off = logits.float(), off.float()
-        ce, st = set_valued_cross_entropy(logits, labels, w)
-        al, ast = angle_offset_loss(off, ang, w, arc_bins=net.config["angle_arc_bins"])
-        loss = ce + args.angle_weight * al
-        if args.p11_kl > 0:
-            pq = torch.from_numpy(train["p11_q"][idx].astype(np.float32)).to(device)
-            po = torch.from_numpy(train["p11_off"][idx].astype(np.float32)).to(device)
-            kl = torch.nn.functional.kl_div(torch.log_softmax(logits, -1), torch.log_softmax(pq, -1),
-                                            log_target=True, reduction="none").sum(-1).mean()
-            j = pq.argmax(-1, keepdim=True)
-            oreg = (((off.gather(-1, j) - po.gather(-1, j)) / (math.pi / 32)) ** 2).mean()
-            loss = loss + args.p11_kl * (kl + oreg)
+        b = to_device(batches.next() if batches else source(), device)
+        ce_total, angle_total = global_totals(b, args, dist, torch)
+        loss, stats = step_fn(b["map"], b["team_state"], b["agent_states"], b["labels"], b["angles"], b["tick"],
+                              b.get("p11_q"), b.get("p11_off"), ce_total, angle_total)
         opt.zero_grad(set_to_none=True)
-        loss.backward()
+        scaler.scale(loss).backward()
+        scaler.unscale_(opt)
         torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
-        opt.step()
+        scaler.step(opt)
+        scaler.update()
         sched.step()
+        stat_sum += stats
         if step % args.log_every == 0 or step == args.steps:
-            row = {"step": step, "loss": float(loss), "ce": float(st["ce"]), "acc": float(st["accuracy"]),
-                   "angle_loss": float(ast["angle_loss"]), "s": time.time() - t0}
+            # loss / ce / acc / angle_loss of the last step as before (under DDP: of the global
+            # batch, = the mean over ranks); loss_mean: over the steps since the last log
+            n_steps = step - last_logged
+            last = dist.all_reduce_sum(stats.clone()) / dist.world
+            mean = dist.all_reduce_sum(stat_sum.clone()) / (dist.world * n_steps)
+            stat_sum.zero_()
+            now = time.time()
+            row = {"step": step, "loss": float(last[0]), "ce": float(last[1]), "acc": float(last[2]),
+                   "angle_loss": float(last[3]), "loss_mean": float(mean[0]), "s": now - t0,
+                   "ms_step": 1000 * (now - t_win) / n_steps, "rows_s": args.batch * n_steps / (now - t_win)}
+            if scaler.is_enabled():
+                row["loss_scale"] = scaler.get_scale()
             if step % args.eval_every == 0 or step == args.steps:
-                net.eval()
-                row.update({f"val_{k}": v for k, v in evaluate(lambda a, b, c: net(a, b, c), val, device, torch, n=min(60000, len(val["tick"]))).items()})
-                net.train()
-                torch.save({"config": net.config, "state": {k: v.cpu() for k, v in net.state_dict().items()},
-                            "args": vars(args), "step": step}, args.out)
+                if dist.main:
+                    net.eval()
+                    row.update({f"val_{k}": v for k, v in evaluate(lambda a, b, c: net(a, b, c), val, device, torch,
+                                                                    n=min(60000, len(val["tick"]))).items()})
+                    net.train()
+                    save_rollout_net(args.out, net, args, step=step)
+                dist.barrier()
             log.append(row)
-            print(json.dumps(row), flush=True)
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+            log_main(json.dumps(row), flush=True)
+            last_logged = step
+            t_win = time.time()
+    if batches:
+        batches.stop()
+    if dist.main:
+        save_rollout_net(args.out, net, args, log=log)
+    dist.close()
+
+
+def save_rollout_net(path, net, args, **extra):
+    import torch
+
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
     torch.save({"config": net.config, "state": {k: v.cpu() for k, v in net.state_dict().items()},
-                "args": vars(args), "log": log}, args.out)
+                "args": vars(args), **extra}, path)
 
 
 def cmd_eval(args):
@@ -257,8 +368,10 @@ def cmd_eval(args):
     from blackout_env.sim.rollout_net import RolloutNet
     from blackout_env.train.distill.inference import _OwnQ, load_net
 
+    from blackout_env.train.accel import pick_device
+
     val = dict(np.load(Path(args.data) / "val.npz"))
-    device = args.device
+    device = pick_device(args.device)
     out = {}
     if args.net:
         net = RolloutNet.from_checkpoint(args.net).to(device)
@@ -267,7 +380,7 @@ def cmd_eval(args):
         p11 = _OwnQ(load_net(torch.load(P11, map_location="cpu", weights_only=True)["policy_state"]).eval()).to(device)
 
         def f(a, b, c):
-            with torch.autocast(device_type=device, dtype=torch.float16):
+            with torch.autocast(device_type=device.type, dtype=torch.float16):
                 return p11(a, b, c)
 
         out["p11"] = evaluate(f, val, device, torch)
@@ -294,11 +407,16 @@ def main():
     p.add_argument("--angle-weight", type=float, default=1.0)
     p.add_argument("--opening-weight", type=float, default=1.5)
     p.add_argument("--p11-kl", type=float, default=0.0)
-    p.add_argument("--amp", action="store_true")
+    p.add_argument("--amp", nargs="?", const="bf16", default="none", choices=["none", "fp16", "bf16"],
+                   help="autocast of the forward; bare --amp = bf16 (as before; MPS).  CUDA 2080 Ti: fp16 "
+                   "(+ GradScaler; Turing has no bf16)")
+    p.add_argument("--compile", action="store_true", help="torch.compile the whole step (decode + net + losses)")
+    p.add_argument("--prefetch", type=int, default=4, help="batches built ahead in a thread (0 = inline)")
+    p.add_argument("--in-memory", action="store_true", help="read the splits into RAM instead of memory-mapping")
     p.add_argument("--extra", default="", help="another packed train.npz mixed into every batch")
     p.add_argument("--extra-frac", type=float, default=0.5)
     p.add_argument("--init", default="", help="start from this RolloutNet checkpoint (its config)")
-    p.add_argument("--device", default="mps")
+    p.add_argument("--device", default="auto", help="auto = cuda > mps > cpu (torchrun: this rank's GPU)")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--log-every", type=int, default=500)
     p.add_argument("--eval-every", type=int, default=5000)
@@ -306,7 +424,7 @@ def main():
     p.add_argument("--data", required=True)
     p.add_argument("--net", default="")
     p.add_argument("--with-p11", action="store_true")
-    p.add_argument("--device", default="mps")
+    p.add_argument("--device", default="auto")
     args = parser.parse_args()
     {"pack": cmd_pack, "train": cmd_train, "eval": cmd_eval}[args.cmd](args)
 
