@@ -19,6 +19,12 @@ V in {s2v_iter5, s2v_iter5 symmetric, s1b symmetric} (+ the lead alone) is read 
 leaf rollouts that end the match are scored exactly.
 
     PYTHONPATH=. .venv/bin/python examples/leaf_rollout_eval.py --workers 12 --out reports/leaf_rollout
+
+Value-net comparison (docs §27): only the S3 leaf (r5 x r5, 5 s) and the r5 x r5 ground truth,
+generated once and cached, then any number of V checkpoints scored on the cache:
+
+    ... leaf_rollout_eval.py --r5-only --gt-r5 --cache <dir>/leaf_cache.pkl --values a=path b=path --out <dir>
+    ... leaf_rollout_eval.py --from-cache <dir>/leaf_cache.pkl --values c=path --out <dir>
 """
 
 from __future__ import annotations
@@ -126,6 +132,11 @@ def _worker(job):
         hashes = [int(zlib.crc32(s.uf.tobytes() + s.ui.tobytes())) for s, _, _ in ends]
         live = [b for b, (s, _, _) in enumerate(ends) if not s.over]
         rec = {"rid": f"{task['id']}@{tick}", "team": team, "hashes": hashes, "live": live, "leaf": {}, "time": {}}
+        if job.get("r5_only"):
+            rec["sims"] = pickle.dumps([ends[b][0] for b in live])
+            rec["reseed"] = LEAF_RESEED + rng_seed
+            out.append(rec)
+            continue
         # V23 leaf (S1.5 / S1.6): learner fresh V23 + true opponent, snapshots at 3 s / 5 s
         t0 = time.perf_counter()
         for h in HORIZONS:
@@ -209,7 +220,7 @@ def run_r5_self(recs, repeat: int, horizon: int, device: str, net: str = "r5"):
     return key, {"n": len(sims), "rollout_s": t_roll, "encode_s": t_enc, "timing": roll.timing}
 
 
-def value_preds(recs, device: str) -> dict:
+def value_preds(recs, device: str, values: dict | None = None) -> dict:
     """(variant, rid, b) -> {net: (own_final, mir_final)} in points, + lead; one batched pass per net."""
     from blackout_env.value.evaluate import ValueEvaluator
 
@@ -224,7 +235,7 @@ def value_preds(recs, device: str) -> dict:
     stack = lambda es: [np.stack([e[i] for e in es]) for i in range(3)]  # noqa: E731
     o, m = stack(own), stack(mir)
     out, timing = {k: {} for k in keys}, {}
-    for name, path in VALUES.items():
+    for name, path in (values or VALUES).items():
         ev = ValueEvaluator(str(REPO / path), device=device, batch=1024)
         ev.evaluate_encoded(*[x[:256] for x in o])  # warm-up
         t0 = time.perf_counter()
@@ -242,6 +253,10 @@ def value_preds(recs, device: str) -> dict:
 PREDICTORS = ("lead", "iter5", "iter5_sym", "s1b_sym")
 
 
+def predictors_for(values: dict) -> tuple:
+    return ("lead",) + tuple(x for n in values for x in (n, f"{n}_sym"))
+
+
 def pred_vector(root, rec, var, V, predictor) -> np.ndarray:
     B = len(root["branches"])
     v = np.full(B, np.nan)
@@ -257,13 +272,40 @@ def pred_vector(root, rec, var, V, predictor) -> np.ndarray:
         p = V[(var, rec["rid"], b)]
         if predictor == "lead":
             v[b] = p["lead"]
-        elif predictor == "iter5":
-            v[b] = p["iter5"][0]
-        elif predictor == "iter5_sym":
-            v[b] = (p["iter5"][0] - p["iter5"][1]) / 2
-        elif predictor == "s1b_sym":
-            v[b] = (p["s1b"][0] - p["s1b"][1]) / 2
+        elif predictor.endswith("_sym"):
+            o, m = p[predictor[:-4]]
+            v[b] = (o - m) / 2
+        else:
+            v[b] = p[predictor][0]
     return v
+
+
+def leaf_calibration(roots, recs, V, var, predictor, mkey="_m_r5") -> dict:
+    """Mean (V at the leaf - ground-truth final of the branch) over non-terminal leaves, by bucket
+    (the GT continuation starts at the branch end, the leaf 5 s later on another reseed of the same
+    policy pair, so a calibrated V has zero mean error); also the root-centred error spread."""
+    import value_branch_eval as vb
+
+    out = {}
+    for bi, bname in enumerate(vb.BUCKET_NAMES + ("all",)):
+        err, cerr = [], []
+        for root in roots:
+            if bname != "all" and vb.bucket_of(root["t_s"]) != bi:
+                continue
+            rec = recs[f"{root['match']}@{root['tick']}"]
+            gt = root[mkey]["gt"]["final"]
+            pv = pred_vector(root, rec, var, V, predictor)
+            live = [b for b in range(len(gt)) if (var, rec["rid"], b) in V]
+            if not live:
+                continue
+            e = pv[live] - gt[live]
+            err += list(e)
+            if len(live) >= 2:
+                cerr += list(e - e.mean())
+        out[bname] = {"n": len(err), "bias": float(np.mean(err)) if err else float("nan"),
+                      "mae": float(np.mean(np.abs(err))) if err else float("nan"),
+                      "centred_mae": float(np.mean(np.abs(cerr))) if cerr else float("nan")}
+    return out
 
 
 def gt_r5(recs, roots, device: str, R: int = 4, cap: int = 1500):
@@ -343,19 +385,30 @@ def main():
     p.add_argument("--device", default="mps")
     p.add_argument("--gt-r5", action="store_true", help="also score against an r5 x r5 continuation ground truth")
     p.add_argument("--limit", type=int, default=0, help="first N matches only (smoke test)")
+    p.add_argument("--r5-only", action="store_true", help="only the r5 x r5 5 s leaf (+ --gt-r5): no V23 / P11 leaves")
+    p.add_argument("--values", nargs="+", default=None, help="name=path value nets to score (default iter5, s1b)")
+    p.add_argument("--cache", type=Path, default=None, help="save leaf states + ground truth here (pickle)")
+    p.add_argument("--from-cache", type=Path, default=None, help="score --values on a saved cache")
+    p.add_argument("--tag", default="", help="results_<tag>.json/.txt")
     args = p.parse_args()
     import os
 
     os.chdir(REPO)
     import value_branch_eval as vb
 
+    values = dict(v.split("=", 1) for v in args.values) if args.values else dict(VALUES)
+    if args.from_cache:
+        with open(args.from_cache, "rb") as f:
+            c = pickle.load(f)
+        return score(c["roots"], c["recs"], c["timing"], values, args, gt=c["gt_r5"])
     vb._warm()
     files = sorted((args.s15 / "raw").glob("*.json"))
     raws = [json.loads(f.read_text()) for f in files]
     if args.limit:
         raws = raws[: args.limit]
     roots = [r for x in raws for r in x["roots"]]
-    jobs = [{"task": x["task"], "root_ticks": sorted(r["tick"] for r in x["roots"])} for x in raws]
+    jobs = [{"task": x["task"], "root_ticks": sorted(r["tick"] for r in x["roots"]), "r5_only": args.r5_only}
+            for x in raws]
     print(f"{len(jobs)} matches, {len(roots)} roots", flush=True)
     t0 = time.time()
     recs = {}
@@ -371,27 +424,38 @@ def main():
               for r in roots)
     print(f"workers {t_workers:.0f}s; branch-end hash mismatches {bad}/{len(roots)}", flush=True)
     n_live = sum(len(r["live"]) for r in recs.values())
-    timing = {"workers_wall_s": t_workers, "hash_mismatch_roots": bad, "live_leaves": n_live,
-              "v23_true_cpu_s_per_leaf": sum(r["time"]["v23_true"] for r in recs.values()) / n_live,
-              "r5_true_cpu_s_per_leaf_3s_plus_5s": sum(r["time"]["r5_true"] for r in recs.values()) / n_live,
-              "v23_r5opp_cpu_s_per_leaf_3s_plus_5s": sum(r["time"]["v23_r5opp"] for r in recs.values()) / n_live}
+    timing = {"workers_wall_s": t_workers, "hash_mismatch_roots": bad, "live_leaves": n_live}
+    if not args.r5_only:
+        timing.update({
+            "v23_true_cpu_s_per_leaf": sum(r["time"]["v23_true"] for r in recs.values()) / n_live,
+            "r5_true_cpu_s_per_leaf_3s_plus_5s": sum(r["time"]["r5_true"] for r in recs.values()) / n_live,
+            "v23_r5opp_cpu_s_per_leaf_3s_plus_5s": sum(r["time"]["v23_r5opp"] for r in recs.values()) / n_live})
     rl = list(recs.values())
-    for rep in (1, 2):
-        for h in HORIZONS:
-            key, t = run_r5_self(rl, rep, h, args.device)
-            timing[key] = {**t, "ms_per_leaf_rollout": 1000 * t["rollout_s"] / t["n"]}
-            print(key, json.dumps(timing[key]), flush=True)
-    for h in HORIZONS:
-        key, t = run_r5_self(rl, 1, h, args.device, net="p11")
+    for rep, h, net in ([(1, 125, "r5")] if args.r5_only else
+                        [(rep, h, "r5") for rep in (1, 2) for h in HORIZONS] + [(1, h, "p11") for h in HORIZONS]):
+        key, t = run_r5_self(rl, rep, h, args.device, net=net)
         timing[key] = {**t, "ms_per_leaf_rollout": 1000 * t["rollout_s"] / t["n"]}
         print(key, json.dumps(timing[key]), flush=True)
-    V, vt = value_preds(rl, args.device)
-    timing["value_ms_per_view"] = {k: 1000 * v for k, v in vt.items()}
     for r in roots:
         r["_m"] = vb.root_metrics(r, W)
     if args.gt_r5:
         timing["gt_r5"] = gt_r5(recs, roots, args.device)
         print("gt_r5", timing["gt_r5"], flush=True)
+    if args.cache:
+        args.cache.parent.mkdir(parents=True, exist_ok=True)
+        with open(args.cache, "wb") as f:
+            pickle.dump({"roots": roots, "recs": recs, "timing": timing, "gt_r5": bool(args.gt_r5)}, f)
+        print(f"cache -> {args.cache}", flush=True)
+    score(roots, recs, timing, values, args, gt=args.gt_r5)
+
+
+def score(roots, recs, timing, values: dict, args, gt: bool):
+    import value_branch_eval as vb
+
+    rl = list(recs.values())
+    V, vt = value_preds(rl, args.device, values)
+    timing = {**timing, "value_ms_per_view": {k: 1000 * v for k, v in vt.items()}}
+    PREDICTORS = predictors_for(values)  # noqa: N806
     variants = sorted({k for rec in rl for k in rec["leaf"]})
     buckets = vb.BUCKET_NAMES + ("all",)
     table = {}
@@ -400,10 +464,17 @@ def main():
             for bi, bname in enumerate(buckets):
                 sel = [r for r in roots if bname == "all" or vb.bucket_of(r["t_s"]) == bi]
                 table[f"{var}|{pr}|{bname}"] = metrics(sel, recs, V, var, pr)
-                if args.gt_r5:
+                if gt:
                     table[f"gtr5|{var}|{pr}|{bname}"] = metrics(sel, recs, V, var, pr, "_m_r5")
+    calib = {}
+    if gt:
+        for var in variants:
+            for pr in PREDICTORS[1:]:
+                calib[f"{var}|{pr}"] = leaf_calibration(roots, recs, V, var, pr)
     args.out.mkdir(parents=True, exist_ok=True)
-    (args.out / "results.json").write_text(json.dumps({"timing": timing, "table": table}, indent=1))
+    tag = f"_{args.tag}" if args.tag else ""
+    (args.out / f"results{tag}.json").write_text(json.dumps({"timing": timing, "table": table, "leaf_calib_gtr5": calib},
+                                                           indent=1))
     lines = [json.dumps(timing, indent=1, default=float), "",
              f"{'variant':14s} {'V':10s} " + " ".join(f"{b:>22s}" for b in buckets)]
     for var in variants:
@@ -413,7 +484,7 @@ def main():
                 m = table[f"{var}|{pr}|{bname}"]
                 cells.append(f"{m['conc']:.3f} {m['gain']:+5.2f}±{m['gain_se']:.1f} {100 * m['share']:3.0f}%")
             lines.append(f"{var:14s} {pr:10s} " + " ".join(f"{c:>22s}" for c in cells))
-    if args.gt_r5:
+    if gt:
         lines.append("\n--- ground truth = r5 x r5 continuation (R=4, cap 60 s)")
         for var in variants:
             for pr in PREDICTORS:
@@ -424,9 +495,13 @@ def main():
                 lines.append(f"{var:14s} {pr:10s} " + " ".join(f"{c:>22s}" for c in cells))
         lines.append("oracle_cv gain (r5 GT): " + ", ".join(
             f"{b} {table[f'gtr5|{variants[0]}|lead|{b}']['oracle_cv']:+.2f}" for b in buckets))
+        lines.append("\n--- leaf calibration vs r5 x r5 GT: bias / MAE / root-centred MAE (pts)")
+        for k, c in calib.items():
+            lines.append(f"{k:24s} " + " ".join(f"{b}: {c[b]['bias']:+5.1f}/{c[b]['mae']:4.1f}/{c[b]['centred_mae']:4.1f}"
+                                                 for b in buckets))
     lines.append("oracle_cv gain: " + ", ".join(f"{b} {table[f'{variants[0]}|lead|{b}']['oracle_cv']:+.2f}" for b in buckets))
     txt = "\n".join(lines)
-    (args.out / "results.txt").write_text(txt)
+    (args.out / f"results{tag}.txt").write_text(txt)
     print(txt, flush=True)
 
 

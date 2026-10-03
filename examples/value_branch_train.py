@@ -42,7 +42,7 @@ sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "examples"))
 
 from blackout_env.value.branch import (  # noqa: E402
-    VIEWS, bootstrap_targets, holdout_mask, load_raw, mirror_targets)
+    H2, H5, VIEWS, bootstrap_targets, holdout_mask, load_raw, mirror_targets)
 from blackout_env.train.accel import pinned  # noqa: E402
 from blackout_env.value.targets import HORIZONS_S  # noqa: E402
 
@@ -78,8 +78,38 @@ def predict_sym(net, states: dict, idx: np.ndarray, device) -> dict:
     return symmetrize(own, mir)
 
 
-def soft_value_loss(out, t: dict, lead, final_beta=None):
-    """value_loss with a soft result target ``t['p']`` [B, 3] and per-row weights."""
+MSE_DEN = 10.0  # "mse": 0.5 x^2 / 10 (tenths of points) = Huber beta 10 (100 pts) inside +-100 pts
+QUANTILE_KAPPA = 1.0  # quantile-Huber kappa (10 pts)
+
+
+def final_head_loss(pred, target, kind: str = "huber", beta=None, quantiles=None):
+    """Loss of the remaining-final-change head, both in tenths of points.  ``kind``: "huber"
+    (beta, default HUBER_BETA = 10 pts: nearly L1, whose minimiser on a bimodal outcome such as a
+    symmetric opening, +80 or -80, is anything in between -- not the mean), "mse" (targets the
+    mean), "quantile" (``quantiles`` [B, Q] at taus (i + 0.5) / Q, quantile-Huber; the head's mean
+    = their mean)."""
+    import torch
+    from torch.nn import functional as F
+
+    from blackout_env.value.model import HUBER_BETA
+
+    if kind == "huber":
+        return F.smooth_l1_loss(pred, target, beta=HUBER_BETA if beta is None else beta)
+    if kind == "mse":
+        return (0.5 * (pred - target) ** 2 / MSE_DEN).mean()
+    if kind == "quantile":
+        q = quantiles.float()
+        n = q.shape[1]
+        tau = (torch.arange(n, device=q.device, dtype=torch.float32) + 0.5) / n
+        u = target.float()[:, None] - q
+        hub = F.smooth_l1_loss(q, target.float()[:, None].expand_as(q), beta=QUANTILE_KAPPA, reduction="none")
+        return ((tau - (u.detach() < 0).float()).abs() * hub / QUANTILE_KAPPA).sum(1).mean() / n * 2.0
+    raise ValueError(kind)
+
+
+def soft_value_loss(out, t: dict, lead, final_beta=None, final_loss: str = "huber", quantiles=None):
+    """value_loss with a soft result target ``t['p']`` [B, 3]; the final head's loss is
+    ``final_head_loss(kind=final_loss)``."""
     import torch
     from torch.nn import functional as F
 
@@ -91,14 +121,23 @@ def soft_value_loss(out, t: dict, lead, final_beta=None):
     reg = F.smooth_l1_loss(out[:, :h], t["delta"].float() * REG_SCALE, beta=HUBER_BETA, reduction="none")
     per_h = (reg * mask).sum(0) / mask.sum(0).clamp_min(1.0)
     delta_loss = per_h.mean()
-    # final_beta: Huber beta of the final-lead head (tenths of points).  The default 1 (10 pts) is
-    # nearly L1, whose minimiser on a bimodal outcome (e.g. a symmetric opening: +80 or -80) is
-    # anything in between -- not the mean; a large beta (-> MSE) targets the mean.
-    final_loss = F.smooth_l1_loss(out[:, h], (t["final"].float() - lead.float()) * REG_SCALE,
-                                  beta=HUBER_BETA if final_beta is None else final_beta)
+    rem_t = (t["final"].float() - lead.float()) * REG_SCALE
+    fl = final_head_loss(out[:, h], rem_t, final_loss, final_beta, quantiles)
     ce = -(t["p"].float() * torch.log_softmax(out[:, h + 1:], dim=-1)).sum(-1).mean()
-    loss = delta_loss + final_loss + ce
-    return loss, {"loss": loss.detach(), "delta": delta_loss.detach(), "final": final_loss.detach(), "ce": ce.detach()}
+    loss = delta_loss + fl + ce
+    return loss, {"loss": loss.detach(), "delta": delta_loss.detach(), "final": fl.detach(), "ce": ce.detach(),
+                  "final_l1_pts": (out[:, h].detach() - rem_t).abs().mean() * (100 / REG_SCALE)}
+
+
+def antisym_outputs(out_a, out_b):
+    """Antisymmetric reading of the raw outputs of a state's two views: regressions (lead changes,
+    remaining final change) (a - b) / 2, result logits (a + reversed b) / 2."""
+    import torch
+
+    h = out_a.shape[1] - 4
+    reg = (out_a[:, :h + 1].float() - out_b[:, :h + 1].float()) / 2
+    logits = (out_a[:, h + 1:].float() + torch.flip(out_b[:, h + 1:].float(), dims=[1])) / 2
+    return torch.cat((reg, logits), dim=1)
 
 
 # ------------------------------------------------------------------------------ train
@@ -108,8 +147,11 @@ class Sampler:
     """Background batches: simulator rows (random view, antisymmetric target) + shard rows."""
 
     def __init__(self, data, targets, rows, shard, shard_rows, batch, shard_frac, seed, depth=6, group_roots=0,
-                 device=None):
+                 device=None, paired=False):
         self.data, self.targets, self.rows = data, targets, rows
+        self.paired = paired  # also the other view of every sim row (keys + "_b"); no shard rows then
+        if paired and shard is not None and shard_frac > 0:
+            raise ValueError("paired views need shard_frac 0 (shard rows have one view)")
         import torch
 
         self.device = device if device is not None else torch.device("cpu")
@@ -158,6 +200,12 @@ class Sampler:
         for k in ("delta", "delta_mask", "final", "p"):
             a, b = self.targets["own"][k][r], self.targets["mir"][k][r]
             out[k] = np.where(view.reshape(-1, *([1] * (a.ndim - 1))) == 0, a, b)
+            if self.paired:
+                out[k + "_b"] = np.where(view.reshape(-1, *([1] * (a.ndim - 1))) == 0, b, a)
+        if self.paired:
+            for k in INPUTS:
+                own, mir = self.data["states"]["own"][k], self.data["states"]["mir"][k]
+                out[k + "_b"] = np.where(view.reshape(-1, *([1] * (own.ndim - 1))) == 0, mir[st_idx], own[st_idx])
         out["group"] = gid.astype(np.int64)
         return out
 
@@ -290,7 +338,11 @@ def cmd_train(args):
         shard = open_cache(Path(args.shard_cache))
         shard_rows = np.flatnonzero(np.asarray(shard["split"]) == SPLITS.index("train"))
 
-    net = load_value_net(args.init, device=device).train()
+    if args.antisym and args.final_loss == "quantile":
+        raise SystemExit("--antisym with quantile heads is not supported")
+    paired = args.antisym or args.pair_weight > 0
+    nq = args.n_quantiles if args.final_loss == "quantile" else None
+    net = load_value_net(args.init, device=device, n_quantiles=nq, antisym=args.antisym or None).train()
     target_net = load_value_net(args.init, device=device)
     if args.compile:  # cuda: the whole net; MPS: TRUNK_MODULES only (value/train.compile_value_net)
         compile_value_net(net, device)
@@ -309,7 +361,7 @@ def cmd_train(args):
         opt = adamw(params, device, lr=args.lr, weight_decay=0.01)  # fused on cuda
         scaler = torch.amp.GradScaler(device.type, enabled=args.amp == "fp16")
         sampler = Sampler(data, targets, train_rows, shard, shard_rows, args.batch_size, args.shard_frac,
-                          args.seed * 1000 + it, group_roots=args.group_roots, device=device)
+                          args.seed * 1000 + it, group_roots=args.group_roots, device=device, paired=paired)
         totals, started = {}, time.time()
         for step in range(args.steps):
             lr = args.lr * (min(1.0, (step + 1) / args.warmup) if step < args.warmup else
@@ -320,9 +372,20 @@ def cmd_train(args):
             ctx = torch.autocast(device.type, dtype=amp) if amp else contextlib.nullcontext()
             net.train()
             with ctx:
-                out = net.forward_u8(b["graphic"], b["team_state"], b["agent_states"])
+                out, qs = net.forward_full_u8(b["graphic"], b["team_state"], b["agent_states"])
+                if paired:
+                    out2, qs2 = net.forward_full_u8(b["graphic_b"], b["team_state_b"], b["agent_states_b"])
             lead_b = b["team_state"][:, 0] - b["team_state"][:, 1]
-            loss, stats = soft_value_loss(out, b, lead_b, args.final_beta)
+            if args.antisym:
+                out = antisym_outputs(out, out2)
+            loss, stats = soft_value_loss(out, b, lead_b, args.final_beta, args.final_loss, qs)
+            if paired and not args.antisym:  # explicit symmetry augmentation: both views + consistency
+                tb = {k: b[k + "_b"] for k in ("delta", "delta_mask", "final", "p")}
+                loss2, _ = soft_value_loss(out2, tb, -lead_b, args.final_beta, args.final_loss, qs2)
+                h = out.shape[1] - 4
+                cons = (0.5 * (out[:, h].float() + out2[:, h].float()) ** 2 / MSE_DEN).mean()
+                loss = (loss + loss2) / 2 + args.pair_weight * cons
+                stats["pair_cons"] = cons.detach()
             if args.rank_weight > 0:
                 rl = rank_loss(out, b, lead_b)
                 loss = loss + args.rank_weight * rl
@@ -341,7 +404,8 @@ def cmd_train(args):
                 print(json.dumps({"iter": it, "step": step + 1, "t": round(time.time() - started), "train": tr}), flush=True)
         sampler.stop()
         # the next round's target net = this net (uncompiled copy)
-        target_net = ValueNet(hidden_size=net.trunk.hidden_size, n_horizons=net.n_horizons).to(device)
+        target_net = ValueNet(hidden_size=net.trunk.hidden_size, n_horizons=net.n_horizons,
+                              n_quantiles=net.n_quantiles, antisym=net.antisym).to(device)
         target_net.load_state_dict(_strip_compile(net.state_dict()))
         target_net.eval()
         hm = heldout_metrics(target_net, data, targets, hold_rows, device)
@@ -351,7 +415,8 @@ def cmd_train(args):
         log.flush()
         save_value_net(out_dir / f"iter{it}.pt", target_net,
                        {"iter": it, "init": str(args.init), "data": str(args.data), "shard_frac": args.shard_frac,
-                        "steps": args.steps, "heldout": hm})
+                        "steps": args.steps, "final_loss": args.final_loss, "final_beta": args.final_beta,
+                        "pair_weight": args.pair_weight, "heldout": hm})
     print(f"done in {time.time() - t0:.0f}s", flush=True)
 
 
@@ -553,6 +618,138 @@ def cmd_bias(args):
     del torch
 
 
+# ------------------------------------------------------------------------------ diag (docs §27)
+
+DIAG_BUCKETS = ((0, 10), (10, 30), (30, 60), (60, 150), (150, 1e9))
+
+
+def _bucket_names():
+    return [f"{a}-{b if b < 1e8 else ''}s" for a, b in DIAG_BUCKETS]
+
+
+def _calib(pred, true) -> dict:
+    """pred / true in points: bias, MAE, R^2 (vs the set's own mean), slope of true on pred."""
+    pred, true = np.asarray(pred, float), np.asarray(true, float)
+    if len(pred) < 2:
+        return {"n": int(len(pred))}
+    var = np.var(true)
+    cov = np.mean((pred - pred.mean()) * (true - true.mean()))
+    return {"n": int(len(pred)), "bias": float(np.mean(pred - true)), "mae": float(np.mean(np.abs(pred - true))),
+            "r2": float(1 - np.mean((pred - true) ** 2) / var) if var > 0 else float("nan"),
+            "slope": float(cov / np.var(pred)) if np.var(pred) > 0 else float("nan")}
+
+
+def _binned(pred, true, edges=(-200, -60, -30, -10, 10, 30, 60, 200)) -> list:
+    pred, true = np.asarray(pred, float), np.asarray(true, float)
+    out = []
+    for a, b in zip(edges[:-1], edges[1:]):
+        m = (pred >= a) & (pred < b)
+        if m.sum():
+            out.append({"bin": [a, b], "n": int(m.sum()), "pred": float(pred[m].mean()), "true": float(true[m].mean())})
+    return out
+
+
+def diag_net(net_path, data, rows_sel, device, start_obs=None) -> dict:
+    """Bias / calibration diagnosis of one net on simulator rows (docs §27):
+
+    * defect = (V_own(s) + V_mir(s)) / 2 of the final lead (pts) -- the part of a single-view
+      reading that a symmetric reading removes; 0 for a perfectly antisymmetric V -- per time bucket
+    * on-trajectory rows (V23 vs its opponent, true match final F known): own view vs F, mirror
+      view vs -F, symmetric reading vs F (bias, MAE, R^2, slope), per bucket + binned calibration
+    * the exact 2 s / 5 s lead changes vs the delta heads (R^2), all rows
+    * match-start states from both sides (``start_obs``): mean final lead / P(win)."""
+    from blackout_env.value.evaluate import symmetrize
+    from blackout_env.value.model import load_value_net
+
+    net = load_value_net(net_path, device=device)
+    rows = data["rows"]
+    st = rows["idx"][rows_sel]
+    own = predict_states(net, data["states"]["own"], st, device)
+    mir = predict_states(net, data["states"]["mir"], st, device)
+    sym = symmetrize(own, mir)
+    t = rows["t_s"][rows_sel]
+    kind = rows["kind"][rows_sel]
+    true = rows["match_final"][rows_sel].astype(float)
+    lead = rows["lead"][rows_sel].astype(float)
+    res = {"antisym_net": bool(getattr(net, "antisym", False)), "n_quantiles": int(getattr(net, "n_quantiles", 0)),
+           "buckets": {}}
+    names = _bucket_names() + ["all"]
+    for bi, name in enumerate(names):
+        m = np.ones(len(t), bool) if name == "all" else (t >= DIAG_BUCKETS[bi][0]) & (t < DIAG_BUCKETS[bi][1])
+        d = (own["final"][m] + mir["final"][m]) / 2 * 100
+        tr = m & (kind == 0)
+        e = {"n": int(m.sum()), "defect_mean": float(d.mean()) if len(d) else float("nan"),
+             "defect_abs": float(np.abs(d).mean()) if len(d) else float("nan"),
+             "pwin_defect": float(np.mean(own["p"][m, 2] + mir["p"][m, 2] - 1)) if m.any() else float("nan"),
+             "traj_own": _calib(own["final"][tr] * 100, true[tr]),
+             "traj_mir": _calib(mir["final"][tr] * 100, -true[tr]),
+             "traj_sym": _calib(sym["final"][tr] * 100, true[tr]),
+             "traj_lead": _calib(lead[tr], true[tr])}
+        d2 = (rows["lead2"][rows_sel] - rows["lead"][rows_sel]).astype(float)
+        d5 = (rows["lead5"][rows_sel] - rows["lead"][rows_sel]).astype(float)
+        e["d2_sym"] = _calib(sym["delta"][m, H2] * 100, d2[m])
+        e["d5_sym"] = _calib(sym["delta"][m, H5] * 100, d5[m])
+        res["buckets"][name] = e
+    tr = kind == 0
+    res["binned_own"] = _binned(own["final"][tr] * 100, true[tr])
+    res["binned_sym"] = _binned(sym["final"][tr] * 100, true[tr])
+    if start_obs is not None:
+        from blackout_env.value.evaluate import ValueEvaluator
+
+        ev = ValueEvaluator(net, device=str(device), batch=256)
+        a, b = ev.evaluate_obs(start_obs, 0), ev.evaluate_obs(start_obs, 1)
+        res["start"] = {"n": len(start_obs), "final_A": float(a["final"].mean() * 100), "final_B": float(b["final"].mean() * 100),
+                        "final_A_sd": float(a["final"].std() * 100), "pwin_A": float(a["p_win"].mean()),
+                        "pwin_B": float(b["p_win"].mean()),
+                        "sym_abs": float(np.abs(a["final"] - b["final"]).mean() / 2 * 100)}
+    return res
+
+
+def cmd_diag(args):
+    from blackout_env.sim import SimState
+    from blackout_env.train.accel import pick_device
+
+    device = pick_device(args.device)
+    data = load_raw(Path(args.data) / "raw")
+    rows = data["rows"]
+    rows["match_final"] = np.array([data["metas"][m]["final"] for m in rows["match"]], np.float32)
+    hold = holdout_mask(rows["seed"])
+    sets = {"heldout": np.flatnonzero(hold), "all": np.arange(len(hold))}
+    start_obs = [SimState.from_seed(s).obs() for s in range(args.start_seed, args.start_seed + args.n_start)]
+    out = {}
+    for spec in args.ckpt:
+        name, path = spec.split("=", 1)
+        out[name] = {k: diag_net(path, data, r, device, start_obs if k == "heldout" else None) for k, r in sets.items()}
+        print(format_diag(name, out[name]), flush=True)
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.out).write_text(json.dumps(out, indent=1))
+    Path(args.out).with_suffix(".txt").write_text("\n".join(format_diag(n, r) for n, r in out.items()))
+
+
+def format_diag(name, r) -> str:
+    lines = [f"\n##### {name}"]
+    st = r["heldout"].get("start")
+    if st:
+        lines.append(f"start ({st['n']} seeds): V_A {st['final_A']:+.1f} V_B {st['final_B']:+.1f} "
+                     f"P(win) {st['pwin_A']:.2f}/{st['pwin_B']:.2f}  |A-B|/2 {st['sym_abs']:.1f}")
+    for split in ("heldout", "all"):
+        lines.append(f"[{split}] bucket   n      defect |defect| pwinDef | own bias/MAE/R2      | mir bias/MAE/R2      "
+                     f"| sym bias/MAE/R2/slope    | lead R2 | d5 R2")
+        for bn, e in r[split]["buckets"].items():
+            o, m_, s_ = e["traj_own"], e["traj_mir"], e["traj_sym"]
+            if o.get("n", 0) < 2:
+                continue
+            lines.append(f"  {bn:8s} {e['n']:6d} {e['defect_mean']:+7.1f} {e['defect_abs']:7.1f} {e['pwin_defect']:+6.2f} | "
+                         f"{o['bias']:+6.1f} {o['mae']:5.1f} {o['r2']:5.2f} | {m_['bias']:+6.1f} {m_['mae']:5.1f} {m_['r2']:5.2f} | "
+                         f"{s_['bias']:+6.1f} {s_['mae']:5.1f} {s_['r2']:5.2f} {s_['slope']:4.2f} | {e['traj_lead']['r2']:5.2f} | "
+                         f"{e['d5_sym'].get('r2', float('nan')):5.2f}")
+    lines.append("binned sym (traj, all): " + "  ".join(f"[{b['bin'][0]},{b['bin'][1]}) n{b['n']} {b['pred']:+.0f}->{b['true']:+.0f}"
+                                               for b in r["all"]["binned_sym"]))
+    lines.append("binned own (traj, all): " + "  ".join(f"[{b['bin'][0]},{b['bin'][1]}) n{b['n']} {b['pred']:+.0f}->{b['true']:+.0f}"
+                                               for b in r["all"]["binned_own"]))
+    return "\n".join(lines)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -567,6 +764,11 @@ def main():
     t.add_argument("--group-roots", type=int, default=0, help="roots per batch with all their branches (rank term)")
     t.add_argument("--rank-weight", type=float, default=0.0)
     t.add_argument("--final-beta", type=float, default=None, help="Huber beta of the final head (tenths of pts)")
+    t.add_argument("--final-loss", choices=["huber", "mse", "quantile"], default="huber")
+    t.add_argument("--n-quantiles", type=int, default=32)
+    t.add_argument("--antisym", action="store_true", help="train V(s) = (f(s) - f(mirror s)) / 2 (both views per row)")
+    t.add_argument("--pair-weight", type=float, default=0.0,
+                   help="> 0: both views per row + this weight x consistency (rem(s) + rem(mirror s))^2")
     t.add_argument("--steps", type=int, default=4000, help="per iteration")
     t.add_argument("--batch-size", type=int, default=256)
     t.add_argument("--lr", type=float, default=1e-4)
@@ -598,6 +800,14 @@ def main():
     b.add_argument("--device", default="cpu")
     b.add_argument("--out", type=Path, default=None)
     b.set_defaults(fn=cmd_bias)
+    d = sub.add_parser("diag", help="bias / calibration diagnosis on the simulator rows (docs §27)")
+    d.add_argument("--data", type=Path, default=REPO / "datasets/value_s2v")
+    d.add_argument("--ckpt", nargs="+", required=True, help="name=path")
+    d.add_argument("--out", type=Path, required=True, help=".json (+ .txt next to it)")
+    d.add_argument("--start-seed", type=int, default=970000)
+    d.add_argument("--n-start", type=int, default=64)
+    d.add_argument("--device", default="auto")
+    d.set_defaults(fn=cmd_diag)
     args = p.parse_args()
     args.fn(args)
 
