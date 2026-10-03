@@ -23,7 +23,11 @@ Rules (all off = V25 exactly, ``tests/test_v26_trade.py``):
   (no special item) with the shortest exact path to the sanctuary within this many tiles is sent
   in and committed (no threat evasion, no Hunter-free detour) when it gets there before any
   enemy Hunter running straight at it could touch it -- V25's ``race_commit`` beyond its 1-tile
-  reach, one walker at a time.  0 = off.
+  reach, one walker at a time.  0 = off.  ``trade_walk_count="deficit"``: as many walkers as the
+  enemy has Hunters out beyond ours (walkers already on their way in count), not only while we
+  have none.  ``trade_walk_safe=False`` drops the "before it could be touched" test: a Collector a
+  step from the sanctuary that turns away from a Hunter beside it is caught anyway (a Hunter runs
+  6 tiles/s to its 4), while one that steps in transforms first and trades on contact.
 """
 
 from __future__ import annotations
@@ -40,13 +44,15 @@ from .v22_teacher import CONTACT_RADIUS
 from .v25_race import StrategicHeuristicV25
 
 TRADE_MODES = ("parity", "always")
+WALK_COUNTS = ("one", "deficit")
 
 
 class StrategicHeuristicV26(StrategicHeuristicV25):
     """V25 + Hunter-for-Hunter trades (``late_trade``) + far commit of a walker (``trade_walk_reach``)."""
 
     def __init__(self, *, late_trade: bool = True, trade_mode: str = "parity", trade_until: float = math.inf,
-                 trade_radius: float = math.inf, trade_walk_reach: float = 0.0, **kwargs):
+                 trade_radius: float = math.inf, trade_walk_reach: float = 0.0, trade_walk_count: str = "one",
+                 trade_walk_safe: bool = True, **kwargs):
         super().__init__(**kwargs)
         if trade_mode not in TRADE_MODES:
             raise ValueError(f"trade_mode {trade_mode!r} not in {TRADE_MODES}")
@@ -55,6 +61,10 @@ class StrategicHeuristicV26(StrategicHeuristicV25):
         self.trade_until = float(trade_until)
         self.trade_radius = float(trade_radius)
         self.trade_walk_reach = float(trade_walk_reach)
+        if trade_walk_count not in WALK_COUNTS:
+            raise ValueError(f"trade_walk_count {trade_walk_count!r} not in {WALK_COUNTS}")
+        self.trade_walk_count = trade_walk_count
+        self.trade_walk_safe = bool(trade_walk_safe)
         self.traders: list[str] = []  # for inspection: our Hunters sent at enemy Hunters this tick
         self.far_committed: list[str] = []  # for inspection: walkers committed by trade_walk_reach
 
@@ -97,22 +107,26 @@ class StrategicHeuristicV26(StrategicHeuristicV25):
         if self.trade_walk_reach <= self.commit_reach:
             return goals
         ctx = self._teach_ctx
-        if any(u.cls == HUNTER for u in ctx["own"]):
-            return goals
         hunters = self._enemy_hunters(ctx)
-        if not hunters:
+        own_hunters = sum(u.cls == HUNTER for u in ctx["own"])
+        if self.trade_walk_count == "one":
+            want = 0 if own_hunters else 1
+        else:
+            want = len(hunters) - own_hunters
+        if not hunters or want <= 0:
             return goals
         tiles = tuple(sorted((int(y), int(x)) for y, x in np.argwhere((graphic[..., SITE_HUNTER] > 0.5) & walkable)))
         if not tiles:
             return goals
-        if any(kind == "transform" and set(t) & set(tiles) for g in goals.values() for t, kind in g):
-            return goals  # a walker is already on its way in
+        want -= sum(1 for g in goals.values() if any(kind == "transform" and set(t) & set(tiles) for t, kind in g))
+        if want <= 0:
+            return goals  # enough walkers already on their way in
         shape = graphic.shape[:2]
         planner = self._planner(np.ascontiguousarray(walkable, dtype=bool), tiles, UNIT_RADIUS[COLLECTOR])
         v_me = self._speed(ctx, COLLECTOR)
         v_them = self._speed(ctx, HUNTER, enemy=True)
         contact = CONTACT_RADIUS[HUNTER] * ctx["enemy_size"] + CONTACT_RADIUS[COLLECTOR] * ctx["own_size"]
-        best = None
+        scored = []
         for name in controlled:
             state = states[row_for[name]]
             if self._class_id(state) != COLLECTOR or name in self.committed or float(state[5:9].max()) >= 0.5:
@@ -121,13 +135,14 @@ class StrategicHeuristicV26(StrategicHeuristicV25):
             d = planner.distance(here)
             if not (0.0 < d <= self.trade_walk_reach):
                 continue
-            arrive = d / v_me + self.commit_margin
-            caught = min((math.hypot(*np.subtract(pixel_position(states[e.row], shape), here)) - contact) / (v_them + v_me)
-                         for e in hunters)
-            if arrive < caught and (best is None or (d, unit_index(name)) < best[:2]):
-                best = (d, unit_index(name), name, state)
-        if best is not None:
-            _, _, name, state = best
+            if self.trade_walk_safe:
+                arrive = d / v_me + self.commit_margin
+                caught = min((math.hypot(*np.subtract(pixel_position(states[e.row], shape), here)) - contact)
+                             / (v_them + v_me) for e in hunters)
+                if not arrive < caught:
+                    continue
+            scored.append((d, unit_index(name), name, state))
+        for _, _, name, state in sorted(scored)[:want]:
             goals[name] = ((tiles, "transform"),)
             self.committed.append(name)
             self._committed_xy.add((float(state[0]), float(state[1])))

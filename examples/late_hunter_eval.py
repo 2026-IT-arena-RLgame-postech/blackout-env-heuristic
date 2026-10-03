@@ -181,6 +181,47 @@ def play_chunk(job):
     return rows
 
 
+def cmd_trace(args):
+    """Event timeline (transforms, kills, trades) of one or more (seed, side) matches."""
+    from blackout_env.sim import core
+    from blackout_env.sim.batch import N_AGENT_COLS, N_CH, BatchSim
+    from blackout_env.sim.mapdata import H, HUNTER, W
+    from blackout_env.sim.state import SimState
+
+    names = {0: "C", 1: "H", 2: "K"}
+    for seed in range(args.seed0, args.seed0 + args.seeds):
+        for sd in (0, 1):
+            ours, opp = _policy(args.ours), _policy(args.opponent)
+            ours.reset(1)
+            opp.reset(1)
+            bs = BatchSim([SimState.from_seed(seed)])
+            bufs = (np.zeros((1, 2, N_CH, H, W), np.float32), np.zeros((1, 2, 4), np.float32),
+                    np.zeros((1, 2, 10, N_AGENT_COLS), np.float32))
+            moves = np.zeros((1, 10, 2), np.float32)
+            idx = np.zeros(1, np.int64)
+            lines = []
+            tag = lambda u: ("us" if (u < 5) == (sd == 0) else "them") + str(u % 5)
+            for t in range(args.cap_s * 25):
+                if bs.over[0]:
+                    break
+                bs.render(idx, *bufs)
+                for team in (0, 1):
+                    pol = ours if team == sd else opp
+                    moves[0, 5 * team:5 * team + 5] = pol.moves(bs, idx, (team,), bufs)[team]
+                bs.step(moves, idx)
+                for e in bs.ev[0, :int(bs.g[0, core.G_NEV])]:
+                    kind = int(e[1])
+                    if kind == core.EV_TRANSFORM:
+                        lines.append(f"{t + 1:5d} {tag(int(e[2]))} -> {names[int(e[3])]}")
+                    elif kind == core.EV_KILL:
+                        k, v = int(e[2]), int(e[3])
+                        lines.append(f"{t + 1:5d} {tag(v)}({names[int(e[4])]}) killed by "
+                                     f"{'trade' if k < 0 else tag(k) + '(' + names[int(e[5])] + ')'}")
+            sc = bs.scores[0]
+            print(f"== seed {seed} side {sd}: {args.ours} {sc[sd]} - {sc[1 - sd]} {args.opponent}")
+            print("\n".join(lines[: args.max_lines]))
+
+
 def load_rows(out: Path) -> list[dict]:
     path = out / "matches.jsonl"
     return [json.loads(x) for x in path.read_text().splitlines() if x.strip()] if path.exists() else []
@@ -294,8 +335,15 @@ def main():
     q = sub.add_parser("report")
     q.add_argument("--base", default="strategic_v25")
     q.add_argument("--out", default=str(REPO / "reports/p15_eval"))
+    q = sub.add_parser("trace")
+    q.add_argument("--ours", default="strategic_v25:race_walk=false")
+    q.add_argument("--opponent", default="strategic_v25")
+    q.add_argument("--seeds", type=int, default=1)
+    q.add_argument("--seed0", type=int, default=4_000_000)
+    q.add_argument("--cap-s", type=int, default=40)
+    q.add_argument("--max-lines", type=int, default=80)
     args = p.parse_args()
-    {"play": cmd_play, "report": cmd_report}[args.cmd](args)
+    {"play": cmd_play, "report": cmd_report, "trace": cmd_trace}[args.cmd](args)
 
 
 if __name__ == "__main__":
