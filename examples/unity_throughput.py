@@ -71,8 +71,22 @@ def _policy(name: str, seed: int):
         from blackout_env.model.my_policy import MyPolicy
         from blackout_env.train.distill.inference import _FastNet, load_checkpoint_net
 
-        return MyPolicy(_FastNet(load_checkpoint_net(str(REPO / P11)).to("cuda")), device="cuda")
+        return MyPolicy(_OnGPU(_FastNet(load_checkpoint_net(str(REPO / P11)).to("cuda"))), device="cpu")
     return make_opponent(SHORT.get(name, name), seed)
+
+
+class _OnGPU:
+    """MyPolicy's net on a GPU: inputs moved over, outputs back to the CPU (MyPolicy decodes on CPU)."""
+
+    def __init__(self, net):
+        self.net, self.is_temporal = net, False
+
+    def __call__(self, *args, **kw):
+        out = self.net(*(a.to("cuda") if hasattr(a, "to") else a for a in args), **kw)
+        return tuple(o.cpu() if hasattr(o, "cpu") else o for o in out)
+
+    def __getattr__(self, name):
+        return getattr(self.net, name)
 
 
 _POL = {}
