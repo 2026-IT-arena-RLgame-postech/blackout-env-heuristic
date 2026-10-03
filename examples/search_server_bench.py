@@ -31,13 +31,13 @@ R5 = "checkpoints/rollout_net/r5.pt"
 VALUE = "checkpoints/value/frozen/s2v_iter5.pt"
 
 
-def match_roots(n: int, seed0: int = 4_000_000, every_s: int = 5, upto_s: int = 60):
+def match_roots(n: int, seed0: int = 4_000_000, every_s: int = 5, upto_s: int = 60, device: str = "cpu"):
     """States of r5 x r5 matches at every ``every_s`` seconds (first ``upto_s``), teams alternating."""
     from blackout_env.sim import SimState
     from blackout_env.sim.batch import BatchRollout, NetPolicy
     from blackout_env.sim.rollout_net import RolloutNet
 
-    pol = NetPolicy(RolloutNet.from_checkpoint(str(REPO / R5)), device="cpu")
+    pol = NetPolicy(RolloutNet.from_checkpoint(str(REPO / R5)), device=device)
     roll = BatchRollout(pol, pol)
     per = upto_s // every_s
     seeds = list(range(seed0, seed0 + -(-n // per)))
@@ -60,7 +60,7 @@ def cmd_latency(args):
 
     torch.set_num_threads(args.threads)
     numba.set_num_threads(args.threads)
-    roots, teams, reseeds = match_roots(max(args.sizes))
+    roots, teams, reseeds = match_roots(max(args.sizes), device=args.device)
     rows = []
     s = build_searcher(device=args.device, max_roots=max(args.sizes), repo=str(REPO))
     for r in args.sizes:
@@ -112,9 +112,11 @@ def cmd_parity(args):
     from blackout_env.sim.search import ModNetPolicy, Searcher, ValueNetLeaf, choose, parse_branches
     from blackout_env.sim.search_server import SearchClient
 
+    torch.set_num_threads(4)  # shared servers: never torch's one-thread-per-core default
+    numba.set_num_threads(4)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    roots, teams, reseeds = match_roots(args.roots)
+    roots, teams, reseeds = match_roots(args.roots, seed0=args.seed0, device=args.device)
     path = f"/tmp/bo-parity-{os.getpid()}.sock"
     env = {**os.environ, "PYTHONPATH": str(REPO)}
     srv = subprocess.Popen([sys.executable, "-m", "blackout_env.sim.search_server", "serve", "--socket", path,
@@ -178,6 +180,7 @@ def main():
     q = sub.add_parser("parity")
     q.add_argument("--roots", type=int, default=96)
     q.add_argument("--clients", type=int, default=12)
+    q.add_argument("--seed0", type=int, default=4_000_000)
     q.add_argument("--max-roots", type=int, default=32)
     q.add_argument("--device", default="cuda")
     q.add_argument("--out", required=True)
