@@ -13,6 +13,14 @@ token, and outputs
 Regressions are trained in tenths of points (``REG_SCALE`` x the score/100 targets) with a Huber
 loss; the result with cross-entropy.  ``decode_outputs`` turns the raw outputs back into score/100
 units, a final lead and P(win).
+
+Optional distributional final head (``n_quantiles`` Q > 0, docs §27): Q extra outputs = quantiles
+(taus (i + 0.5) / Q) of the remaining final change, trained with a quantile-Huber loss; ``forward``
+then puts their mean in the scalar final column, so every consumer (decode_outputs, evaluators, the
+search leaf) reads the quantile mean unchanged.  ``forward_full`` returns (standard outputs,
+quantiles).  ``antisym`` (checkpoint flag) marks a net trained only through its antisymmetric
+reading (f(s) - f(mirror s)) / 2: its single-view outputs carry an arbitrary symmetric offset and it
+must be read with ``symmetric=True``.
 """
 
 from __future__ import annotations
@@ -33,9 +41,12 @@ TRUNK_MODULES = ("graphic_encoder", "vector_encoder", "attention")
 
 
 class ValueNet(nn.Module):
-    def __init__(self, hidden_size: int = 256, n_horizons: int = len(HORIZONS_S)):
+    def __init__(self, hidden_size: int = 256, n_horizons: int = len(HORIZONS_S), n_quantiles: int = 0,
+                 antisym: bool = False):
         super().__init__()
         self.n_horizons = n_horizons
+        self.n_quantiles = int(n_quantiles)
+        self.antisym = bool(antisym)
         self.trunk = MyModel(hidden_size=hidden_size, policy_head="logits")
         # the policy / SPR heads are not used here: drop them so they take no optimizer state
         self.trunk.q_head = None
@@ -43,7 +54,14 @@ class ValueNet(nn.Module):
         self.head_in = nn.LayerNorm(4 * hidden_size)
         self.head = nn.Sequential(SwiGLUBlock(4 * hidden_size, 2 * hidden_size, hidden_size), nn.GELU(),
                                   nn.Linear(hidden_size, n_horizons + 1 + 3))
+        self.q_out = nn.Linear(hidden_size, self.n_quantiles) if self.n_quantiles else None
 
+    def init_quantiles_from_final(self) -> None:
+        """Every quantile output starts as a copy of the scalar final-change output."""
+        last = self.head[-1]
+        with torch.no_grad():
+            self.q_out.weight.copy_(last.weight[self.n_horizons].expand_as(self.q_out.weight))
+            self.q_out.bias.fill_(float(last.bias[self.n_horizons]))
     @property
     def n_outputs(self) -> int:
         return self.n_horizons + 4
@@ -61,15 +79,31 @@ class ValueNet(nn.Module):
         return self.trunk.parameters()
 
     def head_parameters(self):
-        return list(self.head_in.parameters()) + list(self.head.parameters())
+        return list(self.head_in.parameters()) + list(self.head.parameters()) + \
+            (list(self.q_out.parameters()) if self.q_out is not None else [])
 
-    def forward(self, graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor) -> torch.Tensor:
-        """graphic [B, C, H, W] float (decoded), team_state [B, 4], agent_states [B, 10, D] -> [B, H + 4]."""
+    def forward_full(self, graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor):
+        """-> (outputs [B, H + 4], quantiles [B, Q] or None); with quantiles the final column = their mean."""
         tokens = self.trunk._trunk(graphic, team_state, agent_states)
         units = tokens[:, N_VISION_TOKENS: N_VISION_TOKENS + N_UNITS]
         glob = tokens[:, N_VISION_TOKENS + N_UNITS]
         feats = torch.cat((glob, units[:, :N_TEAM].mean(1), units[:, N_TEAM:].mean(1), tokens[:, -1]), dim=-1)
-        return self.head(self.head_in(feats))
+        hidden = self.head[:-1](self.head_in(feats))
+        out = self.head[-1](hidden)
+        if self.q_out is None:
+            return out, None
+        q = self.q_out(hidden)
+        h = self.n_horizons
+        out = torch.cat((out[:, :h], q.mean(1, keepdim=True).to(out.dtype), out[:, h + 1:]), dim=1)
+        return out, q
+
+    def forward(self, graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor) -> torch.Tensor:
+        """graphic [B, C, H, W] float (decoded), team_state [B, 4], agent_states [B, 10, D] -> [B, H + 4]."""
+        return self.forward_full(graphic, team_state, agent_states)[0]
+
+    def forward_full_u8(self, graphic_u8, team_state, agent_states):
+        graphic = graphic_u8.permute(0, 3, 1, 2).float() / GRAPHIC_SCALE
+        return self.forward_full(graphic, team_state, agent_states)
 
     def forward_u8(self, graphic_u8: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor) -> torch.Tensor:
         """``graphic_u8``: the shard encoding [B, H, W, C] uint8 (x15)."""
@@ -114,13 +148,26 @@ def value_loss(out: torch.Tensor, targets: dict, lead: torch.Tensor) -> tuple[to
 def save_value_net(path, net: ValueNet, extra: dict | None = None) -> None:
     state = {k: v for k, v in net.state_dict().items()}
     torch.save({"value_state": state, "hidden_size": net.trunk.hidden_size, "n_horizons": net.n_horizons,
+                "n_quantiles": net.n_quantiles, "antisym": net.antisym,
                 "horizons_s": list(HORIZONS_S), **(extra or {})}, path)
 
 
-def load_value_net(path, device="cpu") -> ValueNet:
+def load_value_net(path, device="cpu", n_quantiles: int | None = None, antisym: bool | None = None) -> ValueNet:
+    """``n_quantiles`` / ``antisym``: override the checkpoint's (a net without quantile outputs loaded
+    with Q > 0 gets them initialised from its scalar final output)."""
     ckpt = torch.load(path, map_location=device, weights_only=True)
-    net = ValueNet(hidden_size=ckpt["hidden_size"], n_horizons=ckpt["n_horizons"])
-    net.load_state_dict(_strip_compile(ckpt["value_state"]))
+    q_ck = int(ckpt.get("n_quantiles", 0))
+    q = q_ck if n_quantiles is None else int(n_quantiles)
+    net = ValueNet(hidden_size=ckpt["hidden_size"], n_horizons=ckpt["n_horizons"], n_quantiles=q,
+                   antisym=bool(ckpt.get("antisym", False)) if antisym is None else antisym)
+    state = _strip_compile(ckpt["value_state"])
+    if q != q_ck:
+        if q_ck:
+            raise ValueError(f"{path}: has {q_ck} quantile outputs, asked for {q}")
+        net.load_state_dict(state, strict=False)
+        net.init_quantiles_from_final()
+    else:
+        net.load_state_dict(state)
     return net.to(device).eval()
 
 

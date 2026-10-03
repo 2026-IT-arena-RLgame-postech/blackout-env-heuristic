@@ -1,0 +1,2 @@
+specs: iter5=checkpoints/value/frozen/s2v_iter5.pt asym=checkpoints/value_mse/asym//iter5.pt ctl=checkpoints/value_mse/ctl//iter5.pt hub3=checkpoints/value_mse/hub3//iter5.pt mse=checkpoints/value_mse/mse//iter5.pt pair=checkpoints/value_mse/pair//iter5.pt quant=checkpoints/value_mse/quant//iter5.pt
+EVAL DONE Sat Oct 3 05:59:43 PM UTC 2026
