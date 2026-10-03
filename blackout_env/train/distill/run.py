@@ -116,6 +116,10 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--min-rows", type=int, default=20_000, help="teacher-only rows to collect before fitting")
     p.add_argument("--replay-ratio", type=float, default=2.0,
                    help="trained samples per collected row; below it no new matches are queued")
+    p.add_argument("--max-replay-ratio", type=float, default=0.0,
+                   help="> 0: the learner waits for collected rows when it has trained this many samples per "
+                   "collected row (a host whose collectors are slower than the learner, e.g. wsl_gpu P14: "
+                   "keeps the recipe's ratio instead of re-reading a small ring); 0 = never waits")
     p.add_argument("--queue-depth", type=int, default=2,
                    help="matches queued per worker: most finish in seconds, so a worker must have its next one "
                    "waiting instead of idling until the next sync")
@@ -195,6 +199,9 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--burn-in", type=int, default=32, help="--temporal: ticks before each window that only build memory")
     p.add_argument("--max-rows", type=int, default=600_000, help="replay ring size (~8 KB per row in RAM)")
     p.add_argument("--device", default="auto", help="auto = cuda > mps > cpu")
+    p.add_argument("--collector-device", default="cpu",
+                   help="where collection workers run the student's batch-1 forward (cuda: one small CUDA context "
+                   "per worker; P14 wsl_gpu, where the CPU forward was half of a worker's tick)")
     args = p.parse_args(argv)
     if args.angle_head and args.policy_head != "logits":
         p.error("--angle-head needs --policy-head logits")
@@ -791,6 +798,7 @@ class Run:
     def run(self) -> None:
         args = self.args
         started = time.time()
+        os.environ["BLACKOUT_STUDENT_DEVICE"] = args.collector_device  # spawned workers inherit it
         with CollectorPool(args.build, args.workers, args.time_scale) as pool:
             if not self.resumed and args.baseline_eval:
                 self.queue_eval(pool, "eval_teacher")
@@ -801,6 +809,11 @@ class Run:
             print(f"[distill] {self.dataset.size} rows, fitting", flush=True)
             window_started = self._window_started = time.time()
             while self.step < args.steps:
+                if args.max_replay_ratio > 0 and \
+                        self.step * self.learner.rows_per_step > args.max_replay_ratio * self.collected_rows:
+                    self.sync(pool, timeout=0.5)  # collectors behind: wait for rows
+                    self._pipeline["learner_wait_syncs"] += 1
+                    continue
                 self.learner.set_lr(self.step)
                 if args.temporal:
                     self.learner.step_windows(self.dataset.sample_windows(args.windows, args.window, args.burn_in, self._rng))

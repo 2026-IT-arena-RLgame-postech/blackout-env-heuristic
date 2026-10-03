@@ -355,7 +355,8 @@ def _load_student(path: str | None, inference: str = "iqn") -> tuple[object | No
 
     key = (path, Path(path).stat().st_mtime, inference)
     if _STUDENT is None or _STUDENT[0] != key:  # a distill or a rollout-net (RolloutNet, r5) checkpoint
-        _STUDENT = (key, make_student(load_checkpoint_net(path), inference), int(checkpoint_meta(path).get("version", 0)))
+        device = os.environ.get("BLACKOUT_STUDENT_DEVICE", "cpu")  # run.py --collector-device
+        _STUDENT = (key, make_student(load_checkpoint_net(path), inference, device), int(checkpoint_meta(path).get("version", 0)))
     return _STUDENT[1], _STUDENT[2]
 
 
