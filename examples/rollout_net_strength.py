@@ -35,7 +35,10 @@ sys.path.insert(0, str(REPO))
 MAIN = Path(os.environ.get("BLACKOUT_MAIN", "/Users/mac/project/26rl/blackout-env"))  # shared checkpoints (read-only)
 CKPT = {"p11": MAIN / "checkpoints/distill/frozen/p11_v22.pt", "p5a": MAIN / "checkpoints/distill/frozen/p5a_v22.pt",
         "r5": MAIN / "checkpoints/rollout_net/r5.pt"}
-HEUR = {"v23": "strategic_v23", "v22": "strategic_v22", "v19": "strategic_v19", "v24": "strategic_v24"}
+# more named students: BLACKOUT_CKPTS="p14=/path/a.pt,p14b=/path/b.pt" (P14 on wsl_gpu)
+CKPT.update(dict(kv.split("=", 1) for kv in os.environ.get("BLACKOUT_CKPTS", "").split(",") if "=" in kv))
+HEUR = {"v23": "strategic_v23", "v22": "strategic_v22", "v19": "strategic_v19", "v24": "strategic_v24",
+        "v25": "strategic_v25"}
 DPS = 25  # decisions per second
 TRACE_S = (10, 20, 30, 45, 60, 90, 120, 150, 240, 300)
 HORIZON = 420 * DPS + 50
@@ -200,6 +203,17 @@ def cmd_summary(args):
         cond = " ".join(f"{name} {lead[race == v].mean():+.1f}(n{(race == v).sum()})" for name, v in (("raceW", 1), ("raceT", 0), ("raceL", -1)) if (race == v).any())
         lines.append(f"{c:10s} vs {o:10s} length {steps.mean() / DPS:5.1f}s (p90 {np.percentile(steps, 90) / DPS:5.1f}) "
                      f"target/timeout {ov:.2f} exhausted {ex:.2f} | margin by race: {cond}")
+    # P14: the race arrival -- our first Hunter's decision (V25's exact walk: 99; V23/P11: 100)
+    lines.append("")
+    lines.append("first Hunter decision (ours / theirs): counts of 98, 99, 100, 101+, never")
+    for (c, o) in sorted({(d["candidate"], d["opponent"]) for d in rows}):
+        grp = [d for d in rows if (d["candidate"], d["opponent"]) == (c, o)]
+        hist = []
+        for i in (0, 1):
+            dec = [round(d["first_hunter_s"][i] * DPS) if d["first_hunter_s"][i] is not None else None for d in grp]
+            hist.append("/".join(str(x) for x in (sum(v is not None and v <= 98 for v in dec), dec.count(99), dec.count(100),
+                                                 sum(v is not None and v > 100 for v in dec), dec.count(None))))
+        lines.append(f"{c:10s} vs {o:10s} n={len(grp):5d} ours {hist[0]:>22s}   theirs {hist[1]:>22s}")
     text = "\n".join(lines)
     print(text)
     (out / "summary.txt").write_text(text + "\n")
