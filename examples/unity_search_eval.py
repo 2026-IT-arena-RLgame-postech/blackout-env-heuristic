@@ -88,7 +88,8 @@ def _init_worker(build: str, time_scale: float, gpus, cfg: dict) -> None:
     r5 = RolloutNet.from_checkpoint(str(REPO / R5))
     acting = ModNetPolicy(NetPolicy(r5, device="cpu"))
     dev = cfg["device"]
-    searcher = Searcher(ModNetPolicy(NetPolicy(RolloutNet.from_checkpoint(str(REPO / R5)), device=dev)),
+    searcher = Searcher(ModNetPolicy(NetPolicy(RolloutNet.from_checkpoint(str(REPO / R5)), device=dev,
+                                               cuda_graphs=cfg.get("cuda_graphs", False))),
                         ValueNetLeaf(str(REPO / VALUE), dev), parse_branches(cfg["branches"]),
                         window=cfg["window"], margin=cfg["margin"])
     _W = {"env": env, "cap": _Capture(env), "acting": acting, "searcher": searcher, "cfg": cfg, "gpu": gpu}
@@ -242,7 +243,7 @@ def cmd_play(args):
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     cfg = {"branches": args.branches, "every": args.every, "window": args.window, "margin": args.margin,
-           "cap_s": args.cap_s, "device": args.device}
+           "cap_s": args.cap_s, "device": args.device, "cuda_graphs": not args.no_cuda_graphs}
     done = {(r["tag"], r["opponent"], r["seed"], r["side"]) for r in load_rows(out)}
     tasks = [{"tag": tag, "opponent": opp, "seed": s, "side": side}
              for s in range(args.seed0, args.seed0 + args.seeds) for opp in args.opponent.split(",")
@@ -357,6 +358,7 @@ def main():
     q.add_argument("--workers", type=int, default=8)
     q.add_argument("--gpus", default="0,1,2,3", help="CUDA devices dealt to workers round-robin ('' = none)")
     q.add_argument("--device", default="cuda")
+    q.add_argument("--no-cuda-graphs", action="store_true", help="plain launches for the search's r5 forwards")
     q.add_argument("--time-scale", type=float, default=20.0)
     q.add_argument("--out", required=True)
     q = sub.add_parser("report")
