@@ -42,6 +42,7 @@ from blackout_env.model.derived_obs import N_PATCH_FEATURES, local_wall_features
 
 N_UNITS, N_TEAM, K_BINS = 10, 5, 32
 N_CLS = 3
+N_QFEAT = 8  # logit_features
 MAP_TOKENS = {"none": 0, "f3": 6, "s3": 8, "patch": 8}  # map-token grid side
 # how the 11 unit/global tokens use the map tokens: "self" = one joint self-attention sequence (map tokens
 # updated every layer); "cross" = K/V only, all tokens see the whole map; "local3"/"local5" = each unit token
@@ -111,7 +112,7 @@ class RolloutNet(nn.Module):
                     self.cpos_row = nn.Parameter(torch.randn(6, dm) * 0.02)
                     self.cpos_col = nn.Parameter(torch.randn(6, dm) * 0.02)
             if q_head:  # per own unit: advantage of the S3 "alt" branch over "base" (docs §22 C)
-                self.q_net = nn.Sequential(nn.Linear(d + 4, q_head), nn.SiLU(), nn.Linear(q_head, q_head), nn.SiLU(),
+                self.q_net = nn.Sequential(nn.Linear(d + N_QFEAT, q_head), nn.SiLU(), nn.Linear(q_head, q_head), nn.SiLU(),
                                            nn.Linear(q_head, 1))
             return
         unit_in = 12 + c1 + c2 + glob + 4 + N_TEAM + N_UNITS * 5 + N_PATCH_FEATURES
@@ -278,7 +279,8 @@ def alt_bins(logits: torch.Tensor) -> torch.Tensor:
 
 
 def logit_features(logits: torch.Tensor) -> torch.Tensor:
-    """[B, 5, K] -> [B, 5, 4]: top logit - alt logit, top-arc mass, alt-arc mass, entropy."""
+    """[B, 5, K] -> [B, 5, N_QFEAT]: top logit - alt logit, top-arc mass, alt-arc mass, entropy, and the
+    canonical-frame directions (cos, sin) of the top and the alt bin (what the alternative *is*)."""
     k = logits.shape[-1]
     p = torch.softmax(logits.float(), -1)
     top = logits.argmax(-1, keepdim=True)
@@ -286,7 +288,10 @@ def logit_features(logits: torch.Tensor) -> torch.Tensor:
     arc = lambda j: sum(p.gather(-1, (j + dlt) % k) for dlt in (-1, 0, 1)).squeeze(-1)  # noqa: E731
     gap = (logits.gather(-1, top) - logits.gather(-1, alt)).squeeze(-1).float()
     ent = -(p * torch.log(p.clamp_min(1e-9))).sum(-1)
-    return torch.stack([gap.clamp(max=20.0) / 10.0, arc(top), arc(alt), ent], -1).to(logits.dtype)
+    ta = top.squeeze(-1).float() * (2 * math.pi / k)
+    aa = alt.squeeze(-1).float() * (2 * math.pi / k)
+    return torch.stack([gap.clamp(max=20.0) / 10.0, arc(top), arc(alt), ent, ta.cos(), ta.sin(), aa.cos(), aa.sin()],
+                       -1).to(logits.dtype)
 
 
 class RolloutOwnQ(nn.Module):

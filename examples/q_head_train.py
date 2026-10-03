@@ -102,7 +102,12 @@ def metrics(pred: np.ndarray, data) -> dict:
     res = {"roots": r, "corr": float(np.corrcoef(pred.ravel(), np.clip(adv, -CLIP, CLIP).ravel())[0, 1]),
            "mse": float(np.mean((pred - np.clip(adv, -CLIP, CLIP)) ** 2))}
     best_u = pred.argmax(1)
-    for m in (0.0, 1.0, 2.0, 3.0, 5.0, 8.0):
+    op = np.asarray(data["tick"]) < 250
+    for m in (0.0, 3.0):
+        go = pred[np.arange(r), best_u] > m
+        res[f"open_gain_m{m:g}"] = float(np.where(go, adv[np.arange(r), best_u], 0.0)[op].mean())
+        res[f"later_gain_m{m:g}"] = float(np.where(go, adv[np.arange(r), best_u], 0.0)[~op].mean())
+    for m in (-2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 5.0, 8.0):
         go = pred[np.arange(r), best_u] > m
         gain = np.where(go, adv[np.arange(r), best_u], 0.0)
         res[f"gain_m{m:g}"] = float(gain.mean())
@@ -141,13 +146,19 @@ def cmd_train(args):
     print("train roots", len(train["tick"]), "val", len(val["tick"]), "trainable", sum(p.numel() for p in params), flush=True)
     rng = np.random.default_rng(args.seed)
     n = len(train["tick"])
+    train_open = np.asarray(train["tick"]) < 250
     best, log, t0 = -1e9, [], time.time()
     for step in range(1, args.steps + 1):
         idx = np.sort(rng.choice(n, args.batch))
         g, ts, ag, adv = tensors(train, idx, device, torch)
         net.train()
         logits, off, pred = net.q_alt(g, ts, ag, detach_trunk=args.freeze_trunk)
-        loss = torch.nn.functional.huber_loss(pred, adv, delta=args.huber)
+        if args.target == "bce":  # P(adv > bce_margin): the head's output is a logit (act threshold = logit)
+            wpos = torch.where(adv > args.bce_margin, args.pos_weight, 1.0)
+            loss = torch.nn.functional.binary_cross_entropy_with_logits(pred, (adv > args.bce_margin).float(), weight=wpos)
+        else:
+            w = torch.where(torch.from_numpy(train_open[idx]).to(device)[:, None], args.opening_weight, 1.0)
+            loss = (torch.nn.functional.huber_loss(pred, adv, delta=args.huber, reduction="none") * w).mean()
         if ref is not None:
             with torch.no_grad():
                 rl, ro = ref(g, ts, ag)
@@ -167,7 +178,7 @@ def cmd_train(args):
             row = {"step": step, "loss": float(loss), "s": round(time.time() - t0), **{k: round(v, 4) for k, v in m.items()}}
             log.append(row)
             print(json.dumps(row), flush=True)
-            score = m["corr"]
+            score = m["corr"] if args.target == "huber" else max(m[k] for k in m if k.startswith("gain_m"))
             if score > best:
                 best = score
                 save = {"config": net.config, "state": {k: v.cpu() for k, v in net.state_dict().items()}, "args": vars(args),
@@ -226,6 +237,10 @@ def main():
     q.add_argument("--trunk-lr", type=float, default=1e-4)
     q.add_argument("--wd", type=float, default=1e-4)
     q.add_argument("--huber", type=float, default=5.0)
+    q.add_argument("--target", default="huber", choices=["huber", "bce"])
+    q.add_argument("--bce-margin", type=float, default=3.0)
+    q.add_argument("--pos-weight", type=float, default=1.0)
+    q.add_argument("--opening-weight", type=float, default=1.0, help="huber: weight of roots in the first 10 s")
     q.add_argument("--eval-every", type=int, default=1000)
     q.add_argument("--device", default="")
     q.add_argument("--seed", type=int, default=0)

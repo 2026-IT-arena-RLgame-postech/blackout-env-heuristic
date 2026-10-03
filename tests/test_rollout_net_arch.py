@@ -76,7 +76,7 @@ def test_q_alt_matches_policy_and_alt_bins():
     d = (alt - top) % 32
     assert ((d >= 2) & (d <= 30)).all()
     f = logit_features(logits)
-    assert f.shape == (4, 5, 4) and torch.isfinite(f).all()
+    assert f.shape == (4, 5, 8) and torch.isfinite(f).all()
 
 
 def test_mmap_npz_equals_load(tmp_path):
