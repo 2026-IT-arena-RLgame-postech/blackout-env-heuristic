@@ -1,0 +1,7 @@
+strategic_v23: 256 matches; plain race w/t/l 16/229/11, search 60/182/14
+transitions -1->-1: 10, -1->+0: 1, +0->-1: 4, +0->+0: 181, +0->+1: 44, +1->+1: 16
+improved 45: classes {'ours_earlier': 45}, d_first_ours {-1: 44, -9: 1}, opp never transformed 41
+one-decision-earlier wins: 44; deviation source {"teammates' branches only": 32, "walker's own branch": 12}
+plain walker short of the sanctuary at the search's entry decision: median 0.0048 tiles (p90 0.0109)
+search walker's max position difference from plain before entry: median 0.0167 (p90 0.071)
+opponent's nearest walker at our entry: median 0.0116 tiles from the sanctuary; moves away next decision in 1.00 (median +0.113 tiles)

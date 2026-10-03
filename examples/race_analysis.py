@@ -292,7 +292,49 @@ def cmd_analyze(args):
     print(f"   same first-transforming unit: {sum(r['mech']['same_first_unit'] for r in imp)}/{len(imp)}")
     print(f"   branches executed pre-race: {Counter(branches[b] for r in imp for b in r['branches_pre_race'])}")
     print(f"   first non-base tick: {Counter(r['first_branch_tick'] for r in imp).most_common(8)}")
+    lines = details(P, S, rows, branches, hunter)
+    print("\n".join(lines))
+    head = [f"{args.opponent}: {len(rows)} matches; plain race w/t/l {pr[1]}/{pr[0]}/{pr[-1]}, search {sr[1]}/{sr[0]}/{sr[-1]}",
+            "transitions " + ", ".join(f"{a:+d}->{b:+d}: {v}" for (a, b), v in sorted(trans.items())),
+            f"improved {len(imp)}: classes {dict(Counter(r['mech']['class'] for r in imp))}, "
+            f"d_first_ours {dict(Counter(max(r['mech']['d_first_ours'], -9) for r in imp))}, "
+            f"opp never transformed {sum(r['mech']['d_first_opp'] >= 999 for r in imp)}"]
+    (out / f"summary_{args.opponent}.txt").write_text("\n".join(head + lines) + "\n")
     (out / f"analysis_{args.opponent}.json").write_text(json.dumps(rows, indent=1))
+
+
+def details(P, S, rows, branches, hunter):
+    """Races the search wins by entering one decision earlier: who deviated, by how much, how the
+    opponent's walkers react to our new Hunter."""
+    cat = Counter()
+    rec = []
+    for g, r in enumerate(rows):
+        if "mech" not in r or r["mech"]["d_first_ours"] != -1:
+            continue
+        side = r["side"]
+        us = list(range(5 * side, 5 * side + 5))
+        them = [u for u in range(10) if u not in us]
+        T, w = r["s_first_ours"], r["s_first_unit_ours"]
+        bb = S["branch"][:T, g]
+        names = [branches[b] for b in np.unique(bb[bb > 0])]
+        alt_units = {int(n[3]) for n in names if n.startswith("alt")}
+        direct = (w - 5 * side) in alt_units or any(n.startswith("samp") for n in names)
+        cat["walker's own branch" if direct else "teammates' branches only"] += 1
+        d_plain = min(float(sanct_dist(P["pos"][T, g, u])) for u in us)  # plain, at the search's entry decision
+        dpos = float(np.abs(S["pos"][:T + 1, g, w] - P["pos"][:T + 1, g, w]).max())
+        opp_d = np.array([[float(sanct_dist(S["pos"][t, g, u])) for u in them] for t in range(T, min(T + 3, S["pos"].shape[0]))])
+        k = int(opp_d[0].argmin())
+        rec.append((d_plain, dpos, opp_d[0, k], opp_d[1, k] - opp_d[0, k] if len(opp_d) > 1 else np.nan))
+    if not rec:
+        return []
+    a = np.array(rec)
+    return [f"one-decision-earlier wins: {len(a)}; deviation source {dict(cat)}",
+            f"plain walker short of the sanctuary at the search's entry decision: median {np.median(a[:, 0]):.4f} tiles "
+            f"(p90 {np.quantile(a[:, 0], 0.9):.4f})",
+            f"search walker's max position difference from plain before entry: median {np.median(a[:, 1]):.4f} "
+            f"(p90 {np.quantile(a[:, 1], 0.9):.3f})",
+            f"opponent's nearest walker at our entry: median {np.median(a[:, 2]):.4f} tiles from the sanctuary; "
+            f"moves away next decision in {np.mean(a[:, 3] > 0):.2f} (median {np.nanmedian(a[:, 3]):+.3f} tiles)"]
 
 
 def main():
