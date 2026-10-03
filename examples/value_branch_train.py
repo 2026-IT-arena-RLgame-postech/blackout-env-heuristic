@@ -124,8 +124,8 @@ class Sampler:
         self.thread = threading.Thread(target=self._run, daemon=True)
         self.thread.start()
 
-    def _group_size(self):
-        return self.group_roots * len(__import__("value_branch_eval").BRANCHES)
+    def _group_size(self):  # branches per root: the data's (8 = S1.5's heuristic set or the S3 search set)
+        return self.group_roots * (int(self.data["rows"]["branch"].max()) + 1)
 
     def _grouped(self):
         """``group_roots`` roots with all their branch rows (one view per root); the rest of the

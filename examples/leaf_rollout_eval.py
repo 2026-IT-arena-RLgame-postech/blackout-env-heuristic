@@ -19,6 +19,17 @@ V in {s2v_iter5, s2v_iter5 symmetric, s1b symmetric} (+ the lead alone) is read 
 leaf rollouts that end the match are scored exactly.
 
     PYTHONPATH=. .venv/bin/python examples/leaf_rollout_eval.py --workers 12 --out reports/leaf_rollout
+
+Other rollout nets (docs §24): ``--nets name=ckpt ...`` adds, per net, the ``<name>`` x ``<name>``
+leaf rollouts (both teams that net) and -- with ``--gt-nets`` -- the ground truth "that net for both
+teams continues" (R = 4 reseeds, cap 60 s; the ``--gt-r5`` recipe); ``--value name=ckpt ...`` adds
+value nets (predictors ``<name>`` and ``<name>_sym``).  ``--fast`` skips the CPU leaves (V23 / r5 +
+true opponent), the k = 2 / 3 s / P11 leaves; ``--cache`` keeps the replayed branch ends (pickle) so a
+rerun with other nets / values skips the CPU replay.
+
+    PYTHONPATH=. python examples/leaf_rollout_eval.py --fast --cache /tmp/leaf_ends.pkl --device cuda \
+        --nets r5=checkpoints/rollout_net/r5.pt f3xd2=checkpoints/rollout_net/arch/f3_x_d2.pt --gt-nets \
+        --value newv=checkpoints/value/f3xd2/iter3.pt --out reports/leaf_rollout_newnet
 """
 
 from __future__ import annotations
@@ -89,6 +100,7 @@ def _leaf_record(sim, team, encode):
 
 def _worker(job):
     global _R5
+    fast = job.get("fast", False)
     import torch
 
     import value_branch_eval as vb
@@ -126,6 +138,11 @@ def _worker(job):
         hashes = [int(zlib.crc32(s.uf.tobytes() + s.ui.tobytes())) for s, _, _ in ends]
         live = [b for b, (s, _, _) in enumerate(ends) if not s.over]
         rec = {"rid": f"{task['id']}@{tick}", "team": team, "hashes": hashes, "live": live, "leaf": {}, "time": {}}
+        if fast:
+            rec["sims"] = pickle.dumps([ends[b][0] for b in live])
+            rec["reseed"] = LEAF_RESEED + rng_seed
+            out.append(rec)
+            continue
         # V23 leaf (S1.5 / S1.6): learner fresh V23 + true opponent, snapshots at 3 s / 5 s
         t0 = time.perf_counter()
         for h in HORIZONS:
@@ -176,14 +193,17 @@ def _worker(job):
 P11 = "checkpoints/distill/frozen/p11_v22.pt"
 
 
-def run_r5_self(recs, repeat: int, horizon: int, device: str, net: str = "r5"):
-    """Both teams the same net (r5 MPS fp32, or P11 MPS fp16), batched over every live branch end."""
+def run_r5_self(recs, repeat: int, horizon: int, device: str, net: str = "r5", path: str | None = None):
+    """Both teams the same net (r5 MPS fp32, another RolloutNet ``path``, or P11 MPS fp16), batched over
+    every live branch end."""
     import torch
 
     from blackout_env.sim.batch import BatchRollout, NetPolicy
     from blackout_env.sim.rollout_net import RolloutNet
 
-    if net == "r5":
+    if path is not None:
+        pol = NetPolicy(RolloutNet.from_checkpoint(str(REPO / path)), device=device)
+    elif net == "r5":
         pol = NetPolicy(RolloutNet.from_checkpoint(str(REPO / R5)), device=device)
     else:
         pol = NetPolicy.from_checkpoint(str(REPO / P11), device=device, fp16=True)
@@ -198,6 +218,8 @@ def run_r5_self(recs, repeat: int, horizon: int, device: str, net: str = "r5"):
     roll.run(sims[:64], 5, reseeds=reseeds[:64])  # warm-up (MPS kernels)
     if device == "mps":
         torch.mps.synchronize()
+    elif device.startswith("cuda"):
+        torch.cuda.synchronize()
     t0 = time.perf_counter()
     res = roll.run(sims, horizon, reseeds=reseeds)
     t_roll = time.perf_counter() - t0
@@ -239,7 +261,7 @@ def value_preds(recs, device: str) -> dict:
 
 # ------------------------------------------------------------------------------ metrics
 
-PREDICTORS = ("lead", "iter5", "iter5_sym", "s1b_sym")
+PREDICTORS = ["lead", "iter5", "iter5_sym", "s1b_sym"]
 
 
 def pred_vector(root, rec, var, V, predictor) -> np.ndarray:
@@ -257,22 +279,22 @@ def pred_vector(root, rec, var, V, predictor) -> np.ndarray:
         p = V[(var, rec["rid"], b)]
         if predictor == "lead":
             v[b] = p["lead"]
-        elif predictor == "iter5":
-            v[b] = p["iter5"][0]
-        elif predictor == "iter5_sym":
-            v[b] = (p["iter5"][0] - p["iter5"][1]) / 2
-        elif predictor == "s1b_sym":
-            v[b] = (p["s1b"][0] - p["s1b"][1]) / 2
+        elif predictor.endswith("_sym"):
+            name = predictor[:-4]
+            v[b] = (p[name][0] - p[name][1]) / 2
+        else:
+            v[b] = p[predictor][0]
     return v
 
 
-def gt_r5(recs, roots, device: str, R: int = 4, cap: int = 1500):
-    """Alternative ground truth: the branch-end states continued by r5 for both teams (MPS), R
-    reseeds (S1.5's 1_000_003 (r + 1) + rng_seed, common across branches), to the end or 60 s."""
+def gt_r5(recs, roots, device: str, R: int = 4, cap: int = 1500, path: str = R5, mkey: str = "_m_r5"):
+    """Alternative ground truth: the branch-end states continued by r5 (or the RolloutNet ``path``) for
+    both teams, R reseeds (S1.5's 1_000_003 (r + 1) + rng_seed, common across branches), to the end or 60 s."""
     from blackout_env.sim.batch import BatchRollout, NetPolicy
     from blackout_env.sim.rollout_net import RolloutNet
 
-    pol = NetPolicy(RolloutNet.from_checkpoint(str(REPO / R5)), device=device)
+    pol = NetPolicy(RolloutNet.from_checkpoint(str(REPO / path)), device=device)
+    gk = "gt" + mkey
     sims, seeds, where = [], [], []
     for r in recs.values():
         rng_seed = r["reseed"] - LEAF_RESEED
@@ -285,14 +307,14 @@ def gt_r5(recs, roots, device: str, R: int = 4, cap: int = 1500):
     t0 = time.perf_counter()
     res = BatchRollout(pol, pol).run(sims, cap, reseeds=seeds)
     for j, (r, b, k) in enumerate(where):
-        r.setdefault("gt_r5", {}).setdefault(b, [0] * R)[k] = float(res.lead(r["team"])[j])
+        r.setdefault(gk, {}).setdefault(b, [0] * R)[k] = float(res.lead(r["team"])[j])
     capped = float(np.mean(~res.over))
     for root in roots:
         rec = recs[f"{root['match']}@{root['tick']}"]
         rows = []
         for b, br in enumerate(root["branches"]):
             row = br["windows"][str(W)]
-            rows.append([row["final_r"][0]] * R if row["terminal"] else rec["gt_r5"][b])
+            rows.append([row["final_r"][0]] * R if row["terminal"] else rec[gk][b])
         g = np.array(rows, float)
         iu = np.triu_indices(len(g), 1)
         h = R // 2
@@ -300,7 +322,7 @@ def gt_r5(recs, roots, device: str, R: int = 4, cap: int = 1500):
         import value_branch_eval as vb
 
         f = g.mean(1)
-        root["_m_r5"] = {"gt": {"final": f}, "pairs": {"final": {"gap": (g[iu[0]] - g[iu[1]]).mean(1)}},
+        root[mkey] = {"gt": {"final": f}, "pairs": {"final": {"gap": (g[iu[0]] - g[iu[1]]).mean(1)}},
                          "no_search": float(f[vb.BRANCHES.index("v23")]), "oracle": float(f.max()),
                          "oracle_cv": 0.5 * (vb._ties_argmax_mean(a, c) + vb._ties_argmax_mean(c, a))}
     return {"n": len(sims), "s": time.perf_counter() - t0, "capped_frac": capped}
@@ -342,6 +364,11 @@ def main():
     p.add_argument("--workers", type=int, default=12)
     p.add_argument("--device", default="mps")
     p.add_argument("--gt-r5", action="store_true", help="also score against an r5 x r5 continuation ground truth")
+    p.add_argument("--nets", nargs="*", default=[], help="name=RolloutNet ckpt: extra net x net leaf rollouts")
+    p.add_argument("--gt-nets", action="store_true", help="ground truth 'net x net continuation' for every --nets")
+    p.add_argument("--value", nargs="*", default=[], help="name=value ckpt: extra value nets")
+    p.add_argument("--fast", action="store_true", help="only the net x net 5 s leaves (no CPU / k=2 / 3 s / P11 leaves)")
+    p.add_argument("--cache", type=Path, default=None, help="pickle of the replayed branch ends (reused if present)")
     p.add_argument("--limit", type=int, default=0, help="first N matches only (smoke test)")
     args = p.parse_args()
     import os
@@ -349,49 +376,72 @@ def main():
     os.chdir(REPO)
     import value_branch_eval as vb
 
+    for spec in args.value:
+        name, path = spec.split("=", 1)
+        VALUES[name] = path
+        PREDICTORS.extend([name, f"{name}_sym"])
+    nets = dict(spec.split("=", 1) for spec in args.nets)
     vb._warm()
     files = sorted((args.s15 / "raw").glob("*.json"))
     raws = [json.loads(f.read_text()) for f in files]
     if args.limit:
         raws = raws[: args.limit]
     roots = [r for x in raws for r in x["roots"]]
-    jobs = [{"task": x["task"], "root_ticks": sorted(r["tick"] for r in x["roots"])} for x in raws]
+    jobs = [{"task": x["task"], "root_ticks": sorted(r["tick"] for r in x["roots"]), "fast": args.fast} for x in raws]
     print(f"{len(jobs)} matches, {len(roots)} roots", flush=True)
     t0 = time.time()
     recs = {}
-    with ProcessPoolExecutor(args.workers) as pool:
-        futs = [pool.submit(_worker, j) for j in sorted(jobs, key=lambda j: -max(j["root_ticks"]))]
-        for i, fut in enumerate(as_completed(futs)):
-            for rec in fut.result():
-                recs[rec["rid"]] = rec
-            if i % 20 == 0:
-                print(f"[{i + 1}/{len(jobs)}] {time.time() - t0:.0f}s", flush=True)
+    if args.cache is not None and args.cache.exists():
+        recs = pickle.loads(args.cache.read_bytes())
+        for r in recs.values():  # fresh leaves each run (the cache holds the branch ends)
+            r["leaf"] = {k: v for k, v in r["leaf"].items() if not args.fast}
+        print(f"branch ends from {args.cache}", flush=True)
+    else:
+        with ProcessPoolExecutor(args.workers) as pool:
+            futs = [pool.submit(_worker, j) for j in sorted(jobs, key=lambda j: -max(j["root_ticks"]))]
+            for i, fut in enumerate(as_completed(futs)):
+                for rec in fut.result():
+                    recs[rec["rid"]] = rec
+                if i % 20 == 0:
+                    print(f"[{i + 1}/{len(jobs)}] {time.time() - t0:.0f}s", flush=True)
+        if args.cache is not None:
+            args.cache.parent.mkdir(parents=True, exist_ok=True)
+            args.cache.write_bytes(pickle.dumps(recs))
     t_workers = time.time() - t0
     bad = sum(int(recs[f"{r['match']}@{r['tick']}"]["hashes"] != [br["windows"][str(W)]["pos_hash"] for br in r["branches"]])
               for r in roots)
     print(f"workers {t_workers:.0f}s; branch-end hash mismatches {bad}/{len(roots)}", flush=True)
     n_live = sum(len(r["live"]) for r in recs.values())
-    timing = {"workers_wall_s": t_workers, "hash_mismatch_roots": bad, "live_leaves": n_live,
-              "v23_true_cpu_s_per_leaf": sum(r["time"]["v23_true"] for r in recs.values()) / n_live,
-              "r5_true_cpu_s_per_leaf_3s_plus_5s": sum(r["time"]["r5_true"] for r in recs.values()) / n_live,
-              "v23_r5opp_cpu_s_per_leaf_3s_plus_5s": sum(r["time"]["v23_r5opp"] for r in recs.values()) / n_live}
+    timing = {"workers_wall_s": t_workers, "hash_mismatch_roots": bad, "live_leaves": n_live}
     rl = list(recs.values())
-    for rep in (1, 2):
-        for h in HORIZONS:
-            key, t = run_r5_self(rl, rep, h, args.device)
-            timing[key] = {**t, "ms_per_leaf_rollout": 1000 * t["rollout_s"] / t["n"]}
-            print(key, json.dumps(timing[key]), flush=True)
-    for h in HORIZONS:
-        key, t = run_r5_self(rl, 1, h, args.device, net="p11")
+    if not args.fast:
+        timing.update({"v23_true_cpu_s_per_leaf": sum(r["time"]["v23_true"] for r in rl) / n_live,
+                       "r5_true_cpu_s_per_leaf_3s_plus_5s": sum(r["time"]["r5_true"] for r in rl) / n_live,
+                       "v23_r5opp_cpu_s_per_leaf_3s_plus_5s": sum(r["time"]["v23_r5opp"] for r in rl) / n_live})
+        runs = [(rep, h, "r5", None) for rep in (1, 2) for h in HORIZONS] + [(1, h, "p11", None) for h in HORIZONS]
+    else:
+        runs = [(1, 125, "r5", None)]
+    runs += [(1, 125, name, path) for name, path in nets.items() if name != "r5"]
+    for rep, h, net, path in runs:
+        key, t = run_r5_self(rl, rep, h, args.device, net=net, path=path)
         timing[key] = {**t, "ms_per_leaf_rollout": 1000 * t["rollout_s"] / t["n"]}
         print(key, json.dumps(timing[key]), flush=True)
     V, vt = value_preds(rl, args.device)
     timing["value_ms_per_view"] = {k: 1000 * v for k, v in vt.items()}
     for r in roots:
         r["_m"] = vb.root_metrics(r, W)
+    gts = {}  # ground-truth name -> root key
     if args.gt_r5:
         timing["gt_r5"] = gt_r5(recs, roots, args.device)
+        gts["r5"] = "_m_r5"
         print("gt_r5", timing["gt_r5"], flush=True)
+    if args.gt_nets:
+        for name, path in nets.items():
+            if name in gts:
+                continue
+            timing[f"gt_{name}"] = gt_r5(recs, roots, args.device, path=path, mkey=f"_m_{name}")
+            gts[name] = f"_m_{name}"
+            print(f"gt_{name}", timing[f"gt_{name}"], flush=True)
     variants = sorted({k for rec in rl for k in rec["leaf"]})
     buckets = vb.BUCKET_NAMES + ("all",)
     table = {}
@@ -399,32 +449,27 @@ def main():
         for pr in PREDICTORS:
             for bi, bname in enumerate(buckets):
                 sel = [r for r in roots if bname == "all" or vb.bucket_of(r["t_s"]) == bi]
-                table[f"{var}|{pr}|{bname}"] = metrics(sel, recs, V, var, pr)
-                if args.gt_r5:
-                    table[f"gtr5|{var}|{pr}|{bname}"] = metrics(sel, recs, V, var, pr, "_m_r5")
+                if not args.fast:
+                    table[f"{var}|{pr}|{bname}"] = metrics(sel, recs, V, var, pr)
+                for g, mk in gts.items():
+                    table[f"gt{g}|{var}|{pr}|{bname}"] = metrics(sel, recs, V, var, pr, mk)
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "results.json").write_text(json.dumps({"timing": timing, "table": table}, indent=1))
-    lines = [json.dumps(timing, indent=1, default=float), "",
-             f"{'variant':14s} {'V':10s} " + " ".join(f"{b:>22s}" for b in buckets)]
-    for var in variants:
-        for pr in PREDICTORS:
-            cells = []
-            for bname in buckets:
-                m = table[f"{var}|{pr}|{bname}"]
-                cells.append(f"{m['conc']:.3f} {m['gain']:+5.2f}±{m['gain_se']:.1f} {100 * m['share']:3.0f}%")
-            lines.append(f"{var:14s} {pr:10s} " + " ".join(f"{c:>22s}" for c in cells))
-    if args.gt_r5:
-        lines.append("\n--- ground truth = r5 x r5 continuation (R=4, cap 60 s)")
+    lines = [json.dumps(timing, indent=1, default=float), ""]
+    sections = ([("", "--- ground truth = S1.5 V23 continuation")] if not args.fast else []) + \
+        [(f"gt{g}|", f"--- ground truth = {g} x {g} continuation (R=4, cap 60 s)") for g in gts]
+    for prefix, title in sections:
+        lines += [title, f"{'variant':14s} {'V':12s} " + " ".join(f"{b:>22s}" for b in buckets)]
         for var in variants:
             for pr in PREDICTORS:
                 cells = []
                 for bname in buckets:
-                    m = table[f"gtr5|{var}|{pr}|{bname}"]
+                    m = table[f"{prefix}{var}|{pr}|{bname}"]
                     cells.append(f"{m['conc']:.3f} {m['gain']:+5.2f}±{m['gain_se']:.1f} {100 * m['share']:3.0f}%")
-                lines.append(f"{var:14s} {pr:10s} " + " ".join(f"{c:>22s}" for c in cells))
-        lines.append("oracle_cv gain (r5 GT): " + ", ".join(
-            f"{b} {table[f'gtr5|{variants[0]}|lead|{b}']['oracle_cv']:+.2f}" for b in buckets))
-    lines.append("oracle_cv gain: " + ", ".join(f"{b} {table[f'{variants[0]}|lead|{b}']['oracle_cv']:+.2f}" for b in buckets))
+                lines.append(f"{var:14s} {pr:12s} " + " ".join(f"{c:>22s}" for c in cells))
+        lines.append("oracle_cv gain: " + ", ".join(
+            f"{b} {table[f'{prefix}{variants[0]}|lead|{b}']['oracle_cv']:+.2f}" for b in buckets))
+        lines.append("")
     txt = "\n".join(lines)
     (args.out / "results.txt").write_text(txt)
     print(txt, flush=True)
