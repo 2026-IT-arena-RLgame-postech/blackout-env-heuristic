@@ -1,0 +1,181 @@
+120 chunks, 3840 games, 11 workers
+[1/120] p11 vs v19 side 0 32 games, 156s, elapsed 162s
+[2/120] p11 vs v19 side 0 32 games, 206s, elapsed 212s
+[3/120] p11 vs v19 side 0 32 games, 122s, elapsed 283s
+[4/120] p11 vs v23 side 0 32 games, 370s, elapsed 376s
+[5/120] p11 vs v19 side 1 32 games, 262s, elapsed 545s
+[6/120] p11 vs v19 side 0 32 games, 610s, elapsed 616s
+[7/120] p11 vs v19 side 1 32 games, 249s, elapsed 625s
+[8/120] p11 vs v19 side 1 32 games, 162s, elapsed 707s
+[9/120] p11 vs v23 side 1 32 games, 767s, elapsed 773s
+[10/120] p11 vs v23 side 1 32 games, 837s, elapsed 843s
+[11/120] p11 vs v19 side 1 32 games, 631s, elapsed 843s
+[12/120] p11 vs v23 side 1 32 games, 845s, elapsed 851s
+[13/120] p11 vs v23 side 1 32 games, 878s, elapsed 885s
+[14/120] p11 vs v25 side 0 32 games, 262s, elapsed 887s
+[15/120] p11 vs v23 side 0 32 games, 910s, elapsed 916s
+[16/120] p11 vs v25 side 0 32 games, 214s, elapsed 922s
+[17/120] p11 vs v23 side 0 32 games, 996s, elapsed 1001s
+[18/120] p11 vs v25 side 0 32 games, 262s, elapsed 1035s
+[19/120] p11 vs v23 side 0 32 games, 1053s, elapsed 1059s
+[20/120] p14a vs v23 side 0 32 games, 270s, elapsed 1192s
+[21/120] p11 vs v25 side 1 32 games, 377s, elapsed 1220s
+[22/120] p11 vs v25 side 0 32 games, 663s, elapsed 1279s
+[23/120] p14a vs v23 side 0 32 games, 386s, elapsed 1302s
+[24/120] p14a vs v23 side 0 32 games, 306s, elapsed 1308s
+[25/120] p14a vs v23 side 1 32 games, 288s, elapsed 1324s
+[26/120] p11 vs v25 side 1 32 games, 447s, elapsed 1331s
+[27/120] p14a vs v19 side 1 32 games, 130s, elapsed 1462s
+[28/120] p14a vs v19 side 0 32 games, 172s, elapsed 1481s
+[29/120] p14a vs v19 side 0 32 games, 203s, elapsed 1506s
+[30/120] p11 vs v25 side 1 32 games, 663s, elapsed 1506s
+[31/120] p14a vs v23 side 1 32 games, 291s, elapsed 1512s
+[32/120] p14a vs v19 side 0 32 games, 198s, elapsed 1521s
+[33/120] p11 vs v25 side 1 32 games, 713s, elapsed 1565s
+[34/120] p14a vs v23 side 0 32 games, 717s, elapsed 1603s
+[35/120] p14a vs v19 side 1 32 games, 158s, elapsed 1620s
+[36/120] p14a vs v19 side 1 32 games, 185s, elapsed 1691s
+[37/120] p14a vs v19 side 1 32 games, 245s, elapsed 1726s
+[38/120] p14a vs v23 side 1 32 games, 781s, elapsed 1841s
+[39/120] p14a vs v19 side 0 32 games, 592s, elapsed 1872s
+[40/120] p14a vs v25 side 0 32 games, 427s, elapsed 1992s
+[41/120] p14a vs v23 side 1 32 games, 860s, elapsed 2052s
+[42/120] p14a vs v25 side 1 32 games, 461s, elapsed 2187s
+[43/120] p14a vs v25 side 0 32 games, 679s, elapsed 2200s
+[44/120] p14b vs v23 side 0 32 games, 382s, elapsed 2254s
+[45/120] p14b vs v23 side 0 32 games, 315s, elapsed 2307s
+[46/120] p14b vs v23 side 0 32 games, 298s, elapsed 2351s
+[47/120] p14a vs v25 side 1 32 games, 757s, elapsed 2360s
+[48/120] p14a vs v25 side 0 32 games, 864s, elapsed 2370s
+[49/120] p14a vs v25 side 0 32 games, 949s, elapsed 2461s
+[50/120] p14b vs v19 side 0 32 games, 113s, elapsed 2464s
+[51/120] p14b vs v19 side 0 32 games, 146s, elapsed 2506s
+[52/120] p14b vs v19 side 0 32 games, 136s, elapsed 2507s
+[53/120] p14b vs v23 side 1 32 games, 309s, elapsed 2510s
+[54/120] p14a vs v25 side 1 32 games, 879s, elapsed 2570s
+[55/120] p14b vs v23 side 1 32 games, 324s, elapsed 2578s
+[56/120] p14b vs v19 side 1 32 games, 127s, elapsed 2591s
+[57/120] p14b vs v23 side 1 32 games, 297s, elapsed 2604s
+[58/120] p14a vs v25 side 1 32 games, 992s, elapsed 2612s
+[59/120] p14b vs v19 side 1 32 games, 118s, elapsed 2624s
+[60/120] p14b vs v19 side 1 32 games, 123s, elapsed 2633s
+[61/120] p14b vs v23 side 0 32 games, 836s, elapsed 2677s
+[62/120] p14b vs v19 side 1 32 games, 185s, elapsed 2691s
+[63/120] p11 vs p5a side 0 32 games, 163s, elapsed 2855s
+[64/120] p14b vs v19 side 0 32 games, 425s, elapsed 2886s
+[65/120] p14b vs v23 side 1 32 games, 732s, elapsed 2919s
+[66/120] p11 vs p5a side 0 32 games, 157s, elapsed 3011s
+[67/120] p11 vs p5a side 0 32 games, 148s, elapsed 3034s
+[68/120] p11 vs p5a side 1 32 games, 175s, elapsed 3187s
+[69/120] p11 vs p5a side 1 32 games, 209s, elapsed 3243s
+[70/120] p11 vs p5a side 0 32 games, 324s, elapsed 3244s
+[71/120] p11 vs p5a side 1 32 games, 226s, elapsed 3412s
+[72/120] p14a vs p5a side 0 32 games, 248s, elapsed 3491s
+[73/120] p11 vs p5a side 1 32 games, 283s, elapsed 3526s
+[74/120] p14b vs v25 side 0 32 games, 965s, elapsed 3536s
+[75/120] p14b vs v25 side 1 32 games, 978s, elapsed 3591s
+[76/120] p14b vs v25 side 0 32 games, 1029s, elapsed 3608s
+[77/120] p14b vs v25 side 1 32 games, 986s, elapsed 3610s
+[78/120] p14a vs p5a side 0 32 games, 214s, elapsed 3626s
+[79/120] p14b vs v25 side 1 32 games, 1024s, elapsed 3657s
+[80/120] p14a vs p5a side 1 32 games, 218s, elapsed 3754s
+[81/120] p14a vs p5a side 0 32 games, 270s, elapsed 3761s
+[82/120] p14b vs v25 side 1 32 games, 1091s, elapsed 3768s
+[83/120] p14b vs v25 side 0 32 games, 1230s, elapsed 3834s
+[84/120] p14a vs p11 side 0 32 games, 223s, elapsed 3880s
+[85/120] p14a vs p11 side 0 32 games, 288s, elapsed 3914s
+[86/120] p14a vs p5a side 0 32 games, 402s, elapsed 3928s
+[87/120] p14b vs v25 side 0 32 games, 1343s, elapsed 3934s
+[88/120] p14a vs p11 side 0 32 games, 213s, elapsed 3974s
+[89/120] p14a vs p11 side 1 32 games, 185s, elapsed 4099s
+[90/120] p14a vs p11 side 1 32 games, 295s, elapsed 4174s
+[91/120] p14a vs p11 side 1 32 games, 409s, elapsed 4176s
+[92/120] p14b vs p5a side 0 32 games, 254s, elapsed 4182s
+[93/120] p14b vs p5a side 0 32 games, 281s, elapsed 4216s
+[94/120] p14b vs p5a side 0 32 games, 338s, elapsed 4312s
+[95/120] p14b vs p5a side 1 32 games, 201s, elapsed 4376s
+[96/120] p14b vs p5a side 1 32 games, 242s, elapsed 4419s
+[97/120] p14b vs p5a side 1 32 games, 231s, elapsed 4447s
+[98/120] p14b vs p11 side 0 32 games, 269s, elapsed 4645s
+[99/120] p14a vs p11 side 1 32 games, 941s, elapsed 4775s
+[100/120] p14b vs p11 side 1 32 games, 199s, elapsed 4843s
+[101/120] p14a vs p5a side 1 32 games, 1477s, elapsed 5068s
+[102/120] p14a vs p5a side 1 32 games, 1467s, elapsed 5077s
+[103/120] p14a vs p5a side 1 32 games, 1469s, elapsed 5077s
+[104/120] p14a vs p11 side 0 32 games, 1479s, elapsed 5233s
+[105/120] p14b vs p11 side 1 32 games, 479s, elapsed 5254s
+[106/120] p14b vs p14a side 0 32 games, 282s, elapsed 5359s
+[107/120] p14b vs p11 side 1 32 games, 616s, elapsed 5459s
+[108/120] p14b vs p5a side 0 32 games, 1441s, elapsed 5540s
+[109/120] p14b vs p5a side 1 32 games, 1453s, elapsed 5636s
+[110/120] p14b vs p11 side 0 32 games, 1471s, elapsed 5783s
+[111/120] p14b vs p11 side 0 32 games, 1440s, elapsed 5859s
+[112/120] p14b vs p11 side 0 32 games, 1454s, elapsed 5901s
+[113/120] p14b vs p14a side 1 32 games, 373s, elapsed 5913s
+[114/120] p14b vs p11 side 1 32 games, 1246s, elapsed 6314s
+[115/120] p14b vs p14a side 0 32 games, 1256s, elapsed 6333s
+[116/120] p14b vs p14a side 0 32 games, 1176s, elapsed 6408s
+[117/120] p14b vs p14a side 0 32 games, 1181s, elapsed 6435s
+[118/120] p14b vs p14a side 1 32 games, 1107s, elapsed 6466s
+[119/120] p14b vs p14a side 1 32 games, 1024s, elapsed 6483s
+[120/120] p14b vs p14a side 1 32 games, 881s, elapsed 6517s
+candidate  opponent       n  margin   ±se        W/D/L %     race W/T/L   Δ vs p11   ±se same race
+p11        p5a          256   +72.0   0.8  100/  0/  0         256/0/0 
+p11        v19          256   +73.4   1.7   95/  0/  5         256/0/0 
+p11        v23          256    +2.6   4.0   52/  0/ 47        4/242/10 
+p11        v25          256   -74.6   0.9    1/  0/ 99         0/2/254 
+p14a       p11          256   +75.4   0.9  100/  0/  0         252/4/0 
+p14a       p5a          256   +70.6   0.9   99/  0/  0         256/0/0       -1.4   1.1     1.000
+p14a       v19          256   +78.5   1.1   98/  0/  2         256/0/0       +5.1   2.0     1.000
+p14a       v23          256   +73.5   1.2   98/  0/  2        246/10/0      +70.9   3.2     0.016
+p14a       v25          256   -25.3   3.9   34/  0/ 66         0/256/0      +49.3   3.6     0.008
+p14b       p11          256   +75.2   0.8  100/  0/  0         253/3/0 
+p14b       p14a         256   +18.2   4.1   62/  1/ 37         0/256/0 
+p14b       p5a          256   +72.4   0.8  100/  0/  0         256/0/0       +0.4   1.0     1.000
+p14b       v19          256   +80.9   0.8   99/  0/  1         256/0/0       +7.5   1.9     1.000
+p14b       v23          256   +75.1   1.1   99/  0/  1        246/10/0      +72.5   3.2     0.016
+p14b       v25          256    -0.4   4.0   50/  0/ 50         0/256/0      +74.3   3.8     0.008
+
+paired Δ lead vs p11 by match time (s):        10        20        30        45        60        90       120       150       240       300      final
+p14a       vs p5a                               -0.4±0.9  -0.8±2.0  -1.0±1.8  -1.3±1.4  -1.4±1.2  -1.4±1.1  -1.4±1.1  -1.4±1.1  -1.4±1.1  -1.4±1.1  -1.4±1.1
+p14a       vs v19                               +0.7±0.8  +3.4±1.4  +4.1±1.5  +4.8±1.6  +4.9±1.9  +5.2±2.0  +5.1±2.0  +5.1±2.0  +5.1±2.0  +5.1±2.0  +5.1±2.0
+p14a       vs v23                              +17.0±1.1 +51.7±2.4 +63.6±2.8 +69.6±3.1 +70.6±3.2 +70.7±3.2 +70.7±3.2 +70.7±3.2 +70.7±3.2 +70.7±3.2 +70.9±3.2
+p14a       vs v25                              +13.4±1.1 +35.8±2.5 +43.9±3.1 +48.3±3.5 +49.8±3.5 +50.0±3.6 +49.8±3.6 +49.8±3.6 +49.7±3.6 +49.6±3.6 +49.3±3.6
+p14b       vs p5a                               -0.8±0.9  -0.9±1.8  -0.5±1.7  +0.4±1.3  +0.5±1.1  +0.6±1.0  +0.5±1.0  +0.5±1.0  +0.5±1.0  +0.4±1.0  +0.4±1.0
+p14b       vs v19                               +0.8±0.7  +5.3±1.4  +5.9±1.6  +7.0±1.6  +7.3±1.8  +7.5±1.9  +7.4±1.9  +7.4±1.9  +7.4±1.9  +7.5±1.9  +7.5±1.9
+p14b       vs v23                              +16.1±1.2 +50.5±2.3 +64.8±2.7 +71.5±3.1 +72.2±3.2 +72.4±3.2 +72.4±3.2 +72.4±3.2 +72.4±3.2 +72.4±3.2 +72.5±3.2
+p14b       vs v25                              +14.5±1.0 +48.9±2.5 +63.2±3.1 +72.0±3.7 +74.2±3.7 +74.4±3.8 +74.6±3.9 +74.5±3.8 +74.3±3.8 +74.2±3.8 +74.3±3.8
+
+p11        vs p5a        length  35.4s (p90  55.4) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +72.0(n256)
+p11        vs v19        length  36.5s (p90  52.0) target/timeout 0.96 exhausted 0.04 | margin by race: raceW +73.4(n256)
+p11        vs v23        length  75.3s (p90 100.0) target/timeout 0.84 exhausted 0.16 | margin by race: raceW +73.0(n4) raceT +4.3(n242) raceL -67.6(n10)
+p11        vs v25        length  41.2s (p90  58.3) target/timeout 0.95 exhausted 0.05 | margin by race: raceT -47.5(n2) raceL -74.9(n254)
+p14a       vs p11        length  36.7s (p90  49.8) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +76.2(n252) raceT +26.8(n4)
+p14a       vs p5a        length  43.4s (p90  56.5) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +70.6(n256)
+p14a       vs v19        length  32.9s (p90  40.8) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +78.5(n256)
+p14a       vs v23        length  37.5s (p90  49.8) target/timeout 0.98 exhausted 0.02 | margin by race: raceW +75.5(n246) raceT +22.8(n10)
+p14a       vs v25        length  67.3s (p90 100.0) target/timeout 0.82 exhausted 0.18 | margin by race: raceT -25.3(n256)
+p14b       vs p11        length  42.7s (p90  51.7) target/timeout 0.99 exhausted 0.01 | margin by race: raceW +75.9(n253) raceT +10.7(n3)
+p14b       vs p14a       length  69.4s (p90  80.0) target/timeout 0.86 exhausted 0.14 | margin by race: raceT +18.2(n256)
+p14b       vs p5a        length  37.4s (p90  54.7) target/timeout 0.98 exhausted 0.02 | margin by race: raceW +72.4(n256)
+p14b       vs v19        length  29.9s (p90  39.1) target/timeout 1.00 exhausted 0.00 | margin by race: raceW +80.9(n256)
+p14b       vs v23        length  35.4s (p90  45.8) target/timeout 0.99 exhausted 0.01 | margin by race: raceW +76.5(n246) raceT +41.9(n10)
+p14b       vs v25        length  84.3s (p90 120.0) target/timeout 0.84 exhausted 0.16 | margin by race: raceT -0.4(n256)
+
+first Hunter decision (ours / theirs): counts of 98, 99, 100, 101+, never
+p11        vs p5a        n=  256 ours            0/5/251/0/0   theirs           0/0/0/38/218
+p11        vs v19        n=  256 ours            0/4/252/0/0   theirs           0/0/0/71/185
+p11        vs v23        n=  256 ours            0/2/244/4/6   theirs           0/10/242/3/1
+p11        vs v25        n=  256 ours           0/2/0/54/200   theirs            0/256/0/0/0
+p14a       vs p11        n=  256 ours            0/256/0/0/0   theirs           0/4/0/60/192
+p14a       vs p5a        n=  256 ours            0/256/0/0/0   theirs           0/0/0/55/201
+p14a       vs v19        n=  256 ours            0/256/0/0/0   theirs           0/0/0/61/195
+p14a       vs v23        n=  256 ours            0/256/0/0/0   theirs          0/10/0/29/217
+p14a       vs v25        n=  256 ours            0/256/0/0/0   theirs            0/256/0/0/0
+p14b       vs p11        n=  256 ours            0/256/0/0/0   theirs           0/3/0/50/203
+p14b       vs p14a       n=  256 ours            0/256/0/0/0   theirs            0/256/0/0/0
+p14b       vs p5a        n=  256 ours            0/256/0/0/0   theirs           0/0/0/52/204
+p14b       vs v19        n=  256 ours            0/256/0/0/0   theirs           0/0/0/38/218
+p14b       vs v23        n=  256 ours            0/256/0/0/0   theirs          0/10/0/34/212
+p14b       vs v25        n=  256 ours            0/256/0/0/0   theirs            0/256/0/0/0
+P14 EVAL DONE

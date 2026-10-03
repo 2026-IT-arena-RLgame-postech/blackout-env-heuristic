@@ -1,0 +1,27 @@
+[distill] eval_teacher teacher vs strategic_v17: margin +76.3±2.6 win 1.00 | H/Ca/C 2.7/1.0/1.3 | agree nan | deliv/1k 4.9 lost/1k 0.5 | blocked/1k 0.0
+[distill] step 1000 v2 beta 0.27 rows 107482 ratio 2.3 | ce 0.046 acc 0.985 fresh 0.949 angle 6.44 deg (<=2 0.71, 10 s 4.04) | 1.8 step/s, workers 70% | 477s
+[distill] step 2000 v3 beta 0.24 rows 218767 ratio 2.3 | ce 0.047 acc 0.984 fresh 0.945 angle 6.92 deg (<=2 0.73, 10 s 4.93) | 1.1 step/s, workers 74% | 1200s
+[distill] step 3000 v4 beta 0.22 rows 330815 ratio 2.3 | ce 0.047 acc 0.984 fresh 0.950 angle 5.87 deg (<=2 0.72, 10 s 3.72) | 1.9 step/s, workers 71% | 1709s
+[distill] step 4000 v5 beta 0.20 rows 441418 ratio 2.3 | ce 0.045 acc 0.985 fresh 0.952 angle 5.83 deg (<=2 0.73, 10 s 4.45) | 2.1 step/s, workers 81% | 2110s
+[distill] eval v5 vs strategic_v17: margin +79.5±1.3 win 1.00 | H/Ca/C 2.7/1.0/1.3 | agree 0.95 | deliv/1k 5.0 lost/1k 0.6 | blocked/1k 0.0 | angle 6.0 deg (<=2: 0.73), first 10 s 4.0 (0.77)
+[distill] step 5000 v6 beta 0.18 rows 547844 ratio 2.3 | ce 0.043 acc 0.985 fresh 0.941 angle 7.18 deg (<=2 0.72, 10 s 3.75) | 2.0 step/s, workers 71% | 2552s
+[distill] step 6000 v7 beta 0.16 rows 662538 ratio 2.3 | ce 0.043 acc 0.985 fresh 0.964 angle 4.52 deg (<=2 0.76, 10 s 3.78) | 3.8 step/s, workers 70% | 2976s
+[distill] step 7000 v8 beta 0.14 rows 770057 ratio 2.3 | ce 0.044 acc 0.985 fresh 0.947 angle 7.11 deg (<=2 0.74, 10 s 4.16) | 2.5 step/s, workers 84% | 3390s
+[distill] step 8000 v9 beta 0.13 rows 881775 ratio 2.3 | ce 0.044 acc 0.985 fresh 0.957 angle 5.65 deg (<=2 0.76, 10 s 3.74) | 2.2 step/s, workers 77% | 3840s
+[distill] step 9000 v10 beta 0.12 rows 992907 ratio 2.3 | ce 0.048 acc 0.984 fresh 0.957 angle 5.54 deg (<=2 0.74, 10 s 3.73) | 2.4 step/s, workers 83% | 4262s
+[distill] eval v10 vs strategic_v17: margin +80.0±1.5 win 1.00 | H/Ca/C 2.7/1.0/1.3 | agree 0.94 | deliv/1k 5.0 lost/1k 0.7 | blocked/1k 0.0 | angle 6.8 deg (<=2: 0.73), first 10 s 4.7 (0.77)
+[distill] step 10000 v11 beta 0.10 rows 1099676 ratio 2.3 | ce 0.046 acc 0.984 fresh 0.951 angle 6.39 deg (<=2 0.75, 10 s 3.68) | 1.9 step/s, workers 75% | 4745s
+[distill] step 11000 v12 beta 0.09 rows 1200000 ratio 2.3 | ce 0.047 acc 0.984 fresh 0.956 angle 5.34 deg (<=2 0.76, 10 s 3.65) | 2.3 step/s, workers 73% | 5154s
+[distill] step 12000 v13 beta 0.08 rows 1200000 ratio 2.3 | ce 0.048 acc 0.984 fresh 0.956 angle 5.07 deg (<=2 0.75, 10 s 3.46) | 2.7 step/s, workers 78% | 5567s
+[distill] step 13000 v14 beta 0.08 rows 1200000 ratio 2.3 | ce 0.049 acc 0.983 fresh 0.958 angle 5.09 deg (<=2 0.76, 10 s 3.70) | 1.9 step/s, workers 69% | 537s
+[distill] step 14000 v15 beta 0.07 rows 1200000 ratio 2.3 | ce 0.052 acc 0.982 fresh 0.955 angle 5.30 deg (<=2 0.75, 10 s 3.58) | 2.1 step/s, workers 83% | 990s
+[distill] eval v15 vs strategic_v17: margin +82.8±1.5 win 1.00 | H/Ca/C 2.8/1.0/1.2 | agree 0.94 | deliv/1k 4.7 lost/1k 0.6 | blocked/1k 0.0 | angle 7.1 deg (<=2: 0.77), first 10 s 4.2 (0.81)
+[distill] step 15000 v16 beta 0.06 rows 1200000 ratio 2.3 | ce 0.053 acc 0.982 fresh 0.957 angle 5.67 deg (<=2 0.78, 10 s 3.37) | 3.0 step/s, workers 71% | 1480s
+[distill] step 16000 v17 beta 0.06 rows 1200000 ratio 2.3 | ce 0.052 acc 0.982 fresh 0.956 angle 5.59 deg (<=2 0.76, 10 s 3.56) | 2.0 step/s, workers 79% | 1951s
+[distill] step 17000 v18 beta 0.05 rows 1200000 ratio 2.3 | ce 0.055 acc 0.982 fresh 0.951 angle 6.22 deg (<=2 0.76, 10 s 3.52) | 2.1 step/s, workers 86% | 2407s
+[distill] step 18000 v19 beta 0.05 rows 1200000 ratio 2.3 | ce 0.054 acc 0.981 fresh 0.949 angle 6.32 deg (<=2 0.77, 10 s 3.09) | 2.2 step/s, workers 71% | 2901s
+[distill] step 19000 v20 beta 0.04 rows 1200000 ratio 2.3 | ce 0.053 acc 0.982 fresh 0.950 angle 6.53 deg (<=2 0.76, 10 s 3.60) | 2.0 step/s, workers 80% | 3384s
+[distill] eval v20 vs strategic_v17: margin +80.0±2.7 win 1.00 | H/Ca/C 2.7/1.0/1.3 | agree 0.96 | deliv/1k 4.3 lost/1k 0.6 | blocked/1k 0.0 | angle 4.8 deg (<=2: 0.79), first 10 s 3.4 (0.82)
+[distill] step 20000 v21 beta 0.04 rows 1200000 ratio 2.3 | ce 0.053 acc 0.982 fresh 0.945 angle 6.99 deg (<=2 0.75, 10 s 3.71) | 2.2 step/s, workers 76% | 3818s
+[distill] eval v22 vs strategic_v17: margin +79.8±2.3 win 1.00 | H/Ca/C 2.7/1.0/1.3 | agree 0.93 | deliv/1k 4.4 lost/1k 0.7 | blocked/1k 0.1 | angle 9.2 deg (<=2: 0.76), first 10 s 2.5 (0.82)
+[distill] done: /home/cucumbersaurus/p14runs/p14b/latest.pt (v22)
