@@ -275,3 +275,18 @@ def test_fused_adamw_matches_foreach_cuda():
             m(x).square().mean().backward()
             o.step()
     assert torch.allclose(a.weight, b.weight, atol=1e-6)
+
+
+@cuda
+def test_device_source_matches_batch_source_cuda():
+    import rollout_net_train as r
+
+    train, extra = _packed_split(64, 0), _packed_split(40, 1)
+    pool, epool = r.labelled_rows(train["labels"]), r.labelled_rows(extra["labels"])
+    keys = list(train)
+    host = r.BatchSource(train, extra, pool, epool, 16, 0.5, 5, keys)
+    dev = r.DeviceSource(train, extra, pool, epool, 16, 0.5, 5, keys, torch.device("cuda"), chunk=24)
+    for _ in range(3):
+        a, b = host(), dev()
+        for k in keys:
+            assert np.array_equal(a[k], b[k].cpu().numpy(), equal_nan=True), k

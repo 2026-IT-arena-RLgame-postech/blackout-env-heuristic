@@ -215,6 +215,46 @@ class BatchSource:
         return out
 
 
+class DeviceSource(BatchSource):
+    """``BatchSource`` with the split's arrays resident on the GPU (``--gpu-data``): the same RNG
+    draws pick the rows, only the indices cross PCIe and the gather runs on the device -- no
+    host gather, pinned copies or prefetch thread, so the step stays fast on a loaded host."""
+
+    def __init__(self, train, extra, pool, epool, batch, extra_frac, seed, keys, device, chunk=65536):
+        import torch
+
+        def upload(src):
+            out = {}
+            for k in keys:
+                a = src[k]
+                a = a.view(np.int16) if a.dtype == np.uint16 else a.view(np.int64) if a.dtype == np.uint64 else a
+                t = torch.empty(a.shape, dtype=torch.from_numpy(np.ascontiguousarray(a[:1])).dtype, device=device)
+                for i in range(0, len(a), chunk):
+                    t[i:i + chunk] = torch.from_numpy(np.ascontiguousarray(a[i:i + chunk])).to(device)
+                out[k] = t
+            return out
+
+        super().__init__(upload(train), upload(extra) if extra is not None else None, pool, epool, batch,
+                         extra_frac, seed, keys)
+        self.device = device
+
+    def __call__(self) -> dict:
+        import torch
+
+        if self.extra is not None:
+            ne = int(self.batch * self.extra_frac)
+            parts = [(self.train, np.sort(self.rng.choice(self.pool, self.batch - ne))),
+                     (self.extra, np.sort(self.rng.choice(self.epool, ne)))]
+        else:
+            parts = [(self.train, np.sort(self.rng.choice(self.pool, self.batch)))]
+        parts = [(src, torch.from_numpy(i).to(self.device)) for src, i in parts]
+        return {k: torch.cat([src[k][i] for src, i in parts]) for k in self.keys}
+
+
+def split_bytes(data: dict, keys) -> int:
+    return sum(data[k].nbytes for k in keys)
+
+
 def train_step_module(torch):
     from blackout_env.train.distill.loss import angle_offset_loss, set_valued_cross_entropy
 
@@ -309,9 +349,17 @@ def cmd_train(args):
     if args.compile:
         step_fn = torch.compile(step_fn, mode=None if args.compile_mode == "default" else args.compile_mode)
     # rank r draws its own rows (seed + 1000 r); the global batch is --batch split over the ranks
-    source = BatchSource(train, extra, pool, epool, args.batch // dist.world, args.extra_frac,
-                         args.seed + 1000 * dist.rank, keys)
-    batches = Prefetcher(source, device, depth=args.prefetch) if args.prefetch > 0 else None
+    if args.gpu_data is None:  # auto: on cuda when the (train + extra) arrays fit in half the free memory
+        need = split_bytes(train, keys) + (split_bytes(extra, keys) if extra is not None else 0)
+        args.gpu_data = device.type == "cuda" and need < 0.5 * torch.cuda.mem_get_info(device)[0]
+    seed = args.seed + 1000 * dist.rank
+    if args.gpu_data:
+        source = DeviceSource(train, extra, pool, epool, args.batch // dist.world, args.extra_frac, seed, keys, device)
+        batches = None
+    else:
+        source = BatchSource(train, extra, pool, epool, args.batch // dist.world, args.extra_frac, seed, keys)
+        batches = Prefetcher(source, device, depth=args.prefetch) if args.prefetch > 0 else None
+    log_main(f"batches: {'GPU-resident data' if args.gpu_data else 'host gather + prefetch'}", flush=True)
     t0 = t_win = time.time()
     log = []
     last_logged = 0
@@ -494,6 +542,9 @@ def main():
     p.add_argument("--channels-last", type=int, default=None, help="NHWC convs (default: on for cuda)")
     p.add_argument("--prefetch", type=int, default=4, help="batches built ahead in a thread (0 = inline)")
     p.add_argument("--in-memory", action="store_true", help="read the splits into RAM instead of memory-mapping")
+    p.add_argument("--gpu-data", type=int, default=None,
+                   help="1: keep the train (+ extra) arrays on the GPU, gather there (default: cuda and they fit "
+                   "in half the free memory)")
     p.add_argument("--extra", default="", help="another packed train.npz mixed into every batch")
     p.add_argument("--extra-frac", type=float, default=0.5)
     p.add_argument("--init", default="", help="start from this RolloutNet checkpoint (its config)")
