@@ -1,0 +1,5 @@
+plain repro: 60 matches, same margin 60/60, same length 60, mean diff +0.00±0.00
+p11: race10 - full search -6.7±1.4 (150 seeds); wall race 60 full 93 plain 56 s/match; search_s race 6.6 full 39.5
+   same race outcome race10 vs full: 300/300
+v23: race10 - full search -4.1±1.5 (150 seeds); wall race 32 full 77 plain 40 s/match; search_s race 4.8 full 40.9
+   same race outcome race10 vs full: 300/300

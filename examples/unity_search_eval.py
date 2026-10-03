@@ -287,7 +287,7 @@ def play_match(task: dict) -> dict:
     if rec is not None and rec["tick"]:
         rdir = Path(cfg["record"])
         rdir.mkdir(parents=True, exist_ok=True)
-        np.savez(rdir / f"{task['tag']}_{task['opponent']}_{seed}_{side}.npz", seed=seed, side=side,
+        np.savez_compressed(rdir / f"{task['tag']}_{task['opponent']}_{seed}_{side}.npz", seed=seed, side=side,
                  branches=np.array([b.name for b in searcher.branches]), margin_final=sc[side] - sc[1 - side],
                  **{k: np.asarray(v) for k, v in rec.items()})
     lat_ms = np.asarray(lat) * 1e3
