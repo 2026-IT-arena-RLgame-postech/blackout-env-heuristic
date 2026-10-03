@@ -1,0 +1,15 @@
+strategic_v23                                vs p11              n= 256 margin   +3.7± 4.2 win 0.51 race w/t/l (13, 239, 4)
+strategic_v25                                vs p11              n= 256 margin  +75.6± 0.9 win 0.99 race w/t/l (251, 5, 0)  − strategic_v23:  +72.0 ±  3.1 (128 seeds)  race t>w:236 l>w:2 l>t:2
+strategic_v25:race_commit=false              vs p11              n= 256 margin  +75.5± 0.9 win 0.99 race w/t/l (251, 5, 0)  − strategic_v23:  +71.8 ±  3.1 (128 seeds)  race t>w:236 l>w:2 l>t:2
+strategic_v25:race_walk=false                vs p11              n= 256 margin  +13.7± 4.1 win 0.59 race w/t/l (13, 239, 4)  − strategic_v23:  +10.1 ±  2.7 (128 seeds)  race 
+strategic_v23                                vs r5               n= 256 margin   +9.1± 4.0 win 0.55 race w/t/l (11, 229, 16)
+strategic_v25                                vs r5               n= 256 margin  +76.7± 1.1 win 0.98 race w/t/l (239, 17, 0)  − strategic_v23:  +67.6 ±  3.9 (128 seeds)  race t>w:224 l>w:4 l>t:12
+strategic_v25:race_commit=false              vs r5               n= 256 margin  +76.7± 1.1 win 0.98 race w/t/l (239, 17, 0)  − strategic_v23:  +67.6 ±  3.9 (128 seeds)  race t>w:224 l>w:4 l>t:12
+strategic_v25:race_walk=false                vs r5               n= 256 margin  +20.0± 3.7 win 0.61 race w/t/l (11, 229, 16)  − strategic_v23:  +10.9 ±  3.2 (128 seeds)  race 
+strategic_v23                                vs strategic_v23    n= 256 margin   +0.0± 4.2 win 0.50 race w/t/l (13, 230, 13)
+strategic_v25                                vs strategic_v23    n= 256 margin  +73.2± 1.3 win 0.98 race w/t/l (243, 13, 0)  − strategic_v23:  +73.2 ±  1.2 (128 seeds)  race t>w:228 l>w:2 l>t:11
+strategic_v25:race_commit=false              vs strategic_v23    n= 256 margin  +73.3± 1.3 win 0.98 race w/t/l (243, 13, 0)  − strategic_v23:  +73.3 ±  1.3 (128 seeds)  race t>w:228 l>w:2 l>t:11
+strategic_v25:race_walk=false                vs strategic_v23    n= 256 margin  +12.8± 4.0 win 0.59 race w/t/l (13, 230, 13)  − strategic_v23:  +12.8 ±  2.8 (128 seeds)  race 
+strategic_v23                                vs strategic_v25    n= 256 margin  -73.2± 1.3 win 0.02 race w/t/l (0, 13, 243)
+strategic_v25                                vs strategic_v25    n= 256 margin   +0.0± 4.1 win 0.50 race w/t/l (0, 256, 0)  − strategic_v23:  +73.2 ±  1.2 (128 seeds)  race l>t:243
+strategic_v25:race_walk=false                vs strategic_v25    n= 256 margin  -13.3± 3.9 win 0.40 race w/t/l (0, 13, 243)  − strategic_v23:  +59.9 ±  3.6 (128 seeds)  race 
