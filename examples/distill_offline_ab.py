@@ -8,6 +8,8 @@ same rows.  Every flag after ``--`` goes to ``train/distill/run.py``'s parser (t
 The held-out score is reported overall and split by seconds of play (``--splits``: the first 10 s
 = the race, after 30 s = late play); ``--save`` writes the trained net as a distill checkpoint
 (``policy_state``), e.g. for the simulator strength runs (docs §25: P11 vs P11 + map tokens).
+``--clean-heldout DIR`` also scores every shard in DIR (e.g. the Unity held-out eval's saved shards:
+fresh seeds no run trained on -- a run's own last shards were in its ring); ``--steps 0`` only scores.
 
   PYTHONPATH=. python examples/distill_offline_ab.py checkpoints/distill/p11/shards --steps 3000 \\
       --init checkpoints/distill/frozen/p10_v22.pt --out reports/cuda/distill_ab_fast.json -- \\
@@ -69,6 +71,7 @@ def main() -> None:
     p.add_argument("--out", type=Path, default=None)
     p.add_argument("--save", type=Path, default=None, help="write the trained net here (policy_state + distill meta)")
     p.add_argument("--eval-every", type=int, default=0, help="also score the held-out splits every N steps")
+    p.add_argument("--clean-heldout", type=Path, default=None, help="also score every shard in this directory")
     cli = p.parse_args(argv)
 
     args = parse_args(["--build", "unused", *learner_argv])
@@ -95,6 +98,22 @@ def main() -> None:
     keep = np.sort(np.random.default_rng(1).choice(len(held["labels"]), n_rows, replace=False))
     held = {k: v[keep] for k, v in held.items()}
     elapsed = (1.0 - held["team_state"][:, 2].astype(np.float64)) * MATCH_SECONDS
+    clean = None
+    if cli.clean_heldout is not None:
+        parts: dict[str, list] = {}
+        for rows, _ in new_shards(cli.clean_heldout, set(), args.action_bins):
+            for k, v in rows.items():
+                parts.setdefault(k, []).append(v)
+        clean = {k: np.concatenate(v) for k, v in parts.items()}
+        clean_elapsed = (1.0 - clean["team_state"][:, 2].astype(np.float64)) * MATCH_SECONDS
+        print(f"[ab] clean held-out {len(clean['labels'])} rows from {cli.clean_heldout}", flush=True)
+
+    def evaluate(step):
+        e = {"step": step, **score_splits(learner, held, elapsed)}
+        if clean is not None:
+            e["clean"] = score_splits(learner, clean, clean_elapsed)
+        return e
+
     print(f"[ab] ring {ring.size} rows from {len(train_names)} shards, held-out {len(keep)} rows from {n_hold} shards "
           f"({time.time() - t0:.0f}s); device {device}, amp {args.amp}, compile {args.compile}, batch {args.batch_size}",
           flush=True)
@@ -103,7 +122,7 @@ def main() -> None:
     log = []
     evals = []
     if cli.eval_every:
-        evals.append({"step": 0, **score_splits(learner, held, elapsed)})
+        evals.append(evaluate(0))
         print(json.dumps({"eval": evals[-1]}), flush=True)
     t_win = time.time()
     for step in range(1, cli.steps + 1):
@@ -119,15 +138,16 @@ def main() -> None:
             log.append(row)
             print(json.dumps(row), flush=True)
             if cli.eval_every and step % cli.eval_every == 0 and step != cli.steps:
-                evals.append({"step": step, **score_splits(learner, held, elapsed)})
+                evals.append(evaluate(step))
                 print(json.dumps({"eval": evals[-1]}), flush=True)
             t_win = time.time()
-    splits = score_splits(learner, held, elapsed)
+    final = evaluate(cli.steps)
+    splits = {k: v for k, v in final.items() if k not in ("step", "clean")}
     result = {k: v for k, v in splits["all"].items() if k != "rows"}
-    ms = sorted(r["ms_step"] for r in log[1:]) or [log[0]["ms_step"]]
+    ms = sorted(r["ms_step"] for r in log[1:]) or [log[0]["ms_step"] if log else float("nan")]
     summary = {"device": str(device), "torch": torch.__version__, "amp": args.amp, "compile": args.compile,
                "batch": args.batch_size, "steps": cli.steps, "median_ms_step": ms[len(ms) // 2],
-               "rows_per_s": args.batch_size * 1000 / ms[len(ms) // 2], "heldout": result, "heldout_splits": splits,
+               "rows_per_s": args.batch_size * 1000 / ms[len(ms) // 2], "heldout": result, "heldout_splits": splits, "clean_splits": final.get("clean"),
                "params": sum(p.numel() for p in learner.net.parameters()), "map_xattn": args.map_xattn,
                "map_xattn_layers": args.map_xattn_layers, "init": str(cli.init), "seed": cli.seed,
                "learner_argv": learner_argv, "evals": evals, "log": log}
