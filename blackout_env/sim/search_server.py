@@ -442,7 +442,7 @@ def view_buckets(max_views: int) -> list[int]:
 
 def build_searcher(rollout: str = R5, value: str = VALUE, branches: str = "alt*,samp:1.0x2", window: int = 25,
                    leaf_decisions: int = 125, device: str = "cuda", cuda_graphs: bool = True,
-                   max_roots: int = 32, repo: str | None = None):
+                   max_roots: int = 32, repo: str | None = None, packed: bool = True):
     """The Searcher the Unity eval uses (unity_search_eval._init_worker), graphs bucketed for a server."""
     from .batch import NetPolicy
     from .rollout_net import RolloutNet
@@ -455,7 +455,8 @@ def build_searcher(rollout: str = R5, value: str = VALUE, branches: str = "alt*,
     buckets = view_buckets(2 * len(br) * max_roots) if cuda_graphs else None
     pol = ModNetPolicy(NetPolicy(RolloutNet.from_checkpoint(at(rollout)), device=device, cuda_graphs=cuda_graphs,
                                  graph_buckets=buckets))
-    return Searcher(pol, ValueNetLeaf(at(value), device), br, window=window, leaf_decisions=leaf_decisions)
+    return Searcher(pol, ValueNetLeaf(at(value), device), br, window=window, leaf_decisions=leaf_decisions,
+                    packed=packed)
 
 
 def _serve(args):

@@ -113,6 +113,7 @@ class ModNetPolicy(BatchPolicy):
 
     def __init__(self, net: NetPolicy):
         self.net = net
+        self.accepts_packed = getattr(net, "accepts_packed", False)
         self.noise = None
         self.configure(0)
 
@@ -134,7 +135,7 @@ class ModNetPolicy(BatchPolicy):
         graphic, team_in, agents = inputs
         n, sel = len(idx), list(teams)
         cut = slice(None) if sel == [0, 1] else sel
-        g = graphic[:n][:, cut].reshape(n * len(sel), N_CH, H, W)
+        g = graphic[:n][:, cut].reshape(n * len(sel), *graphic.shape[2:])
         t = team_in[:n][:, cut].reshape(n * len(sel), 4)
         a = agents[:n][:, cut].reshape(n * len(sel), 10, N_AGENT_COLS)
         q, off = self.net.forward(g, t, a)
@@ -240,11 +241,11 @@ class Searcher:
     """1-ply search: ``search(roots, teams, reseeds)`` scores every branch of every root in one batch."""
 
     def __init__(self, policy: ModNetPolicy, leaf: ValueNetLeaf, branches: list[Branch], window: int = 25,
-                 leaf_decisions: int = 125, margin: float = 0.0):
+                 leaf_decisions: int = 125, margin: float = 0.0, packed: bool = False):
         assert branches[0].kind == K_BASE
         self.policy, self.leaf, self.branches = policy, leaf, branches
         self.window, self.leaf_decisions, self.margin = int(window), int(leaf_decisions), float(margin)
-        self.roll = BatchRollout(policy, policy, repeat=1)
+        self.roll = BatchRollout(policy, policy, repeat=1, packed=packed)
 
     def search(self, roots: list[SimState], teams, reseeds) -> SearchOut:
         r, nb = len(roots), len(self.branches)

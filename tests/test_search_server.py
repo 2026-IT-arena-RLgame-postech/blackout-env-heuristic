@@ -167,3 +167,30 @@ def test_server_exits_when_parent_dies_or_nobody_connects():
     th = _Thread(SearchServer(_searcher(), _sock(), startup_s=0.3))
     th.t.join(5)
     assert not th.t.is_alive()
+
+
+def test_packed_render_unpacks_to_the_float_inputs():
+    from blackout_env.sim.batch import N_AGENT_COLS, N_CH, BatchSim, unpack_graphic
+
+    bs = BatchSim(_roots(6, steps=120))
+    n = bs.n
+    g = np.zeros((n, 2, N_CH, 24, 24), np.float32)
+    t = np.zeros((n, 2, 4), np.float32)
+    a = np.zeros((n, 2, 10, N_AGENT_COLS), np.float32)
+    bs.render(bs.all, g, t, a)
+    p = np.zeros((n, 2, 24, 24), np.int16)
+    t2, a2 = np.zeros_like(t), np.zeros_like(a)
+    bs.render_packed(bs.all, p, t2, a2)
+    u = unpack_graphic(torch.from_numpy(p.reshape(-1, 24, 24))).numpy().reshape(g.shape)
+    assert u.tobytes() == g.tobytes() and t2.tobytes() == t.tobytes() and a2.tobytes() == a.tobytes()
+    assert g[:, :, 8].any()  # batteries on the map
+
+
+def test_packed_searcher_equals_float_searcher():
+    roots = _roots(3)
+    ref = _searcher().search(roots, [0, 1, 0], [5, 6, 7])
+    s = _searcher()
+    s.roll.packed = True
+    s.roll._buf = None
+    got = s.search(roots, [0, 1, 0], [5, 6, 7])
+    assert got.values.tobytes() == ref.values.tobytes()
