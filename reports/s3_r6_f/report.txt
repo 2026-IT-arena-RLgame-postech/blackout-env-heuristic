@@ -1,0 +1,4 @@
+r6f            vs p11              n= 256 seeds= 128  search   +5.8  plain   -0.1  diff   +5.8 ±  4.5  win(sign) +0.11 vs +0.05  race w/t/l (35, 220, 1) vs (22, 232, 2)  capped 0.29/0.29  len 151s  wall 0.6s/match (plain 0.62)  e0 w0 m0 B1
+                  base share 0.00; 
+r6f            vs r5               n= 256 seeds= 128  search   +8.8  plain   +0.0  diff   +8.8 ±  3.4  win(sign) +0.14 vs +0.00  race w/t/l (35, 200, 21) vs (23, 210, 23)  capped 0.37/0.35  len 172s  wall 0.3s/match (plain 0.14)  e0 w0 m0 B1
+                  base share 0.00; 
