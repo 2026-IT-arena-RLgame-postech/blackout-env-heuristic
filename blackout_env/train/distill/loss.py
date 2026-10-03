@@ -20,14 +20,16 @@ def set_valued_cross_entropy(
     masks: torch.Tensor,
     weights: torch.Tensor | None = None,
     z_loss: float = 1e-4,
+    total: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     """logits [..., 8], masks bool [..., 8] (all False = unlabelled, ignored), weights [...].
 
     Returns (loss, stats) with stats ``ce``, ``z`` and ``accuracy`` (argmax inside the set),
-    all averaged over labelled entries with ``weights``."""
+    all averaged over labelled entries with ``weights``.  ``total``: the normaliser to use instead
+    of this batch's weight sum (multi-GPU: the global sum / world size, accel.Dist)."""
     valid = masks.any(dim=-1)
     w = valid.to(logits.dtype) if weights is None else weights * valid.to(logits.dtype)
-    total = w.sum().clamp_min(1e-8)
+    total = w.sum().clamp_min(1e-8) if total is None else total
 
     log_norm = torch.logsumexp(logits, dim=-1)
     # Unlabelled entries take the full set (nll 0): an empty set would give -inf, and its NaN
@@ -48,6 +50,7 @@ def angle_offset_loss(
     angles: torch.Tensor,
     weights: torch.Tensor | None = None,
     arc_bins: int = 0,
+    total: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     """P11's angle head: offsets [..., K] radians (each in [-pi/K, pi/K], or +-(arc_bins + 1/2)
     bins), angles [...] the teacher's raw headings in the bins' frame (NaN = none: ignored),
@@ -69,7 +72,7 @@ def angle_offset_loss(
     half = math.pi / k
     valid = torch.isfinite(angles)
     w = valid.to(offsets.dtype) if weights is None else weights * valid.to(offsets.dtype)
-    total = w.sum().clamp_min(1e-8)
+    total = w.sum().clamp_min(1e-8) if total is None else total  # ``total``: as set_valued_cross_entropy
     angle = torch.where(valid, angles.to(offsets.dtype), torch.zeros_like(offsets[..., 0]))
     centre = torch.round(angle / (2 * half)).long() % k
     losses = []

@@ -1,0 +1,19 @@
+{
+ "cmd": "train",
+ "cache": "/home/cucumbersaurus/blackout-env/datasets/value_s1_sub4",
+ "out_dir": "/home/cucumbersaurus/cuda_work/abv2/ddp2",
+ "init": "/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p5a_v22.pt",
+ "steps": 3000,
+ "batch_size": 256,
+ "lr": 0.0003,
+ "trunk_lr_scale": 1.0,
+ "weight_decay": 0.01,
+ "warmup": 500,
+ "device": "auto",
+ "amp": "fp16",
+ "compile": true,
+ "eval_every": 1000,
+ "eval_rows": 20000,
+ "seed": 0,
+ "num_threads": 4
+}

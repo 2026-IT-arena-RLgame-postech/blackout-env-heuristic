@@ -43,6 +43,7 @@ sys.path.insert(0, str(REPO / "examples"))
 
 from blackout_env.value.branch import (  # noqa: E402
     VIEWS, bootstrap_targets, holdout_mask, load_raw, mirror_targets)
+from blackout_env.train.accel import pinned  # noqa: E402
 from blackout_env.value.targets import HORIZONS_S  # noqa: E402
 
 INPUTS = ("graphic", "team_state", "agent_states")
@@ -106,8 +107,12 @@ def soft_value_loss(out, t: dict, lead, final_beta=None):
 class Sampler:
     """Background batches: simulator rows (random view, antisymmetric target) + shard rows."""
 
-    def __init__(self, data, targets, rows, shard, shard_rows, batch, shard_frac, seed, depth=6, group_roots=0):
+    def __init__(self, data, targets, rows, shard, shard_rows, batch, shard_frac, seed, depth=6, group_roots=0,
+                 device=None):
         self.data, self.targets, self.rows = data, targets, rows
+        import torch
+
+        self.device = device if device is not None else torch.device("cpu")
         self.shard, self.shard_rows = shard, shard_rows
         self.n_shard = int(round(batch * shard_frac)) if shard is not None else 0
         self.groups = root_groups(data["rows"], rows) if group_roots else []
@@ -173,7 +178,7 @@ class Sampler:
                 + ([self._shard_batch()] if self.n_shard else [])
             batch = {k: np.concatenate([p[k] for p in parts]).astype(
                 np.float32 if parts[0][k].dtype == np.float64 else parts[0][k].dtype) for k in parts[0]}
-            self.q.put(batch)
+            self.q.put({k: pinned(v, self.device) for k, v in batch.items()})  # host tensors, pinned on cuda
 
     def next(self):
         return self.q.get()
@@ -257,12 +262,15 @@ def heldout_metrics(net, data, targets, rows, device) -> dict:
 def cmd_train(args):
     import torch
 
+    from blackout_env.train.accel import adamw, check_amp, pick_device
     from blackout_env.value.data import SPLITS, open_cache
-    from blackout_env.value.model import TRUNK_MODULES, ValueNet, _strip_compile, load_value_net, save_value_net
+    from blackout_env.value.model import ValueNet, _strip_compile, load_value_net, save_value_net
+    from blackout_env.value.train import compile_value_net
 
     torch.manual_seed(args.seed)
     torch.set_num_threads(4)
-    device = torch.device(args.device)
+    device = pick_device(args.device)
+    check_amp(device, args.amp)
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "config.json").write_text(json.dumps({k: str(v) for k, v in vars(args).items() if k != "fn"}, indent=1))
@@ -284,9 +292,8 @@ def cmd_train(args):
 
     net = load_value_net(args.init, device=device).train()
     target_net = load_value_net(args.init, device=device)
-    if args.compile:
-        for name in TRUNK_MODULES:
-            getattr(net.trunk, name).compile()
+    if args.compile:  # cuda: the whole net; MPS: TRUNK_MODULES only (value/train.compile_value_net)
+        compile_value_net(net, device)
     amp = {"bf16": torch.bfloat16, "fp16": torch.float16}.get(args.amp)
     base = heldout_metrics(target_net, data, make_targets(target_net, data, device)[0], hold_rows, device)
     print(json.dumps({"iter": 0, "heldout": base}), flush=True)
@@ -299,17 +306,17 @@ def cmd_train(args):
               flush=True)
         params = [{"params": list(net.trunk_parameters()), "lr_scale": args.trunk_lr_scale},
                   {"params": net.head_parameters(), "lr_scale": 1.0}]
-        opt = torch.optim.AdamW(params, lr=args.lr, weight_decay=0.01)
+        opt = adamw(params, device, lr=args.lr, weight_decay=0.01)  # fused on cuda
         scaler = torch.amp.GradScaler(device.type, enabled=args.amp == "fp16")
         sampler = Sampler(data, targets, train_rows, shard, shard_rows, args.batch_size, args.shard_frac,
-                          args.seed * 1000 + it, group_roots=args.group_roots)
+                          args.seed * 1000 + it, group_roots=args.group_roots, device=device)
         totals, started = {}, time.time()
         for step in range(args.steps):
             lr = args.lr * (min(1.0, (step + 1) / args.warmup) if step < args.warmup else
                             0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * (step - args.warmup) / max(1, args.steps - args.warmup))))
             for g in opt.param_groups:
                 g["lr"] = lr * g["lr_scale"]
-            b = {k: torch.from_numpy(np.ascontiguousarray(v)).to(device, non_blocking=True) for k, v in sampler.next().items()}
+            b = {k: v.to(device, non_blocking=True) for k, v in sampler.next().items()}  # pinned on cuda
             ctx = torch.autocast(device.type, dtype=amp) if amp else contextlib.nullcontext()
             net.train()
             with ctx:
@@ -454,8 +461,9 @@ def cmd_score(args):
     import torch
 
     import value_branch_eval as vb
+    from blackout_env.train.accel import pick_device
 
-    device = torch.device(args.device)
+    device = pick_device(args.device)
     views = dict(np.load(args.views))
     hashes = json.loads(str(views["hashes"]))
     roots = load_s15_roots(Path(args.s15))
@@ -564,7 +572,7 @@ def main():
     t.add_argument("--lr", type=float, default=1e-4)
     t.add_argument("--trunk-lr-scale", type=float, default=1.0)
     t.add_argument("--warmup", type=int, default=200)
-    t.add_argument("--device", default="mps")
+    t.add_argument("--device", default="auto", help="auto = cuda > mps > cpu")
     t.add_argument("--amp", choices=["none", "bf16", "fp16"], default="fp16")
     t.add_argument("--compile", action="store_true")
     t.add_argument("--log-every", type=int, default=500)
@@ -582,7 +590,7 @@ def main():
     s.add_argument("--ckpt", nargs="+", required=True, help="name=path")
     s.add_argument("--out", type=Path, required=True)
     s.add_argument("--tag", default="run")
-    s.add_argument("--device", default="mps")
+    s.add_argument("--device", default="auto")
     s.set_defaults(fn=cmd_score)
     b = sub.add_parser("bias")
     b.add_argument("--ckpt", nargs="+", required=True)

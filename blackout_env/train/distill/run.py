@@ -63,6 +63,7 @@ import torch
 
 from blackout_env.model.direction_bins import ACTION_BINS, SET_HALF_WIDTH_DEG, bins_of_width, resample_rows
 from blackout_env.model.my_model import ANGLE_KEY_PREFIX, POLICY_HEADS, TEMPORAL_PREFIX, MyModel
+from blackout_env.train.accel import adamw, check_amp, pick_device
 from blackout_env.train.distill.collect import CollectorPool, MatchTask, teacher_arg
 from blackout_env.train.distill.inference import INFERENCE
 from blackout_env.train.distill.dataset import (
@@ -81,6 +82,8 @@ HELDOUT_SEEDS = range(900_000, 1_000_000)
 # an embedding broadcast over the batch (token_type_emb, vec_slot_emb, spr_cls_emb) by the batch
 # size, so the embeddings stay eager; compiled this way every gradient matches CPU eager.
 COMPILED_MODULES = ("graphic_encoder", "vector_encoder", "attention", "q_head")  # examples/distill_heldout_eval.py
+# On CUDA that bug does not occur (tests/test_accel.py), but the whole MyModel compiled under fp16
+# autocast gives wrong outputs there (value/train.compile_value_net), so CUDA compiles these too.
 
 
 def parse_args(argv=None) -> argparse.Namespace:
@@ -189,7 +192,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--window", type=int, default=32, help="--temporal: trained ticks per window")
     p.add_argument("--burn-in", type=int, default=32, help="--temporal: ticks before each window that only build memory")
     p.add_argument("--max-rows", type=int, default=600_000, help="replay ring size (~8 KB per row in RAM)")
-    p.add_argument("--device", default="mps" if torch.backends.mps.is_available() else "cpu")
+    p.add_argument("--device", default="auto", help="auto = cuda > mps > cpu")
     args = p.parse_args(argv)
     if args.angle_head and args.policy_head != "logits":
         p.error("--angle-head needs --policy-head logits")
@@ -317,7 +320,8 @@ class Learner:
 
     def __init__(self, args):
         self.args = args
-        self.device = torch.device(args.device)
+        self.device = pick_device(args.device)
+        check_amp(self.device, args.amp)
         self.net = MyModel(n_actions=args.action_bins + int(args.stand_action), temporal=args.temporal,
                            policy_head=args.policy_head, angle_head=args.angle_head,
                            angle_arc_bins=args.angle_arc_bins).to(self.device)
@@ -325,7 +329,7 @@ class Learner:
         if args.compile:
             for name in COMPILED_MODULES:  # in place: state_dict keys stay the same
                 getattr(self.net, name).compile()
-        self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        self.optimizer = adamw(self.net.parameters(), self.device, lr=args.lr, weight_decay=args.weight_decay)
         self._bit_index = torch.arange(args.action_bins, device=self.device)
         self.accuracy = LabelAccuracy(self.device)
         self._totals = defaultdict(lambda: torch.zeros((), device=self.device))
@@ -338,6 +342,8 @@ class Learner:
     def _tensors(self, rows: dict[str, np.ndarray]):
         # K > 8 labels are uint64 bit sets: the same bits as int64 (MPS has no uint64 shifts;
         # an arithmetic shift still reads bit 63 right after the & 1)
+        # (no pinning: the step needs the batch at once, so an async copy overlaps nothing and the
+        # extra pinned memcpy only costs host time)
         batch = {k: torch.from_numpy(rows[k].view(np.int64) if rows[k].dtype == np.uint64 else rows[k]).to(self.device)
                  for k in FIELDS}
         graphic = batch["graphic"].permute(0, 3, 1, 2).float() / GRAPHIC_SCALE

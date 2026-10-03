@@ -1,0 +1,14 @@
+extra rows 1496694 labelled 1494586
+train rows 3660710 labelled 2160922 val 91403
+params 674336 {}
+/home/cucumbersaurus/cuda_work/ref_rollout_net_train.py:239: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:836.)
+  row = {"step": step, "loss": float(loss), "ce": float(st["ce"]), "acc": float(st["accuracy"]),
+{"step": 250, "loss": 1.2781765460968018, "ce": 0.44846248626708984, "acc": 0.8434101939201355, "angle_loss": 0.4970587193965912, "s": 10.190110683441162}
+{"step": 500, "loss": 1.1333606243133545, "ce": 0.38339269161224365, "acc": 0.8744433522224426, "angle_loss": 0.4511943757534027, "s": 18.71491026878357}
+{"step": 750, "loss": 1.0891820192337036, "ce": 0.3672196865081787, "acc": 0.870834231376648, "angle_loss": 0.42413651943206787, "s": 27.352967500686646}
+{"step": 1000, "loss": 1.0787988901138306, "ce": 0.3284836411476135, "acc": 0.8922979831695557, "angle_loss": 0.44981813430786133, "s": 36.10473084449768}
+{"step": 1250, "loss": 1.0363260507583618, "ce": 0.3348146677017212, "acc": 0.8862728476524353, "angle_loss": 0.4198596179485321, "s": 44.860410928726196}
+{"step": 1500, "loss": 1.0143235921859741, "ce": 0.3264588713645935, "acc": 0.8926619291305542, "angle_loss": 0.41718196868896484, "s": 53.48221015930176}
+{"step": 1750, "loss": 0.985892117023468, "ce": 0.31090009212493896, "acc": 0.8950981497764587, "angle_loss": 0.41606658697128296, "s": 62.30919027328491}
+{"step": 2000, "loss": 0.9486198425292969, "ce": 0.3085017502307892, "acc": 0.896126389503479, "angle_loss": 0.38320595026016235, "s": 70.96986198425293, "val_hit": 0.901351849842682, "val_err": 10.800741971357274, "val_w2": 0.6431116415319519, "val_hit_open": 0.9260710743401795, "val_err_open": 7.362378820918608, "val_w2_open": 0.6709969276918983, "val_p11_agree": 0.7791533333333334, "val_p11_err": 11.742460833333332}

@@ -13,6 +13,14 @@ Losses are P11's (train/distill/loss.py): set-valued CE on the arc label + angle
 (arc 1), rows in the first 10 s weighted x1.5.  ``--p11-kl W`` adds W x KL(P11 || net) on the
 logits and an offset regression to P11's offsets on its arg max bin (targets precomputed by
 ``pack --p11``).
+
+CUDA (poscat servers, RTX 2080 Ti; docs/cuda_training_ko.md): ``--device auto`` picks cuda > mps >
+cpu; add ``--amp fp16 --compile`` (whole step compiled, GradScaler, NHWC convs, fused AdamW, the
+split on the GPU when it fits: ``--gpu-data``).  Same rows, same losses as the MPS path; ~7 ms per
+1024-row step on one 2080 Ti vs ~55 ms on the Mac.  Multi-GPU: ``torchrun --standalone
+--nproc_per_node N examples/rollout_net_train.py train ...`` (``--batch`` = global batch, split over
+the ranks; the loss normalisers are summed over ranks, so the gradient is the global batch's);
+``bench`` times the step's parts.
 """
 
 from __future__ import annotations
@@ -59,51 +67,6 @@ def _load(path: str):
             "angles": angles.astype(np.float32), "tick": tick.astype(np.int32)}
 
 
-def mmap_npz(path) -> dict:
-    """Memory-map every member of an uncompressed ``np.savez`` archive (ZIP_STORED: the .npy bytes sit
-    verbatim in the file), so concurrent trainings share one page-cache copy and nothing is loaded
-    up front.  Compressed members are loaded normally."""
-    import zipfile
-
-    out = {}
-    with zipfile.ZipFile(path) as zf, open(path, "rb") as fh:
-        for info in zf.infolist():
-            name = info.filename.removesuffix(".npy")
-            if info.compress_type != zipfile.ZIP_STORED:
-                out[name] = np.load(path)[name]
-                continue
-            fh.seek(info.header_offset)
-            local = fh.read(30)
-            n_name, n_extra = int.from_bytes(local[26:28], "little"), int.from_bytes(local[28:30], "little")
-            fh.seek(info.header_offset + 30 + n_name + n_extra)
-            version = np.lib.format.read_magic(fh)
-            shape, fortran, dtype = np.lib.format._read_array_header(fh, version)
-            out[name] = np.memmap(path, dtype=dtype, mode="r", offset=fh.tell(), shape=shape,
-                                  order="F" if fortran else "C")
-    return out
-
-
-def load_split(path) -> dict:
-    """A packed split: ``<name>.npz`` (memory-mapped when uncompressed, see ``mmap_npz``) or a
-    directory of per-key ``.npy`` files (``convert``)."""
-    path = Path(path)
-    d = path.with_suffix("") if path.suffix == ".npz" else path
-    if d.is_dir() and any(d.glob("*.npy")):
-        return {f.stem: np.load(f, mmap_mode="r") for f in sorted(d.glob("*.npy"))}
-    return mmap_npz(path)
-
-
-def cmd_convert(args):
-    """npz -> a directory of .npy files next to it (same stem), for ``load_split``'s mmap."""
-    for src in args.npz:
-        z = np.load(src)
-        out = Path(src).with_suffix("")
-        out.mkdir(parents=True, exist_ok=True)
-        for k in z.files:
-            np.save(out / f"{k}.npy", z[k])
-        print(src, "->", out, z.files, flush=True)
-
-
 def cmd_pack(args):
     paths = sorted(str(p) for p in Path(args.shards).glob("*.npz") if not p.name.endswith(".tmp.npz"))
     if args.max_shards:
@@ -126,14 +89,16 @@ def cmd_pack(args):
 # ------------------------------------------------------------------------------ tensors
 
 
-def expand_map(packed, torch):
-    """uint16-as-int32 [B, H, W] -> float32 [B, 13, H, W] (the env graphic, canonical)."""
+def expand_map(packed, torch, channels_last: bool = False):
+    """uint16-as-int32 (or int16) [B, H, W] -> float32 [B, 13, H, W] (the env graphic, canonical);
+    ``channels_last``: in that memory format (the [B, H, W, 13] build, not copied)."""
     p = packed.long()
     base = torch.nn.functional.one_hot(p & 7, 8)
     bat = ((p >> 3) & 15).float().unsqueeze(-1) / 15.0
     item = (p >> 7) & 7
     items = torch.nn.functional.one_hot(item, 8)[..., 1:5]
-    return torch.cat([base.float(), bat, items.float()], -1).permute(0, 3, 1, 2).contiguous()
+    g = torch.cat([base.float(), bat, items.float()], -1).permute(0, 3, 1, 2)
+    return g if channels_last else g.contiguous()
 
 
 def unpack_labels(bits: np.ndarray) -> np.ndarray:
@@ -142,24 +107,11 @@ def unpack_labels(bits: np.ndarray) -> np.ndarray:
 
 
 def batch_tensors(data, idx, device, torch):
-    m = torch.from_numpy(np.asarray(data["map"][idx]).astype(np.int32)).to(device)
+    m = torch.from_numpy(data["map"][idx].astype(np.int32)).to(device)
     g = expand_map(m, torch)
-    ts = torch.from_numpy(np.ascontiguousarray(data["team_state"][idx])).to(device)
-    ag = torch.from_numpy(np.ascontiguousarray(data["agent_states"][idx])).to(device)
+    ts = torch.from_numpy(data["team_state"][idx]).to(device)
+    ag = torch.from_numpy(data["agent_states"][idx]).to(device)
     return g, ts, ag
-
-
-def default_device() -> str:
-    import torch
-
-    return "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
-
-
-def autocast(torch, device, amp: str):
-    """amp: '' (off) | 'fp16' | 'bf16' -> a torch.autocast context."""
-    if not amp:
-        return torch.autocast(device_type=device.split(":")[0], enabled=False)
-    return torch.autocast(device_type=device.split(":")[0], dtype=torch.float16 if amp == "fp16" else torch.bfloat16)
 
 
 def p11_targets(data, device="mps", batch=2048):
@@ -238,135 +190,341 @@ def evaluate(net_fn, data, device, torch, n=None, batch=4096):
     return {k: (v[0] / v[1] if v[1] else float("nan")) for k, v in acc.items()}
 
 
-def _gather(datasets, picks, keys):
-    """Host-side batch: rows ``picks[i]`` of ``datasets[i]`` concatenated, numpy."""
-    out = {}
-    for k in keys:
-        parts = [np.asarray(d[k][ix]) for d, ix in zip(datasets, picks) if len(ix)]
-        out[k] = np.concatenate(parts) if len(parts) > 1 else parts[0]
-    return out
+def labelled_rows(labels: np.ndarray) -> np.ndarray:
+    """Rows with a label (any of the 32 bins) on at least one own unit."""
+    return np.flatnonzero(((labels & np.uint64(0xFFFFFFFF)) != 0).any(-1))
 
 
-def cmd_train(args):
-    import queue
-    import threading
+def load_split(path, in_memory: bool | None = False) -> dict:
+    """A packed split (train.npz / val.npz), read into RAM (``in_memory``; as before the CUDA work)
+    or memory-mapped (np.savez stores it uncompressed) so that torchrun ranks on one machine share
+    one page-cache copy.  None = auto: RAM for a single process, memory maps under torchrun, read
+    through once (sequentially) so the random batch gathers do not page-fault from disk -- a cold
+    9 GB r5 split made the first steps ~2x slower than the in-RAM path."""
+    import os
 
-    import torch
+    from blackout_env.train.accel import load_npz
 
-    from blackout_env.sim.rollout_net import RolloutNet
+    if in_memory is None:
+        in_memory = int(os.environ.get("WORLD_SIZE", 1)) == 1
+    data = load_npz(path, mmap=True)
+    if in_memory:
+        return {k: np.array(v) for k, v in data.items()}
+    for v in data.values():  # warm the page cache: one sequential pass
+        if isinstance(v, np.memmap):
+            flat = v.reshape(-1) if v.flags.c_contiguous else v
+            for i in range(0, len(flat), 1 << 26):
+                flat[i:i + (1 << 26)].max()
+    return data
+
+
+class BatchSource:
+    """Host side of a training batch: row indices (the same RNG draws, so the same batches as
+    before the CUDA work) gathered from the train split and the ``--extra`` split.  Called from
+    the prefetch thread.  uint16 maps / uint64 label bits travel as int16 / int64 views (torch
+    has no unsigned shifts on every device); they are decoded on the device (``TrainStep``)."""
+
+    def __init__(self, train, extra, pool, epool, batch, extra_frac, seed, keys):
+        self.train, self.extra, self.pool, self.epool = train, extra, pool, epool
+        self.batch, self.extra_frac, self.keys = batch, extra_frac, keys
+        self.rng = np.random.default_rng(seed)
+
+    def __call__(self) -> dict:
+        if self.extra is not None:  # a fixed fraction of each batch from the extra rows
+            ne = int(self.batch * self.extra_frac)
+            parts = [(self.train, np.sort(self.rng.choice(self.pool, self.batch - ne))),
+                     (self.extra, np.sort(self.rng.choice(self.epool, ne)))]
+        else:
+            parts = [(self.train, np.sort(self.rng.choice(self.pool, self.batch)))]
+        out = {k: np.concatenate([src[k][i] for src, i in parts]) for k in self.keys}
+        out["map"] = out["map"].view(np.int16)
+        out["labels"] = out["labels"].view(np.int64)
+        return out
+
+
+class DeviceSource(BatchSource):
+    """``BatchSource`` with the split's arrays resident on the GPU (``--gpu-data``): the same RNG
+    draws pick the rows, only the indices cross PCIe and the gather runs on the device -- no
+    host gather, pinned copies or prefetch thread, so the step stays fast on a loaded host."""
+
+    def __init__(self, train, extra, pool, epool, batch, extra_frac, seed, keys, device, chunk=65536):
+        import torch
+
+        def upload(src):
+            out = {}
+            for k in keys:
+                a = src[k]
+                a = a.view(np.int16) if a.dtype == np.uint16 else a.view(np.int64) if a.dtype == np.uint64 else a
+                t = torch.empty(a.shape, dtype=torch.from_numpy(np.ascontiguousarray(a[:1])).dtype, device=device)
+                for i in range(0, len(a), chunk):
+                    t[i:i + chunk] = torch.from_numpy(np.ascontiguousarray(a[i:i + chunk])).to(device)
+                out[k] = t
+            return out
+
+        super().__init__(upload(train), upload(extra) if extra is not None else None, pool, epool, batch,
+                         extra_frac, seed, keys)
+        self.device = device
+
+    def __call__(self) -> dict:
+        import torch
+
+        if self.extra is not None:
+            ne = int(self.batch * self.extra_frac)
+            parts = [(self.train, np.sort(self.rng.choice(self.pool, self.batch - ne))),
+                     (self.extra, np.sort(self.rng.choice(self.epool, ne)))]
+        else:
+            parts = [(self.train, np.sort(self.rng.choice(self.pool, self.batch)))]
+        parts = [(src, torch.from_numpy(i).to(self.device)) for src, i in parts]
+        return {k: torch.cat([src[k][i] for src, i in parts]) for k in self.keys}
+
+
+def split_bytes(data: dict, keys) -> int:
+    return sum(data[k].nbytes for k in keys)
+
+
+def train_step_module(torch):
     from blackout_env.train.distill.loss import angle_offset_loss, set_valued_cross_entropy
 
-    torch.manual_seed(args.seed)
-    device = args.device or default_device()
-    if device.startswith("cuda"):
-        torch.backends.cuda.matmul.allow_tf32 = True
-        torch.backends.cudnn.benchmark = True
-    train = load_split(Path(args.data) / "train.npz")
-    val = load_split(Path(args.data) / "val.npz")
-    pool = np.nonzero(unpack_labels(np.asarray(train["labels"])).any(-1).any(-1))[0]
-    datasets, pools = [train], [pool]
-    if args.extra:  # e.g. simulator DAgger rows (rollout_net_collect.py): a fixed fraction of each batch
-        extra = load_split(args.extra)
-        epool = np.nonzero(unpack_labels(np.asarray(extra["labels"])).any(-1).any(-1))[0]
-        datasets.append(extra)
-        pools.append(epool)
-        print("extra rows", len(extra["tick"]), "labelled", len(epool), flush=True)
-    keys = ["map", "team_state", "agent_states", "labels", "angles", "tick"]
-    if args.p11_kl > 0:
-        keys += ["p11_q", "p11_off"]
-    print("train rows", len(train["tick"]), "labelled", len(pool), "val", len(val["tick"]), flush=True)
-    cfg = json.loads(args.config) if args.config else {}
-    net = RolloutNet.from_checkpoint(args.init).train().to(device) if args.init else RolloutNet(**cfg).to(device)
-    print("params", sum(p.numel() for p in net.parameters()), net.config, "device", device, "amp", args.amp, flush=True)
-    opt = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=1e-4, **({"fused": True} if device.startswith("cuda") else {}))
-    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=args.lr, total_steps=args.steps, pct_start=0.05)
-    scaler = torch.amp.GradScaler(enabled=args.amp == "fp16")
-    def producer(q: queue.Queue, stop: threading.Event, worker: int):
-        rng = np.random.default_rng([args.seed, worker])  # one generator per thread (not thread-safe)
-        while not stop.is_set():
-            if args.extra:
-                ne = int(args.batch * args.extra_frac)
-                picks = [np.sort(rng.choice(pools[0], args.batch - ne)), np.sort(rng.choice(pools[1], ne))]
-            else:
-                picks = [np.sort(rng.choice(pools[0], args.batch))]
-            b = _gather(datasets, picks, keys)
-            t = {k: torch.from_numpy(np.ascontiguousarray(b[k].astype(np.int32) if k == "map" else
-                                                          (b[k].astype(np.float32) if k in ("p11_q", "p11_off") else b[k])))
-                 for k in keys if k not in ("labels", "tick")}
-            t["labels"] = torch.from_numpy(unpack_labels(b["labels"]))
-            tick = b["tick"]
-            w = np.where((tick >= 0) & (tick < OPENING_TICKS), args.opening_weight, 1.0).astype(np.float32)
-            t["w"] = torch.from_numpy(w)
-            if device.startswith("cuda"):
-                t = {k: v.pin_memory() for k, v in t.items()}
-            while not stop.is_set():
-                try:
-                    q.put(t, timeout=1.0)
-                    break
-                except queue.Full:
-                    continue
+    class TrainStep(torch.nn.Module):
+        """Device side of a step: decode the packed batch, forward (autocast), losses.  One module
+        so that ``--compile`` makes one graph of it (and DDP wraps it whole)."""
 
-    q: queue.Queue = queue.Queue(maxsize=4)
-    stop = threading.Event()
-    workers = [threading.Thread(target=producer, args=(q, stop, i), daemon=True) for i in range(args.loader_threads)]
-    for th in workers:
-        th.start()
-    t0 = time.time()
-    log = []
-    try:
-        for step in range(1, args.steps + 1):
-            b = {k: v.to(device, non_blocking=True) for k, v in q.get().items()}
-            g = expand_map(b["map"], torch)
-            labels, ang = b["labels"], b["angles"]
-            w = b["w"][:, None].expand(-1, 5)
-            with autocast(torch, device, args.amp):
-                logits, off = net(g, b["team_state"], b["agent_states"])
+        def __init__(self, net, args, amp, device):
+            super().__init__()
+            self.net, self.args, self.amp, self.device_type = net, args, amp, device.type
+            self.register_buffer("shifts", torch.arange(32, device=device), persistent=False)
+
+        def forward(self, map, team_state, agent_states, labels, angles, tick, p11_q=None, p11_off=None,
+                    ce_total=None, angle_total=None):
+            from blackout_env.train.accel import autocast
+
+            args = self.args
+            g = expand_map(map, torch, channels_last=getattr(args, "channels_last", False))
+            masks = ((labels.unsqueeze(-1) >> self.shifts) & 1) == 1
+            opening = (tick >= 0) & (tick < OPENING_TICKS)
+            w = torch.where(opening, args.opening_weight, 1.0).float()[:, None].expand(-1, 5)
+            with autocast(torch.device(self.device_type), self.amp):
+                logits, off = self.net(g, team_state, agent_states)
             logits, off = logits.float(), off.float()
-            ce, st = set_valued_cross_entropy(logits, labels, w)
-            al, ast = angle_offset_loss(off, ang, w, arc_bins=net.config["angle_arc_bins"])
+            ce, st = set_valued_cross_entropy(logits, masks, w, total=ce_total)
+            al, ast = angle_offset_loss(off, angles, w, arc_bins=self.net.config["angle_arc_bins"], total=angle_total)
             loss = ce + args.angle_weight * al
             if args.p11_kl > 0:
-                pq, po = b["p11_q"], b["p11_off"]
+                pq, po = p11_q.float(), p11_off.float()
                 kl = torch.nn.functional.kl_div(torch.log_softmax(logits, -1), torch.log_softmax(pq, -1),
                                                 log_target=True, reduction="none").sum(-1).mean()
                 j = pq.argmax(-1, keepdim=True)
                 oreg = (((off.gather(-1, j) - po.gather(-1, j)) / (math.pi / 32)) ** 2).mean()
                 loss = loss + args.p11_kl * (kl + oreg)
+            stats = torch.stack([loss.detach(), st["ce"], st["accuracy"], ast["angle_loss"]])
+            return loss, stats
+
+    return TrainStep
+
+
+def global_totals(b, args, dist, torch):
+    """DDP: the loss normalisers (sum of row weights over labelled units / over rows with an
+    angle) summed over every rank, divided by the world size -- so that DDP's mean of the ranks'
+    gradients is exactly the gradient of the global batch's weighted mean (not a mean of means)."""
+    if not dist.enabled:
+        return None, None
+    w = torch.where((b["tick"] >= 0) & (b["tick"] < OPENING_TICKS), args.opening_weight, 1.0).float()[:, None]
+    t = torch.stack([(w * (b["labels"] != 0)).sum(), (w * torch.isfinite(b["angles"])).sum()])
+    dist.all_reduce_sum(t)
+    t = t / dist.world
+    return t[0].clamp_min(1e-8), t[1].clamp_min(1e-8)
+
+
+def cmd_train(args):
+    import torch
+
+    from blackout_env.sim.rollout_net import RolloutNet
+    from blackout_env.train.accel import Dist, Prefetcher, adamw, check_amp, grad_scaler, pick_device, to_device
+
+    device = pick_device(args.device)
+    dist = Dist(device)
+    amp = check_amp(device, args.amp)
+    torch.manual_seed(args.seed)
+    log_main = print if dist.main else (lambda *a, **k: None)
+    train = load_split(Path(args.data) / "train.npz", args.in_memory)
+    val = load_split(Path(args.data) / "val.npz", True) if dist.main else None
+    pool = labelled_rows(train["labels"])
+    extra = epool = None
+    keys = ["map", "team_state", "agent_states", "labels", "angles", "tick"] + (["p11_q", "p11_off"] if args.p11_kl > 0 else [])
+    if args.extra:  # e.g. simulator DAgger rows (rollout_net_collect.py): a fixed fraction of each batch
+        extra = load_split(args.extra, args.in_memory)
+        epool = labelled_rows(extra["labels"])
+        keys = [k for k in keys if k in extra]
+        log_main("extra rows", len(extra["tick"]), "labelled", len(epool), flush=True)
+    log_main("train rows", len(train["tick"]) + (len(extra["tick"]) if extra is not None else 0), "labelled", len(pool),
+             "val", len(val["tick"]) if val is not None else 0, flush=True)
+    if args.batch % dist.world:
+        raise SystemExit(f"--batch {args.batch} is not divisible by {dist.world} ranks")
+    cfg = json.loads(args.config) if args.config else {}
+    net = RolloutNet.from_checkpoint(args.init).train().to(device) if args.init else RolloutNet(**cfg).to(device)
+    if args.channels_last is None:  # cuda: NHWC convs (cuDNN's fp16 tensor-core kernels) ~5% faster
+        args.channels_last = device.type == "cuda"
+    if args.channels_last:
+        net = net.to(memory_format=torch.channels_last)
+    log_main("params", sum(p.numel() for p in net.parameters()), cfg, f"device {device} x{dist.world} amp {amp}"
+             f"{' compile ' + args.compile_mode if args.compile else ''}{' channels_last' if args.channels_last else ''}",
+             flush=True)
+    opt = adamw(net.parameters(), device, lr=args.lr, weight_decay=1e-4)
+    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=args.lr, total_steps=args.steps, pct_start=0.05)
+    scaler = grad_scaler(device, amp)
+    step_fn = dist.wrap(train_step_module(torch)(net, args, amp, device))
+    if args.compile:
+        step_fn = torch.compile(step_fn, mode=None if args.compile_mode == "default" else args.compile_mode, dynamic=False)
+    # rank r draws its own rows (seed + 1000 r); the global batch is --batch split over the ranks
+    if args.gpu_data is None:  # auto: on cuda when the (train + extra) arrays fit in half the free memory
+        need = split_bytes(train, keys) + (split_bytes(extra, keys) if extra is not None else 0)
+        args.gpu_data = device.type == "cuda" and need < 0.5 * torch.cuda.mem_get_info(device)[0]
+    seed = args.seed + 1000 * dist.rank
+    if args.gpu_data:
+        source = DeviceSource(train, extra, pool, epool, args.batch // dist.world, args.extra_frac, seed, keys, device)
+        batches = None
+    else:
+        source = BatchSource(train, extra, pool, epool, args.batch // dist.world, args.extra_frac, seed, keys)
+        batches = Prefetcher(source, device, depth=args.prefetch) if args.prefetch > 0 else None
+    log_main(f"batches: {'GPU-resident data' if args.gpu_data else 'host gather + prefetch'}", flush=True)
+    t0 = t_win = time.time()
+    log = []
+    last_logged = 0
+    stat_sum = torch.zeros(4, device=device)
+    for step in range(1, args.steps + 1):
+        b = to_device(batches.next() if batches else source(), device)
+        ce_total, angle_total = global_totals(b, args, dist, torch)
+        loss, stats = step_fn(b["map"], b["team_state"], b["agent_states"], b["labels"], b["angles"], b["tick"],
+                              b.get("p11_q"), b.get("p11_off"), ce_total, angle_total)
+        opt.zero_grad(set_to_none=True)
+        scaler.scale(loss).backward()
+        scaler.unscale_(opt)
+        torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
+        scaler.step(opt)
+        scaler.update()
+        sched.step()
+        stat_sum += stats
+        if step % args.log_every == 0 or step == args.steps:
+            # loss / ce / acc / angle_loss of the last step as before (under DDP: of the global
+            # batch, = the mean over ranks); loss_mean: over the steps since the last log
+            n_steps = step - last_logged
+            last = dist.all_reduce_sum(stats.clone()) / dist.world
+            mean = dist.all_reduce_sum(stat_sum.clone()) / (dist.world * n_steps)
+            stat_sum.zero_()
+            now = time.time()
+            row = {"step": step, "loss": float(last[0]), "ce": float(last[1]), "acc": float(last[2]),
+                   "angle_loss": float(last[3]), "loss_mean": float(mean[0]), "s": now - t0,
+                   "ms_step": 1000 * (now - t_win) / n_steps, "rows_s": args.batch * n_steps / (now - t_win)}
+            if scaler.is_enabled():
+                row["loss_scale"] = scaler.get_scale()
+            if step % args.eval_every == 0 or step == args.steps:
+                if dist.main:
+                    net.eval()
+                    row.update({f"val_{k}": v for k, v in evaluate(lambda a, b, c: net(a, b, c), val, device, torch,
+                                                                    n=min(60000, len(val["tick"]))).items()})
+                    net.train()
+                    save_rollout_net(args.out, net, args, step=step)
+                dist.barrier()
+            log.append(row)
+            log_main(json.dumps(row), flush=True)
+            last_logged = step
+            t_win = time.time()
+    if batches:
+        batches.stop()
+    if dist.main:
+        save_rollout_net(args.out, net, args, log=log)
+    dist.close()
+
+
+def save_rollout_net(path, net, args, **extra):
+    import torch
+
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    torch.save({"config": net.config, "state": {k: v.cpu().contiguous() for k, v in net.state_dict().items()},
+                "args": vars(args), **extra}, path)
+
+
+def cmd_bench(args):
+    """Where a training step's time goes (synchronised timers): building the batch on the host
+    (gather + label/map views), host->device copy, the device step (decode + forward + losses +
+    backward + clip + optimizer), then the overlapped end-to-end loop (prefetch thread, as
+    ``train``).  One row per --amp x --compile x --batch."""
+    import itertools
+
+    import torch
+
+    from blackout_env.sim.rollout_net import RolloutNet
+    from blackout_env.train.accel import Prefetcher, adamw, grad_scaler, pick_device, sync, to_device
+
+    device = pick_device(args.device)
+    train = load_split(Path(args.data) / "train.npz", args.in_memory)
+    pool = labelled_rows(train["labels"])
+    keys = ["map", "team_state", "agent_states", "labels", "angles", "tick"] + (["p11_q", "p11_off"] if args.p11_kl > 0 else [])
+    print(f"bench: {len(pool)} labelled rows, device {device}, torch {torch.__version__}", flush=True)
+    print(f"channels_last {args.channels_last}, compile mode {args.compile_mode}")
+    print(f"{'amp':>4s} {'comp':>4s} {'batch':>5s} {'host':>7s} {'h2d':>7s} {'step':>7s} {'loop':>7s} {'rows/s':>8s}", flush=True)
+    for amp, comp, batch in itertools.product(args.amps, args.compiles, args.batches):
+        torch.manual_seed(0)
+        net = RolloutNet.from_checkpoint(args.init).train().to(device) if args.init else RolloutNet(**json.loads(args.config or "{}")).to(device)
+        if args.channels_last:
+            net = net.to(memory_format=torch.channels_last)
+        opt = adamw(net.parameters(), device, lr=1e-4, weight_decay=1e-4)
+        scaler = grad_scaler(device, amp)
+        args.amp = amp
+        step_fn = train_step_module(torch)(net, args, amp, device)
+        if comp:
+            step_fn = torch.compile(step_fn, mode=None if args.compile_mode == "default" else args.compile_mode, dynamic=False)
+        source = BatchSource(train, None, pool, None, batch, 0.0, 0, keys)
+
+        def device_step(b):
+            loss, stats = step_fn(b["map"], b["team_state"], b["agent_states"], b["labels"], b["angles"], b["tick"],
+                                  b.get("p11_q"), b.get("p11_off"))
             opt.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
             scaler.unscale_(opt)
             torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
             scaler.step(opt)
             scaler.update()
-            sched.step()
-            if step % args.log_every == 0 or step == args.steps:
-                row = {"step": step, "loss": float(loss), "ce": float(st["ce"]), "acc": float(st["accuracy"]),
-                       "angle_loss": float(ast["angle_loss"]), "s": time.time() - t0}
-                if step % args.eval_every == 0 or step == args.steps:
-                    net.eval()
-                    row.update({f"val_{k}": v for k, v in evaluate(lambda a, b_, c: net(a, b_, c), val, device, torch, n=min(60000, len(val["tick"]))).items()})
-                    net.train()
-                    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-                    torch.save({"config": net.config, "state": {k: v.cpu() for k, v in net.state_dict().items()},
-                                "args": vars(args), "step": step}, args.out)
-                log.append(row)
-                print(json.dumps(row), flush=True)
-    finally:
-        stop.set()
-        for th in workers:
-            th.join(timeout=5)
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    torch.save({"config": net.config, "state": {k: v.cpu() for k, v in net.state_dict().items()},
-                "args": vars(args), "log": log}, args.out)
+            return stats
+
+        t = {"host": 0.0, "h2d": 0.0, "step": 0.0}
+        for i in range(args.warmup + args.steps):
+            t0 = time.perf_counter()
+            host = source()
+            t1 = time.perf_counter()
+            b = to_device(host, device)
+            sync(device)
+            t2 = time.perf_counter()
+            device_step(b)
+            sync(device)
+            t3 = time.perf_counter()
+            if i >= args.warmup:
+                for k, v in zip(t, (t1 - t0, t2 - t1, t3 - t2)):
+                    t[k] += v
+        batches = Prefetcher(source, device, depth=4)
+        for i in range(args.warmup + args.steps):
+            if i == args.warmup:
+                sync(device)
+                t_loop = time.perf_counter()
+            device_step(to_device(batches.next(), device))
+        sync(device)
+        loop = (time.perf_counter() - t_loop) / args.steps
+        batches.stop()
+        ms = {k: 1000 * v / args.steps for k, v in t.items()}
+        print(f"{amp:>4s} {int(comp):4d} {batch:5d} {ms['host']:7.2f} {ms['h2d']:7.2f} {ms['step']:7.2f} {1000 * loop:7.2f} "
+              f"{batch / loop:8.0f}", flush=True)
 
 
 def cmd_eval(args):
+    """Row metrics of one or more RolloutNets (and P11) on val.npz plus any --val2 splits (e.g. the sim
+    DAgger val set, a self-play self-state set); --json writes them."""
     import torch
 
     from blackout_env.sim.rollout_net import RolloutNet
+    from blackout_env.train.accel import pick_device
     from blackout_env.train.distill.inference import _OwnQ, load_net
 
-    device = args.device or default_device()
+    device = pick_device(args.device)
     sets = {"val": load_split(Path(args.data) / "val.npz")}
     for extra in args.val2:
         sets[Path(extra).parent.name + "/" + Path(extra).stem] = load_split(extra)
@@ -380,7 +538,7 @@ def cmd_eval(args):
         p11 = _OwnQ(load_net(torch.load(P11, map_location="cpu", weights_only=True)["policy_state"]).eval()).to(device)
 
         def f(a, b, c):
-            with torch.autocast(device_type=device.split(":")[0], dtype=torch.float16):
+            with torch.autocast(device_type=device.type, dtype=torch.float16):
                 return p11(a, b, c)
 
         out["p11"] = {k: evaluate(f, d, device, torch) for k, d in sets.items()}
@@ -410,12 +568,24 @@ def main():
     p.add_argument("--angle-weight", type=float, default=1.0)
     p.add_argument("--opening-weight", type=float, default=1.5)
     p.add_argument("--p11-kl", type=float, default=0.0)
-    p.add_argument("--amp", default="", choices=["", "fp16", "bf16"], help="autocast dtype ('' = fp32)")
-    p.add_argument("--loader-threads", type=int, default=2)
+    p.add_argument("--amp", nargs="?", const="bf16", default="none", choices=["none", "fp16", "bf16"],
+                   help="autocast of the forward; bare --amp = bf16 (as before; MPS).  CUDA 2080 Ti: fp16 "
+                   "(+ GradScaler; Turing has no bf16)")
+    p.add_argument("--compile", action="store_true", help="torch.compile the whole step (decode + net + losses)")
+    p.add_argument("--compile-mode", default="default", choices=["default", "reduce-overhead", "max-autotune-no-cudagraphs"],
+                   help="reduce-overhead = CUDA graphs: one GPU only, steadier on a loaded host")
+    p.add_argument("--channels-last", type=int, default=None, help="NHWC convs (default: on for cuda)")
+    p.add_argument("--prefetch", type=int, default=4, help="batches built ahead in a thread (0 = inline)")
+    p.add_argument("--in-memory", type=int, default=None,
+                   help="1: read the splits into RAM; 0: memory-map them (default: RAM for one process, maps "
+                   "shared through the page cache under torchrun)")
+    p.add_argument("--gpu-data", type=int, default=None,
+                   help="1: keep the train (+ extra) arrays on the GPU, gather there (default: cuda and they fit "
+                   "in half the free memory)")
     p.add_argument("--extra", default="", help="another packed train.npz mixed into every batch")
     p.add_argument("--extra-frac", type=float, default=0.5)
     p.add_argument("--init", default="", help="start from this RolloutNet checkpoint (its config)")
-    p.add_argument("--device", default="", help="default: cuda > mps > cpu")
+    p.add_argument("--device", default="auto", help="auto = cuda > mps > cpu (torchrun: this rank's GPU)")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--log-every", type=int, default=500)
     p.add_argument("--eval-every", type=int, default=5000)
@@ -424,12 +594,26 @@ def main():
     p.add_argument("--net", nargs="*", default=[])
     p.add_argument("--val2", nargs="*", default=[], help="more held-out splits (e.g. the sim DAgger simval/val.npz)")
     p.add_argument("--with-p11", action="store_true")
-    p.add_argument("--device", default="")
+    p.add_argument("--device", default="auto")
     p.add_argument("--json", default="")
-    p = sub.add_parser("convert", help="npz -> directory of .npy (memory-mapped by load_split)")
-    p.add_argument("npz", nargs="+")
+    p = sub.add_parser("bench")
+    p.add_argument("--data", required=True)
+    p.add_argument("--init", default="")
+    p.add_argument("--config", default="")
+    p.add_argument("--batches", type=int, nargs="+", default=[1024])
+    p.add_argument("--amps", nargs="+", default=["none", "fp16"], choices=["none", "fp16", "bf16"])
+    p.add_argument("--compiles", type=int, nargs="+", default=[0, 1])
+    p.add_argument("--steps", type=int, default=100)
+    p.add_argument("--warmup", type=int, default=20)
+    p.add_argument("--p11-kl", type=float, default=0.5)
+    p.add_argument("--angle-weight", type=float, default=1.0)
+    p.add_argument("--opening-weight", type=float, default=1.5)
+    p.add_argument("--in-memory", action="store_true")
+    p.add_argument("--channels-last", type=int, default=0)
+    p.add_argument("--compile-mode", default="default")
+    p.add_argument("--device", default="auto")
     args = parser.parse_args()
-    {"pack": cmd_pack, "train": cmd_train, "eval": cmd_eval, "convert": cmd_convert}[args.cmd](args)
+    {"pack": cmd_pack, "train": cmd_train, "eval": cmd_eval, "bench": cmd_bench}[args.cmd](args)
 
 
 if __name__ == "__main__":
