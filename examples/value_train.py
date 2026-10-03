@@ -84,8 +84,11 @@ def cmd_pairwise(args) -> None:
     rows = aligned_rows(REPO, entries)
     print(f"pairwise: {len(entries)} matches, {len(rows['match'])} aligned rows", flush=True)
     preds = {}
-    net = load_value_net(args.ckpt, torch.device(args.device))
-    p = predict_rows(net, rows, np.arange(len(rows["match"])), torch.device(args.device))
+    from blackout_env.train.accel import pick_device
+
+    device = pick_device(args.device)
+    net = load_value_net(args.ckpt, device)
+    p = predict_rows(net, rows, np.arange(len(rows["match"])), device)
     h20 = HORIZONS_S.index(20)
     preds["value_net"] = {"final": p["final"], "p_win": p["p_win"], "delta20": p["delta"][:, h20]}
     models = load_models(args.baselines)
@@ -100,7 +103,7 @@ def cmd_pairwise(args) -> None:
     pick = [entries[i] for i in rng.choice(len(entries), size=min(args.smooth_matches, len(entries)), replace=False)]
 
     def net_predict(r):
-        return predict_rows(net, r, np.arange(len(r["team_state"])), torch.device(args.device))
+        return predict_rows(net, r, np.arange(len(r["team_state"])), device)
 
     def mlp_predict(r):
         return predict_set("hand_mlp", models, hand_features(r["graphic"], r["team_state"], r["agent_states"]))
@@ -142,7 +145,7 @@ def main(argv=None) -> None:
     t.add_argument("--trunk-lr-scale", type=float, default=1.0, help="trunk lr = lr x this (warm start)")
     t.add_argument("--weight-decay", type=float, default=0.01)
     t.add_argument("--warmup", type=int, default=500)
-    t.add_argument("--device", default="mps")
+    t.add_argument("--device", default="auto", help="auto = cuda > mps > cpu (torchrun: this rank's GPU)")
     t.add_argument("--amp", choices=["none", "bf16", "fp16"], default="none")
     t.add_argument("--compile", action="store_true")
     t.add_argument("--eval-every", type=int, default=2000)
@@ -156,7 +159,7 @@ def main(argv=None) -> None:
     e.add_argument("--ckpt", type=Path, required=True)
     e.add_argument("--out", type=Path, default=REPO / "reports/value_s1")
     e.add_argument("--name", default="value_net")
-    e.add_argument("--device", default="mps")
+    e.add_argument("--device", default="auto")
     e.add_argument("--batch-size", type=int, default=1024)
     e.add_argument("--max-rows", type=int, default=None, help="per split (None = all)")
     e.set_defaults(fn=cmd_eval)
@@ -168,7 +171,7 @@ def main(argv=None) -> None:
     pw.add_argument("--splits", nargs="+", default=["unseen", "heldout"])
     pw.add_argument("--out", type=Path, default=REPO / "reports/value_s1")
     pw.add_argument("--name", default="value_net")
-    pw.add_argument("--device", default="mps")
+    pw.add_argument("--device", default="auto")
     pw.add_argument("--smooth-matches", type=int, default=150)
     pw.set_defaults(fn=cmd_pairwise)
 

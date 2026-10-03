@@ -182,6 +182,10 @@ class Dist:
         self.rank = int(os.environ.get("RANK", 0))
         self.device = device
         self.enabled = self.world > 1
+        if self.enabled and os.environ.get("OMP_NUM_THREADS") == "1" and torch.get_num_threads() == 1:
+            # torchrun sets OMP_NUM_THREADS=1; with one intra-op thread the host side of a step
+            # (pinned copies, CPU ops around the optimizer) halves a 2080 Ti's step rate (measured)
+            torch.set_num_threads(max(1, min(8, (os.cpu_count() or 8) // self.world)))
         if self.enabled and not torch.distributed.is_initialized():
             backend = "nccl" if device.type == "cuda" else "gloo"
             torch.distributed.init_process_group(backend, device_id=device if device.type == "cuda" else None)
