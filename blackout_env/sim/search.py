@@ -266,6 +266,45 @@ class Searcher:
         return SearchOut(choice, vals, {"rollout_s": c1 - c0, "leaf_s": c2 - c1, "games": len(sims)})
 
 
+class QSearcher:
+    """The learned stand-in for ``Searcher`` (docs §22 C): a RolloutNet with a Q head predicts, per own
+    unit, the leaf-value gain of the ``alt u`` branch over ``base``; the best unit is switched to its
+    alternative direction for the window when its predicted gain exceeds ``margin``.  Same interface
+    (``search(roots, teams, reseeds)`` -> SearchOut over ``branches`` = base + alt0..4), so
+    ``play_matches`` executes the choice exactly like a search decision.  No rollouts."""
+
+    def __init__(self, net, device: str, margin: float = 3.0, detach: bool = True):
+        import torch
+
+        self.torch, self.device = torch, torch.device(device)
+        self.net = net.to(self.device).eval()
+        self.branches = parse_branches("alt*")
+        self.margin = float(margin)
+
+    def predict(self, graphic, team, agents) -> np.ndarray:
+        torch = self.torch
+        with torch.inference_mode():
+            g = torch.from_numpy(np.ascontiguousarray(graphic)).to(self.device)
+            t = torch.from_numpy(np.ascontiguousarray(team)).to(self.device)
+            a = torch.from_numpy(np.ascontiguousarray(agents)).to(self.device)
+            return self.net.q_alt(g, t, a)[2].float().cpu().numpy()
+
+    def search(self, roots: list[SimState], teams, reseeds=None) -> SearchOut:
+        r = len(roots)
+        teams = np.asarray(teams, np.int64)
+        bs = BatchSim(roots)
+        gr = np.zeros((r, 2, N_CH, H, W), F32)
+        tm = np.zeros((r, 2, 4), F32)
+        ag = np.zeros((r, 2, 10, N_AGENT_COLS), F32)
+        bs.render(np.arange(r), gr, tm, ag)
+        j = np.arange(r)
+        adv = self.predict(gr[j, teams], tm[j, teams], ag[j, teams])          # [r, 5]
+        vals = np.concatenate([np.zeros((r, 1)), adv], 1)
+        best = vals.argmax(1)
+        choice = np.where(vals[j, best] > self.margin, best, 0)
+        return SearchOut(choice, vals, {"games": r})
+
+
 # ---------------------------------------------------------------------------------- matches
 
 
@@ -275,6 +314,7 @@ class MatchConfig:
     window: int = 25           # decisions a chosen branch is executed / simulated
     cap_s: int = 150
     record: bool = False       # store the search team's (input, executed move) rows
+    record_roots: bool = False  # store every search root: input, all B branch leaf values, r5 top / alt bins
 
 
 def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searcher: Searcher | None,
@@ -296,6 +336,9 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
     searches = np.zeros(n, np.int64)
     rows = {k: [] for k in ("game", "tick", "map", "team_state", "agent_states", "moves", "branch")} if cfg.record else None
     cur_branch = np.zeros(n, np.int64)
+    roots_rec = {k: [] for k in ("game", "tick", "map", "team_state", "agent_states", "values", "choice",
+                                 "top_bin", "alt_bin")} if cfg.record_roots else None
+    searched_now = None
     t_search = t_play = 0.0
     cap = cfg.cap_s * 25
     t0 = time.perf_counter()
@@ -315,6 +358,7 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
                 gain_sum[b] += out.values[j, k] - out.values[j, 0]
                 cur_branch[b] = k
             searches[live] += 1
+            searched_now = (live.copy(), out)
             t_search += time.perf_counter() - c0
         c0 = time.perf_counter()
         bs.render(live, *bufs)
@@ -334,6 +378,27 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
         for team in (0, 1):
             mine = ours == team
             moves[live, 5 * team:5 * team + 5] = np.where(mine[:, None, None], mo[team], oo[team])
+        if cfg.record_roots and searched_now is not None:  # inputs rendered at the root tick (search used copies)
+            sl, so = searched_now
+            assert np.array_equal(sl, live)
+            j = np.arange(len(live))
+            g_r, t_r, a_r = bufs[0][j, ours], bufs[1][j, ours], bufs[2][j, ours]
+            q, _ = our.net.forward(np.ascontiguousarray(g_r), np.ascontiguousarray(t_r), np.ascontiguousarray(a_r))
+            top = q.argmax(-1)
+            qm = q.copy()
+            k = q.shape[-1]
+            for dlt in (-1, 0, 1):
+                np.put_along_axis(qm, ((top + dlt) % k)[..., None], -np.inf, -1)
+            roots_rec["game"].append(live.copy())
+            roots_rec["tick"].append(np.full(len(live), t, np.int32))
+            roots_rec["map"].append(_pack(g_r))
+            roots_rec["team_state"].append(t_r.copy())
+            roots_rec["agent_states"].append(a_r.copy())
+            roots_rec["values"].append(so.values.astype(np.float32))
+            roots_rec["choice"].append(so.choice.astype(np.int16))
+            roots_rec["top_bin"].append(top.astype(np.int8))
+            roots_rec["alt_bin"].append(qm.argmax(-1).astype(np.int8))
+        searched_now = None
         if cfg.record:
             j = np.arange(len(live))
             rows["game"].append(live.copy())
@@ -361,6 +426,8 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
            "gain_sum": gain_sum, "wall_s": time.perf_counter() - t0, "search_s": t_search, "play_s": t_play}
     if cfg.record:
         out["rows"] = {k: np.concatenate(v) for k, v in rows.items()}
+    if cfg.record_roots:
+        out["roots"] = {k: np.concatenate(v) for k, v in roots_rec.items()} if roots_rec["game"] else {}
     return out
 
 

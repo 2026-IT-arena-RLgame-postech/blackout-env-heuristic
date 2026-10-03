@@ -67,14 +67,24 @@ def cmd_play(args):
     net = NetPolicy(RolloutNet.from_checkpoint(args.net), device=args.device)
     is_r5 = Path(args.net).resolve() == (REPO / R5).resolve()
     net_plain = net if is_r5 else NetPolicy(RolloutNet.from_checkpoint(str(REPO / R5)), device=args.device)
-    branches = parse_branches(args.branches)
-    leaf = ValueNetLeaf(str(REPO / args.value), args.device)
-    searcher = Searcher(ModNetPolicy(net), leaf, branches, window=args.window, margin=args.margin)
+    if args.qhead:  # learned Q head instead of rollouts (docs §22 C); its trunk is also our policy
+        from blackout_env.sim.search import QSearcher
+
+        qnet = RolloutNet.from_checkpoint(args.qhead)
+        net = NetPolicy(qnet, device=args.device)
+        is_r5 = False
+        searcher = QSearcher(qnet, args.device, margin=args.margin)
+        branches = searcher.branches
+    else:
+        branches = parse_branches(args.branches)
+        leaf = ValueNetLeaf(str(REPO / args.value), args.device)
+        searcher = Searcher(ModNetPolicy(net), leaf, branches, window=args.window, margin=args.margin)
     cfg = MatchConfig(every=args.every, window=args.window, cap_s=args.cap_s)
     done = {(r["tag"], r["opponent"], r["seed"], r["side"]) for r in load_rows(out)}
     tasks = [(s, side) for s in range(args.seed0, args.seed0 + args.seeds) for side in (0, 1)]
     meta = {"branches": [b.name for b in branches], "every": args.every, "window": args.window,
-            "margin": args.margin, "net": args.net, "value": args.value, "cap_s": args.cap_s}
+            "margin": args.margin, "net": args.qhead or args.net, "value": args.value, "cap_s": args.cap_s,
+            "qhead": args.qhead}
     print(json.dumps(meta), flush=True)
     rec_parts = []
     for tag, srch in (("plain", None), (args.tag, None if args.no_search else searcher)):
@@ -87,6 +97,7 @@ def cmd_play(args):
             opp = make_opponent_policy(args.opponent, our, args.device, same_net=tag == "plain" or is_r5)
             t0 = time.time()
             cfg.record = bool(args.record) and srch is not None
+            cfg.record_roots = bool(args.record_roots) and srch is not None
             res = play_matches([s for s, _ in chunk], [sd for _, sd in chunk], our, opp, srch, cfg,
                                log=print if args.verbose else None)
             wall = time.time() - t0
@@ -108,6 +119,16 @@ def cmd_play(args):
                 part.parent.mkdir(exist_ok=True)
                 np.savez(part, **rows)
                 rec_parts.append(str(part))
+            if cfg.record_roots and res["roots"]:
+                rows = res["roots"]
+                rows["seed"] = np.asarray([chunk[g][0] for g in rows["game"]], np.int64)
+                rows["side"] = np.asarray([chunk[g][1] for g in rows["game"]], np.int8)
+                rows["branches"] = np.asarray(json.dumps([{"name": b.name, "kind": b.kind, "unit": b.unit, "param": b.param,
+                                                           "seed": b.seed} for b in branches]))
+                rows["meta"] = np.asarray(json.dumps(meta))
+                part = out / "roots" / f"{args.tag}_{args.opponent}_{chunk[0][0]}_{chunk[0][1]}_{c}.npz"
+                part.parent.mkdir(exist_ok=True)
+                np.savez(part, **rows)
             m = res["margin"]
             print(f"[{tag} vs {args.opponent}] {c + len(chunk)}/{len(todo)} margin {m.mean():+.1f} "
                   f"wall {wall:.0f}s ({wall / len(chunk):.1f}s/match, search {res['search_s']:.0f}s)", flush=True)
@@ -182,6 +203,8 @@ def main():
     q.add_argument("--no-plain", action="store_true")
     q.add_argument("--no-search", action="store_true", help="play --net plain under --tag (e.g. r6 vs the plain r5 rows)")
     q.add_argument("--record", action="store_true")
+    q.add_argument("--record-roots", action="store_true", help="store every search root: input + all branch leaf values (Q-head data)")
+    q.add_argument("--qhead", default="", help="RolloutNet checkpoint with a Q head: act by it instead of searching")
     q.add_argument("--device", default="", help="default: cuda > mps > cpu")
     q.add_argument("--verbose", action="store_true")
     q.add_argument("--out", default=str(REPO / "reports/s3_search"))
