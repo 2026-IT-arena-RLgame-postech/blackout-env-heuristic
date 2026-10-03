@@ -38,7 +38,7 @@ push() {
   git remote get-url "$h" >/dev/null 2>&1 || git remote add "$h" "$h:$REMOTE_DIR"
   # the mirror must be clean for updateInstead; it only ever holds what we pushed
   ssh "$h" "cd $REMOTE_DIR && git config receive.denyCurrentBranch updateInstead &&
-            git checkout -q -- . && git checkout -q $br 2>/dev/null || git checkout -q -b $br"
+            git checkout -q -- . && { git checkout -q $br 2>/dev/null || git checkout -q -b $br; }"
   git push -q "$h" "$br"
   echo "pushed $br ($(git rev-parse --short HEAD)) to $h:$REMOTE_DIR"
   [[ -z "$(git status --porcelain --untracked-files=no)" ]] ||
