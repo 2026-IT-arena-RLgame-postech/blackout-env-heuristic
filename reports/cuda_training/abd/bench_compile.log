@@ -1,0 +1,10 @@
+[bench] 200000 rows loaded in 3s, device cuda:0, torch 2.11.0+cu128
+  head units batch quant  amp    sample to_device   derived   forward  backward optimizer     stats   total  rows/s step/s
+logits     5   256    32 none       0.7      10.9       7.9      13.8      37.1       3.6       0.9    75.0    3415  13.34
+logits     5   512    32 none       1.3      19.7       6.0      32.4      72.9       3.7       1.0   137.1    3735   7.30
+logits     5  1024    32 none       2.4      27.4       7.5      51.2     115.2       3.4       0.8   207.7    4930   4.81
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+logits     5   256    32 fp16       0.8      19.0      11.0      16.3      20.5       3.6       0.9    72.1    3550  13.87
+logits     5   512    32 fp16       1.3      21.9       6.2      11.2      24.9       3.4       0.9    69.7    7348  14.35
+logits     5  1024    32 fp16       2.3      24.5       8.0      20.1      46.3       3.5       1.0   105.8    9683   9.46
