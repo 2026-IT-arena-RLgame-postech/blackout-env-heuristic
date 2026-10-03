@@ -1,0 +1,154 @@
+{
+ "a": "reports/unity_parity/mac/v23_v19",
+ "b": "reports/unity_parity/linux_replay/v23_v19",
+ "matches": 4,
+ "identical": 4,
+ "first_diff_kind": {
+  "state": 0,
+  "map": 0,
+  "move": 0
+ },
+ "first_diff_tick": [],
+ "margin_diff_mean": 0.0,
+ "margin_diff_abs_mean": 0.0,
+ "margin_same_frac": 1.0,
+ "margin_diff_se": 0.0,
+ "blank_map_frames": [
+  0,
+  0
+ ],
+ "rows": [
+  {
+   "file": "seed_3000000.npz",
+   "seed": 3000000,
+   "steps": [
+    496,
+    496
+   ],
+   "identical": true,
+   "first_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     1.0099999904632568,
+     0.1599999964237213
+    ],
+    [
+     1.0099999904632568,
+     0.1599999964237213
+    ]
+   ],
+   "margin": [
+    85.0,
+    85.0
+   ]
+  },
+  {
+   "file": "seed_3000001.npz",
+   "seed": 3000001,
+   "steps": [
+    483,
+    483
+   ],
+   "identical": true,
+   "first_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     1.0299999713897705,
+     0.23999999463558197
+    ],
+    [
+     1.0299999713897705,
+     0.23999999463558197
+    ]
+   ],
+   "margin": [
+    79.0,
+    79.0
+   ]
+  },
+  {
+   "file": "seed_3000002.npz",
+   "seed": 3000002,
+   "steps": [
+    657,
+    657
+   ],
+   "identical": true,
+   "first_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     1.0,
+     0.18000000715255737
+    ],
+    [
+     1.0,
+     0.18000000715255737
+    ]
+   ],
+   "margin": [
+    82.0,
+    82.0
+   ]
+  },
+  {
+   "file": "seed_3000003.npz",
+   "seed": 3000003,
+   "steps": [
+    740,
+    740
+   ],
+   "identical": true,
+   "first_diff": null,
+   "blank_map_frames": [
+    0,
+    0
+   ],
+   "constant_map_frames": [
+    0,
+    0
+   ],
+   "map_bits_equal_frac": 1.0,
+   "scores": [
+    [
+     1.0099999904632568,
+     0.23999999463558197
+    ],
+    [
+     1.0099999904632568,
+     0.23999999463558197
+    ]
+   ],
+   "margin": [
+    77.0,
+    77.0
+   ]
+  }
+ ]
+}

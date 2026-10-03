@@ -1,0 +1,4 @@
+plain    vs p11    n= 300 margin   +1.8 ±  3.8  race w/t/l (21, 276, 3)  win 0.54  end {'cap': 55, 'exhausted': 31, 'game': 214}  len 69s  wall 56s/match  desync matches 1 (ticks 5)
+search   vs p11    n= 300 margin  +27.3 ±  3.6  race w/t/l (87, 211, 2)  win 0.69  end {'cap': 43, 'exhausted': 34, 'game': 223}  len 66s  wall 93s/match  desync matches 0 (ticks 0)
+   paired search - plain vs p11:  +25.6 ±  4.4  (150 seeds, 300 matches)  race (87, 211, 2) vs plain (21, 276, 3)  search latency mean 582 ms (p95 750)  base share 0.70  searches/match 66
+   by race (plain->search): -1->-1: n=2 Δ+0.5, -1->+1: n=1 Δ+148.0, +0->+0: n=209 Δ+12.4, +0->+1: n=67 Δ+77.9, +1->+0: n=2 Δ-88.5, +1->+1: n=19 Δ-5.4
