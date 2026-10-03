@@ -362,6 +362,74 @@ def save_rollout_net(path, net, args, **extra):
                 "args": vars(args), **extra}, path)
 
 
+def cmd_bench(args):
+    """Where a training step's time goes (synchronised timers): building the batch on the host
+    (gather + label/map views), host->device copy, the device step (decode + forward + losses +
+    backward + clip + optimizer), then the overlapped end-to-end loop (prefetch thread, as
+    ``train``).  One row per --amp x --compile x --batch."""
+    import itertools
+
+    import torch
+
+    from blackout_env.sim.rollout_net import RolloutNet
+    from blackout_env.train.accel import Prefetcher, adamw, grad_scaler, pick_device, sync, to_device
+
+    device = pick_device(args.device)
+    train = load_split(Path(args.data) / "train.npz", args.in_memory)
+    pool = labelled_rows(train["labels"])
+    keys = ["map", "team_state", "agent_states", "labels", "angles", "tick"] + (["p11_q", "p11_off"] if args.p11_kl > 0 else [])
+    print(f"bench: {len(pool)} labelled rows, device {device}, torch {torch.__version__}", flush=True)
+    print(f"{'amp':>4s} {'comp':>4s} {'batch':>5s} {'host':>7s} {'h2d':>7s} {'step':>7s} {'loop':>7s} {'rows/s':>8s}", flush=True)
+    for amp, comp, batch in itertools.product(args.amps, args.compiles, args.batches):
+        torch.manual_seed(0)
+        net = RolloutNet.from_checkpoint(args.init).train().to(device) if args.init else RolloutNet(**json.loads(args.config or "{}")).to(device)
+        opt = adamw(net.parameters(), device, lr=1e-4, weight_decay=1e-4)
+        scaler = grad_scaler(device, amp)
+        args.amp = amp
+        step_fn = train_step_module(torch)(net, args, amp, device)
+        if comp:
+            step_fn = torch.compile(step_fn)
+        source = BatchSource(train, None, pool, None, batch, 0.0, 0, keys)
+
+        def device_step(b):
+            loss, stats = step_fn(b["map"], b["team_state"], b["agent_states"], b["labels"], b["angles"], b["tick"],
+                                  b.get("p11_q"), b.get("p11_off"))
+            opt.zero_grad(set_to_none=True)
+            scaler.scale(loss).backward()
+            scaler.unscale_(opt)
+            torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
+            scaler.step(opt)
+            scaler.update()
+            return stats
+
+        t = {"host": 0.0, "h2d": 0.0, "step": 0.0}
+        for i in range(args.warmup + args.steps):
+            t0 = time.perf_counter()
+            host = source()
+            t1 = time.perf_counter()
+            b = to_device(host, device)
+            sync(device)
+            t2 = time.perf_counter()
+            device_step(b)
+            sync(device)
+            t3 = time.perf_counter()
+            if i >= args.warmup:
+                for k, v in zip(t, (t1 - t0, t2 - t1, t3 - t2)):
+                    t[k] += v
+        batches = Prefetcher(source, device, depth=4)
+        for i in range(args.warmup + args.steps):
+            if i == args.warmup:
+                sync(device)
+                t_loop = time.perf_counter()
+            device_step(to_device(batches.next(), device))
+        sync(device)
+        loop = (time.perf_counter() - t_loop) / args.steps
+        batches.stop()
+        ms = {k: 1000 * v / args.steps for k, v in t.items()}
+        print(f"{amp:>4s} {int(comp):4d} {batch:5d} {ms['host']:7.2f} {ms['h2d']:7.2f} {ms['step']:7.2f} {1000 * loop:7.2f} "
+              f"{batch / loop:8.0f}", flush=True)
+
+
 def cmd_eval(args):
     import torch
 
@@ -425,8 +493,22 @@ def main():
     p.add_argument("--net", default="")
     p.add_argument("--with-p11", action="store_true")
     p.add_argument("--device", default="auto")
+    p = sub.add_parser("bench")
+    p.add_argument("--data", required=True)
+    p.add_argument("--init", default="")
+    p.add_argument("--config", default="")
+    p.add_argument("--batches", type=int, nargs="+", default=[1024])
+    p.add_argument("--amps", nargs="+", default=["none", "fp16"], choices=["none", "fp16", "bf16"])
+    p.add_argument("--compiles", type=int, nargs="+", default=[0, 1])
+    p.add_argument("--steps", type=int, default=100)
+    p.add_argument("--warmup", type=int, default=20)
+    p.add_argument("--p11-kl", type=float, default=0.5)
+    p.add_argument("--angle-weight", type=float, default=1.0)
+    p.add_argument("--opening-weight", type=float, default=1.5)
+    p.add_argument("--in-memory", action="store_true")
+    p.add_argument("--device", default="auto")
     args = parser.parse_args()
-    {"pack": cmd_pack, "train": cmd_train, "eval": cmd_eval}[args.cmd](args)
+    {"pack": cmd_pack, "train": cmd_train, "eval": cmd_eval, "bench": cmd_bench}[args.cmd](args)
 
 
 if __name__ == "__main__":
