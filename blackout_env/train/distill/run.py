@@ -63,7 +63,7 @@ import torch
 
 from blackout_env.model.direction_bins import ACTION_BINS, SET_HALF_WIDTH_DEG, bins_of_width, resample_rows
 from blackout_env.model.my_model import ANGLE_KEY_PREFIX, POLICY_HEADS, TEMPORAL_PREFIX, MyModel
-from blackout_env.train.accel import adamw, check_amp, pick_device, pinned
+from blackout_env.train.accel import adamw, check_amp, pick_device
 from blackout_env.train.distill.collect import CollectorPool, MatchTask, teacher_arg
 from blackout_env.train.distill.inference import INFERENCE
 from blackout_env.train.distill.dataset import (
@@ -346,9 +346,10 @@ class Learner:
     def _tensors(self, rows: dict[str, np.ndarray]):
         # K > 8 labels are uint64 bit sets: the same bits as int64 (MPS has no uint64 shifts;
         # an arithmetic shift still reads bit 63 right after the & 1)
-        # (cuda: pinned host copies, so the copies to the GPU are asynchronous)
-        batch = {k: pinned(rows[k].view(np.int64) if rows[k].dtype == np.uint64 else rows[k], self.device)
-                 .to(self.device, non_blocking=self.device.type == "cuda") for k in FIELDS}
+        # (no pinning: the step needs the batch at once, so an async copy overlaps nothing and the
+        # extra pinned memcpy only costs host time)
+        batch = {k: torch.from_numpy(rows[k].view(np.int64) if rows[k].dtype == np.uint64 else rows[k]).to(self.device)
+                 for k in FIELDS}
         graphic = batch["graphic"].permute(0, 3, 1, 2).float() / GRAPHIC_SCALE
         masks = ((batch["labels"].long().unsqueeze(-1) >> self._bit_index) & 1) == 1  # dataset.unpack_labels
         classes = batch["agent_states"][:, :N_TEAM, CLASS_COLS]
@@ -358,7 +359,7 @@ class Learner:
             masks = torch.cat((masks, stand.unsqueeze(-1)), dim=-1)
             kinds = torch.where(stand, torch.full_like(kinds, KIND_INDEX["stand"]), kinds)
         # P11: the teacher's raw headings (NaN = none) and seconds of play (team_state[2] = time left)
-        aux = {"angles": pinned(angles_of(rows), self.device).to(self.device, non_blocking=self.device.type == "cuda"),
+        aux = {"angles": torch.from_numpy(np.ascontiguousarray(angles_of(rows))).to(self.device),
                "elapsed": (1.0 - batch["team_state"][:, 2].float()) * MATCH_SECONDS}
         return graphic, batch["team_state"], batch["agent_states"], masks, classes, kinds, aux
 
