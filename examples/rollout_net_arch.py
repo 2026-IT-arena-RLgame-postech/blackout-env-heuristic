@@ -104,11 +104,20 @@ def cmd_table(args):
 
     root = Path(args.root)
     macs = json.load(open(root / "macs.json"))
-    thr = {}
-    for f in (root / "throughput").glob("throughput_*.json"):
+    thr, rnd = {}, {}  # bench rounds: throughput_<v>.json (round 1), throughput_<v>_r2.json ...; ratios within a round
+    for f in sorted((root / "throughput").glob("throughput_*.json")):
+        name = f.stem.removeprefix("throughput_")
+        tag = ""
+        if "_r" in name and name.rsplit("_r", 1)[1].isdigit():
+            name, tag = name.rsplit("_r", 1)
         for r in json.load(open(f)):
             if r["N"] == 2048:
-                thr[(f.stem.removeprefix("throughput_"), r["precision"])] = r["game_decisions_per_s"]
+                rnd.setdefault(tag, {})[(name, r["precision"])] = r["game_decisions_per_s"]
+    for tag in sorted(rnd):  # later rounds override, each normalised to its own base
+        base = rnd[tag].get(("base", "fp32"))
+        for (name, prec), v in rnd[tag].items():
+            thr[(name, prec)] = v
+            thr[(name, prec, "ratio")] = base / v if base else None
     rows = []
     names = args.variants or sorted({p.stem.removesuffix("_full") for p in (root / "heldout").glob("*_full.json")})
     for v in names:
@@ -120,8 +129,8 @@ def cmd_table(args):
         if t:
             row["thr_fp32"] = t
             row["thr_fp16"] = thr.get((key, "fp16"))
-            row["cost_x"] = thr[("base", "fp32")] / t
-            row["search_B_eq"] = 8 * t / thr[("base", "fp32")]
+            row["cost_x"] = thr.get((key, "fp32", "ratio"))
+            row["search_B_eq"] = 8 / row["cost_x"] if row["cost_x"] else None
         hf = root / "heldout" / f"{v}_full.json"
         if hf.exists():
             d = next(iter(json.load(open(hf)).values()))
@@ -133,7 +142,7 @@ def cmd_table(args):
         gj = root / "strength" / v / "games.jsonl"
         if gj.exists():
             games = [json.loads(x) for x in gj.read_text().splitlines()]
-            cand = [c for c in {g["candidate"] for g in games} if c not in ("p11", "r5")] or ["r5"]
+            cand = ["r5"] if v == "r5" else ([c for c in {g["candidate"] for g in games} if c not in ("p11", "r5")] or ["r5"])
             for ref in ("p11", "r5"):
                 for r in summarize(games, ref):
                     if r["candidate"] == cand[0] and "dmargin" in r:

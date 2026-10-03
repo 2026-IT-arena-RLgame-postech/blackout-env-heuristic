@@ -159,9 +159,11 @@ def main():
     data = {k: np.concatenate([q[k] for q in parts]) for k in parts[0]}
     if args.p11:
         sys.path.insert(0, str(REPO / "examples"))
+        import torch
+
         from rollout_net_train import p11_targets
 
-        data.update(p11_targets(data))
+        data.update(p11_targets(data, device="cuda" if torch.cuda.is_available() else "mps"))
     np.savez(out / "train.npz", **data)
     print("rows", len(data["tick"]), f"{time.time() - t0:.0f}s")
 
