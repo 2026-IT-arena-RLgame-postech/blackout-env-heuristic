@@ -1,0 +1,4 @@
+q8_m0          vs p11              n= 256 seeds= 128  search  -20.0  plain   -0.1  diff  -19.9 ±  4.8  win(sign) -0.24 vs +0.05  race w/t/l (8, 241, 7) vs (22, 232, 2)  capped 0.25/0.29  len 141s  wall 0.7s/match (plain 0.77)  e25 w25 m0.0 B6
+                  base share 0.77; alt0 0.05, alt1 0.04, alt2 0.04, alt3 0.05, alt4 0.06
+q8_m0          vs r5               n= 256 seeds= 128  search  -12.2  plain   +0.0  diff  -12.2 ±  3.4  win(sign) -0.21 vs +0.00  race w/t/l (8, 230, 18) vs (23, 210, 23)  capped 0.38/0.35  len 180s  wall 0.5s/match (plain 0.23)  e25 w25 m0.0 B6
+                  base share 0.77; alt0 0.04, alt1 0.04, alt2 0.04, alt3 0.04, alt4 0.06

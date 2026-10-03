@@ -1,0 +1,6 @@
+checkpoints/rollout_net_arch/selfstate_base_seed1/part_000.npz 30844 over 0.69 238s
+checkpoints/rollout_net_arch/selfstate_base_seed1/part_001.npz 39240 over 0.56 301s
+checkpoints/rollout_net_arch/selfstate_base_seed1/part_002.npz 30736 over 0.75 301s
+checkpoints/rollout_net_arch/selfstate_base_seed1/part_003.npz 36882 over 0.56 301s
+rows 137702 302s
+checkpoints/rollout_net_arch/base_seed1.pt {"val": {"hit": 0.8829187519237566, "err": 14.289086836410869, "w2": 0.6460259464882181, "hit_open": 0.9276401822865068, "err_open": 7.212535912423221, "w2_open": 0.6865226867446007, "hit_late": 0.7919758219265703, "err_late": 32.80966596614373, "p11_agree": 0.7677428530792206, "p11_err": 14.435478663172981}, "simval/val": {"hit": 0.8230178825192783, "err": 14.374125576186458, "w2": 0.5506358790134678, "hit_open": 0.8601193565127141, "err_open": 11.741045829008822, "w2_open": 0.6178775298391281, "hit_late": 0.8247585550782714, "err_late": 13.720441015365987, "p11_agree": 0.6903126335714722, "p11_err": 14.653422864382977}, "selfstate_base_seed1/train": {"hit": 0.7776765286575836, "err": 20.91235168841073, "w2": 0.5282574863109556, "hit_open": 0.8534602879702741, "err_open": 12.842796418998685, "w2_open": 0.6230711668472931, "hit_late": 0.7602957964433396, "err_late": 23.0915163254078, "p11_agree": NaN, "p11_err": NaN}, "params": 674336}

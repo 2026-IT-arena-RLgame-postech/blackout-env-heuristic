@@ -1,0 +1,23 @@
+60 chunks, 3000 games, 6 workers
+[1/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 0 50 games, 158s, elapsed 163s
+[2/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 0 50 games, 174s, elapsed 179s
+[3/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 0 50 games, 180s, elapsed 185s
+[4/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 0 50 games, 188s, elapsed 193s
+[5/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 0 50 games, 218s, elapsed 223s
+[6/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 0 50 games, 231s, elapsed 236s
+[7/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 0 50 games, 98s, elapsed 291s
+[8/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 0 50 games, 135s, elapsed 315s
+[9/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 0 50 games, 182s, elapsed 346s
+[10/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 0 50 games, 180s, elapsed 365s
+[11/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 1 50 games, 145s, elapsed 367s
+[12/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 1 50 games, 153s, elapsed 389s
+[13/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 1 50 games, 156s, elapsed 471s
+[14/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 1 50 games, 185s, elapsed 477s
+[15/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 1 50 games, 173s, elapsed 539s
+[16/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 1 50 games, 202s, elapsed 570s
+[17/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 1 50 games, 234s, elapsed 580s
+[18/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 1 50 games, 237s, elapsed 626s
+[19/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 1 50 games, 201s, elapsed 677s
+[20/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v19 side 1 50 games, 210s, elapsed 681s
+[21/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v23 side 0 50 games, 451s, elapsed 1077s
+[22/60] small:checkpoints/rollout_net_arch/patch_self.pt vs v23 side 0 50 games, 647s, elapsed 1217s

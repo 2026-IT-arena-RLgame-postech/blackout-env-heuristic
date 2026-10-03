@@ -17,3 +17,53 @@
 /home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:706.)
   return F.scaled_dot_product_attention(
 [plain vs p11] 128/256 margin -2.4 wall 98s (0.8s/match, search 0s)
+[plain vs p11] 256/256 margin +2.2 wall 98s (0.8s/match, search 0s)
+[q8_m0 vs p11] 128/256 margin -24.7 wall 94s (0.7s/match, search 2s)
+[q8_m0 vs p11] 256/256 margin -15.2 wall 98s (0.8s/match, search 1s)
+q8_m0          vs p11              n= 256 seeds= 128  search  -20.0  plain   -0.1  diff  -19.9 ±  4.8  win(sign) -0.24 vs +0.05  race w/t/l (8, 241, 7) vs (22, 232, 2)  capped 0.25/0.29  len 141s  wall 0.7s/match (plain 0.77)  e25 w25 m0.0 B6
+                  base share 0.77; alt0 0.05, alt1 0.04, alt2 0.04, alt3 0.05, alt4 0.06
+q8_m0          vs r5               n= 256 seeds= 128  search  -12.2  plain   +0.0  diff  -12.2 ±  3.4  win(sign) -0.21 vs +0.00  race w/t/l (8, 230, 18) vs (23, 210, 23)  capped 0.38/0.35  len 180s  wall 0.5s/match (plain 0.23)  e25 w25 m0.0 B6
+                  base share 0.77; alt0 0.04, alt1 0.04, alt2 0.04, alt3 0.04, alt4 0.06
+QEVAL DONE
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4"], "every": 25, "window": 25, "margin": 1.0, "net": "checkpoints/rollout_net_arch/q8.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": "checkpoints/rollout_net_arch/q8.pt"}
+[plain vs r5] 128/256 margin +0.0 wall 21s (0.2s/match, search 0s)
+[plain vs r5] 256/256 margin +0.0 wall 19s (0.1s/match, search 0s)
+[q8_m1 vs r5] 128/256 margin -11.0 wall 47s (0.4s/match, search 2s)
+[q8_m1 vs r5] 256/256 margin -9.5 wall 62s (0.5s/match, search 2s)
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4"], "every": 25, "window": 25, "margin": 1.0, "net": "checkpoints/rollout_net_arch/q8.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": "checkpoints/rollout_net_arch/q8.pt"}
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory efficient kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:986.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory Efficient attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/sdp_utils_cpp.h:552.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:988.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention only supports gpu architectures in the range [sm80, sm121]. Attempting to run on a sm 7.5 gpu. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:342.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:990.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:706.)
+  return F.scaled_dot_product_attention(
+[plain vs p11] 128/256 margin -2.4 wall 120s (0.9s/match, search 0s)
+[plain vs p11] 256/256 margin +2.2 wall 93s (0.7s/match, search 0s)
+[q8_m1 vs p11] 128/256 margin -20.9 wall 92s (0.7s/match, search 1s)
+[q8_m1 vs p11] 256/256 margin -15.4 wall 89s (0.7s/match, search 1s)
+q8_m1          vs p11              n= 256 seeds= 128  search  -18.2  plain   -0.1  diff  -18.1 ±  4.7  win(sign) -0.24 vs +0.05  race w/t/l (12, 237, 7) vs (22, 232, 2)  capped 0.26/0.29  len 140s  wall 0.7s/match (plain 0.83)  e25 w25 m1.0 B6
+                  base share 0.99; alt0 0.00, alt1 0.00, alt2 0.00, alt3 0.00, alt4 0.01
+q8_m1          vs r5               n= 256 seeds= 128  search  -10.3  plain   +0.0  diff  -10.3 ±  3.6  win(sign) -0.14 vs +0.00  race w/t/l (8, 228, 20) vs (23, 210, 23)  capped 0.37/0.35  len 176s  wall 0.4s/match (plain 0.16)  e25 w25 m1.0 B6
+                  base share 0.99; alt0 0.00, alt1 0.00, alt2 0.00, alt3 0.00, alt4 0.01
+QEVAL DONE
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4"], "every": 25, "window": 25, "margin": 3.0, "net": "checkpoints/rollout_net_arch/q7.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": "checkpoints/rollout_net_arch/q7.pt"}
+[plain vs r5] 128/256 margin +0.0 wall 20s (0.2s/match, search 0s)
+[plain vs r5] 256/256 margin +0.0 wall 18s (0.1s/match, search 0s)
+[q7_m3 vs r5] 128/256 margin +5.7 wall 57s (0.4s/match, search 2s)
+[q7_m3 vs r5] 256/256 margin +5.6 wall 53s (0.4s/match, search 2s)
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4"], "every": 25, "window": 25, "margin": 3.0, "net": "checkpoints/rollout_net_arch/q7.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": "checkpoints/rollout_net_arch/q7.pt"}
+[plain vs p11] 128/256 margin -2.4 wall 97s (0.8s/match, search 0s)
+[plain vs p11] 256/256 margin +2.2 wall 111s (0.9s/match, search 0s)
+[q7_m3 vs p11] 128/256 margin +3.6 wall 94s (0.7s/match, search 2s)
+[q7_m3 vs p11] 256/256 margin +3.6 wall 82s (0.6s/match, search 1s)
+q7_m3          vs p11              n= 256 seeds= 128  search   +3.6  plain   -0.1  diff   +3.7 ±  3.1  win(sign) +0.09 vs +0.05  race w/t/l (23, 230, 3) vs (22, 232, 2)  capped 0.28/0.29  len 145s  wall 0.7s/match (plain 0.81)  e25 w25 m3.0 B6
+                  base share 0.99; alt0 0.00, alt1 0.00, alt2 0.00, alt3 0.00, alt4 0.01
+q7_m3          vs r5               n= 256 seeds= 128  search   +5.6  plain   +0.0  diff   +5.6 ±  2.3  win(sign) +0.11 vs +0.00  race w/t/l (23, 209, 24) vs (23, 210, 23)  capped 0.35/0.35  len 167s  wall 0.4s/match (plain 0.15)  e25 w25 m3.0 B6
+                  base share 0.99; alt0 0.00, alt1 0.00, alt2 0.00, alt3 0.00, alt4 0.00
+QEVAL DONE

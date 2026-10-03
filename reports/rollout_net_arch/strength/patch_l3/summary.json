@@ -1,0 +1,167 @@
+[
+ {
+  "candidate": "p11",
+  "opponent": "p5a",
+  "n": 1000,
+  "margin": 72.605,
+  "margin_se": 0.4104819977422524,
+  "win": 0.995,
+  "draw": 0.001,
+  "loss": 0.004,
+  "race": [
+   998,
+   2,
+   0
+  ],
+  "vs_ref": "r5",
+  "paired_seeds": 500,
+  "dmargin": 7.7,
+  "dmargin_se": 0.705767820485509,
+  "same_race": 0.998
+ },
+ {
+  "candidate": "p11",
+  "opponent": "v19",
+  "n": 1000,
+  "margin": 76.719,
+  "margin_se": 0.6905105675106239,
+  "win": 0.97,
+  "draw": 0.0,
+  "loss": 0.03,
+  "race": [
+   1000,
+   0,
+   0
+  ],
+  "vs_ref": "r5",
+  "paired_seeds": 500,
+  "dmargin": 8.882,
+  "dmargin_se": 1.0392064530709038,
+  "same_race": 1.0
+ },
+ {
+  "candidate": "p11",
+  "opponent": "v23",
+  "n": 1000,
+  "margin": 0.868,
+  "margin_se": 2.086715351205563,
+  "win": 0.509,
+  "draw": 0.0,
+  "loss": 0.491,
+  "race": [
+   18,
+   935,
+   47
+  ],
+  "vs_ref": "r5",
+  "paired_seeds": 500,
+  "dmargin": 2.996,
+  "dmargin_se": 2.1333631769789645,
+  "same_race": 0.915
+ },
+ {
+  "candidate": "r5",
+  "opponent": "p5a",
+  "n": 1000,
+  "margin": 64.905,
+  "margin_se": 0.6647961559221962,
+  "win": 0.976,
+  "draw": 0.001,
+  "loss": 0.023,
+  "race": [
+   998,
+   1,
+   1
+  ]
+ },
+ {
+  "candidate": "r5",
+  "opponent": "v19",
+  "n": 1000,
+  "margin": 67.837,
+  "margin_se": 0.971543270949538,
+  "win": 0.934,
+  "draw": 0.0,
+  "loss": 0.066,
+  "race": [
+   1000,
+   0,
+   0
+  ]
+ },
+ {
+  "candidate": "r5",
+  "opponent": "v23",
+  "n": 1000,
+  "margin": -2.128,
+  "margin_se": 2.011319721730741,
+  "win": 0.496,
+  "draw": 0.002,
+  "loss": 0.502,
+  "race": [
+   79,
+   878,
+   43
+  ]
+ },
+ {
+  "candidate": "small:checkpoints/rollout_net_arch/patch_l3.pt",
+  "opponent": "p5a",
+  "n": 1000,
+  "margin": 65.663,
+  "margin_se": 0.6452517189289625,
+  "win": 0.984,
+  "draw": 0.001,
+  "loss": 0.015,
+  "race": [
+   998,
+   2,
+   0
+  ],
+  "vs_ref": "r5",
+  "paired_seeds": 500,
+  "dmargin": 0.758,
+  "dmargin_se": 0.8292443333111522,
+  "same_race": 0.998
+ },
+ {
+  "candidate": "small:checkpoints/rollout_net_arch/patch_l3.pt",
+  "opponent": "v19",
+  "n": 1000,
+  "margin": 69.629,
+  "margin_se": 0.9753064039477961,
+  "win": 0.938,
+  "draw": 0.001,
+  "loss": 0.061,
+  "race": [
+   1000,
+   0,
+   0
+  ],
+  "vs_ref": "r5",
+  "paired_seeds": 500,
+  "dmargin": 1.792,
+  "dmargin_se": 1.1893749187681695,
+  "same_race": 1.0
+ },
+ {
+  "candidate": "small:checkpoints/rollout_net_arch/patch_l3.pt",
+  "opponent": "v23",
+  "n": 1000,
+  "margin": -3.2,
+  "margin_se": 1.997469369948857,
+  "win": 0.498,
+  "draw": 0.002,
+  "loss": 0.5,
+  "race": [
+   66,
+   887,
+   47
+  ],
+  "vs_ref": "r5",
+  "paired_seeds": 500,
+  "dmargin": -1.072,
+  "dmargin_se": 2.3230826627815535,
+  "same_race": 0.895
+ }
+]

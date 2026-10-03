@@ -1,0 +1,5 @@
+checkpoints/rollout_net_arch/selfstate_f3_self/part_000.npz 35504 over 0.56 363s
+checkpoints/rollout_net_arch/selfstate_f3_self/part_001.npz 36582 over 0.50 372s
+checkpoints/rollout_net_arch/selfstate_f3_self/part_002.npz 39064 over 0.56 396s
+checkpoints/rollout_net_arch/selfstate_f3_self/part_003.npz 25706 over 0.88 396s
+rows 136856 396s

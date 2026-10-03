@@ -1,0 +1,89 @@
+60 chunks, 3000 games, 8 workers
+[1/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 0 50 games, 115s, elapsed 119s
+[2/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 0 50 games, 120s, elapsed 123s
+[3/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 0 50 games, 129s, elapsed 133s
+[4/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 0 50 games, 154s, elapsed 157s
+[5/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 0 50 games, 211s, elapsed 215s
+[6/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 0 50 games, 217s, elapsed 220s
+[7/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 0 50 games, 220s, elapsed 224s
+[8/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 0 50 games, 236s, elapsed 239s
+[9/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 0 50 games, 131s, elapsed 254s
+[10/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 0 50 games, 143s, elapsed 262s
+[11/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 1 50 games, 116s, elapsed 273s
+[12/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 1 50 games, 143s, elapsed 276s
+[13/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 1 50 games, 121s, elapsed 345s
+[14/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 1 50 games, 148s, elapsed 368s
+[15/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 1 50 games, 159s, elapsed 374s
+[16/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 1 50 games, 130s, elapsed 385s
+[17/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 1 50 games, 146s, elapsed 385s
+[18/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 1 50 games, 130s, elapsed 403s
+[19/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 1 50 games, 142s, elapsed 405s
+[20/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19 side 1 50 games, 131s, elapsed 407s
+[21/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 0 50 games, 323s, elapsed 691s
+[22/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 0 50 games, 348s, elapsed 751s
+[23/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 0 50 games, 356s, elapsed 763s
+[24/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 0 50 games, 381s, elapsed 766s
+[25/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 0 50 games, 428s, elapsed 802s
+[26/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 0 50 games, 435s, elapsed 820s
+[27/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 0 50 games, 422s, elapsed 827s
+[28/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 0 50 games, 491s, elapsed 836s
+[29/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 0 50 games, 319s, elapsed 1069s
+[30/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 0 50 games, 443s, elapsed 1133s
+[31/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 1 50 games, 453s, elapsed 1216s
+[32/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 1 50 games, 482s, elapsed 1247s
+[33/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 1 50 games, 468s, elapsed 1288s
+[34/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 1 50 games, 484s, elapsed 1311s
+[35/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 1 50 games, 511s, elapsed 1313s
+[36/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 1 50 games, 519s, elapsed 1355s
+[37/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 0 50 games, 105s, elapsed 1393s
+[38/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 1 50 games, 405s, elapsed 1474s
+[39/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 0 50 games, 213s, elapsed 1525s
+[40/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 0 50 games, 218s, elapsed 1531s
+[41/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 0 50 games, 224s, elapsed 1580s
+[42/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 0 50 games, 220s, elapsed 1613s
+[43/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 1 50 games, 488s, elapsed 1621s
+[44/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 1 50 games, 475s, elapsed 1691s
+[45/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 0 50 games, 255s, elapsed 1729s
+[46/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 0 50 games, 245s, elapsed 1777s
+[47/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 0 50 games, 270s, elapsed 1795s
+[48/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23 side 1 50 games, 549s, elapsed 1796s
+[49/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 0 50 games, 277s, elapsed 1857s
+[50/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 0 50 games, 259s, elapsed 1872s
+[51/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 1 50 games, 299s, elapsed 1920s
+[52/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 1 50 games, 293s, elapsed 1984s
+[53/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 1 50 games, 291s, elapsed 2020s
+[54/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 1 50 games, 290s, elapsed 2067s
+[55/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 1 50 games, 288s, elapsed 2085s
+[56/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 1 50 games, 294s, elapsed 2088s
+[57/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 1 50 games, 263s, elapsed 2120s
+[58/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 1 50 games, 262s, elapsed 2133s
+[59/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 1 50 games, 240s, elapsed 2160s
+[60/60] small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a side 1 50 games, 201s, elapsed 2185s
+candidate  opponent       n  margin   ±se        W/D/L %     race W/T/L   Δ vs p11   ±se same race
+p11        p5a         1000   +72.6   0.4  100/  0/  0         998/2/0 
+p11        v19         1000   +76.7   0.7   97/  0/  3        1000/0/0 
+p11        v23         1000    +0.9   2.1   51/  0/ 49       18/935/47 
+r5         p5a         1000   +64.9   0.7   98/  0/  2         998/1/1       -7.7   0.7     0.998
+r5         v19         1000   +67.8   1.0   93/  0/  7        1000/0/0       -8.9   1.0     1.000
+r5         v23         1000    -2.1   2.0   50/  0/ 50       79/878/43       -3.0   2.1     0.915
+small:checkpoints/rollout_net_arch/f3_x_seed1.pt p5a         1000   +68.4   0.5   99/  0/  1         997/3/0       -4.2   0.6     0.999
+small:checkpoints/rollout_net_arch/f3_x_seed1.pt v19         1000   +72.8   0.8   96/  0/  4        1000/0/0       -3.9   0.9     1.000
+small:checkpoints/rollout_net_arch/f3_x_seed1.pt v23         1000    -0.2   2.0   50/  0/ 50       39/914/47       -1.1   2.1     0.971
+
+paired Δ lead vs p11 by match time (s):        10        20        30        45        60        90       120       150       240       300      final
+r5         vs p5a                               -4.4±0.5 -14.3±0.9 -15.2±0.9 -11.8±0.8  -9.7±0.8  -8.4±0.7  -8.1±0.7  -7.9±0.7  -7.8±0.7  -7.8±0.7  -7.7±0.7
+r5         vs v19                               -3.8±0.4 -12.6±0.8 -12.2±0.8 -10.1±0.9  -9.3±1.0  -9.2±1.0  -9.1±1.0  -9.0±1.0  -8.9±1.0  -8.9±1.0  -8.9±1.0
+r5         vs v23                               -2.4±0.5  -4.5±1.3  -5.1±1.7  -5.2±2.0  -4.2±2.1  -3.5±2.1  -3.3±2.1  -3.1±2.1  -3.0±2.1  -3.0±2.1  -3.0±2.1
+small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a                               -1.5±0.5  -6.3±0.9  -6.9±0.9  -5.7±0.7  -4.7±0.6  -4.4±0.6  -4.4±0.6  -4.3±0.6  -4.2±0.6  -4.2±0.6  -4.2±0.6
+small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19                               -1.1±0.4  -5.2±0.7  -4.9±0.8  -4.0±0.8  -4.0±0.9  -4.0±0.9  -4.0±0.9  -4.0±0.9  -4.0±0.9  -3.9±0.9  -3.9±0.9
+small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23                               -0.5±0.5  -1.9±1.3  -2.4±1.7  -2.1±2.0  -1.5±2.1  -1.3±2.1  -1.3±2.1  -1.2±2.1  -1.1±2.1  -1.1±2.1  -1.1±2.1
+
+p11        vs p5a        length  34.5s (p90  50.3) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +72.6(n998) raceT +82.0(n2)
+p11        vs v19        length  34.0s (p90  47.5) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +76.7(n1000)
+p11        vs v23        length  68.2s (p90  95.5) target/timeout 0.85 exhausted 0.15 | margin by race: raceW +79.9(n18) raceT +3.1(n935) raceL -74.0(n47)
+r5         vs p5a        length  81.8s (p90 220.0) target/timeout 0.95 exhausted 0.05 | margin by race: raceW +65.0(n998) raceT +78.0(n1) raceL -75.0(n1)
+r5         vs v19        length  93.4s (p90 420.0) target/timeout 0.94 exhausted 0.06 | margin by race: raceW +67.8(n1000)
+r5         vs v23        length 119.7s (p90 420.0) target/timeout 0.89 exhausted 0.11 | margin by race: raceW +71.4(n79) raceT -5.1(n878) raceL -77.3(n43)
+small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs p5a        length  55.4s (p90  72.9) target/timeout 0.95 exhausted 0.05 | margin by race: raceW +68.4(n997) raceT +62.3(n3)
+small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v19        length  54.7s (p90  80.0) target/timeout 0.95 exhausted 0.05 | margin by race: raceW +72.8(n1000)
+small:checkpoints/rollout_net_arch/f3_x_seed1.pt vs v23        length 100.1s (p90 420.0) target/timeout 0.88 exhausted 0.12 | margin by race: raceW +73.3(n39) raceT +0.6(n914) raceL -76.4(n47)
