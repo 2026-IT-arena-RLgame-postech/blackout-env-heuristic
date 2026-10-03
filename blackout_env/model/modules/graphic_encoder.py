@@ -55,12 +55,16 @@ class GraphicEncoder(nn.Module):
         self.tokenize_ffn = SwiGLUBlock(128, 512, self.hidden_size)
 
 
-    def forward(self, graphic):
-        """graphic: [B, 19, 24, 24] -- env channels with the derived ones already appended."""
+    def forward(self, graphic, features: bool = False):
+        """graphic: [B, 19, 24, 24] -- env channels with the derived ones already appended.
+        ``features``: also return the feature maps ``{"f2": [B, 64, 12, 12], "f3": [B, 128, 6, 6]}``
+        (MyModel's map-token cross-attention reads them)."""
         x = self.pre_conv(graphic)
-        x = self.conv64(x)
-        x = self.pool(x)
+        f2 = self.conv64(x)
+        x = self.pool(f2)
         x = self.conv128(x)
 
         tokens = self.tokenize_ffn(x.flatten(2).transpose(1, 2))
+        if features:
+            return tokens, {"f2": f2, "f3": x}
         return tokens

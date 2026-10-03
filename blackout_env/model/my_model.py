@@ -6,6 +6,7 @@ from blackout_env.model.modules import (
     GraphicEncoder,
     IQNHead,
     LogitsHead,
+    MapCrossAttention,
     RotaryEmbedding2D,
     SwiGLUBlock,
     VectorEncoder,
@@ -13,6 +14,7 @@ from blackout_env.model.modules import (
 )
 from blackout_env.model.derived_obs import N_PATCH_FEATURES, derived_map_channels, local_wall_features
 from blackout_env.model.modules.logits_head import arc_bins_of_scale, state_from_iqn
+from blackout_env.model.modules.map_cross_attention import source_of_channels
 from blackout_env.model.modules.temporal_memory import TemporalMemory
 
 N_QUANTILES_DEFAULT = 32  # quantile samples used when the caller doesn't ask for a specific count
@@ -38,6 +40,7 @@ POLICY_HEADS = ("iqn", "logits")
 _IQN_KEY = "q_head.tau_proj.0.weight"  # only an IQN head has it (LogitsHead: q_head.in_scale instead)
 ANGLE_KEY_PREFIX = "q_head.angle_"  # only a logits head with an angle head (P11) has them
 _ANGLE_SCALE_KEY = "q_head.angle_scale"
+MAP_XATTN_PREFIX = "map_xattn."  # only a net with the map-token cross-attention path (§25) has them
 
 
 class MyModel(nn.Module):
@@ -137,6 +140,16 @@ class MyModel(nn.Module):
     state without one moves exactly like it.  ``angle_arc_bins`` N: each offset spans +-(N + 1/2)
     bins, so a bin next to the teacher's (an arc label's arg max) can still reach its angle
     (recorded in the state as ``q_head.angle_scale``).
+
+    Map-token cross-attention (``map_xattn``, docs/policy_v2_design_ko.md §25)
+    ---------------------------------------------------------------------------
+    Off by default (no keys, the same forward).  ``"f3"`` / ``"f2"``: after ``map_xattn_layers``
+    trunk layers (spread over the depth) the 11 vector tokens cross-attend to map tokens made from
+    the GraphicEncoder's 6x6 x 128 (f3) or 12x12 x 64 (f2) feature map -- keys/values only, learned
+    2-D position embeddings, a unit's query adding the embedding of the cell it stands in
+    (modules/map_cross_attention.py).  The blocks' output projections start at zero, so
+    ``from_state_dict(state, map_xattn="f3")`` on a state without the path is exactly that net.
+    Keys under ``map_xattn.``; ``config_from_state_dict`` reads the source and depth back.
     """
 
     def __init__(
@@ -154,6 +167,8 @@ class MyModel(nn.Module):
         policy_head: str = "iqn",
         angle_head: bool = False,
         angle_arc_bins: int = 0,
+        map_xattn: str | None = None,
+        map_xattn_layers: int = 2,
     ) -> None:
         super().__init__()
         if policy_head not in POLICY_HEADS:
@@ -241,6 +256,11 @@ class MyModel(nn.Module):
             TemporalMemory(hidden_size, n_vector_tokens, temporal_heads, temporal_head_dim, temporal_chunk)
             if temporal else None
         )
+        # After the temporal block, and absent when off: an old net's parameter order is unchanged.
+        self.map_xattn = (MapCrossAttention(hidden_size, N_ATTENTION_HEADS, map_xattn_layers, map_xattn)
+                          if map_xattn else None)
+        self._xattn_after = (MapCrossAttention.after_layers(ATTENTION_DEPTH, map_xattn_layers)
+                             if map_xattn else ())
 
     @property
     def is_temporal(self) -> bool:
@@ -264,6 +284,10 @@ class MyModel(nn.Module):
             config["angle_head"] = True
             if _ANGLE_SCALE_KEY in state:  # the offsets' range, in bins around their own
                 config["angle_arc_bins"] = arc_bins_of_scale(state[_ANGLE_SCALE_KEY], config["n_actions"] - config["n_actions"] % 2)
+        if MAP_XATTN_PREFIX + "in_proj.weight" in state:
+            config["map_xattn"] = source_of_channels(state[MAP_XATTN_PREFIX + "in_proj.weight"].shape[1],
+                                                     state[MAP_XATTN_PREFIX + "pos_row"].shape[0])
+            config["map_xattn_layers"] = len({k.split(".")[2] for k in state if k.startswith(MAP_XATTN_PREFIX + "blocks.")})
         if any(key.startswith(TEMPORAL_PREFIX) for key in state):
             heads = state["temporal.kda.b_proj.weight"].shape[0]
             config.update(temporal=True, temporal_heads=heads,
@@ -283,7 +307,8 @@ class MyModel(nn.Module):
 
     @classmethod
     def from_state_dict(cls, state: dict, temporal: bool | None = None, policy_head: str | None = None,
-                        angle_head: bool | None = None, **temporal_kwargs) -> "MyModel":
+                        angle_head: bool | None = None, map_xattn: str | bool | None = None,
+                        map_xattn_layers: int | None = None, **temporal_kwargs) -> "MyModel":
         """A MyModel shaped like ``state`` with ``state`` loaded.
 
         ``temporal=None`` follows the state (temporal iff it has ``temporal.`` keys).
@@ -293,8 +318,18 @@ class MyModel(nn.Module):
         ``policy_head=None`` follows the state; ``"logits"`` on an IQN state converts it
         (``iqn_to_logits_state``); ``"iqn"`` on a logits state raises (no tau embedding to restore).
         ``angle_head=None`` follows the state; True on a state without one adds it zero-initialised
-        (the same moves); False on a state with one raises."""
+        (the same moves); False on a state with one raises.
+        ``map_xattn=None`` follows the state; a source name on a state without the path adds it
+        zero-initialised (the same outputs); False on a state with it raises."""
         config = cls.config_from_state_dict(state)
+        if map_xattn is False and config.get("map_xattn"):
+            raise ValueError("state has a map-token cross-attention path; load it with map_xattn=None")
+        if map_xattn and not config.get("map_xattn"):
+            config["map_xattn"] = map_xattn
+            if map_xattn_layers is not None:
+                config["map_xattn_layers"] = map_xattn_layers
+        elif map_xattn and map_xattn != config["map_xattn"]:
+            raise ValueError(f"state's map tokens are {config['map_xattn']!r}, not {map_xattn!r}")
         if policy_head == "iqn" and config["policy_head"] == "logits":
             raise ValueError("state has a logits head; it cannot be loaded as an IQN head")
         if policy_head == "logits" and config["policy_head"] == "iqn":
@@ -318,10 +353,14 @@ class MyModel(nn.Module):
     def with_init_angle_keys(self, state: dict) -> dict:
         """``state`` plus this net's angle-head keys it lacks: an angle-head net warm-started from a
         state without one keeps its zero init (and a state without ``angle_scale`` its default,
-        the half-bin range every angle head had before that buffer)."""
-        if not self.angle_head:
+        the half-bin range every angle head had before that buffer).  Likewise the map-token
+        cross-attention path, when ``state`` has none of it (its zero-initialised output = no change)."""
+        prefixes = ((ANGLE_KEY_PREFIX,) if self.angle_head else ()) + (
+            (MAP_XATTN_PREFIX,) if self.map_xattn is not None and not any(k.startswith(MAP_XATTN_PREFIX) for k in state)
+            else ())
+        if not prefixes:
             return state
-        missing = [k for k in self.state_dict() if k.startswith(ANGLE_KEY_PREFIX) and k not in state]
+        missing = [k for k in self.state_dict() if k.startswith(prefixes) and k not in state]
         if not missing:
             return state
         own = self.state_dict()
@@ -433,7 +472,10 @@ class MyModel(nn.Module):
         graphic = torch.cat((graphic, derived_map_channels(graphic, agent_states)), dim=1)
         agent_states = torch.cat((agent_states, unit_features), dim=-1)
 
-        vis_tokens = self.graphic_encoder(graphic)                   # [B, 36, hidden]
+        if self.map_xattn is not None:
+            vis_tokens, feats = self.graphic_encoder(graphic, features=True)
+        else:
+            vis_tokens = self.graphic_encoder(graphic)               # [B, 36, hidden]
         vec_tokens = self.vector_encoder(agent_states, team_state)   # [B, 11, hidden]
         vec_tokens = vec_tokens + self.vec_slot_emb(self.vec_slot_ids)[None, :, :]
         spr_cls_tok = self.spr_cls_emb(self.spr_cls_ids)[None, :, :].expand(B, -1, -1)  # [B, 1, hidden]
@@ -443,7 +485,21 @@ class MyModel(nn.Module):
 
         row_ids, col_ids = self._token_grid_positions(agent_states)  # [B, T] each
         rope_cos, rope_sin = self.rope(row_ids, col_ids)
-        return self.attention(tokens_in, rope=(rope_cos, rope_sin))
+        if self.map_xattn is None:
+            return self.attention(tokens_in, rope=(rope_cos, rope_sin))
+        return self._trunk_xattn(tokens_in, (rope_cos, rope_sin), feats[self.map_xattn.source], agent_states)
+
+    def _trunk_xattn(self, x, rope, feat, agent_states) -> torch.Tensor:
+        """The trunk layers with the map-token cross blocks after ``_xattn_after`` (class docstring)."""
+        lo, hi = N_VISION_TOKENS, N_VISION_TOKENS + N_UNITS + N_TEAM_STATE_TOKENS
+        mem, q_pos = self.map_xattn.memory(feat, agent_states[..., :2], hi - lo)
+        blocks = iter(self.map_xattn.blocks)
+        for i, layer in enumerate(self.attention.layers):
+            x = layer(x, None, False, rope)
+            if i in self._xattn_after:
+                vec = x[:, lo:hi]
+                x = torch.cat((x[:, :lo], vec + next(blocks)(vec, q_pos, mem), x[:, hi:]), dim=1)
+        return x
 
     def _heads(self, vec_out, spr_cls_out, n_quantiles, tau, q_units, angle=False):
         """vec_out [B, 11, hidden] (10 units + team_state), spr_cls_out [B, hidden] -> forward's
