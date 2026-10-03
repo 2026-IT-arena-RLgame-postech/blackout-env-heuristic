@@ -109,21 +109,21 @@ class _FastNet(nn.Module):
         self.fixed_tau, self.n_quantiles = tau, n_quantiles
         self._traced = None
 
-    def _tau(self, batch: int) -> tuple:
+    def _tau(self, batch: int, device=None) -> tuple:
         """The trailing tau argument of ``own``: none for a logits net."""
         if not self.uses_tau:
             return ()
-        return (self.fixed_tau.expand(batch, -1) if self.fixed_tau is not None else torch.rand(batch, self.n_quantiles),)
+        return (self.fixed_tau.expand(batch, -1) if self.fixed_tau is not None else torch.rand(batch, self.n_quantiles, device=device),)
 
     def forward(self, graphic, team_state, agent_states, memory=None, **_):
         batch = graphic.shape[0]
-        tau = self._tau(batch)
+        tau = self._tau(batch, graphic.device)
         if self.is_temporal:
             return self._step(graphic, team_state, agent_states, tau, memory)
         with torch.inference_mode():
             args = (graphic, team_state, agent_states, *tau)
-            if batch != 1:  # the trace is batch-1 only
-                out = self.own(*args)
+            if batch != 1 or graphic.device.type != "cpu":  # the trace is batch-1 only; it bakes shape
+                out = self.own(*args)                         # constants as CPU tensors (cuda: eager)
             else:
                 if self._traced is None:
                     with warnings.catch_warnings():  # deprecation, and GroupNorm's shape check (batch 1 is fixed)
@@ -246,14 +246,17 @@ def checkpoint_meta(path) -> dict:
     return {"version": 0, "action_bins": int(ckpt.get("config", {}).get("k", 32)), "rollout_net": True}
 
 
-def make_student(net: MyModel, inference: str = "iqn") -> MyPolicy:
-    net.eval()
+def make_student(net: MyModel, inference: str = "iqn", device: str = "cpu") -> MyPolicy:
+    """``device`` = where the student's batch-1 forward runs (P14 wsl_gpu: cuda in the collectors,
+    whose CPU forward was half of every tick; tau, when drawn, stays a CPU tensor moved with the inputs)."""
+    net = net.eval().to(device)
+    tau = fixed_tau().to(device)
     if inference == "iqn":
-        return MyPolicy(_FastNet(net))
+        return MyPolicy(_FastNet(net), device=device)
     if inference == "fixed_tau":
-        return MyPolicy(_FastNet(net, tau=fixed_tau()))
+        return MyPolicy(_FastNet(net, tau=tau), device=device)
     if inference == "tie_mean":
-        return _TieMeanPolicy(_FastNet(net, tau=fixed_tau()))
+        return _TieMeanPolicy(_FastNet(net, tau=tau), device=device)
     if inference == "arc_mean":
-        return _ArcMeanPolicy(_FastNet(net, tau=fixed_tau()))
+        return _ArcMeanPolicy(_FastNet(net, tau=tau), device=device)
     raise ValueError(f"unknown inference {inference!r}; choose from {INFERENCE}")

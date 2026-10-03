@@ -1,0 +1,267 @@
+[
+ {
+  "candidate": "p11",
+  "opponent": "p5a",
+  "n": 256,
+  "margin": 71.9765625,
+  "margin_se": 0.8213214500117401,
+  "win": 1.0,
+  "draw": 0.0,
+  "loss": 0.0,
+  "race": [
+   256,
+   0,
+   0
+  ]
+ },
+ {
+  "candidate": "p11",
+  "opponent": "v19",
+  "n": 256,
+  "margin": 73.41796875,
+  "margin_se": 1.695222333008123,
+  "win": 0.953125,
+  "draw": 0.0,
+  "loss": 0.046875,
+  "race": [
+   256,
+   0,
+   0
+  ]
+ },
+ {
+  "candidate": "p11",
+  "opponent": "v23",
+  "n": 256,
+  "margin": 2.60546875,
+  "margin_se": 4.0191467921237125,
+  "win": 0.5234375,
+  "draw": 0.00390625,
+  "loss": 0.47265625,
+  "race": [
+   4,
+   242,
+   10
+  ]
+ },
+ {
+  "candidate": "p11",
+  "opponent": "v25",
+  "n": 256,
+  "margin": -74.63671875,
+  "margin_se": 0.9479662089274222,
+  "win": 0.0078125,
+  "draw": 0.0,
+  "loss": 0.9921875,
+  "race": [
+   0,
+   2,
+   254
+  ]
+ },
+ {
+  "candidate": "p14a",
+  "opponent": "p11",
+  "n": 256,
+  "margin": 75.4375,
+  "margin_se": 0.9069702175320842,
+  "win": 0.99609375,
+  "draw": 0.0,
+  "loss": 0.00390625,
+  "race": [
+   252,
+   4,
+   0
+  ]
+ },
+ {
+  "candidate": "p14a",
+  "opponent": "p5a",
+  "n": 256,
+  "margin": 70.58203125,
+  "margin_se": 0.8838685486375676,
+  "win": 0.9921875,
+  "draw": 0.00390625,
+  "loss": 0.00390625,
+  "race": [
+   256,
+   0,
+   0
+  ],
+  "vs_ref": "p11",
+  "paired_seeds": 128,
+  "dmargin": -1.39453125,
+  "dmargin_se": 1.084641521453613,
+  "same_race": 1.0
+ },
+ {
+  "candidate": "p14a",
+  "opponent": "v19",
+  "n": 256,
+  "margin": 78.5390625,
+  "margin_se": 1.117825772353466,
+  "win": 0.984375,
+  "draw": 0.0,
+  "loss": 0.015625,
+  "race": [
+   256,
+   0,
+   0
+  ],
+  "vs_ref": "p11",
+  "paired_seeds": 128,
+  "dmargin": 5.12109375,
+  "dmargin_se": 1.9872621720305426,
+  "same_race": 1.0
+ },
+ {
+  "candidate": "p14a",
+  "opponent": "v23",
+  "n": 256,
+  "margin": 73.4609375,
+  "margin_se": 1.1997600440171259,
+  "win": 0.984375,
+  "draw": 0.0,
+  "loss": 0.015625,
+  "race": [
+   246,
+   10,
+   0
+  ],
+  "vs_ref": "p11",
+  "paired_seeds": 128,
+  "dmargin": 70.85546875,
+  "dmargin_se": 3.2430941561192617,
+  "same_race": 0.015625
+ },
+ {
+  "candidate": "p14a",
+  "opponent": "v25",
+  "n": 256,
+  "margin": -25.3046875,
+  "margin_se": 3.8905054944143203,
+  "win": 0.3359375,
+  "draw": 0.0,
+  "loss": 0.6640625,
+  "race": [
+   0,
+   256,
+   0
+  ],
+  "vs_ref": "p11",
+  "paired_seeds": 128,
+  "dmargin": 49.33203125,
+  "dmargin_se": 3.5682725254578287,
+  "same_race": 0.0078125
+ },
+ {
+  "candidate": "p14b",
+  "opponent": "p11",
+  "n": 256,
+  "margin": 75.15234375,
+  "margin_se": 0.8055325181343741,
+  "win": 0.99609375,
+  "draw": 0.0,
+  "loss": 0.00390625,
+  "race": [
+   253,
+   3,
+   0
+  ]
+ },
+ {
+  "candidate": "p14b",
+  "opponent": "p14a",
+  "n": 256,
+  "margin": 18.19921875,
+  "margin_se": 4.111003511924728,
+  "win": 0.6171875,
+  "draw": 0.01171875,
+  "loss": 0.37109375,
+  "race": [
+   0,
+   256,
+   0
+  ]
+ },
+ {
+  "candidate": "p14b",
+  "opponent": "p5a",
+  "n": 256,
+  "margin": 72.40234375,
+  "margin_se": 0.7619107192738889,
+  "win": 1.0,
+  "draw": 0.0,
+  "loss": 0.0,
+  "race": [
+   256,
+   0,
+   0
+  ],
+  "vs_ref": "p11",
+  "paired_seeds": 128,
+  "dmargin": 0.42578125,
+  "dmargin_se": 1.0214705691496764,
+  "same_race": 1.0
+ },
+ {
+  "candidate": "p14b",
+  "opponent": "v19",
+  "n": 256,
+  "margin": 80.9453125,
+  "margin_se": 0.7732035073851647,
+  "win": 0.9921875,
+  "draw": 0.0,
+  "loss": 0.0078125,
+  "race": [
+   256,
+   0,
+   0
+  ],
+  "vs_ref": "p11",
+  "paired_seeds": 128,
+  "dmargin": 7.52734375,
+  "dmargin_se": 1.9028711712681943,
+  "same_race": 1.0
+ },
+ {
+  "candidate": "p14b",
+  "opponent": "v23",
+  "n": 256,
+  "margin": 75.10546875,
+  "margin_se": 1.0752062640106497,
+  "win": 0.9921875,
+  "draw": 0.0,
+  "loss": 0.0078125,
+  "race": [
+   246,
+   10,
+   0
+  ],
+  "vs_ref": "p11",
+  "paired_seeds": 128,
+  "dmargin": 72.5,
+  "dmargin_se": 3.20518196628645,
+  "same_race": 0.015625
+ },
+ {
+  "candidate": "p14b",
+  "opponent": "v25",
+  "n": 256,
+  "margin": -0.375,
+  "margin_se": 3.9956778118950718,
+  "win": 0.49609375,
+  "draw": 0.0,
+  "loss": 0.50390625,
+  "race": [
+   0,
+   256,
+   0
+  ],
+  "vs_ref": "p11",
+  "paired_seeds": 128,
+  "dmargin": 74.26171875,
+  "dmargin_se": 3.827540540084628,
+  "same_race": 0.0078125
+ }
+]
