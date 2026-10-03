@@ -194,3 +194,18 @@ def test_packed_searcher_equals_float_searcher():
     s.roll._buf = None
     got = s.search(roots, [0, 1, 0], [5, 6, 7])
     assert got.values.tobytes() == ref.values.tobytes()
+
+
+def test_unpack_graphic_every_code():
+    from blackout_env.sim.batch import unpack_graphic
+
+    base, bat, item = np.meshgrid(np.arange(8), np.arange(16), np.arange(8), indexing="ij")
+    p = (base | bat << 3 | item << 7).astype(np.int16).reshape(1, -1, 1)
+    g = unpack_graphic(torch.from_numpy(p)).numpy()[0, :, :, 0]  # [13, codes]
+    ref = np.zeros_like(g)
+    ref[base.ravel(), np.arange(p.size)] = 1.0
+    ref[8] = bat.ravel().astype(np.float32) / np.float32(15.0)
+    it = item.ravel()
+    ok = (it >= 1) & (it <= 4)
+    ref[8 + it[ok], np.nonzero(ok)[0]] = 1.0
+    assert g.tobytes() == ref.tobytes()
