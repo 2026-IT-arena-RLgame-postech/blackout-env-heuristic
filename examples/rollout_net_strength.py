@@ -32,7 +32,7 @@ import numpy as np
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
-MAIN = Path("/Users/mac/project/26rl/blackout-env")  # shared checkpoints (read-only)
+MAIN = Path(os.environ.get("BLACKOUT_MAIN", "/Users/mac/project/26rl/blackout-env"))  # shared checkpoints (read-only)
 CKPT = {"p11": MAIN / "checkpoints/distill/frozen/p11_v22.pt", "p5a": MAIN / "checkpoints/distill/frozen/p5a_v22.pt",
         "r5": MAIN / "checkpoints/rollout_net/r5.pt"}
 HEUR = {"v23": "strategic_v23", "v22": "strategic_v22", "v19": "strategic_v19", "v24": "strategic_v24"}

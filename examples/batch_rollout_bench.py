@@ -23,7 +23,7 @@ import numpy as np
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
-MAIN = Path("/Users/mac/project/26rl/blackout-env")  # shared checkpoints (read-only)
+MAIN = Path(os.environ.get("BLACKOUT_MAIN", "/Users/mac/project/26rl/blackout-env"))  # shared checkpoints (read-only)
 P11 = str(MAIN / "checkpoints/distill/frozen/p11_v22.pt")
 DPS = 25
 

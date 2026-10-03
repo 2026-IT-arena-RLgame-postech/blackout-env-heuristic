@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
@@ -29,7 +30,7 @@ import numpy as np
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
-P11 = "/Users/mac/project/26rl/blackout-env/checkpoints/distill/frozen/p11_v22.pt"
+P11 = os.environ.get("BLACKOUT_P11", "/Users/mac/project/26rl/blackout-env/checkpoints/distill/frozen/p11_v22.pt")
 OPENING_TICKS = 250  # decisions (10 s)
 
 
@@ -56,6 +57,51 @@ def _load(path: str):
     return {"map": pack_graphic(z["graphic"]), "team_state": z["team_state"].astype(np.float32),
             "agent_states": z["agent_states"].astype(np.float32), "labels": labels.astype(np.uint64),
             "angles": angles.astype(np.float32), "tick": tick.astype(np.int32)}
+
+
+def mmap_npz(path) -> dict:
+    """Memory-map every member of an uncompressed ``np.savez`` archive (ZIP_STORED: the .npy bytes sit
+    verbatim in the file), so concurrent trainings share one page-cache copy and nothing is loaded
+    up front.  Compressed members are loaded normally."""
+    import zipfile
+
+    out = {}
+    with zipfile.ZipFile(path) as zf, open(path, "rb") as fh:
+        for info in zf.infolist():
+            name = info.filename.removesuffix(".npy")
+            if info.compress_type != zipfile.ZIP_STORED:
+                out[name] = np.load(path)[name]
+                continue
+            fh.seek(info.header_offset)
+            local = fh.read(30)
+            n_name, n_extra = int.from_bytes(local[26:28], "little"), int.from_bytes(local[28:30], "little")
+            fh.seek(info.header_offset + 30 + n_name + n_extra)
+            version = np.lib.format.read_magic(fh)
+            shape, fortran, dtype = np.lib.format._read_array_header(fh, version)
+            out[name] = np.memmap(path, dtype=dtype, mode="r", offset=fh.tell(), shape=shape,
+                                  order="F" if fortran else "C")
+    return out
+
+
+def load_split(path) -> dict:
+    """A packed split: ``<name>.npz`` (memory-mapped when uncompressed, see ``mmap_npz``) or a
+    directory of per-key ``.npy`` files (``convert``)."""
+    path = Path(path)
+    d = path.with_suffix("") if path.suffix == ".npz" else path
+    if d.is_dir() and any(d.glob("*.npy")):
+        return {f.stem: np.load(f, mmap_mode="r") for f in sorted(d.glob("*.npy"))}
+    return mmap_npz(path)
+
+
+def cmd_convert(args):
+    """npz -> a directory of .npy files next to it (same stem), for ``load_split``'s mmap."""
+    for src in args.npz:
+        z = np.load(src)
+        out = Path(src).with_suffix("")
+        out.mkdir(parents=True, exist_ok=True)
+        for k in z.files:
+            np.save(out / f"{k}.npy", z[k])
+        print(src, "->", out, z.files, flush=True)
 
 
 def cmd_pack(args):
@@ -96,11 +142,24 @@ def unpack_labels(bits: np.ndarray) -> np.ndarray:
 
 
 def batch_tensors(data, idx, device, torch):
-    m = torch.from_numpy(data["map"][idx].astype(np.int32)).to(device)
+    m = torch.from_numpy(np.asarray(data["map"][idx]).astype(np.int32)).to(device)
     g = expand_map(m, torch)
-    ts = torch.from_numpy(data["team_state"][idx]).to(device)
-    ag = torch.from_numpy(data["agent_states"][idx]).to(device)
+    ts = torch.from_numpy(np.ascontiguousarray(data["team_state"][idx])).to(device)
+    ag = torch.from_numpy(np.ascontiguousarray(data["agent_states"][idx])).to(device)
     return g, ts, ag
+
+
+def default_device() -> str:
+    import torch
+
+    return "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
+
+
+def autocast(torch, device, amp: str):
+    """amp: '' (off) | 'fp16' | 'bf16' -> a torch.autocast context."""
+    if not amp:
+        return torch.autocast(device_type=device.split(":")[0], enabled=False)
+    return torch.autocast(device_type=device.split(":")[0], dtype=torch.float16 if amp == "fp16" else torch.bfloat16)
 
 
 def p11_targets(data, device="mps", batch=2048):
@@ -152,21 +211,22 @@ def evaluate(net_fn, data, device, torch, n=None, batch=4096):
         with torch.inference_mode():
             logits, off = net_fn(g, ts, ag)
         logits, off = logits.float(), off.float()
-        labels = torch.from_numpy(unpack_labels(data["labels"][idx])).to(device)
+        labels = torch.from_numpy(unpack_labels(np.asarray(data["labels"][idx]))).to(device)
         valid = labels.any(-1)
-        ang = torch.from_numpy(data["angles"][idx]).to(device)
+        ang = torch.from_numpy(np.ascontiguousarray(data["angles"][idx])).to(device)
         has = torch.isfinite(ang)
         hit = labels.gather(-1, logits.argmax(-1, keepdim=True)).squeeze(-1)
         err = ang_err_deg(headings(logits, off), torch.nan_to_num(ang))
-        opening = torch.from_numpy((data["tick"][idx] >= 0) & (data["tick"][idx] < OPENING_TICKS)).to(device)[:, None].expand_as(valid)
+        tk = np.asarray(data["tick"][idx])
+        opening = torch.from_numpy((tk >= 0) & (tk < OPENING_TICKS)).to(device)[:, None].expand_as(valid)
         for key, mask, val in (("hit", valid, hit.float()), ("err", has, err), ("w2", has, (err <= 2).float()),
                                ("hit_open", valid & opening, hit.float()), ("err_open", has & opening, err),
                                ("w2_open", has & opening, (err <= 2).float())):
             acc[key][0] += float(val[mask].sum())
             acc[key][1] += float(mask.sum())
         if "p11_q" in data:
-            pq = torch.from_numpy(data["p11_q"][idx].astype(np.float32)).to(device)
-            po = torch.from_numpy(data["p11_off"][idx].astype(np.float32)).to(device)
+            pq = torch.from_numpy(np.asarray(data["p11_q"][idx]).astype(np.float32)).to(device)
+            po = torch.from_numpy(np.asarray(data["p11_off"][idx]).astype(np.float32)).to(device)
             moving = torch.ones_like(valid)
             agree = (pq.argmax(-1) == logits.argmax(-1)).float()
             e = ang_err_deg(headings(logits, off), headings(pq, po))
@@ -175,77 +235,123 @@ def evaluate(net_fn, data, device, torch, n=None, batch=4096):
     return {k: (v[0] / v[1] if v[1] else float("nan")) for k, v in acc.items()}
 
 
+def _gather(datasets, picks, keys):
+    """Host-side batch: rows ``picks[i]`` of ``datasets[i]`` concatenated, numpy."""
+    out = {}
+    for k in keys:
+        parts = [np.asarray(d[k][ix]) for d, ix in zip(datasets, picks) if len(ix)]
+        out[k] = np.concatenate(parts) if len(parts) > 1 else parts[0]
+    return out
+
+
 def cmd_train(args):
+    import queue
+    import threading
+
     import torch
 
     from blackout_env.sim.rollout_net import RolloutNet
     from blackout_env.train.distill.loss import angle_offset_loss, set_valued_cross_entropy
 
     torch.manual_seed(args.seed)
-    device = args.device
-    train = dict(np.load(Path(args.data) / "train.npz"))
-    val = dict(np.load(Path(args.data) / "val.npz"))
-    labelled = unpack_labels(train["labels"]).any(-1).any(-1)
-    pool = np.nonzero(labelled)[0]
+    device = args.device or default_device()
+    if device.startswith("cuda"):
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.benchmark = True
+    train = load_split(Path(args.data) / "train.npz")
+    val = load_split(Path(args.data) / "val.npz")
+    pool = np.nonzero(unpack_labels(np.asarray(train["labels"])).any(-1).any(-1))[0]
+    datasets, pools = [train], [pool]
     if args.extra:  # e.g. simulator DAgger rows (rollout_net_collect.py): a fixed fraction of each batch
-        extra = dict(np.load(args.extra))
-        n0 = len(train["tick"])
-        keys = [k for k in train if k in extra]
-        train = {k: np.concatenate([train[k], extra[k]]) for k in keys}
-        epool = n0 + np.nonzero(unpack_labels(extra["labels"]).any(-1).any(-1))[0]
+        extra = load_split(args.extra)
+        epool = np.nonzero(unpack_labels(np.asarray(extra["labels"])).any(-1).any(-1))[0]
+        datasets.append(extra)
+        pools.append(epool)
         print("extra rows", len(extra["tick"]), "labelled", len(epool), flush=True)
-        del extra
+    keys = ["map", "team_state", "agent_states", "labels", "angles", "tick"]
+    if args.p11_kl > 0:
+        keys += ["p11_q", "p11_off"]
     print("train rows", len(train["tick"]), "labelled", len(pool), "val", len(val["tick"]), flush=True)
     cfg = json.loads(args.config) if args.config else {}
     net = RolloutNet.from_checkpoint(args.init).train().to(device) if args.init else RolloutNet(**cfg).to(device)
-    print("params", sum(p.numel() for p in net.parameters()), cfg, flush=True)
-    opt = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=1e-4)
+    print("params", sum(p.numel() for p in net.parameters()), net.config, "device", device, "amp", args.amp, flush=True)
+    opt = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=1e-4, **({"fused": True} if device.startswith("cuda") else {}))
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=args.lr, total_steps=args.steps, pct_start=0.05)
-    rng = np.random.default_rng(args.seed)
+    scaler = torch.amp.GradScaler(enabled=args.amp == "fp16")
+    def producer(q: queue.Queue, stop: threading.Event, worker: int):
+        rng = np.random.default_rng([args.seed, worker])  # one generator per thread (not thread-safe)
+        while not stop.is_set():
+            if args.extra:
+                ne = int(args.batch * args.extra_frac)
+                picks = [np.sort(rng.choice(pools[0], args.batch - ne)), np.sort(rng.choice(pools[1], ne))]
+            else:
+                picks = [np.sort(rng.choice(pools[0], args.batch))]
+            b = _gather(datasets, picks, keys)
+            t = {k: torch.from_numpy(np.ascontiguousarray(b[k].astype(np.int32) if k == "map" else
+                                                          (b[k].astype(np.float32) if k in ("p11_q", "p11_off") else b[k])))
+                 for k in keys if k not in ("labels", "tick")}
+            t["labels"] = torch.from_numpy(unpack_labels(b["labels"]))
+            tick = b["tick"]
+            w = np.where((tick >= 0) & (tick < OPENING_TICKS), args.opening_weight, 1.0).astype(np.float32)
+            t["w"] = torch.from_numpy(w)
+            if device.startswith("cuda"):
+                t = {k: v.pin_memory() for k, v in t.items()}
+            while not stop.is_set():
+                try:
+                    q.put(t, timeout=1.0)
+                    break
+                except queue.Full:
+                    continue
+
+    q: queue.Queue = queue.Queue(maxsize=4)
+    stop = threading.Event()
+    workers = [threading.Thread(target=producer, args=(q, stop, i), daemon=True) for i in range(args.loader_threads)]
+    for th in workers:
+        th.start()
     t0 = time.time()
     log = []
-    for step in range(1, args.steps + 1):
-        if args.extra:
-            ne = int(args.batch * args.extra_frac)
-            idx = np.sort(np.concatenate([rng.choice(pool, args.batch - ne), rng.choice(epool, ne)]))
-        else:
-            idx = np.sort(rng.choice(pool, args.batch))
-        g, ts, ag = batch_tensors(train, idx, device, torch)
-        labels = torch.from_numpy(unpack_labels(train["labels"][idx])).to(device)
-        ang = torch.from_numpy(train["angles"][idx]).to(device)
-        tick = train["tick"][idx]
-        w = torch.from_numpy(np.where((tick >= 0) & (tick < OPENING_TICKS), args.opening_weight, 1.0).astype(np.float32)).to(device)
-        w = w[:, None].expand(-1, 5)
-        with torch.autocast(device_type=device, dtype=torch.bfloat16, enabled=args.amp):
-            logits, off = net(g, ts, ag)
-        logits, off = logits.float(), off.float()
-        ce, st = set_valued_cross_entropy(logits, labels, w)
-        al, ast = angle_offset_loss(off, ang, w, arc_bins=net.config["angle_arc_bins"])
-        loss = ce + args.angle_weight * al
-        if args.p11_kl > 0:
-            pq = torch.from_numpy(train["p11_q"][idx].astype(np.float32)).to(device)
-            po = torch.from_numpy(train["p11_off"][idx].astype(np.float32)).to(device)
-            kl = torch.nn.functional.kl_div(torch.log_softmax(logits, -1), torch.log_softmax(pq, -1),
-                                            log_target=True, reduction="none").sum(-1).mean()
-            j = pq.argmax(-1, keepdim=True)
-            oreg = (((off.gather(-1, j) - po.gather(-1, j)) / (math.pi / 32)) ** 2).mean()
-            loss = loss + args.p11_kl * (kl + oreg)
-        opt.zero_grad(set_to_none=True)
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
-        opt.step()
-        sched.step()
-        if step % args.log_every == 0 or step == args.steps:
-            row = {"step": step, "loss": float(loss), "ce": float(st["ce"]), "acc": float(st["accuracy"]),
-                   "angle_loss": float(ast["angle_loss"]), "s": time.time() - t0}
-            if step % args.eval_every == 0 or step == args.steps:
-                net.eval()
-                row.update({f"val_{k}": v for k, v in evaluate(lambda a, b, c: net(a, b, c), val, device, torch, n=min(60000, len(val["tick"]))).items()})
-                net.train()
-                torch.save({"config": net.config, "state": {k: v.cpu() for k, v in net.state_dict().items()},
-                            "args": vars(args), "step": step}, args.out)
-            log.append(row)
-            print(json.dumps(row), flush=True)
+    try:
+        for step in range(1, args.steps + 1):
+            b = {k: v.to(device, non_blocking=True) for k, v in q.get().items()}
+            g = expand_map(b["map"], torch)
+            labels, ang = b["labels"], b["angles"]
+            w = b["w"][:, None].expand(-1, 5)
+            with autocast(torch, device, args.amp):
+                logits, off = net(g, b["team_state"], b["agent_states"])
+            logits, off = logits.float(), off.float()
+            ce, st = set_valued_cross_entropy(logits, labels, w)
+            al, ast = angle_offset_loss(off, ang, w, arc_bins=net.config["angle_arc_bins"])
+            loss = ce + args.angle_weight * al
+            if args.p11_kl > 0:
+                pq, po = b["p11_q"], b["p11_off"]
+                kl = torch.nn.functional.kl_div(torch.log_softmax(logits, -1), torch.log_softmax(pq, -1),
+                                                log_target=True, reduction="none").sum(-1).mean()
+                j = pq.argmax(-1, keepdim=True)
+                oreg = (((off.gather(-1, j) - po.gather(-1, j)) / (math.pi / 32)) ** 2).mean()
+                loss = loss + args.p11_kl * (kl + oreg)
+            opt.zero_grad(set_to_none=True)
+            scaler.scale(loss).backward()
+            scaler.unscale_(opt)
+            torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
+            scaler.step(opt)
+            scaler.update()
+            sched.step()
+            if step % args.log_every == 0 or step == args.steps:
+                row = {"step": step, "loss": float(loss), "ce": float(st["ce"]), "acc": float(st["accuracy"]),
+                       "angle_loss": float(ast["angle_loss"]), "s": time.time() - t0}
+                if step % args.eval_every == 0 or step == args.steps:
+                    net.eval()
+                    row.update({f"val_{k}": v for k, v in evaluate(lambda a, b_, c: net(a, b_, c), val, device, torch, n=min(60000, len(val["tick"]))).items()})
+                    net.train()
+                    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+                    torch.save({"config": net.config, "state": {k: v.cpu() for k, v in net.state_dict().items()},
+                                "args": vars(args), "step": step}, args.out)
+                log.append(row)
+                print(json.dumps(row), flush=True)
+    finally:
+        stop.set()
+        for th in workers:
+            th.join(timeout=5)
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     torch.save({"config": net.config, "state": {k: v.cpu() for k, v in net.state_dict().items()},
                 "args": vars(args), "log": log}, args.out)
@@ -257,21 +363,28 @@ def cmd_eval(args):
     from blackout_env.sim.rollout_net import RolloutNet
     from blackout_env.train.distill.inference import _OwnQ, load_net
 
-    val = dict(np.load(Path(args.data) / "val.npz"))
-    device = args.device
+    device = args.device or default_device()
+    sets = {"val": load_split(Path(args.data) / "val.npz")}
+    for extra in args.val2:
+        sets[Path(extra).parent.name + "/" + Path(extra).stem] = load_split(extra)
     out = {}
-    if args.net:
-        net = RolloutNet.from_checkpoint(args.net).to(device)
-        out["small"] = evaluate(lambda a, b, c: net(a, b, c), val, device, torch)
+    for name in args.net:
+        net = RolloutNet.from_checkpoint(name).to(device)
+        out[name] = {k: evaluate(lambda a, b, c: net(a, b, c), d, device, torch) for k, d in sets.items()}
+        out[name]["params"] = sum(p.numel() for p in net.parameters())
+        print(name, json.dumps(out[name]), flush=True)
     if args.with_p11:
         p11 = _OwnQ(load_net(torch.load(P11, map_location="cpu", weights_only=True)["policy_state"]).eval()).to(device)
 
         def f(a, b, c):
-            with torch.autocast(device_type=device, dtype=torch.float16):
+            with torch.autocast(device_type=device.split(":")[0], dtype=torch.float16):
                 return p11(a, b, c)
 
-        out["p11"] = evaluate(f, val, device, torch)
-    print(json.dumps(out, indent=1))
+        out["p11"] = {k: evaluate(f, d, device, torch) for k, d in sets.items()}
+        print("p11", json.dumps(out["p11"]), flush=True)
+    if args.json:
+        Path(args.json).parent.mkdir(parents=True, exist_ok=True)
+        json.dump(out, open(args.json, "w"), indent=1)
 
 
 def main():
@@ -294,21 +407,26 @@ def main():
     p.add_argument("--angle-weight", type=float, default=1.0)
     p.add_argument("--opening-weight", type=float, default=1.5)
     p.add_argument("--p11-kl", type=float, default=0.0)
-    p.add_argument("--amp", action="store_true")
+    p.add_argument("--amp", default="", choices=["", "fp16", "bf16"], help="autocast dtype ('' = fp32)")
+    p.add_argument("--loader-threads", type=int, default=2)
     p.add_argument("--extra", default="", help="another packed train.npz mixed into every batch")
     p.add_argument("--extra-frac", type=float, default=0.5)
     p.add_argument("--init", default="", help="start from this RolloutNet checkpoint (its config)")
-    p.add_argument("--device", default="mps")
+    p.add_argument("--device", default="", help="default: cuda > mps > cpu")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--log-every", type=int, default=500)
     p.add_argument("--eval-every", type=int, default=5000)
     p = sub.add_parser("eval")
     p.add_argument("--data", required=True)
-    p.add_argument("--net", default="")
+    p.add_argument("--net", nargs="*", default=[])
+    p.add_argument("--val2", nargs="*", default=[], help="more held-out splits (e.g. the sim DAgger simval/val.npz)")
     p.add_argument("--with-p11", action="store_true")
-    p.add_argument("--device", default="mps")
+    p.add_argument("--device", default="")
+    p.add_argument("--json", default="")
+    p = sub.add_parser("convert", help="npz -> directory of .npy (memory-mapped by load_split)")
+    p.add_argument("npz", nargs="+")
     args = parser.parse_args()
-    {"pack": cmd_pack, "train": cmd_train, "eval": cmd_eval}[args.cmd](args)
+    {"pack": cmd_pack, "train": cmd_train, "eval": cmd_eval, "convert": cmd_convert}[args.cmd](args)
 
 
 if __name__ == "__main__":
