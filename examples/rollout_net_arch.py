@@ -59,7 +59,7 @@ def cmd_list(args):
     rows = {}
     for name in VARIANTS:
         net = RolloutNet(**config(name)).eval()
-        with FlopCounterMode(display=False) as fc, torch.inference_mode():
+        with FlopCounterMode(display=False) as fc:  # not inference_mode: the MHA fast path hides from the counter
             net(g, t, a)
         rows[name] = {"params": sum(p.numel() for p in net.parameters()), "mmac": fc.get_total_flops() / 2e6}
     b = rows["base"]["mmac"]
