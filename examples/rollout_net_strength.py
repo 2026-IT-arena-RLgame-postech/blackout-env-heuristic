@@ -206,6 +206,86 @@ def cmd_summary(args):
     json.dump(table, open(out / "summary.json", "w"), indent=1)
 
 
+def unity_rows(path: Path) -> list[dict]:
+    """examples/distill_heldout_eval.py's matches.jsonl -> this script's game rows (candidate /
+    opponent short names, lead, race from first Hunter times, lead at 30/60/120 s or the final lead
+    when the match ended earlier) plus the teacher-agreement counts."""
+    def short(x):
+        x = x.removeprefix("ckpt:")
+        for k, v in CKPT.items():
+            if Path(x).name == Path(v).name:
+                return k
+        return {v: k for k, v in HEUR.items()}.get(x, x)
+
+    rows = []
+    for line in path.read_text().splitlines():
+        d = json.loads(line)
+        lead = d["learner_score"] - d["opponent_score"]
+        fr = d.get("first_reached", {})
+        fc, fo = fr.get("first_hunter1_s", 1e9), fr.get("opp_first_hunter1_s", 1e9)
+        trace = {}
+        for s in (30, 60, 120):
+            m = d.get("margins", {}).get(f"margin_{s}s")
+            trace[str(s)] = m if m is not None else (lead if d["elapsed_s"] < s else float("nan"))
+        rows.append({"candidate": short(d["candidate"]), "opponent": short(d["opponent"]), "seed": d["seed"],
+                     "side": int(d["swap"]), "lead": lead, "race": int(np.sign(fo - fc)) if abs(fo - fc) > 0.05 else 0,
+                     "steps": int(d["elapsed_s"] * DPS), "over": d["elapsed_s"] >= 419, "exhausted": False,
+                     "trace": trace, "counts": d.get("counts", {})})
+    return rows
+
+
+def cmd_unity_summary(args):
+    rows = unity_rows(Path(args.out) / "matches.jsonl")
+    table = summarize(rows, args.ref)
+    lines = [f"{'candidate':10s} {'opponent':10s} {'n':>5s} {'margin':>7s} {'±se':>5s} {'W/D/L %':>14s} "
+             f"{'race W/T/L':>14s} {'Δ vs ' + args.ref:>10s} {'±se':>5s} {'same race':>9s}"]
+    for r in table:
+        d = f"{r['dmargin']:+10.1f} {r['dmargin_se']:5.1f} {r['same_race']:9.3f}" if "dmargin" in r else ""
+        lines.append(f"{r['candidate']:10s} {r['opponent']:10s} {r['n']:5d} {r['margin']:+7.1f} {r['margin_se']:5.1f} "
+                     f"{100 * r['win']:4.0f}/{100 * r['draw']:3.0f}/{100 * r['loss']:3.0f}  "
+                     f"{'/'.join(map(str, r['race'])):>14s} {d}")
+    lines += ["", f"paired Δ lead vs {args.ref} at 30 / 60 / 120 s / final (ended matches: their final lead)"]
+    for r in table:
+        if "dmargin" not in r:
+            continue
+        sub = [d for d in rows if (d["candidate"], d["opponent"]) in ((r["candidate"], r["opponent"]), (args.ref, r["opponent"]))]
+        cells = []
+        for s in ("30", "60", "120"):
+            ok = [d for d in sub if not math.isnan(d["trace"][s])]
+            t = next(x for x in summarize(ok, args.ref, key=lambda d, s=s: d["trace"][s]) if x["candidate"] == r["candidate"])
+            cells.append(f"{t['dmargin']:+5.1f}±{t['dmargin_se']:3.1f}")
+        lines.append(f"{r['candidate']:10s} vs {r['opponent']:10s} " + " ".join(cells) + f" {r['dmargin']:+5.1f}±{r['dmargin_se']:3.1f}")
+    # agreement with the V23 act-teacher on the student's own states, by match time
+    lines += ["", "agreement with act:strategic_v23 (label hit) / heading error (deg) on own states, by time bucket"]
+    for (c, o) in sorted({(d["candidate"], d["opponent"]) for d in rows}):
+        tot = defaultdict(float)
+        for d in rows:
+            if (d["candidate"], d["opponent"]) == (c, o):
+                for k, v in d["counts"].items():
+                    tot[k] += v
+        cells = []
+        for b in ("all", "t_0_30s", "t_30_60s", "t_60_120s", "t_120s_plus"):
+            hit, n = tot.get(f"agree_hit/{b}", 0), tot.get(f"agree_n/{b}", 0)
+            ae, an = tot.get(f"angle_err_sum/{b}", 0), tot.get(f"angle_n/{b}", 0)
+            cells.append(f"{b}: {hit / max(n, 1):.3f}/{ae / max(an, 1):4.1f}")
+        ae, an = tot.get("angle_err_sum/opening", 0), tot.get("angle_n/opening", 0)
+        w2 = tot.get("angle_within2_hit/opening", 0)
+        cells.append(f"opening<10s: {ae / max(an, 1):4.1f} deg, <=2deg {w2 / max(an, 1):.2f}")
+        lines.append(f"{c:10s} vs {o:10s} " + "  ".join(cells))
+    lines.append("")
+    for (c, o) in sorted({(d["candidate"], d["opponent"]) for d in rows}):
+        grp = [d for d in rows if (d["candidate"], d["opponent"]) == (c, o)]
+        lead, race = np.array([d["lead"] for d in grp]), np.array([d["race"] for d in grp])
+        steps = np.array([d["steps"] for d in grp])
+        cond = " ".join(f"{name} {lead[race == v].mean():+.1f}(n{(race == v).sum()})"
+                        for name, v in (("raceW", 1), ("raceT", 0), ("raceL", -1)) if (race == v).any())
+        lines.append(f"{c:10s} vs {o:10s} length {steps.mean() / DPS:5.1f}s timeout {np.mean([d['over'] for d in grp]):.2f} | margin by race: {cond}")
+    text = "\n".join(lines)
+    print(text)
+    (Path(args.out) / "summary_paired.txt").write_text(text + "\n")
+    json.dump(table, open(Path(args.out) / "summary_paired.json", "w"), indent=1)
+
+
 def cmd_latency(args):
     """Per-decision latency of one team's move: MyPolicy.act on an observation dict (the Unity path:
     canonicalise, tensors, forward, decode) and the bare forward, CPU (1 thread and default) and MPS."""
@@ -291,12 +371,15 @@ def main():
     s = sub.add_parser("summary")
     s.add_argument("--ref", default="p11")
     s.add_argument("--out", default="reports/rollout_net_strength/sim")
+    s = sub.add_parser("unity-summary", help="pair a distill_heldout_eval.py --out (r5 / p11 checkpoints)")
+    s.add_argument("--ref", default="p11")
+    s.add_argument("--out", default="reports/rollout_net_strength/unity")
     s = sub.add_parser("latency")
     s.add_argument("--nets", nargs="+", default=["p11", "r5"])
     s.add_argument("--reps", type=int, default=300)
     s.add_argument("--out", default="")
     args = p.parse_args()
-    {"sim": cmd_sim, "summary": cmd_summary, "latency": cmd_latency}[args.cmd](args)
+    {"sim": cmd_sim, "summary": cmd_summary, "unity-summary": cmd_unity_summary, "latency": cmd_latency}[args.cmd](args)
 
 
 if __name__ == "__main__":

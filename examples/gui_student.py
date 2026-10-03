@@ -1,19 +1,19 @@
-"""A distilled student (any distill checkpoint: K-bin, logits, angle head) against opponents, Unity window visible.
+"""A distilled student (any distill checkpoint: K-bin, logits, angle head; or a RolloutNet checkpoint such as
+checkpoints/rollout_net/r5.pt) against opponents, Unity window visible.
 
 Usage:
     python examples/gui_student.py checkpoints/distill/frozen/p11_v22.pt strategic_v19
     python examples/gui_student.py checkpoints/distill/frozen/p11_v22.pt strategic_v19 strategic_v23 --speed 3 --seeds 2
+    python examples/gui_student.py checkpoints/rollout_net/r5.pt strategic_v23 ckpt:checkpoints/distill/frozen/p11_v22.pt
 """
 
 from __future__ import annotations
 
 import argparse
 
-import torch
-
 from blackout_env import BlackOutEnv
 from blackout_env.train.distill.collect import MatchTask, play_labelled_match
-from blackout_env.train.distill.inference import load_net, make_student
+from blackout_env.train.distill.inference import checkpoint_meta, load_checkpoint_net, make_student
 
 
 def main() -> None:
@@ -27,10 +27,10 @@ def main() -> None:
     p.add_argument("--headless", action="store_true")
     args = p.parse_args()
 
-    ckpt = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
-    student = make_student(load_net(ckpt["policy_state"]), "iqn")
-    bins = int(ckpt.get("distill", {}).get("action_bins", 8))
-    print(f"student {args.checkpoint} (v{ckpt.get('distill', {}).get('version')}, {bins} bins)", flush=True)
+    meta = checkpoint_meta(args.checkpoint)
+    student = make_student(load_checkpoint_net(args.checkpoint), "iqn")
+    bins = int(meta.get("action_bins", 8))
+    print(f"student {args.checkpoint} (v{meta.get('version')}, {bins} bins)", flush=True)
     env = BlackOutEnv(args.build, time_scale=args.speed, no_graphics=args.headless, unity_shaping=False)
     try:
         for opp in args.opponents:

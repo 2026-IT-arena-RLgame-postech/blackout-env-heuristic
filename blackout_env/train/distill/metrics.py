@@ -100,6 +100,7 @@ class MatchRecorder:
 
         c = self.counts
         roles = {name: _role(states[unit_index(name)]) for name in learner_obs}
+        bucket = next(f"{lo}_{hi}s" if hi < 10_000 else f"{lo}s_plus" for lo, hi in TIME_BUCKETS if lo <= elapsed < hi)
         for name in learner_obs:
             label, role = labels[name], roles[name]
             controller = "teacher" if teacher_drove[name] else "student"
@@ -110,20 +111,19 @@ class MatchRecorder:
             if label.valid and name in student_actions:  # does the student agree where it was asked?
                 hit = bool(label.mask[_move_bin(student_actions[name], len(label.mask))])
                 hit8 = bool(compass[name].mask[int(direction_vector_to_idx(student_actions[name]))]) if compass is not None else None
-                for key in ("all", f"role_{role}", f"kind_{label.kind}", f"{controller}_driving"):
+                for key in ("all", f"role_{role}", f"kind_{label.kind}", f"{controller}_driving", f"t_{bucket}"):
                     c[f"agree_hit/{key}"] += hit
                     c[f"agree_n/{key}"] += 1
                     if hit8 is not None:
                         c[f"agree8_hit/{key}"] += hit8
                         c[f"agree8_n/{key}"] += 1
                 if teacher_moves is not None and label.kind == "act" and name in teacher_moves:
-                    self._count_angle(student_actions[name], teacher_moves[name], elapsed)
+                    self._count_angle(student_actions[name], teacher_moves[name], elapsed, bucket)
             elif name in student_actions:  # the teacher stands here: does the student?
                 c["agree_hit/stand"] += not np.any(student_actions[name])
                 c["agree_n/stand"] += 1
             self._count_reversal(name, np.asarray(actions[name], np.float32), controller)
 
-        bucket = next(f"{lo}_{hi}s" if hi < 10_000 else f"{lo}s_plus" for lo, hi in TIME_BUCKETS if lo <= elapsed < hi)
         c[f"bucket_ticks/{bucket}"] += 1
         for role in roles.values():
             c[f"bucket_units/{role}/{bucket}"] += 1
@@ -141,13 +141,14 @@ class MatchRecorder:
         self._observe_camping(view["graphic"], states)
         self._pending = (view["graphic"], states.copy(), {n: actions[n] for n in learner_obs})
 
-    def _count_angle(self, student_move, teacher_move, elapsed: float) -> None:
+    def _count_angle(self, student_move, teacher_move, elapsed: float, bucket: str | None = None) -> None:
         teacher = move_angle(np.clip(np.asarray(teacher_move, np.float32), -1.0, 1.0))
         if math.isnan(teacher):
             return
         student = move_angle(student_move)
         err = 180.0 if math.isnan(student) else abs(math.degrees(wrap_angle(student - teacher)))
-        for split in ANGLE_SPLITS[: 1 + (elapsed < OPENING_SECONDS)]:
+        splits = ANGLE_SPLITS[: 1 + (elapsed < OPENING_SECONDS)] + ((f"t_{bucket}",) if bucket else ())
+        for split in splits:
             self.counts[f"angle_err_sum/{split}"] += err
             self.counts[f"angle_within2_hit/{split}"] += err <= ANGLE_TOL_DEG
             self.counts[f"angle_n/{split}"] += 1
@@ -235,7 +236,7 @@ def rates(counts: dict[str, float]) -> dict[str, float]:
     for key in [k for k in c if k.startswith("agree8_n/")]:  # K-bin labels: the 8-way agreement too
         name = key.split("/", 1)[1]
         out[f"agree8/{name}"] = c[f"agree8_hit/{name}"] / max(1, c[key])
-    for split in ANGLE_SPLITS:  # P11: the student's heading vs the act-teacher's raw one
+    for split in [*ANGLE_SPLITS, *(k.split("/", 1)[1] for k in c if k.startswith("angle_n/t_"))]:  # P11: vs the act-teacher's raw heading
         if c[f"angle_n/{split}"]:
             out[f"angle_err_deg/{split}"] = c[f"angle_err_sum/{split}"] / c[f"angle_n/{split}"]
             out[f"angle_within2/{split}"] = c[f"angle_within2_hit/{split}"] / c[f"angle_n/{split}"]
