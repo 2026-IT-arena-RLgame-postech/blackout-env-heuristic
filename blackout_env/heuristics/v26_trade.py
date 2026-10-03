@@ -16,8 +16,9 @@ Rules (all off = V25 exactly, ``tests/test_v26_trade.py``):
 
 * ``late_trade`` -- each enemy Hunter outside its base is matched (greedy, shortest path first) to
   one of our Hunters, which hunts it instead of its V17/V22 goal.  ``trade_mode``: ``"parity"``
-  only while we do not have more Hunters than they do (the race-lost / deficit situation),
-  ``"always"`` whenever an enemy Hunter is out.  ``trade_until`` seconds into the match (inf = any
+  only while we do not have more Hunters than they do (the race-lost situation), ``"deficit"``
+  only while we have fewer, ``"always"`` whenever an enemy Hunter is out, ``"camper"`` only enemy
+  Hunters within ``trade_camp_radius`` tiles of our spawn (camping our exit; any counts).  ``trade_until`` seconds into the match (inf = any
   time; e.g. 20 = opening only).  ``trade_radius`` tiles of path at most (inf = any distance).
 * ``trade_walk_reach`` -- while we have no Hunter and an enemy Hunter is out, the Collector
   (no special item) with the shortest exact path to the sanctuary within this many tiles is sent
@@ -43,7 +44,8 @@ from .v17_planner import MATCH_SECONDS
 from .v22_teacher import CONTACT_RADIUS
 from .v25_race import StrategicHeuristicV25
 
-TRADE_MODES = ("parity", "always")
+TRADE_MODES = ("parity", "deficit", "always", "camper")
+CAMP_RADIUS = 7.0  # tiles from our spawn: V17 values an enemy Hunter there at 12 (a camper)
 WALK_COUNTS = ("one", "deficit")
 
 
@@ -52,13 +54,14 @@ class StrategicHeuristicV26(StrategicHeuristicV25):
 
     def __init__(self, *, late_trade: bool = True, trade_mode: str = "parity", trade_until: float = math.inf,
                  trade_radius: float = math.inf, trade_walk_reach: float = 0.0, trade_walk_count: str = "one",
-                 trade_walk_safe: bool = True, **kwargs):
+                 trade_walk_safe: bool = True, trade_camp_radius: float = CAMP_RADIUS, **kwargs):
         super().__init__(**kwargs)
         if trade_mode not in TRADE_MODES:
             raise ValueError(f"trade_mode {trade_mode!r} not in {TRADE_MODES}")
         self.late_trade = bool(late_trade)
         self.trade_mode = trade_mode
         self.trade_until = float(trade_until)
+        self.trade_camp_radius = float(trade_camp_radius)
         self.trade_radius = float(trade_radius)
         self.trade_walk_reach = float(trade_walk_reach)
         if trade_walk_count not in WALK_COUNTS:
@@ -82,8 +85,16 @@ class StrategicHeuristicV26(StrategicHeuristicV25):
         enemies = self._enemy_hunters(ctx)
         if not enemies:
             return goals
-        if self.trade_mode == "parity" and len(hunters) > sum(e.cls == HUNTER for e in ctx["enemies"]):
+        theirs = sum(e.cls == HUNTER for e in ctx["enemies"])
+        if self.trade_mode == "parity" and len(hunters) > theirs:
             return goals
+        if self.trade_mode == "deficit" and len(hunters) >= theirs:
+            return goals
+        if self.trade_mode == "camper":
+            spawn = ctx["ally_spawn"]
+            enemies = [e for e in enemies if spawn is not None and math.dist(e.pos, spawn) <= self.trade_camp_radius]
+            if not enemies:
+                return goals
         pairs = []
         for h in hunters:
             field = self._cached_distance_map(ctx["walkable"], h.pos)

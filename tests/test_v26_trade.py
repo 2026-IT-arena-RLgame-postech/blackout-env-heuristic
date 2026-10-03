@@ -77,3 +77,12 @@ def test_v26_is_a_function_of_the_observation():
     for obs in _fixtures():
         x, y = played.act(obs), StrategicHeuristicV26(trade_walk_reach=4.0).act(obs)
         assert all(np.array_equal(x[n], y[n]) for n in x)
+
+
+def test_deficit_and_camper_modes():
+    far = _hunter(_obs({1: (12, 6), 2: (16, 3)}, camper=(6, 14)), 1)   # one each, theirs far from our spawn
+    near = _hunter(_obs({1: (12, 6), 2: (16, 3)}, camper=(4, 5)), 1)   # theirs camping our exit
+    for obs, mode, traded in ((far, "deficit", False), (far, "camper", False), (near, "camper", True)):
+        played = StrategicHeuristicV26(trade_mode=mode)
+        played.teach(obs)
+        assert (played.traders == ["unit_1"]) is traded, (mode, played.traders)
