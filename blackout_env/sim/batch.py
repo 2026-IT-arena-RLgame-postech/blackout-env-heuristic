@@ -251,6 +251,19 @@ class BatchSim:
         return rs, rm
 
 
+def batteries_in_play(bsim: BatchSim, idx: np.ndarray) -> np.ndarray:
+    """[len(idx)] battery points on the map (floor and storages) plus carried, as
+    ``dead_segments.batteries_in_play`` reads them off an observation (team A's view)."""
+    idx = np.ascontiguousarray(idx, dtype=np.int64)
+    g = np.zeros((len(idx), 2, N_CH, H, W), F32)
+    t = np.zeros((len(idx), 2, 4), F32)
+    a = np.zeros((len(idx), 2, 10, N_AGENT_COLS), F32)
+    batch_render_seq(bsim.Sb, bsim.bg, idx, g, t, a)
+    on_map = np.rint(g[:, 0, 8] * 15).reshape(len(idx), -1).sum(1)
+    carried = np.rint(np.maximum(a[:, 0, :, 4], 0) * 15).sum(1)
+    return on_map + carried
+
+
 # ---------------------------------------------------------------------------------- decoding
 
 def mirror_order(k: int) -> np.ndarray:
@@ -438,6 +451,8 @@ class RolloutResult:
     first_hunter: np.ndarray  # int [N, 2] first decision index (from the root) a team had a Hunter, -1 never
     positions: np.ndarray | None  # float32 [T, N, 10, 2] per-step positions (record=True)
     bsim: BatchSim
+    exhausted: np.ndarray | None = None   # bool [N] stopped: no battery left after an absorption (stop_when_exhausted)
+    lead_trace: np.ndarray | None = None  # int [len(trace_steps), N] team A's lead after each trace step (the final lead past the end)
 
     def lead(self, team: int = 0) -> np.ndarray:
         return self.scores[:, team] - self.scores[:, 1 - team]
@@ -466,7 +481,10 @@ class BatchRollout:
         return self._buf
 
     def run(self, roots: list[SimState], horizon: int, reseeds=None, record: bool = False,
-            bsim: BatchSim | None = None) -> RolloutResult:
+            bsim: BatchSim | None = None, stop_when_exhausted: bool = False, trace_steps=()) -> RolloutResult:
+        """``stop_when_exhausted``: a game also ends at an absorption that leaves no battery in play
+        (floor, storages, carried) -- the Unity evaluations' ``MatchTask.stop_when_exhausted``: nothing
+        is left to score.  ``trace_steps``: decision counts after which team A's lead is recorded."""
         if bsim is None:
             bsim = BatchSim(roots)
         else:
@@ -489,8 +507,11 @@ class BatchRollout:
         clock = time.perf_counter
         tm_ = self.timing = {"render": 0.0, "policy": 0.0, "step": 0.0, "calls": 0, "game_decisions": 0}
         done = 0
+        stopped = np.zeros(n, bool)
+        trace_steps = [int(x) for x in trace_steps]
+        trace = np.zeros((len(trace_steps), n), np.int64)
         for t in range(horizon):
-            live = np.nonzero(~bsim.over)[0]
+            live = np.nonzero(~bsim.over & ~stopped)[0]
             if not len(live):
                 break
             past = bsim.g[live, core.G_TICK] >= self.opening_ticks
@@ -520,8 +541,13 @@ class BatchRollout:
                 if self.repeat[team] > 1:
                     since[team, live] = np.where(past, (since[team, live] + 1) % self.repeat[team], 0)
             c0 = clock()
+            abs_before = bsim.gf[live, core.GF_ABS].copy() if stop_when_exhausted else None
             bsim.step(moves, live, parallel=self.parallel)
             tm_["step"] += clock() - c0
+            if stop_when_exhausted:
+                fired = live[(bsim.gf[live, core.GF_ABS] < abs_before) & ~bsim.over[live]]
+                if len(fired):
+                    stopped[fired[batteries_in_play(bsim, fired) == 0]] = True
             tm_["game_decisions"] += len(live)
             steps[live] += 1
             for team in (0, 1):
@@ -529,8 +555,17 @@ class BatchRollout:
                 first[live[hit], team] = t + 1
             if record:
                 pos[t] = bsim.uf
+            for i, at in enumerate(trace_steps):
+                if at == t + 1:
+                    trace[i] = bsim.scores[:, 0] - bsim.scores[:, 1]
             done = t + 1
+        final = bsim.scores[:, 0] - bsim.scores[:, 1]
+        for i, at in enumerate(trace_steps):
+            ended = steps < at  # the game ended before this step: its final lead
+            trace[i, ended] = final[ended]
         over = bsim.over.copy()
         winner = np.where(over, bsim.g[:, core.G_WINNER], -1)
+        winner = np.where(stopped, np.where(final > 0, 0, np.where(final < 0, 1, -1)), winner)
         return RolloutResult(bsim.scores, over, winner, steps, bsim.ticks, first,
-                             pos[:done] if record else None, bsim)
+                             pos[:done] if record else None, bsim, stopped if stop_when_exhausted else None,
+                             trace if trace_steps else None)

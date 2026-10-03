@@ -96,10 +96,15 @@ class _FastNet(nn.Module):
 
     def __init__(self, net: MyModel, tau: torch.Tensor | None = None, n_quantiles: int = N_QUANTILES_DEFAULT):
         super().__init__()
+        from blackout_env.sim.rollout_net import RolloutNet, RolloutOwnQ
+
         net = net.eval()
         self.is_temporal = bool(getattr(net, "is_temporal", False))
-        self.own = _OwnQStep(net) if self.is_temporal else _OwnQ(net)
-        self.uses_tau = getattr(net, "policy_head", "iqn") == "iqn"
+        if isinstance(net, RolloutNet):  # the small rollout net: logits + offsets, no tau, stateless
+            self.own = RolloutOwnQ(net)
+        else:
+            self.own = _OwnQStep(net) if self.is_temporal else _OwnQ(net)
+        self.uses_tau = not isinstance(net, RolloutNet) and getattr(net, "policy_head", "iqn") == "iqn"
         self.angle_head = bool(getattr(net, "angle_head", False))
         self.fixed_tau, self.n_quantiles = tau, n_quantiles
         self._traced = None
@@ -214,6 +219,31 @@ def load_net(state: dict, temporal: bool | None = None, policy_head: str | None 
     (identity-initialised memory, the same Q-values); ``policy_head="logits"`` converts an IQN
     state; see ``MyModel.from_state_dict``."""
     return MyModel.from_state_dict(state, temporal=temporal, policy_head=policy_head)
+
+
+def load_checkpoint_net(path) -> nn.Module:
+    """The policy net of a student checkpoint at ``path``: a distill checkpoint (``policy_state``:
+    a MyModel, ``load_net``) or a rollout-net checkpoint (``config`` + ``state``:
+    sim/rollout_net.py's ``RolloutNet``, e.g. r5) -- both take the same canonical-frame inputs
+    and give K logits + offsets for the own rows, so ``make_student`` drives either."""
+    ckpt = torch.load(path, map_location="cpu", weights_only=True)
+    if "policy_state" in ckpt:
+        return load_net(ckpt["policy_state"])
+    if "config" in ckpt and "state" in ckpt:
+        from blackout_env.sim.rollout_net import RolloutNet
+
+        net = RolloutNet(**ckpt["config"])
+        net.load_state_dict(ckpt["state"])
+        return net.eval()
+    raise ValueError(f"{path}: neither a distill (policy_state) nor a rollout-net (config/state) checkpoint")
+
+
+def checkpoint_meta(path) -> dict:
+    """A distill checkpoint's ``distill`` dict (version, action_bins, ...); a rollout net's equivalent."""
+    ckpt = torch.load(path, map_location="cpu", weights_only=True)
+    if "policy_state" in ckpt:
+        return dict(ckpt.get("distill", {}))
+    return {"version": 0, "action_bins": int(ckpt.get("config", {}).get("k", 32)), "rollout_net": True}
 
 
 def make_student(net: MyModel, inference: str = "iqn") -> MyPolicy:

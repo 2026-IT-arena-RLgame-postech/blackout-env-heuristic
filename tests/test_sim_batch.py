@@ -179,3 +179,67 @@ def test_heuristic_policy_both_teams_move():
     start = SimState.from_seed(7).uf
     moved = np.abs(res.positions[-1, 0] - start).sum(axis=1) > 0
     assert moved[:5].any() and moved[5:].any()
+
+
+def _rollout_net(seed=0):
+    from blackout_env.sim.rollout_net import RolloutNet
+
+    torch.manual_seed(seed)
+    return RolloutNet(arch="attn", d=32, layers=1, heads=2, hidden=32).eval()
+
+
+def test_rollout_net_student_matches_batched_policy(tmp_path):
+    """A RolloutNet checkpoint (config + state) loads through the distill student path
+    (inference.load_checkpoint_net + make_student: the Unity evaluations' MyPolicy) and plays the
+    same trajectory as the simulator's NetPolicy at batch 1."""
+    from blackout_env.train.distill.inference import checkpoint_meta, load_checkpoint_net, make_student
+
+    torch.set_num_threads(1)
+    net = _rollout_net(3)
+    path = tmp_path / "rnet.pt"
+    torch.save({"config": net.config, "state": net.state_dict()}, path)
+    assert checkpoint_meta(path)["action_bins"] == 32
+    stu = make_student(load_checkpoint_net(path))
+    roots = _trace_states(120)[:2] + [SimState.from_seed(22)]
+    steps = 30
+    ref = []
+    for i, r in enumerate(roots):
+        sim = r.copy()
+        sim.reseed(200 + i)
+        traj = []
+        for _ in range(steps):
+            if sim.over:
+                break
+            obs = sim.obs()
+            acts = {**stu.act({f"unit_{u}": obs[f"unit_{u}"] for u in range(5)}),
+                    **stu.act({f"unit_{u}": obs[f"unit_{u}"] for u in range(5, 10)})}
+            mv = np.zeros((10, 2), np.float32)
+            for k, v in acts.items():
+                mv[int(k.split("_")[1])] = np.clip(np.asarray(v, np.float32), -1, 1)
+            sim.step(mv)
+            traj.append(sim.uf.copy())
+        ref.append(np.array(traj))
+    pol = NetPolicy(load_checkpoint_net(path), device="cpu", per_sample=True)
+    res = BatchRollout(pol, pol).run(roots, steps, reseeds=[200 + i for i in range(len(roots))], record=True)
+    for b, traj in enumerate(ref):
+        assert np.abs(res.positions[: len(traj), b] - traj).max() < 1e-4, b
+
+
+def test_stop_when_exhausted_and_lead_trace():
+    """A game stops at an absorption that leaves no battery in play; the lead trace holds the
+    final lead past a game's end."""
+    from blackout_env.sim import core
+    from blackout_env.sim.batch import batteries_in_play
+
+    s = SimState.from_seed(9)
+    assert batteries_in_play(BatchSim([s]), np.array([0]))[0] > 0
+    empty = s.copy()
+    for i in range(empty.it.shape[0]):  # every battery back to the pool
+        if empty.it[i, core.I_TYPE] == 0 and empty.it[i, core.I_STATE] != core.POOL:
+            empty.it[i, core.I_STATE] = core.POOL
+    assert batteries_in_play(BatchSim([empty]), np.array([0]))[0] == 0
+    pol = _Counter()
+    res = BatchRollout(pol, pol).run([s, empty], 30 * 25, stop_when_exhausted=True, trace_steps=[10, 2000])
+    assert not res.exhausted[0] and res.exhausted[1]
+    assert res.steps[1] <= 20 * 25 + 1 and res.steps[0] == 30 * 25
+    assert res.lead_trace.shape == (2, 2) and res.lead_trace[1, 1] == res.lead(0)[1]

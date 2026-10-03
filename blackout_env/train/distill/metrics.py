@@ -132,6 +132,9 @@ class MatchRecorder:
             key = f"first_{role}{needed}_s"
             if key not in self.first_reached and present[role] >= needed:
                 self.first_reached[key] = round(elapsed, 2)
+        if "opp_first_hunter1_s" not in self.first_reached and any(  # the race: who has a Hunter first
+                _role(states[unit_index(n)]) == "hunter" for n in self.opponent_names):
+            self.first_reached["opp_first_hunter1_s"] = round(elapsed, 2)
         for at in MARGIN_AT:
             if f"margin_{at}s" not in self.margins and elapsed >= at:
                 self.margins[f"margin_{at}s"] = round((float(view["team_state"][0]) - float(view["team_state"][1])) * 100, 1)
