@@ -63,6 +63,7 @@ import torch
 
 from blackout_env.model.direction_bins import ACTION_BINS, SET_HALF_WIDTH_DEG, bins_of_width, resample_rows
 from blackout_env.model.my_model import ANGLE_KEY_PREFIX, POLICY_HEADS, TEMPORAL_PREFIX, MyModel
+from blackout_env.train.accel import adamw, check_amp, pick_device, pinned
 from blackout_env.train.distill.collect import CollectorPool, MatchTask, teacher_arg
 from blackout_env.train.distill.inference import INFERENCE
 from blackout_env.train.distill.dataset import (
@@ -81,6 +82,8 @@ HELDOUT_SEEDS = range(900_000, 1_000_000)
 # an embedding broadcast over the batch (token_type_emb, vec_slot_emb, spr_cls_emb) by the batch
 # size, so the embeddings stay eager; compiled this way every gradient matches CPU eager.
 COMPILED_MODULES = ("graphic_encoder", "vector_encoder", "attention", "q_head")  # examples/distill_heldout_eval.py
+# On CUDA the bug does not occur (tests/test_accel.py: whole-MyModel compiled gradients = eager),
+# so a stateless student is compiled whole there (one graph, embeddings and derived features included).
 
 
 def parse_args(argv=None) -> argparse.Namespace:
@@ -189,7 +192,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--window", type=int, default=32, help="--temporal: trained ticks per window")
     p.add_argument("--burn-in", type=int, default=32, help="--temporal: ticks before each window that only build memory")
     p.add_argument("--max-rows", type=int, default=600_000, help="replay ring size (~8 KB per row in RAM)")
-    p.add_argument("--device", default="mps" if torch.backends.mps.is_available() else "cpu")
+    p.add_argument("--device", default="auto", help="auto = cuda > mps > cpu")
     args = p.parse_args(argv)
     if args.angle_head and args.policy_head != "logits":
         p.error("--angle-head needs --policy-head logits")
@@ -317,15 +320,18 @@ class Learner:
 
     def __init__(self, args):
         self.args = args
-        self.device = torch.device(args.device)
+        self.device = pick_device(args.device)
+        check_amp(self.device, args.amp)
         self.net = MyModel(n_actions=args.action_bins + int(args.stand_action), temporal=args.temporal,
                            policy_head=args.policy_head, angle_head=args.angle_head,
                            angle_arc_bins=args.angle_arc_bins).to(self.device)
         self.angle = bool(args.angle_head)
-        if args.compile:
+        if args.compile and self.device.type == "cuda" and not args.temporal:
+            self.net.compile()  # in place: state_dict keys stay the same (COMPILED_MODULES comment)
+        elif args.compile:
             for name in COMPILED_MODULES:  # in place: state_dict keys stay the same
                 getattr(self.net, name).compile()
-        self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        self.optimizer = adamw(self.net.parameters(), self.device, lr=args.lr, weight_decay=args.weight_decay)
         self._bit_index = torch.arange(args.action_bins, device=self.device)
         self.accuracy = LabelAccuracy(self.device)
         self._totals = defaultdict(lambda: torch.zeros((), device=self.device))
@@ -338,8 +344,9 @@ class Learner:
     def _tensors(self, rows: dict[str, np.ndarray]):
         # K > 8 labels are uint64 bit sets: the same bits as int64 (MPS has no uint64 shifts;
         # an arithmetic shift still reads bit 63 right after the & 1)
-        batch = {k: torch.from_numpy(rows[k].view(np.int64) if rows[k].dtype == np.uint64 else rows[k]).to(self.device)
-                 for k in FIELDS}
+        # (cuda: pinned host copies, so the copies to the GPU are asynchronous)
+        batch = {k: pinned(rows[k].view(np.int64) if rows[k].dtype == np.uint64 else rows[k], self.device)
+                 .to(self.device, non_blocking=True) for k in FIELDS}
         graphic = batch["graphic"].permute(0, 3, 1, 2).float() / GRAPHIC_SCALE
         masks = ((batch["labels"].long().unsqueeze(-1) >> self._bit_index) & 1) == 1  # dataset.unpack_labels
         classes = batch["agent_states"][:, :N_TEAM, CLASS_COLS]
@@ -349,7 +356,7 @@ class Learner:
             masks = torch.cat((masks, stand.unsqueeze(-1)), dim=-1)
             kinds = torch.where(stand, torch.full_like(kinds, KIND_INDEX["stand"]), kinds)
         # P11: the teacher's raw headings (NaN = none) and seconds of play (team_state[2] = time left)
-        aux = {"angles": torch.from_numpy(np.ascontiguousarray(angles_of(rows))).to(self.device),
+        aux = {"angles": pinned(angles_of(rows), self.device).to(self.device, non_blocking=True),
                "elapsed": (1.0 - batch["team_state"][:, 2].float()) * MATCH_SECONDS}
         return graphic, batch["team_state"], batch["agent_states"], masks, classes, kinds, aux
 
