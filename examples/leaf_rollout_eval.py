@@ -371,7 +371,8 @@ def metrics(roots, recs, V, var, predictor, mkey="_m") -> dict:
     g = np.array(gains)
     return {"conc": float(np.mean(agree)), "conc5": float(np.mean(agree5)), "gain": float(g.mean()),
             "gain_se": float(g.std() / np.sqrt(len(g))), "regret": float(np.mean(regrets)),
-            "oracle_cv": float(np.mean(ocv)), "share": float(g.mean() / np.mean(ocv)), "n": len(g)}
+            "oracle_cv": float(np.mean(ocv)), "share": float(g.mean() / np.mean(ocv)), "n": len(g),
+            "gains": [float(x) for x in g]}
 
 
 # ------------------------------------------------------------------------------ driver
@@ -390,6 +391,7 @@ def main():
     p.add_argument("--cache", type=Path, default=None, help="save leaf states + ground truth here (pickle)")
     p.add_argument("--from-cache", type=Path, default=None, help="score --values on a saved cache")
     p.add_argument("--tag", default="", help="results_<tag>.json/.txt")
+    p.add_argument("--paired-ref", default="", help="predictor name (e.g. iter5_sym) for paired gain differences")
     args = p.parse_args()
     import os
 
@@ -495,6 +497,17 @@ def score(roots, recs, timing, values: dict, args, gt: bool):
                 lines.append(f"{var:14s} {pr:10s} " + " ".join(f"{c:>22s}" for c in cells))
         lines.append("oracle_cv gain (r5 GT): " + ", ".join(
             f"{b} {table[f'gtr5|{variants[0]}|lead|{b}']['oracle_cv']:+.2f}" for b in buckets))
+        if args.paired_ref:
+            lines.append(f"\n--- paired gain difference vs {args.paired_ref} (r5 GT, per-root mean +- se)")
+            for var in variants:
+                for pr in PREDICTORS:
+                    cells = []
+                    for bname in buckets:
+                        a = np.array(table[f"gtr5|{var}|{pr}|{bname}"]["gains"])
+                        b = np.array(table[f"gtr5|{var}|{args.paired_ref}|{bname}"]["gains"])
+                        d = a - b
+                        cells.append(f"{d.mean():+5.2f}±{d.std() / np.sqrt(max(1, len(d))):.2f}")
+                    lines.append(f"{var:14s} {pr:12s} " + " ".join(f"{c:>14s}" for c in cells))
         lines.append("\n--- leaf calibration vs r5 x r5 GT: bias / MAE / root-centred MAE (pts)")
         for k, c in calib.items():
             lines.append(f"{k:24s} " + " ".join(f"{b}: {c[b]['bias']:+5.1f}/{c[b]['mae']:4.1f}/{c[b]['centred_mae']:4.1f}"
