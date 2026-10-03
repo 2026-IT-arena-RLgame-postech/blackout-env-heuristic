@@ -2,6 +2,7 @@
 equal the in-process search bit for bit (per-sample forwards, so batching cannot change rounding),
 concurrent clients get batched, and nothing deadlocks or lingers when either side goes away."""
 
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -44,8 +45,21 @@ def _roots(n=5, steps=40):
     return out
 
 
+_DIRS = []
+
+
 def _sock():
-    return str(Path(tempfile.mkdtemp(prefix="bo-ss-", dir="/tmp")) / "s.sock")
+    """A short socket path (AF_UNIX paths are limited to ~104 bytes: no pytest tmp_path on macOS)."""
+    d = tempfile.mkdtemp(prefix="bo-ss-", dir="/tmp")
+    _DIRS.append(d)
+    return str(Path(d) / "s.sock")
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_dirs():
+    yield
+    while _DIRS:
+        shutil.rmtree(_DIRS.pop(), ignore_errors=True)
 
 
 class _Thread:
