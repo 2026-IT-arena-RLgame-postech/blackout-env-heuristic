@@ -122,8 +122,8 @@ class _FastNet(nn.Module):
             return self._step(graphic, team_state, agent_states, tau, memory)
         with torch.inference_mode():
             args = (graphic, team_state, agent_states, *tau)
-            if batch != 1:  # the trace is batch-1 only
-                out = self.own(*args)
+            if batch != 1 or graphic.device.type != "cpu":  # the trace is batch-1 only; it bakes shape
+                out = self.own(*args)                         # constants as CPU tensors (cuda: eager)
             else:
                 if self._traced is None:
                     with warnings.catch_warnings():  # deprecation, and GroupNorm's shape check (batch 1 is fixed)
