@@ -431,31 +431,53 @@ class NetPolicy(BatchPolicy):
         return self.own(unpack_graphic(g) if g.dim() == 3 else g, t, a)
 
     def _graph_forward(self, g, t, a):
+        """One host->device copy (g, t, a rows packed into one pinned byte buffer), the graph replay,
+        one device->host copy into pinned memory, one sync: on a GPU shared with other processes every
+        sync point costs a time slice, so the step makes as few as possible."""
         torch = self.torch
         m = g.shape[0]
         size = self._bucket(m)
-        key = (g.ndim, size)
+        key = (g.ndim, g.dtype.str, size)
         ent = self._graphs.get(key)
+        parts = [x.reshape(m, -1).view(np.uint8) for x in (g, t, a)]
+        cols = np.cumsum([0] + [x.shape[1] for x in parts])
         if ent is None:
-            pad = lambda x: np.concatenate([x, np.repeat(x[:1], size - m, 0)]) if size > m else x.copy()  # noqa: E731
-            sg, st, sa = (torch.from_numpy(pad(x)).to(self.device) for x in (g, t, a))
+            host_in = torch.empty((size, int(cols[-1])), dtype=torch.uint8, pin_memory=True)
+            hin = host_in.numpy()
+            for k, x in enumerate(parts):
+                hin[:m, cols[k]:cols[k + 1]] = x
+                hin[m:, cols[k]:cols[k + 1]] = x[:1]  # pad rows: a real input (outputs dropped)
+            dev_in = host_in.to(self.device)
+
+            def views(buf):
+                out = []
+                for k, x in enumerate((g, t, a)):
+                    v = buf[:, cols[k]:cols[k + 1]].view(torch.from_numpy(x[:0]).dtype)
+                    out.append(v.view(size, *x.shape[1:]))
+                return out
+
+            sv = views(dev_in)
             stream = torch.cuda.Stream()
             stream.wait_stream(torch.cuda.current_stream())
             with torch.cuda.stream(stream), torch.inference_mode():
                 for _ in range(2):  # warm-up on a side stream before capture
-                    self._own(sg, st, sa)
+                    self._own(*(v.contiguous() for v in sv))
             torch.cuda.current_stream().wait_stream(stream)
             graph = torch.cuda.CUDAGraph()
             with torch.inference_mode(), torch.cuda.graph(graph):
-                out = self._own(sg, st, sa)
-                out = torch.cat(out, -1) if self.angle else out  # one device -> host copy
-            ent = self._graphs[key] = (graph, sg, st, sa, out)
-        graph, sg, st, sa, out = ent
-        sg[:m].copy_(torch.from_numpy(g))
-        st[:m].copy_(torch.from_numpy(t))
-        sa[:m].copy_(torch.from_numpy(a))
+                out = self._own(*(v.contiguous() for v in sv))  # dense copies: the eager kernels
+                out = (torch.cat(out, -1) if self.angle else out).float()  # one device -> host copy
+            host_out = torch.empty(out.shape, dtype=out.dtype, pin_memory=True)
+            ent = self._graphs[key] = (graph, host_in, dev_in, out, host_out)
+        graph, host_in, dev_in, out, host_out = ent
+        hin = host_in.numpy()
+        for k, x in enumerate(parts):
+            hin[:m, cols[k]:cols[k + 1]] = x
+        dev_in[:m].copy_(host_in[:m], non_blocking=True)
         graph.replay()
-        o = out[:m].float().cpu().numpy()
+        host_out.copy_(out, non_blocking=True)
+        torch.cuda.current_stream().synchronize()
+        o = host_out.numpy()[:m].copy()
         if not self.angle:
             return o, None
         k = o.shape[-1] // 2
