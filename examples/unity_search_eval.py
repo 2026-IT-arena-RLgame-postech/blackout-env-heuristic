@@ -86,7 +86,7 @@ class _Remote:
 
         self.branches = parse_branches(cfg["branches"])
         expect = {"branches": [b.name for b in self.branches], "window": cfg["window"], "leaf_decisions": 125,
-                  "rollout": os.path.basename(R5), "value": os.path.basename(VALUE)}
+                  "rollout": os.path.basename(cfg.get("net") or R5), "value": os.path.basename(cfg.get("value") or VALUE)}
         self.client = SearchClient(path, expect=expect, timeout=cfg.get("server_timeout", 60.0), connect_timeout=600.0)
         self.margin = cfg["margin"]
 
@@ -119,16 +119,17 @@ def _init_worker(build: str, time_scale: float, gpus, cfg: dict, wids=None) -> N
     env = BlackOutEnv(build, time_scale=time_scale, no_graphics=True,
                       additional_args=["-logFile", "/dev/null"], unity_shaping=False)
     util.Finalize(env, env.close, exitpriority=10)
-    r5 = RolloutNet.from_checkpoint(str(REPO / R5))
+    net_path, value_path = cfg.get("net") or R5, cfg.get("value") or VALUE  # our net: acting = rollout model
+    r5 = RolloutNet.from_checkpoint(str(REPO / net_path))
     acting = ModNetPolicy(NetPolicy(r5, device="cpu"))
     dev = cfg["device"]
     servers = cfg.get("servers") or []
     if servers:
         searcher = _Remote(servers[wid % len(servers)], cfg)
     else:
-        searcher = Searcher(ModNetPolicy(NetPolicy(RolloutNet.from_checkpoint(str(REPO / R5)), device=dev,
+        searcher = Searcher(ModNetPolicy(NetPolicy(RolloutNet.from_checkpoint(str(REPO / net_path)), device=dev,
                                                    cuda_graphs=cfg.get("cuda_graphs", False))),
-                            ValueNetLeaf(str(REPO / VALUE), dev), parse_branches(cfg["branches"]),
+                            ValueNetLeaf(str(REPO / value_path), dev), parse_branches(cfg["branches"]),
                             window=cfg["window"], margin=cfg["margin"])
     _W = {"env": env, "cap": _Capture(env), "acting": acting, "searcher": searcher, "cfg": cfg, "gpu": gpu,
           "wid": wid}
@@ -301,7 +302,7 @@ def play_match(task: dict) -> dict:
             "desyncs": desync, "first_desync": first_desync, "empty_steps": empty, "fallbacks": fallbacks,
             "batch_roots_mean": float(np.mean(batch_roots)) if batch_roots else None, "queue_s": queue_s,
             "wall_s": time.perf_counter() - t0, "pid": os.getpid(), "gpu": _W["gpu"],
-            "meta": {k: cfg.get(k) for k in ("branches", "every", "window", "margin", "cap_s", "search_until_s")}
+            "meta": {k: cfg.get(k) for k in ("branches", "every", "window", "margin", "cap_s", "search_until_s", "net", "value")}
             | {"server": bool(cfg.get("servers"))}}
 
 
@@ -315,7 +316,8 @@ def cmd_play(args):
     out.mkdir(parents=True, exist_ok=True)
     cfg = {"branches": args.branches, "every": args.every, "window": args.window, "margin": args.margin,
            "cap_s": args.cap_s, "device": args.device, "cuda_graphs": not args.no_cuda_graphs,
-           "search_until_s": args.search_until_s, "record": args.record, "server_timeout": args.server_timeout}
+           "search_until_s": args.search_until_s, "record": args.record, "server_timeout": args.server_timeout,
+           "net": args.net, "value": args.value}
     done = {(r["tag"], r["opponent"], r["seed"], r["side"]) for r in load_rows(out)}
     tasks = [{"tag": tag, "opponent": opp, "seed": s, "side": side}
              for s in range(args.seed0, args.seed0 + args.seeds) for opp in args.opponent.split(",")
@@ -388,6 +390,7 @@ def spawn_servers(args, out: Path):
         path = f"/tmp/bo-search-{os.getpid()}-{i}.sock"
         env = {**os.environ, "CUDA_VISIBLE_DEVICES": g, "PYTHONPATH": str(REPO)}
         cmd = [sys.executable, "-m", "blackout_env.sim.search_server", "serve", "--socket", path, "--repo", str(REPO),
+               "--rollout", args.net or R5, "--value", args.value or VALUE,
                "--branches", args.branches, "--window", str(args.window), "--device", args.device,
                "--max-roots", str(args.server_max_roots), "--max-wait-ms", str(args.server_wait_ms),
                "--threads", str(args.server_threads), "--parent-pid", str(os.getpid()),
@@ -456,6 +459,28 @@ def cmd_report(args):
             summary[f"{tag}-plain/{opp}"] = {"diff": float(np.mean(ps)), "se": se(ps), "seeds": len(ps), "matches": len(keys),
                                               "race_search": rs, "race_plain": rb, "search_ms_mean": float(np.mean(lat)),
                                               "search_ms_p95": float(np.mean(p95)), "base_share": float(ch[0] / max(1, ch.sum()))}
+    for spec in args.pair_with:
+        ta, odir, tb = spec.split(":")
+        other = defaultdict(dict)
+        for r in load_rows(Path(odir)):
+            other[(r["tag"], r["opponent"])][(r["seed"], r["side"])] = r
+        for (tag, opp), d in sorted(by.items()):
+            if tag != ta or (tb, opp) not in other:
+                continue
+            base = other[(tb, opp)]
+            keys = sorted(k for k in d if k in base)
+            per_seed = defaultdict(list)
+            for k in keys:
+                per_seed[k[0]].append(d[k]["margin"] - base[k]["margin"])
+            ps = [np.mean(v) for v in per_seed.values()]
+            ss = [np.mean([d[k]["search_s"] for k in keys]), np.mean([base[k]["search_s"] for k in keys])]
+            same = sum(d[k]["margin"] == base[k]["margin"] for k in keys)
+            lines.append(f"PAIR {ta} - {odir}:{tb} vs {opp}: {np.mean(ps):+6.1f} ± {se(ps):4.1f} ({len(ps)} seeds, {len(keys)} matches; "
+                         f"{np.mean([d[k]['margin'] for k in keys]):+.1f} vs {np.mean([base[k]['margin'] for k in keys]):+.1f})  "
+                         f"race {race([d[k] for k in keys])} vs {race([base[k] for k in keys])}  same margin {same}  "
+                         f"search s/match {ss[0]:.1f} vs {ss[1]:.1f}")
+            summary[f"{ta}-{Path(odir).name}:{tb}/{opp}"] = {"diff": float(np.mean(ps)), "se": se(ps), "seeds": len(ps),
+                                                              "matches": len(keys)}
     txt = "\n".join(lines)
     print(txt)
     (Path(args.out) / "report.txt").write_text(txt + "\n")
@@ -489,9 +514,13 @@ def main():
     q.add_argument("--server-threads", type=int, default=4)
     q.add_argument("--server-timeout", type=float, default=60.0, help="per-request client timeout (s)")
     q.add_argument("--record", default=None, help="directory for per-search branch-value records")
+    q.add_argument("--net", default=None, help="our RolloutNet (acting and search rollouts; default r5)")
+    q.add_argument("--value", default=None, help="the search's leaf value net (default s2v_iter5)")
     q.add_argument("--out", required=True)
     q = sub.add_parser("report")
     q.add_argument("--out", required=True)
+    q.add_argument("--pair-with", nargs="*", default=[],
+                   help="tagA:DIR:tagB -- this dir's tagA minus DIR's tagB per opponent, paired by (seed, side)")
     args = p.parse_args()
     {"play": cmd_play, "report": cmd_report}[args.cmd](args)
 

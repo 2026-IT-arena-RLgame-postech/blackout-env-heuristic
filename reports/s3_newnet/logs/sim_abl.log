@@ -1,0 +1,5 @@
+=== 22:21:40 search_new_v5 net=checkpoints/rollout_net/arch/f3_x_d2.pt value=checkpoints/value/frozen/s2v_iter5.pt vs p11 seeds=128 --no-plain
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4", "samp1s0", "samp1s1"], "every": 25, "window": 25, "margin": 3.0, "net": "checkpoints/rollout_net/arch/f3_x_d2.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": ""}
+[search_new_v5 vs p11] 128/256 margin +42.5 wall 952s (7.4s/match, search 765s)
+[search_new_v5 vs p11] 256/256 margin +48.3 wall 934s (7.3s/match, search 755s)
+=== 22:53:12 done

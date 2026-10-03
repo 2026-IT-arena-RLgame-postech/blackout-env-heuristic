@@ -179,6 +179,23 @@ def cmd_report(args):
                      f"len {np.mean([d[k]['ticks'] for k in keys]) / 25:.0f}s  wall {wall:.1f}s/match (plain {wall_b:.2f})  "
                      f"e{meta['every']} w{meta['window']} m{meta['margin']} B{len(meta['branches'])}")
         lines.append(f"{'':14s}    base share {share.get('base', 0):.2f}; " + ", ".join(f"{k} {v:.2f}" for k, v in share.items() if k != "base"))
+    for spec in args.pairs:  # any two tags against the same opponent, paired by (seed, side)
+        ta, tb = spec.split(":")
+        for opp in sorted({o for (t, o) in by if t == ta}):
+            a, b = by.get((ta, opp), {}), by.get((tb, opp), {})
+            keys = sorted(k for k in a if k in b)
+            if not keys:
+                continue
+            diff = defaultdict(list)
+            for k in keys:
+                diff[k[0]].append(a[k]["margin"] - b[k]["margin"])
+            ps = [np.mean(v) for v in diff.values()]
+            ra, rb = race_counts([a[k] for k in keys]), race_counts([b[k] for k in keys])
+            sa = np.mean([a[k]["search_s"] / a[k]["chunk_n"] for k in keys])
+            sb = np.mean([b[k]["search_s"] / b[k]["chunk_n"] for k in keys])
+            lines.append(f"PAIR {ta} - {tb} vs {opp:16s} n={len(keys):4d} seeds={len(ps):4d}  {np.mean([a[k]['margin'] for k in keys]):+6.1f} vs "
+                         f"{np.mean([b[k]['margin'] for k in keys]):+6.1f}  diff {np.mean(ps):+6.1f} ± {se(ps):4.1f}  "
+                         f"race w/t/l {ra} vs {rb}  search s/match {sa:.2f} vs {sb:.2f}")
     txt = "\n".join(lines)
     print(txt)
     (Path(args.out) / "report.txt").write_text(txt + "\n")
@@ -211,6 +228,7 @@ def main():
     q.add_argument("--out", default=str(REPO / "reports/s3_search"))
     q = sub.add_parser("report")
     q.add_argument("--out", default=str(REPO / "reports/s3_search"))
+    q.add_argument("--pairs", nargs="*", default=[], help="tagA:tagB -- A minus B per opponent, paired by (seed, side)")
     args = p.parse_args()
     if getattr(args, "device", None) == "":
         from blackout_env.sim.search import default_device

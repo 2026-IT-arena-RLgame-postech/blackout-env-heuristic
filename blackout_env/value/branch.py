@@ -82,9 +82,31 @@ def mirror_targets(t: dict) -> dict[str, np.ndarray]:
             "delta_mask": t["delta_mask"].copy(), "p": t["p"][:, ::-1].copy()}
 
 
-def load_raw(raw_dir: Path) -> dict:
+def pack_graphic_u8(g: np.ndarray) -> np.ndarray:
+    """uint8 [n, H, W, 13] (x15: base one-hot 0-7, battery level 8, item one-hot 9-12) -> uint16
+    [n, H, W] = base | battery << 3 | item << 7 (6.5x smaller; ``unpack_graphic_u8`` inverts it)."""
+    base = g[..., :8].argmax(-1).astype(np.uint16)
+    bat = g[..., 8].astype(np.uint16)
+    items = g[..., 9:13]
+    item = np.where(items.max(-1) > 0, items.argmax(-1) + 1, 0).astype(np.uint16)
+    return base | (bat << 3) | (item << 7)
+
+
+def unpack_graphic_u8(p: np.ndarray) -> np.ndarray:
+    p = np.asarray(p, np.uint16)
+    out = np.zeros(p.shape + (13,), np.uint8)
+    base, bat, item = p & 7, (p >> 3) & 15, (p >> 7) & 7
+    np.put_along_axis(out, base[..., None].astype(np.int64), 15, -1)
+    out[..., 8] = bat
+    ii = np.nonzero(item)
+    out[ii + (8 + item[ii].astype(np.int64),)] = 15
+    return out
+
+
+def load_raw(raw_dir: Path, packed: bool = False) -> dict:
     """All generated matches -> one flat dataset.  States are concatenated (``states[view]``:
-    graphic / team_state / agent_states), rows index into them; ``seed`` per row for splits."""
+    graphic / team_state / agent_states), rows index into them; ``seed`` per row for splits.
+    ``packed``: graphics kept as uint16 [n, H, W] (``pack_graphic_u8``, checked lossless per file)."""
     files = sorted(Path(raw_dir).glob("*.npz"))
     files = [f for f in files if not f.name.endswith(".tmp.npz")]
     rows = {k: [] for k in ("kind", "idx", "next_idx", "lead", "lead2", "lead5", "ended", "t_s", "root", "branch")}
@@ -110,7 +132,13 @@ def load_raw(raw_dir: Path) -> dict:
         rows["opponent"].append(np.full(nr, opponents.index(opp)))
         if n_states:
             for v in VIEWS:
-                states[v]["graphic"].append(z[f"s_g_{v}"])
+                g = z[f"s_g_{v}"]
+                if packed:
+                    pk = pack_graphic_u8(g)
+                    if not np.array_equal(unpack_graphic_u8(pk), g):
+                        raise ValueError(f"{f}: graphic not packable losslessly")
+                    g = pk
+                states[v]["graphic"].append(g)
                 states[v]["team_state"].append(z[f"s_ts_{v}"])
                 states[v]["agent_states"].append(z[f"s_ag_{v}"])
         offset += n_states

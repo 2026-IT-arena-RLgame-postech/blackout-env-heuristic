@@ -1,0 +1,8 @@
+=== 17:50:30 search_new net=checkpoints/rollout_net/arch/f3_x_d2.pt value=checkpoints/value/s2v_f3xd2/iter2.pt vs p11 seeds=384 --no-plain
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4", "samp1s0", "samp1s1"], "every": 25, "window": 25, "margin": 3.0, "net": "checkpoints/rollout_net/arch/f3_x_d2.pt", "value": "checkpoints/value/s2v_f3xd2/iter2.pt", "cap_s": 150, "qhead": ""}
+[search_new vs p11] 128/768 margin +39.5 wall 1139s (8.9s/match, search 925s)
+[search_new vs p11] 256/768 margin +47.3 wall 1220s (9.5s/match, search 984s)
+[search_new vs p11] 384/768 margin +45.8 wall 1162s (9.1s/match, search 935s)
+[search_new vs p11] 512/768 margin +35.6 wall 1275s (10.0s/match, search 1037s)
+[search_new vs p11] 640/768 margin +38.9 wall 1262s (9.9s/match, search 1028s)
+[search_new vs p11] 768/768 margin +47.0 wall 1042s (8.1s/match, search 844s)

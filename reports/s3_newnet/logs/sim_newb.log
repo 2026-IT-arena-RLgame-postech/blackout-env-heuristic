@@ -1,0 +1,10 @@
+=== 19:49:15 search_new net=checkpoints/rollout_net/arch/f3_x_d2.pt value=checkpoints/value/s2v_f3xd2/iter2.pt vs rnet:checkpoints/rollout_net/r5.pt seeds=192 --no-plain
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4", "samp1s0", "samp1s1"], "every": 25, "window": 25, "margin": 3.0, "net": "checkpoints/rollout_net/arch/f3_x_d2.pt", "value": "checkpoints/value/s2v_f3xd2/iter2.pt", "cap_s": 150, "qhead": ""}
+[search_new vs rnet:checkpoints/rollout_net/r5.pt] 128/384 margin +47.4 wall 1079s (8.4s/match, search 924s)
+[search_new vs rnet:checkpoints/rollout_net/r5.pt] 256/384 margin +46.6 wall 979s (7.6s/match, search 848s)
+[search_new vs rnet:checkpoints/rollout_net/r5.pt] 384/384 margin +49.9 wall 1182s (9.2s/match, search 1019s)
+=== 20:43:21 search_new net=checkpoints/rollout_net/arch/f3_x_d2.pt value=checkpoints/value/s2v_f3xd2/iter2.pt vs strategic_v23 seeds=128 --no-plain
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4", "samp1s0", "samp1s1"], "every": 25, "window": 25, "margin": 3.0, "net": "checkpoints/rollout_net/arch/f3_x_d2.pt", "value": "checkpoints/value/s2v_f3xd2/iter2.pt", "cap_s": 150, "qhead": ""}
+[search_new vs strategic_v23] 128/256 margin +38.8 wall 2685s (21.0s/match, search 1236s)
+[search_new vs strategic_v23] 256/256 margin +47.8 wall 3187s (24.9s/match, search 1389s)
+=== 22:21:20 done
