@@ -34,7 +34,9 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 MAIN = Path(os.environ.get("BLACKOUT_MAIN", "/Users/mac/project/26rl/blackout-env"))  # shared checkpoints (read-only)
 CKPT = {"p11": MAIN / "checkpoints/distill/frozen/p11_v22.pt", "p5a": MAIN / "checkpoints/distill/frozen/p5a_v22.pt",
-        "r5": MAIN / "checkpoints/rollout_net/r5.pt"}
+        "r5": MAIN / "checkpoints/rollout_net/r5.pt",
+        # docs §22 map-token nets (f3 6x6 cross-attention K/V), DAgger round 2
+        "d256x32": MAIN / "checkpoints/rollout_net/arch/d256_f3_x32_d2.pt", "f3x": MAIN / "checkpoints/rollout_net/arch/f3_x_d2.pt"}
 HEUR = {"v23": "strategic_v23", "v22": "strategic_v22", "v19": "strategic_v19", "v24": "strategic_v24"}
 DPS = 25  # decisions per second
 TRACE_S = (10, 20, 30, 45, 60, 90, 120, 150, 240, 300)
