@@ -1,0 +1,4 @@
+plain    vs v23    n= 300 margin   -7.9 ±  3.7  race w/t/l (17, 271, 12)  win 0.45  end {'cap': 69, 'exhausted': 28, 'game': 203}  len 72s  wall 40s/match  desync matches 0 (ticks 0)
+search   vs v23    n= 300 margin  +23.4 ±  3.6  race w/t/l (77, 210, 13)  win 0.68  end {'cap': 48, 'exhausted': 21, 'game': 231}  len 64s  wall 77s/match  desync matches 1 (ticks 2)
+   paired search - plain vs v23:  +31.3 ±  4.1  (150 seeds, 300 matches)  race (77, 210, 13) vs plain (17, 271, 12)  search latency mean 629 ms (p95 966)  base share 0.69  searches/match 64
+   by race (plain->search): -1->-1: n=11 Δ-4.3, -1->+0: n=1 Δ+9.0, +0->-1: n=2 Δ-4.0, +0->+0: n=209 Δ+26.2, +0->+1: n=60 Δ+66.8, +1->+1: n=17 Δ-2.8

@@ -1,0 +1,30 @@
+{
+ "batches": 605,
+ "roots": 695,
+ "requests": 695,
+ "search_s": 373.2119241489563,
+ "max_batch_roots": 2,
+ "batch_hist": {
+  "1": 515,
+  "2": 90
+ },
+ "queue_s": 3.4199066129513085,
+ "clients_seen": 3,
+ "config": {
+  "branches": [
+   "base",
+   "alt0",
+   "alt1",
+   "alt2",
+   "alt3",
+   "alt4",
+   "samp1s0",
+   "samp1s1"
+  ],
+  "window": 25,
+  "leaf_decisions": 125,
+  "rollout": "r5.pt",
+  "value": "s2v_iter5.pt",
+  "proto": 1
+ }
+}

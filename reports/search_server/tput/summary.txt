@@ -1,0 +1,11 @@
+perworker_w12    n=36 workers=12 wall 79s/match -> est 9.1 matches/min  search 720 ms (p95 915)  search_s 54 unity 9 policy 17  batch_roots nan fallbacks 0 searches/match 76 margin +36.7
+perworker_w12_2gpu n=36 workers=12 wall 49s/match -> est 14.8 matches/min  search 318 ms (p95 417)  search_s 24 unity 8 policy 16  batch_roots nan fallbacks 0 searches/match 76 margin +36.7
+perworker_w16    n=36 workers=16 wall 99s/match -> est 9.7 matches/min  search 941 ms (p95 1191)  search_s 69 unity 9 policy 20  batch_roots nan fallbacks 0 searches/match 76 margin +36.7
+server2_w16      n=36 workers=16 wall 59s/match -> est 16.2 matches/min  search 472 ms (p95 653)  search_s 34 unity 8 policy 16  batch_roots 3.3 fallbacks 0 searches/match 75 margin +34.9
+server2_w24      n=48 workers=24 wall 69s/match -> est 21.0 matches/min  search 589 ms (p95 746)  search_s 42 unity 9 policy 17  batch_roots 5.7 fallbacks 0 searches/match 75 margin +30.0
+server2gpu_w16   n=36 workers=16 wall 52s/match -> est 18.6 matches/min  search 390 ms (p95 471)  search_s 29 unity 7 policy 15  batch_roots 2.9 fallbacks 0 searches/match 75 margin +34.9
+server4_w12      n=36 workers=12 wall 133s/match -> est 5.4 matches/min  search 883 ms (p95 1478)  search_s 69 unity 21 policy 43  batch_roots 1.2 fallbacks 0 searches/match 80 margin +37.9
+server4_w24      n=48 workers=24 wall 83s/match -> est 17.4 matches/min  search 708 ms (p95 1024)  search_s 50 unity 11 policy 21  batch_roots 2.9 fallbacks 0 searches/match 72 margin +28.6
+server4x2gpu_w24 n=48 workers=24 wall 153s/match -> est 9.4 matches/min  search 1430 ms (p95 2313)  search_s 89 unity 19 policy 43  batch_roots 2.6 fallbacks 0 searches/match 71 margin +27.6
+server_w12       n=36 workers=12 wall 62s/match -> est 11.6 matches/min  search 468 ms (p95 663)  search_s 36 unity 8 policy 17  batch_roots 5.0 fallbacks 0 searches/match 80 margin +38.1
+server_w16       n=36 workers=16 wall 65s/match -> est 14.8 matches/min  search 537 ms (p95 685)  search_s 39 unity 8 policy 17  batch_roots 7.4 fallbacks 0 searches/match 77 margin +36.6

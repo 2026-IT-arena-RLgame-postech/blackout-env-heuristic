@@ -111,6 +111,13 @@ def _render_one(S, bg, graphic, team, agents, raw, packed):
             if 1 <= item <= 4:
                 graphic[0, 8 + item, r, c] = 1.0
                 graphic[1, 8 + item, rb, cb] = 1.0
+    _render_units(raw, team, agents)
+
+
+@njit(cache=True, inline='always')
+def _render_units(raw, team, agents):
+    """agents [2, 10, 12] and team [2, 4] of both teams' views from the raw broadcast."""
+    f15 = F32(15.0)
     agents[:, :, :] = 0.0
     for u in range(10):
         x, y, held, cls = raw[4 * u], raw[4 * u + 1], raw[4 * u + 2], raw[4 * u + 3]
@@ -133,6 +140,63 @@ def _render_one(S, bg, graphic, team, agents, raw, packed):
             agents[1, kb, 9 + k] = 1.0
     team[0, 0], team[0, 1], team[0, 2], team[0, 3] = raw[40], raw[41], raw[42], raw[43]
     team[1, 0], team[1, 1], team[1, 2], team[1, 3] = raw[41], raw[40], raw[42], raw[43]
+
+
+@njit(cache=True, inline='always')
+def _render_packed_one(S, bg, views, team, agents, raw, packed):
+    """As ``_render_one`` with the map left packed (int16 [2, H, W], ``unpack_graphic`` layout:
+    base | battery << 3 | item << 7, team B's view ally/enemy-swapped and anti-transposed)."""
+    core.render_raw_state(S, raw)
+    core.render_raw_map(S, bg, packed)
+    for r in range(H):
+        for c in range(W):
+            p = np.int64(packed[r, c])
+            base = p & 7
+            bb = base
+            if base == 4:
+                bb = 5
+            elif base == 5:
+                bb = 4
+            elif base == 6:
+                bb = 7
+            elif base == 7:
+                bb = 6
+            views[0, r, c] = p
+            views[1, W - 1 - c, H - 1 - r] = (p - base) + bb
+    _render_units(raw, team, agents)
+
+
+@njit(cache=True, parallel=True)
+def batch_render_packed_par(Sb, bg, idx, views, team, agents):
+    for j in prange(idx.shape[0]):
+        b = idx[j]
+        S = _game_S(Sb, b)
+        raw = np.empty(44, dtype=np.float32)
+        packed = np.empty((H, W), dtype=np.uint16)
+        _render_packed_one(S, bg[b], views[j], team[j], agents[j], raw, packed)
+
+
+@njit(cache=True)
+def batch_render_packed_seq(Sb, bg, idx, views, team, agents):
+    raw = np.empty(44, dtype=np.float32)
+    packed = np.empty((H, W), dtype=np.uint16)
+    for j in range(idx.shape[0]):
+        b = idx[j]
+        S = _game_S(Sb, b)
+        _render_packed_one(S, bg[b], views[j], team[j], agents[j], raw, packed)
+
+
+def unpack_graphic(p):
+    """torch int [m, H, W] packed views -> float32 [m, 13, H, W], exactly ``_render_one``'s graphic."""
+    import torch
+
+    p = p.long()
+    base, bat, item = p & 7, (p >> 3) & 15, (p >> 7) & 7
+    ar = torch.arange(13, device=p.device).view(1, 13, 1, 1)
+    g = (base.unsqueeze(1) == ar).float()                       # channels 0-7 (8-12 never match base)
+    g = g + ((item.unsqueeze(1) + 8 == ar) & (ar >= 9)).float()  # items 1-4 -> channels 9-12
+    g[:, 8] = bat.float() / 15.0
+    return g
 
 
 @njit(cache=True, parallel=True)
@@ -241,6 +305,14 @@ class BatchSim:
         fn = batch_render_par if parallel else batch_render_seq
         fn(self.Sb, self.bg, idx, graphic, team, agents)
 
+    def render_packed(self, idx, views, team, agents, parallel: bool | None = None) -> None:
+        """As ``render`` with the map packed: views int16 [n, 2, H, W] (``unpack_graphic``)."""
+        idx = np.ascontiguousarray(idx, dtype=np.int64)
+        if parallel is None:
+            parallel = len(idx) >= PARALLEL_MIN
+        fn = batch_render_packed_par if parallel else batch_render_packed_seq
+        fn(self.Sb, self.bg, idx, views, team, agents)
+
     def raw(self, b: int) -> tuple[np.ndarray, np.ndarray]:
         """Game ``b``'s raw broadcast (44 floats) and packed map, as ``SimState.raw_state/raw_map``."""
         S = tuple(getattr(self, name)[b] for name in _SIM_ARRAYS)
@@ -322,7 +394,7 @@ class NetPolicy(BatchPolicy):
     the single-game path even on CPU (tests/test_sim_batch.py, docs "S3 준비")."""
 
     def __init__(self, net, device: str = "cpu", fp16: bool = False, max_batch: int = 2048,
-                 per_sample: bool = False):
+                 per_sample: bool = False, cuda_graphs: bool = False, graph_buckets=None):
         import torch
 
         from blackout_env.train.distill.inference import _OwnQ
@@ -336,6 +408,80 @@ class NetPolicy(BatchPolicy):
         self.angle = bool(getattr(net, "angle_head", False))
         self.fp16 = fp16
         self.max_batch = 1 if per_sample else max_batch
+        # CUDA graphs per batch size (small-batch search: kernel launches dominate); same kernels -> same values
+        # ``graph_buckets`` (sorted sizes): one graph per bucket, a batch is padded up to the next bucket
+        # (the pad rows hold earlier real inputs; their outputs are dropped) -- a search server's batch
+        # size changes every call, exact-size graphs would capture hundreds of graphs.  Larger -> eager.
+        self.cuda_graphs = bool(cuda_graphs) and self.device.type == "cuda"
+        self.graph_buckets = sorted(int(b) for b in graph_buckets) if graph_buckets else None
+        self._graphs: dict = {}
+
+    def _bucket(self, m: int):
+        if self.graph_buckets is None:
+            return m
+        for b in self.graph_buckets:
+            if b >= m:
+                return b
+        return None
+
+    accepts_packed = True  # ``moves``/``forward`` take packed int16 maps too (BatchRollout(packed=True))
+
+    def _own(self, g, t, a):
+        """The net on device tensors; a 3-D ``g`` is a packed map, unpacked on the device."""
+        return self.own(unpack_graphic(g) if g.dim() == 3 else g, t, a)
+
+    def _graph_forward(self, g, t, a):
+        """One host->device copy (g, t, a rows packed into one pinned byte buffer), the graph replay,
+        one device->host copy into pinned memory, one sync: on a GPU shared with other processes every
+        sync point costs a time slice, so the step makes as few as possible."""
+        torch = self.torch
+        m = g.shape[0]
+        size = self._bucket(m)
+        key = (g.ndim, g.dtype.str, size)
+        ent = self._graphs.get(key)
+        parts = [x.reshape(m, -1).view(np.uint8) for x in (g, t, a)]
+        cols = np.cumsum([0] + [x.shape[1] for x in parts])
+        if ent is None:
+            host_in = torch.empty((size, int(cols[-1])), dtype=torch.uint8, pin_memory=True)
+            hin = host_in.numpy()
+            for k, x in enumerate(parts):
+                hin[:m, cols[k]:cols[k + 1]] = x
+                hin[m:, cols[k]:cols[k + 1]] = x[:1]  # pad rows: a real input (outputs dropped)
+            dev_in = host_in.to(self.device)
+
+            def views(buf):
+                out = []
+                for k, x in enumerate((g, t, a)):
+                    v = buf[:, cols[k]:cols[k + 1]].view(torch.from_numpy(x[:0]).dtype)
+                    out.append(v.view(size, *x.shape[1:]))
+                return out
+
+            sv = views(dev_in)
+            stream = torch.cuda.Stream()
+            stream.wait_stream(torch.cuda.current_stream())
+            with torch.cuda.stream(stream), torch.inference_mode():
+                for _ in range(2):  # warm-up on a side stream before capture
+                    self._own(*(v.contiguous() for v in sv))
+            torch.cuda.current_stream().wait_stream(stream)
+            graph = torch.cuda.CUDAGraph()
+            with torch.inference_mode(), torch.cuda.graph(graph):
+                out = self._own(*(v.contiguous() for v in sv))  # dense copies: the eager kernels
+                out = (torch.cat(out, -1) if self.angle else out).float()  # one device -> host copy
+            host_out = torch.empty(out.shape, dtype=out.dtype, pin_memory=True)
+            ent = self._graphs[key] = (graph, host_in, dev_in, out, host_out)
+        graph, host_in, dev_in, out, host_out = ent
+        hin = host_in.numpy()
+        for k, x in enumerate(parts):
+            hin[:m, cols[k]:cols[k + 1]] = x
+        dev_in[:m].copy_(host_in[:m], non_blocking=True)
+        graph.replay()
+        host_out.copy_(out, non_blocking=True)
+        torch.cuda.current_stream().synchronize()
+        o = host_out.numpy()[:m].copy()
+        if not self.angle:
+            return o, None
+        k = o.shape[-1] // 2
+        return o[..., :k], o[..., k:]
 
     @classmethod
     def from_checkpoint(cls, path: str, **kw) -> "NetPolicy":
@@ -346,8 +492,13 @@ class NetPolicy(BatchPolicy):
         return cls(load_net(torch.load(path, map_location="cpu", weights_only=True)["policy_state"]), **kw)
 
     def forward(self, graphic, team, agents) -> tuple[np.ndarray, np.ndarray | None]:
-        """[m, 13, H, W], [m, 4], [m, 10, 12] float32 numpy -> logits, offsets [m, 5, K]."""
+        """[m, 13, H, W] (or packed int16 [m, H, W]), [m, 4], [m, 10, 12] float32 numpy -> logits,
+        offsets [m, 5, K]."""
         torch = self.torch
+        if (self.cuda_graphs and len(graphic) <= self.max_batch and not self.fp16
+                and self._bucket(len(graphic)) is not None):
+            return self._graph_forward(np.ascontiguousarray(graphic), np.ascontiguousarray(team),
+                                       np.ascontiguousarray(agents))
         qs, offs = [], []
         for s in range(0, len(graphic), self.max_batch):
             g = torch.from_numpy(graphic[s:s + self.max_batch]).to(self.device)
@@ -356,9 +507,9 @@ class NetPolicy(BatchPolicy):
             with torch.inference_mode():
                 if self.fp16:
                     with torch.autocast(device_type=self.device.type, dtype=torch.float16):
-                        out = self.own(g, t, a)
+                        out = self._own(g, t, a)
                 else:
-                    out = self.own(g, t, a)
+                    out = self._own(g, t, a)
             q, off = out if self.angle else (out, None)
             qs.append(q.float().cpu().numpy())
             offs.append(off.float().cpu().numpy() if off is not None else None)
@@ -371,7 +522,7 @@ class NetPolicy(BatchPolicy):
         n = len(idx)
         sel = list(teams)
         cut = (slice(None) if sel == [0, 1] else sel)  # both teams: a view, no copy of the batch
-        g = graphic[:n][:, cut].reshape(n * len(sel), N_CH, H, W)
+        g = graphic[:n][:, cut].reshape(n * len(sel), *graphic.shape[2:])
         t = team[:n][:, cut].reshape(n * len(sel), 4)
         a = agents[:n][:, cut].reshape(n * len(sel), 10, N_AGENT_COLS)
         q, off = self.forward(g, t, a)
@@ -468,16 +619,21 @@ class BatchRollout:
     the opening), the moves in between repeat the last ones."""
 
     def __init__(self, policy_a: BatchPolicy, policy_b: BatchPolicy, repeat: int = 1,
-                 opening_ticks: int = OPENING_TICKS, parallel: bool | None = None, repeat_b: int | None = None):
+                 opening_ticks: int = OPENING_TICKS, parallel: bool | None = None, repeat_b: int | None = None,
+                 packed: bool = False):
         self.pa, self.pb = policy_a, policy_b
+        # packed: render the map as int16 [n, 2, H, W] (13x fewer bytes to the device; the policies
+        # unpack on the device) -- only for policies that accept it
+        self.packed = bool(packed) and all(getattr(p, "accepts_packed", False) or not p.needs_inputs
+                                           for p in (policy_a, policy_b))
         self.repeat = (int(repeat), int(repeat if repeat_b is None else repeat_b))  # per team
         self.opening_ticks, self.parallel = int(opening_ticks), parallel
         self._buf = None
 
     def _buffers(self, n):
         if self._buf is None or self._buf[0].shape[0] < n:
-            self._buf = (np.zeros((n, 2, N_CH, H, W), F32), np.zeros((n, 2, 4), F32),
-                         np.zeros((n, 2, 10, N_AGENT_COLS), F32))
+            g = np.zeros((n, 2, H, W), np.int16) if self.packed else np.zeros((n, 2, N_CH, H, W), F32)
+            self._buf = (g, np.zeros((n, 2, 4), F32), np.zeros((n, 2, 10, N_AGENT_COLS), F32))
         return self._buf
 
     def run(self, roots: list[SimState], horizon: int, reseeds=None, record: bool = False,
@@ -522,7 +678,7 @@ class BatchRollout:
             if len(act):
                 c0 = clock()
                 if need_inputs:
-                    bsim.render(act, *bufs, parallel=self.parallel)
+                    (bsim.render_packed if self.packed else bsim.render)(act, *bufs, parallel=self.parallel)
                 c1 = clock()
                 ca, cb = calls[0][union], calls[1][union]  # rows of act each team acts on
                 if self.pa is self.pb and ca.all() and cb.all():
