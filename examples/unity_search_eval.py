@@ -66,10 +66,13 @@ def _init_worker(build: str, time_scale: float, gpus, cfg: dict) -> None:
     gpu = gpus.get() if gpus is not None else None
     if gpu is not None:
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu)
+    import warnings
     from multiprocessing import util
 
     import numba
     import torch
+
+    warnings.filterwarnings("ignore")
 
     torch.set_num_threads(1)
     numba.set_num_threads(1)
