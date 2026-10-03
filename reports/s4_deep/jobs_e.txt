@@ -1,4 +1,3 @@
 w18pair|p11|128|--branches alt*,pair*,samp:1.0x2
-t2bf|strategic_v23|128|--children alt*,samp:1.0x2 --expand 2
-o4mean|strategic_v23|128|--opp-branches samp:1.0x3 --opp-agg mean
-l250|strategic_v23|128|--leaf 250
+o4min|strategic_v23|64|--opp-branches samp:1.0x3 --opp-agg min
+w12s|p11|64|--branches alt*,samp:1.0x6
