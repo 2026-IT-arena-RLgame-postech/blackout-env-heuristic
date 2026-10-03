@@ -188,12 +188,12 @@ def _checkpoint_policy(path: str):
     if policy is None:
         import torch
 
-        from blackout_env.train.distill.inference import load_checkpoint_net, make_student
+        from blackout_env.train.distill.inference import load_checkpoint_net, make_student, net_device
 
         net = load_checkpoint_net(path)  # a distill or a rollout-net (RolloutNet) checkpoint
         if len(_CHECKPOINT_CACHE) >= 16:  # ~24 MB each; a worker meets a few dozen at most
             _CHECKPOINT_CACHE.pop(next(iter(_CHECKPOINT_CACHE)))
-        policy = _CHECKPOINT_CACHE[path] = make_student(net)  # MyPolicy, own rows only, traced
+        policy = _CHECKPOINT_CACHE[path] = make_student(net, device=net_device(path))  # MyPolicy, own rows only, traced on CPU
     return policy
 
 

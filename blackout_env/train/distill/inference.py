@@ -35,7 +35,9 @@ the same means over the offset headings.  Without an angle head nothing changes.
 
 from __future__ import annotations
 
+import os
 import warnings
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -109,15 +111,16 @@ class _FastNet(nn.Module):
         self.fixed_tau, self.n_quantiles = tau, n_quantiles
         self._traced = None
 
-    def _tau(self, batch: int) -> tuple:
+    def _tau(self, batch: int, device=None) -> tuple:
         """The trailing tau argument of ``own``: none for a logits net."""
         if not self.uses_tau:
             return ()
-        return (self.fixed_tau.expand(batch, -1) if self.fixed_tau is not None else torch.rand(batch, self.n_quantiles),)
+        tau = self.fixed_tau.expand(batch, -1) if self.fixed_tau is not None else torch.rand(batch, self.n_quantiles)
+        return (tau if device is None else tau.to(device),)
 
     def forward(self, graphic, team_state, agent_states, memory=None, **_):
         batch = graphic.shape[0]
-        tau = self._tau(batch)
+        tau = self._tau(batch, graphic.device)
         if self.is_temporal:
             return self._step(graphic, team_state, agent_states, tau, memory)
         with torch.inference_mode():
@@ -246,14 +249,31 @@ def checkpoint_meta(path) -> dict:
     return {"version": 0, "action_bins": int(ckpt.get("config", {}).get("k", 32)), "rollout_net": True}
 
 
-def make_student(net: MyModel, inference: str = "iqn") -> MyPolicy:
+CUDA_NETS_ENV = "BLACKOUT_CUDA_NETS"
+
+
+def net_device(path) -> str:
+    """Where the student path runs the checkpoint at ``path``: ``cuda`` when its file name is in
+    the comma-separated ``$BLACKOUT_CUDA_NETS`` (or that is ``all``) and CUDA is available, else
+    ``cpu``.  Unity evaluations on a GPU server put the big nets (P11, P5a: 5.8M, ~14 ms on a busy
+    CPU at batch 1) on the GPU and keep the small ones on the CPU (docs §21 throughput)."""
+    names = {n.strip() for n in os.environ.get(CUDA_NETS_ENV, "").split(",") if n.strip()}
+    if names and ("all" in names or Path(path).name in names) and torch.cuda.is_available():
+        return "cuda"
+    return "cpu"
+
+
+def make_student(net: MyModel, inference: str = "iqn", device: str = "cpu") -> MyPolicy:
+    """MyPolicy over ``net`` with the ``inference`` decoding.  ``device`` other than cpu moves the
+    net there and skips the batch-1 jit trace (a CUDA trace bakes a shape-derived clamp bound as a
+    CPU tensor); MyPolicy builds its inputs on that device and decodes on the CPU."""
     net.eval()
-    if inference == "iqn":
-        return MyPolicy(_FastNet(net))
-    if inference == "fixed_tau":
-        return MyPolicy(_FastNet(net, tau=fixed_tau()))
-    if inference == "tie_mean":
-        return _TieMeanPolicy(_FastNet(net, tau=fixed_tau()))
-    if inference == "arc_mean":
-        return _ArcMeanPolicy(_FastNet(net, tau=fixed_tau()))
-    raise ValueError(f"unknown inference {inference!r}; choose from {INFERENCE}")
+    if inference not in INFERENCE:
+        raise ValueError(f"unknown inference {inference!r}; choose from {INFERENCE}")
+    if device != "cpu":
+        net = net.to(device)
+    fast = _FastNet(net) if inference == "iqn" else _FastNet(net, tau=fixed_tau())
+    if device != "cpu":
+        fast._traced = fast.own
+    cls = {"iqn": MyPolicy, "fixed_tau": MyPolicy, "tie_mean": _TieMeanPolicy, "arc_mean": _ArcMeanPolicy}[inference]
+    return cls(fast, device=device)
