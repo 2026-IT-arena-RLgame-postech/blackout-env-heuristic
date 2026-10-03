@@ -13,6 +13,14 @@ Losses are P11's (train/distill/loss.py): set-valued CE on the arc label + angle
 (arc 1), rows in the first 10 s weighted x1.5.  ``--p11-kl W`` adds W x KL(P11 || net) on the
 logits and an offset regression to P11's offsets on its arg max bin (targets precomputed by
 ``pack --p11``).
+
+CUDA (poscat servers, RTX 2080 Ti; docs/cuda_training_ko.md): ``--device auto`` picks cuda > mps >
+cpu; add ``--amp fp16 --compile`` (whole step compiled, GradScaler, NHWC convs, fused AdamW, the
+split on the GPU when it fits: ``--gpu-data``).  Same rows, same losses as the MPS path; ~7 ms per
+1024-row step on one 2080 Ti vs ~55 ms on the Mac.  Multi-GPU: ``torchrun --standalone
+--nproc_per_node N examples/rollout_net_train.py train ...`` (``--batch`` = global batch, split over
+the ranks; the loss normalisers are summed over ranks, so the gradient is the global batch's);
+``bench`` times the step's parts.
 """
 
 from __future__ import annotations

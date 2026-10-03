@@ -7,6 +7,10 @@
     python examples/value_train.py eval --cache datasets/value_s1 --ckpt checkpoints/value/s1/best.pt \
         --out reports/value_s1
 
+CUDA (docs/cuda_training_ko.md): ``--device`` defaults to auto (cuda > mps > cpu); ``--amp fp16
+--compile`` compiles the whole net there (static shapes).  4 GPUs: ``torchrun --standalone
+--nproc_per_node 4 examples/value_train.py train ...`` (``--batch-size`` = global batch).
+
 Targets, splits and the cache layout: blackout_env/value/{targets,data}.py.  Metrics:
 blackout_env/value/metrics.py (R²/MAE of the lead change per horizon and time bucket, Brier /
 accuracy / calibration of the win probability).
