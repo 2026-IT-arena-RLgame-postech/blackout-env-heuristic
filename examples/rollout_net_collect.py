@@ -16,6 +16,7 @@ so one instance per game and team is the act teacher.
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import sys
 import time
@@ -79,8 +80,9 @@ def worker(job):
         s.reseed(k)
     bs = BatchSim(sims)
     n = bs.n
-    names = list(POOL)
-    opp = rng.choice(names, size=n, p=np.array(list(POOL.values())) / sum(POOL.values()))
+    pool = job.get("pool") or POOL
+    names = list(pool)
+    opp = rng.choice(names, size=n, p=np.array(list(pool.values())) / sum(pool.values()))
     driver_v23 = rng.random(n) < job["teacher_frac"]
     teachers = [(make_opponent("strategic_v23", 0), make_opponent("strategic_v23", 0)) for _ in range(n)]  # one per team: an instance binds to its first team
     opps = [None if o in ("small", "strategic_v23") else make_opponent(o, int(seeds[b])) for b, o in enumerate(opp)]
@@ -140,12 +142,14 @@ def main():
     p.add_argument("--cap-s", type=int, default=150)
     p.add_argument("--device", default="cpu")
     p.add_argument("--p11", action="store_true", help="add P11 targets (examples/rollout_net_train.p11_targets, MPS)")
+    p.add_argument("--pool", default="", help='team-B pool as JSON, e.g. \'{"small": 1.0}\' (self-play: every row is the net\'s own state)')
     p.add_argument("--out", required=True)
     args = p.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     jobs = [{"net": args.net, "games": args.per_job, "seed0": args.seed0 + i * args.per_job, "seed": i,
              "teacher_frac": args.teacher_frac, "every": args.every, "cap": args.cap_s * 25, "device": args.device,
+             "pool": json.loads(args.pool) if args.pool else None,
              "path": str(out / f"part_{i:03d}.npz")} for i in range(args.games // args.per_job)]
     t0 = time.time()
     with ProcessPoolExecutor(args.workers) as ex:

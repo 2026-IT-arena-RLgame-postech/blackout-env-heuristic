@@ -204,7 +204,8 @@ def ang_err_deg(pred, target):
 def evaluate(net_fn, data, device, torch, n=None, batch=4096):
     """Row metrics of a (graphic, team, agents) -> (logits, offsets) function on the labelled units."""
     rows = np.arange(len(data["tick"])) if n is None else np.random.default_rng(1).choice(len(data["tick"]), n, replace=False)
-    acc = {k: [0.0, 0.0] for k in ("hit", "err", "w2", "hit_open", "err_open", "w2_open", "p11_agree", "p11_err")}
+    acc = {k: [0.0, 0.0] for k in ("hit", "err", "w2", "hit_open", "err_open", "w2_open", "hit_late", "err_late",
+                                   "p11_agree", "p11_err")}
     for s in range(0, len(rows), batch):
         idx = rows[s:s + batch]
         g, ts, ag = batch_tensors(data, idx, device, torch)
@@ -219,9 +220,11 @@ def evaluate(net_fn, data, device, torch, n=None, batch=4096):
         err = ang_err_deg(headings(logits, off), torch.nan_to_num(ang))
         tk = np.asarray(data["tick"][idx])
         opening = torch.from_numpy((tk >= 0) & (tk < OPENING_TICKS)).to(device)[:, None].expand_as(valid)
+        late = torch.from_numpy(tk >= 3 * OPENING_TICKS).to(device)[:, None].expand_as(valid)  # 30 s +
         for key, mask, val in (("hit", valid, hit.float()), ("err", has, err), ("w2", has, (err <= 2).float()),
                                ("hit_open", valid & opening, hit.float()), ("err_open", has & opening, err),
-                               ("w2_open", has & opening, (err <= 2).float())):
+                               ("w2_open", has & opening, (err <= 2).float()),
+                               ("hit_late", valid & late, hit.float()), ("err_late", has & late, err)):
             acc[key][0] += float(val[mask].sum())
             acc[key][1] += float(mask.sum())
         if "p11_q" in data:
