@@ -1,8 +1,0 @@
-o4f      vs ckpt:checkpoints/distill/frozen/p14_v25.pt n= 300 margin  +22.9 ±  3.7  race w/t/l (0, 300, 0)  win 0.65  end {'cap': 18, 'exhausted': 47, 'game': 235}  len 53s  wall 115s/match  desync matches 2 (ticks 9)
-o4f      vs p11    n= 300 margin  +80.8 ±  0.4  race w/t/l (294, 6, 0)  win 1.00  end {'cap': 0, 'exhausted': 2, 'game': 298}  len 33s  wall 69s/match  desync matches 0 (ticks 0)
-o4f      vs strategic_v25 n= 300 margin  +15.8 ±  3.5  race w/t/l (0, 300, 0)  win 0.61  end {'cap': 14, 'exhausted': 63, 'game': 223}  len 54s  wall 109s/match  desync matches 0 (ticks 0)
-o4f      vs v23    n= 300 margin  +78.3 ±  0.8  race w/t/l (286, 14, 0)  win 1.00  end {'cap': 2, 'exhausted': 3, 'game': 295}  len 32s  wall 62s/match  desync matches 1 (ticks 4)
-PAIR o4f - reports/blind_search/unity/plain:plain vs ckpt:checkpoints/distill/frozen/p14_v25.pt:  +22.9 ±  2.4 (150 seeds, 300 matches; +22.9 vs +0.0)  race (0, 300, 0) vs (0, 300, 0)  same margin 18  search s/match 62.5 vs 0.0
-PAIR o4f - reports/blind_search/unity/plain:plain vs p11:   +3.4 ±  0.6 (150 seeds, 300 matches; +80.8 vs +77.4)  race (294, 6, 0) vs (294, 6, 0)  same margin 41  search s/match 36.8 vs 0.0
-PAIR o4f - reports/blind_search/unity/plain:plain vs strategic_v25:  +26.6 ±  2.9 (150 seeds, 300 matches; +15.8 vs -10.9)  race (0, 300, 0) vs (0, 300, 0)  same margin 6  search s/match 67.4 vs 0.0
-PAIR o4f - reports/blind_search/unity/plain:plain vs v23:   +3.2 ±  0.8 (150 seeds, 300 matches; +78.3 vs +75.1)  race (286, 14, 0) vs (286, 14, 0)  same margin 44  search s/match 36.9 vs 0.0

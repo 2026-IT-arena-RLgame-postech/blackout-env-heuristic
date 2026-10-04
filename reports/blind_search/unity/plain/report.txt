@@ -1,4 +1,0 @@
-plain    vs ckpt:checkpoints/distill/frozen/p14_v25.pt n= 300 margin   +0.0 ±  3.8  race w/t/l (0, 300, 0)  win 0.50  end {'cap': 24, 'exhausted': 40, 'game': 236}  len 56s  wall 56s/match  desync matches 0 (ticks 0)
-plain    vs p11    n= 300 margin  +77.4 ±  0.6  race w/t/l (294, 6, 0)  win 1.00  end {'cap': 3, 'exhausted': 5, 'game': 292}  len 35s  wall 35s/match  desync matches 0 (ticks 0)
-plain    vs strategic_v25 n= 300 margin  -10.9 ±  3.7  race w/t/l (0, 300, 0)  win 0.42  end {'cap': 26, 'exhausted': 53, 'game': 221}  len 56s  wall 42s/match  desync matches 1 (ticks 1)
-plain    vs v23    n= 300 margin  +75.1 ±  1.1  race w/t/l (286, 14, 0)  win 0.99  end {'cap': 4, 'exhausted': 5, 'game': 291}  len 34s  wall 27s/match  desync matches 0 (ticks 0)

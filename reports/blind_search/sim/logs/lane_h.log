@@ -1,8 +1,0 @@
-== 10:53:32 p14b det_v25r,o4f_v25r
-[det_v25r vs p14b] 64/64 margin +19.6 wall 576s (search 413s, 3953 roots)
-[o4f_v25r vs p14b] 64/64 margin +37.6 wall 2008s (search 1792s, 4359 roots)
-== 11:36:40 v25 det_v25r,o4f_v25r
-[det_v25r vs v25] 64/64 margin +12.6 wall 1180s (search 567s, 4303 roots)
-[o4f_v25r vs v25] 64/64 margin +19.0 wall 2590s (search 1994s, 4639 roots)
-== 12:39:36 v27 det_v25r,o4f_v25r
-[det_v25r vs v27] 64/64 margin -23.0 wall 1086s (search 535s, 4042 roots)
