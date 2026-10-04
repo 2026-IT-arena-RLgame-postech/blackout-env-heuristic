@@ -225,6 +225,56 @@ class ModNetPolicy(BatchPolicy):
         return {tm: mv[:, i] for i, tm in enumerate(sel)}
 
 
+def branch_units(kind, unit) -> np.ndarray:
+    """[m] branch kinds / units -> bool [m, 5]: the own units a branch modifies (base none, samp all)."""
+    kind, unit = np.asarray(kind, np.int64), np.asarray(unit, np.int64)
+    u = np.arange(5)[None, :]
+    one = (kind[:, None] != K_ALTM) & (unit[:, None] == u)
+    many = (kind[:, None] == K_ALTM) & (((unit[:, None] >> u) & 1) == 1)
+    return np.where((kind == K_SAMP)[:, None], True, np.where((kind == K_BASE)[:, None], False, one | many))
+
+
+def overlay_base(mod_mv, base_mv, kind, unit, overlay: bool) -> np.ndarray:
+    """Own moves of games executing ``kind``/``unit``: the base policy's (``base_mv``) where the branch does not
+    act -- every unit for the base branch, the untouched units of a unit branch (``overlay``) -- else the rollout
+    net's modified ones (``mod_mv``).  ``overlay=False``: a non-base branch is the whole-team rollout net."""
+    mask = branch_units(kind, unit)
+    if not overlay:
+        mask = np.repeat((np.asarray(kind) != K_BASE)[:, None], 5, 1)
+    return np.where(mask[..., None], mod_mv, base_mv).astype(F32)
+
+
+class ExternalBasePolicy(BatchPolicy):
+    """Search rollouts with an external acting policy (docs §32): a ``ModNetPolicy`` whose searching team, while
+    its branch is live (``left > 0``, the window), plays ``base`` (e.g. the P14b student, the V25 heuristic) for the
+    base branch and for the units a unit branch leaves alone (``overlay``; ``samp`` = the whole team, it modifies
+    every unit); the branch's targeted units play the rollout net's modified moves.  Past the window (and the
+    other team always) = the rollout net, as without it.  ``reset`` resets ``base`` only (the branch configuration
+    stays, as ``ModNetPolicy`` does)."""
+
+    def __init__(self, mod: ModNetPolicy, base: BatchPolicy, overlay: bool = True):
+        self.mod, self.base, self.overlay = mod, base, bool(overlay)
+        self.accepts_packed = mod.accepts_packed and (getattr(base, "accepts_packed", False) or not base.needs_inputs)
+
+    def reset(self, n: int) -> None:
+        self.base.reset(n)
+
+    def moves(self, bsim, idx, teams, inputs):
+        mod = self.mod
+        n = len(idx)
+        live = (mod.team[idx] >= 0) & (mod.left[idx] > 0)          # before ``mod.moves`` counts the decision
+        kind, unit, team = mod.kind[idx].copy(), mod.unit[idx].copy(), mod.team[idx].copy()
+        out = mod.moves(bsim, idx, teams, inputs)
+        for tm in teams:
+            rows = np.nonzero(live & (team == tm))[0]
+            if not len(rows):
+                continue
+            sub = tuple(x[:n][rows] for x in inputs)
+            ext = self.base.moves(bsim, idx[rows], (tm,), sub)[tm]
+            out[tm][rows] = overlay_base(out[tm][rows], ext, kind[rows], unit[rows], self.overlay)
+        return out
+
+
 class ValueNetLeaf:
     """Leaf scorer: the value net's final-lead head, mirror-symmetric ((V(own) - V(other)) / 2), points,
     on the batch renderer's canonical inputs (= value/evaluate.encode_view's frame)."""
@@ -297,12 +347,17 @@ class Searcher:
       for ``child_window`` decisions, then the leaf rollout; a branch's value = max over its children
       (our team will search again then).  ``expand`` k > 0: best-first -- only the base branch and the
       k best by 1-ply value get children (the rest score -inf); 0 = every branch.
+
+    ``base_policy`` (docs §32): the window of the base branch -- and, with ``overlay``, the untouched units of a
+    unit branch -- is played by this external policy instead of the rollout net (``ExternalBasePolicy``); the
+    leaf rollouts stay the rollout net.  ``play_matches(base=...)`` then acts with it.  ``None`` = unchanged.
     """
 
     def __init__(self, policy: ModNetPolicy, leaf: ValueNetLeaf, branches: list[Branch], window: int = 25,
                  leaf_decisions: int = 125, margin: float = 0.0, packed: bool = False,
                  opp_branches: list[Branch] | None = None, opp_agg: str = "min", opp_left: int | None = None,
-                 children: list[Branch] | None = None, child_window: int | None = None, expand: int = 0):
+                 children: list[Branch] | None = None, child_window: int | None = None, expand: int = 0,
+                 base_policy: BatchPolicy | None = None, overlay: bool = True):
         assert branches[0].kind == K_BASE
         assert opp_branches is None or opp_branches[0].kind == K_BASE
         assert children is None or children[0].kind == K_BASE
@@ -315,7 +370,9 @@ class Searcher:
         self.children = children if children and len(children) > 1 else None
         self.child_window = int(window if child_window is None else child_window)
         self.expand = int(expand)
-        self.roll = BatchRollout(policy, policy, repeat=1, packed=packed)
+        self.base_policy, self.overlay = base_policy, bool(overlay)
+        rp = policy if base_policy is None else ExternalBasePolicy(policy, base_policy, overlay)
+        self.roll = BatchRollout(rp, rp, repeat=1, packed=packed)
 
     def _configure(self, n_games, gteam, br: list[Branch], left):
         self.policy.configure(n_games, team=gteam, kind=[b.kind for b in br], unit=[b.unit for b in br],
@@ -513,18 +570,27 @@ class MatchConfig:
     cap_s: int = 150
     record: bool = False       # store the search team's (input, executed move) rows
     record_roots: bool = False  # store every search root: input, all B branch leaf values, r5 top / alt bins
+    search_from: int = 0       # search only at decisions search_from <= t < search_until (None = no end)
+    search_until: int | None = None
+    trace_s: tuple = ()        # also return our lead after these match seconds (the final lead if over)
 
 
 def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searcher: Searcher | None,
-                 cfg: MatchConfig, log=None) -> dict:
+                 cfg: MatchConfig, log=None, base: BatchPolicy | None = None, overlay: bool = True) -> dict:
     """Lockstep matches from ``SimState.from_seed`` (Unity RNG): team ``sides[b]`` is ours (the
     rollout net, searching every ``cfg.every`` decisions when ``searcher`` is given), the other team
-    ``opponent``.  Returns per-match results (+ recorded rows)."""
+    ``opponent``.  ``base`` (docs §32): our team acts with this policy instead of the rollout net
+    except where a non-base branch is executing (its targeted units, or with ``overlay=False`` the
+    whole team, play the rollout net's modified moves).  Returns per-match results (+ recorded rows)."""
     n = len(seeds)
     sides = np.asarray(sides, np.int64)
     bs = BatchSim([SimState.from_seed(int(s)) for s in seeds])
     our.configure(n)
     opponent.reset(n)
+    if base is not None:
+        base.reset(n)
+    trace_t = [int(round(x * 25)) for x in cfg.trace_s]
+    lead_at = np.full((n, len(trace_t)), np.iinfo(np.int64).min, np.int64)
     bufs = (np.zeros((n, 2, N_CH, H, W), F32), np.zeros((n, 2, 4), F32), np.zeros((n, 2, 10, N_AGENT_COLS), F32))
     moves = np.zeros((n, 10, 2), F32)
     first = np.full((n, 2), -1, np.int64)
@@ -545,7 +611,8 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
         live = np.nonzero(~bs.over)[0]
         if not len(live):
             break
-        if searcher is not None and t % cfg.every == 0:
+        if (searcher is not None and t % cfg.every == 0 and t >= cfg.search_from
+                and (cfg.search_until is None or t < cfg.search_until)):
             c0 = time.perf_counter()
             roots = [bs.state(int(b)) for b in live]
             reseeds = [(int(seeds[b]) * 7919 + t * 104729 + 12345) % (2 ** 31) for b in live]
@@ -565,7 +632,21 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
         sub = tuple(x[: len(live)] for x in bufs)
         ours = sides[live]
         executing = np.where(our.left[live] > 0, cur_branch[live], 0).astype(np.int16)
-        mo = our.moves(bs, live, (0, 1), sub)  # both views in one forward (the r5 opponent's too)
+        pre_left, pre_kind, pre_unit = our.left[live].copy(), our.kind[live].copy(), our.unit[live].copy()
+        if base is not None and opponent is not our and not (pre_left > 0).any():
+            mo = {tm: np.zeros((len(live), 5, 2), F32) for tm in (0, 1)}  # the base acts alone: skip the net
+            our.t[live] += 1
+        else:
+            mo = our.moves(bs, live, (0, 1), sub)  # both views in one forward (the r5 opponent's too)
+        if base is not None:
+            for team in (0, 1):
+                rows = np.nonzero(ours == team)[0]
+                if not len(rows):
+                    continue
+                s_in = sub if len(rows) == len(live) else tuple(x[rows] for x in sub)
+                ext = base.moves(bs, live[rows], (team,), s_in)[team]
+                kd = np.where(pre_left[rows] > 0, pre_kind[rows], K_BASE)
+                mo[team][rows] = overlay_base(mo[team][rows], ext, kd, pre_unit[rows], overlay)
         if opponent is our:
             oo = mo
         else:
@@ -613,6 +694,10 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
         for team in (0, 1):
             hit = (first[live, team] < 0) & (bs.ui[live, 5 * team:5 * team + 5, core.U_CLS] == HUNTER).any(axis=1)
             first[live[hit], team] = t + 1
+        for i, at in enumerate(trace_t):
+            if at == t + 1:
+                ld = bs.scores[live, 0] - bs.scores[live, 1]
+                lead_at[live, i] = np.where(sides[live] == 0, ld, -ld)
         if log and t % 250 == 0:
             log(f"  t={t // 25}s live {len(live)} search {t_search:.0f}s play {t_play:.0f}s")
     sc = bs.scores
@@ -625,6 +710,9 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
            "first_ours": f_ours, "first_opp": f_opp, "searches": searches, "chosen": chosen,
            "gain_sum": gain_sum, "wall_s": time.perf_counter() - t0, "search_s": t_search, "play_s": t_play,
            "search_game_decisions": search_gd}
+    if trace_t:
+        fin = (ours_score - opp_score)[:, None]
+        out["lead_at"] = np.where(lead_at == np.iinfo(np.int64).min, fin, lead_at)
     if cfg.record:
         out["rows"] = {k: np.concatenate(v) for k, v in rows.items()}
     if cfg.record_roots:
