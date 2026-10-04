@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 import multiprocessing as mp
+import os
 import sys
 import time
 from collections import defaultdict
@@ -33,14 +34,18 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 NETS = {"p11": "checkpoints/distill/frozen/p11_v22.pt", "p14b": "checkpoints/distill/frozen/p14_v25.pt"}
+# more nets / other paths (P16 on wsl_gpu): BLACKOUT_NETS="p16=/abs/p16.pt,p14b=/abs/p14b.pt"; ``net:<path>`` also works
+NETS.update(dict(kv.split("=", 1) for kv in os.environ.get("BLACKOUT_NETS", "").split(",") if "=" in kv))
+DEVICE = os.environ.get("BLACKOUT_NET_DEVICE", "cpu")  # set by --device (inherited by the spawned workers)
 SANCT = (11.0, 13.0)
 
 
 def _policy(name: str):
     from blackout_env.sim.batch import HeuristicPolicy, NetPolicy
 
-    if name in NETS:
-        return NetPolicy.from_checkpoint(str(REPO / NETS[name]), device="cpu")
+    if name in NETS or name.startswith("net:"):
+        path = NETS[name] if name in NETS else name[4:]
+        return NetPolicy.from_checkpoint(str(REPO / path), device=DEVICE)  # an absolute path stays absolute
     return HeuristicPolicy(name)
 
 
@@ -51,16 +56,17 @@ def sanct_dist(p):
 
 
 def play_chunk(job):
-    """(ours, opponent, seeds, sides, cap_s) -> result rows."""
+    """(ours, opponent, seeds, sides, cap_s, stop_exhausted) -> result rows.  ``stop_exhausted``: a match also ends
+    at an absorption that leaves no battery in play (as ``BatchRollout(stop_when_exhausted=True)``)."""
     import torch
 
     torch.set_num_threads(1)
     from blackout_env.sim import core
-    from blackout_env.sim.batch import N_AGENT_COLS, N_CH, BatchSim
+    from blackout_env.sim.batch import N_AGENT_COLS, N_CH, BatchSim, batteries_in_play
     from blackout_env.sim.mapdata import HUNTER, H, W
     from blackout_env.sim.state import SimState
 
-    ours_name, opp_name, seeds, sides, cap_s = job
+    ours_name, opp_name, seeds, sides, cap_s, stop_exhausted = job
     F32 = np.float32
     t0 = time.time()
     n = len(seeds)
@@ -76,8 +82,9 @@ def play_chunk(job):
     second = np.full((n, 2), -1, np.int64)
     hsec = np.zeros((n, 2))
     reserve = np.full(n, np.nan)
+    stopped = np.zeros(n, bool)
     for t in range(cap_s * 25):
-        live = np.nonzero(~bs.over)[0]
+        live = np.nonzero(~bs.over & ~stopped)[0]
         if not len(live):
             break
         if need:
@@ -96,7 +103,12 @@ def play_chunk(job):
                 d = sanct_dist(bs.uf[b, u0:u0 + 5])
                 far = d[d > 1.0]
                 reserve[b] = float(far.min()) if len(far) else np.nan
+        abs_before = bs.gf[live, core.GF_ABS].copy()
         bs.step(moves, live)
+        if stop_exhausted:
+            fired = live[(bs.gf[live, core.GF_ABS] < abs_before) & ~bs.over[live]]
+            if len(fired):
+                stopped[fired[batteries_in_play(bs, fired) == 0]] = True
         for b in live:
             ne = int(bs.g[b, core.G_NEV])
             for e in bs.ev[b, :ne]:
@@ -114,7 +126,8 @@ def play_chunk(job):
     for j, (s, sd) in enumerate(zip(seeds, sides)):
         o, p = int(sc[j, sd]), int(sc[j, 1 - sd])
         rows.append({"ours": ours_name, "opponent": opp_name, "seed": int(s), "side": int(sd), "margin": o - p,
-                     "score_ours": o, "score_opp": p, "over": bool(bs.over[j]), "ticks": int(bs.ticks[j]),
+                     "score_ours": o, "score_opp": p, "over": bool(bs.over[j]),
+                     "exhausted": bool(stopped[j]), "ticks": int(bs.ticks[j]),
                      "first_ours": int(first[j, sd]), "first_opp": int(first[j, 1 - sd]),
                      "second_ours": int(second[j, sd]), "second_opp": int(second[j, 1 - sd]),
                      "hunter_s": float(hsec[j, sd]), "opp_hunter_s": float(hsec[j, 1 - sd]),
@@ -138,8 +151,9 @@ def cmd_play(args):
                     if (ours, opp, s, sd) not in done]
             for c in range(0, len(todo), args.chunk):
                 ch = todo[c:c + args.chunk]
-                jobs.append((ours, opp, [s for s, _ in ch], [sd for _, sd in ch], args.cap_s))
+                jobs.append((ours, opp, [s for s, _ in ch], [sd for _, sd in ch], args.cap_s, args.stop_exhausted))
     print(f"{len(jobs)} chunks", flush=True)
+    os.environ["BLACKOUT_NET_DEVICE"] = args.device
     ctx = mp.get_context("spawn")
     with ctx.Pool(args.workers) as pool:
         for rows in pool.imap_unordered(play_chunk, jobs):
@@ -163,6 +177,13 @@ def wtl(rows, a="first_ours", b="first_opp"):
     return int((s > 0).sum()), int((s == 0).sum()), int((s < 0).sum())
 
 
+def first_hist(rows) -> str:
+    """Our first Hunter decision: 98 / 99 / 100 / 101+ / none counts."""
+    f = np.array([r["first_ours"] for r in rows])
+    return (f"98-:{int(((f >= 0) & (f <= 98)).sum())} 99:{int((f == 99).sum())} 100:{int((f == 100).sum())} "
+            f"101+:{int((f > 100).sum())} none:{int((f < 0).sum())}")
+
+
 def cmd_report(args):
     rows = load_rows(Path(args.out))
     by = defaultdict(dict)
@@ -177,7 +198,8 @@ def cmd_report(args):
         line = (f"{ours:52s} vs {opp:14s} n={len(d):4d} margin {np.mean(ms):+6.1f}±{se(ms):4.1f} "
                 f"win {np.mean([m > 0 for m in ms]):.2f} race {wtl(v)} 2nd {wtl(v, 'second_ours', 'second_opp')} "
                 f"H-s {np.mean([r['hunter_s'] for r in v]):.0f}/{np.mean([r['opp_hunter_s'] for r in v]):.0f} "
-                f"res100 {np.nanmedian([r['reserve100'] for r in v]):.1f}")
+                f"res100 {np.nanmedian([r['reserve100'] for r in v]):.1f} "
+                f"(p10 {np.nanquantile([r['reserve100'] for r in v], 0.1):.1f}) first {first_hist(v)}")
         if keys and ours != args.base:
             per = defaultdict(list)
             tied = defaultdict(list)
@@ -210,6 +232,8 @@ def main():
     q.add_argument("--chunk", type=int, default=32)
     q.add_argument("--cap-s", type=int, default=150)
     q.add_argument("--workers", type=int, default=3)
+    q.add_argument("--stop-exhausted", action="store_true", help="end a match at an absorption leaving no battery")
+    q.add_argument("--device", default="cpu", help="net device (cpu / cuda)")
     q.add_argument("--out", default=str(REPO / "reports/late_search_why/v27"))
     q = sub.add_parser("report")
     q.add_argument("--base", default="strategic_v25")
