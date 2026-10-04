@@ -51,6 +51,8 @@ VALUE = "checkpoints/value/s2v_f3xd2/iter2.pt"
 P14B = "checkpoints/distill/frozen/p14_v25.pt"
 P11 = "checkpoints/distill/frozen/p11_v22.pt"
 P5A = "checkpoints/distill/frozen/p5a_v22.pt"
+P16 = "checkpoints/distill/frozen/p16_v27.pt"  # the V27 student (docs §35); --base p16 = the next loop step
+BASES = {"p14b": P14B, "p16": P16}
 V25R = "checkpoints/rollout_net/v25/v25d256.pt"  # the P14b-distilled rollout nets (docs §31; --v25r overrides)
 V25F = "checkpoints/rollout_net/v25/v25f3x.pt"
 TRACE_S = (5, 10, 30, 60)
@@ -127,8 +129,8 @@ def rollout_policy(path: str, device: str):
 def make_opponent(name: str, device: str):
     from blackout_env.sim.batch import NetPolicy
 
-    if name == "p14b":
-        return NetPolicy.from_checkpoint(str(REPO / P14B), device=device)
+    if name in BASES:
+        return NetPolicy.from_checkpoint(str(REPO / BASES[name]), device=device)
     if name == "p11":
         return NetPolicy.from_checkpoint(str(REPO / P11), device=device)
     if name == "p5a":
@@ -174,7 +176,7 @@ def cmd_play(args):
     torch.set_num_threads(args.threads)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    base = NetPolicy.from_checkpoint(str(REPO / P14B), device=args.device)
+    base = NetPolicy.from_checkpoint(str(REPO / BASES[args.base]), device=args.device)
     plain_net = rollout_policy(F3, args.device)
     done = {(r["tag"], r["opponent"], r["seed"], r["side"]) for r in load_rows(out)}
     tasks = [(s, side) for s in range(args.seed0, args.seed0 + args.seeds) for side in (0, 1)]
@@ -189,7 +191,7 @@ def cmd_play(args):
             searcher, net, smeta = build_searcher(tag, base, args.device, args)
         cfg = MatchConfig(every=args.every, window=args.window, cap_s=args.cap_s, trace_s=TRACE_S,
                           search_from=args.search_from, search_until=None)
-        meta = {"base": "p14b", "search_from": args.search_from, "branches": args.branches, "every": args.every,
+        meta = {"base": args.base, "search_from": args.search_from, "branches": args.branches, "every": args.every,
                 "window": args.window, "margin": args.margin, "value": args.value, "cap_s": args.cap_s, **smeta}
         for c in range(0, len(todo), args.chunk):
             chunk = todo[c:c + args.chunk]
@@ -306,6 +308,7 @@ def main():
     q = sub.add_parser("play")
     q.add_argument("--opponent", required=True, help="|".join(OPPONENTS))
     q.add_argument("--tags", default="plain,det,o4f")
+    q.add_argument("--base", default="p14b", choices=sorted(BASES), help="our acting policy (use its own --out)")
     q.add_argument("--value", default=VALUE)
     q.add_argument("--v25r", default=V25R, help="the P14b-distilled rollout net for the *_v25r tags")
     q.add_argument("--branches", default="alt*,samp:1.0x2")
