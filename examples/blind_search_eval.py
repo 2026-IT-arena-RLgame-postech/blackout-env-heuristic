@@ -52,10 +52,12 @@ P14B = "checkpoints/distill/frozen/p14_v25.pt"
 P11 = "checkpoints/distill/frozen/p11_v22.pt"
 P5A = "checkpoints/distill/frozen/p5a_v22.pt"
 P16 = "checkpoints/distill/frozen/p16_v27.pt"  # the V27 student (docs §35); --base p16 = the next loop step
-BASES = {"p14b": P14B, "p16": P16}
+P17 = "checkpoints/distill/frozen/p17_v28.pt"  # the V28 student (docs §38)
+BASES = {"p14b": P14B, "p16": P16, "p17": P17}
 V25R = "checkpoints/rollout_net/v25/v25d256.pt"  # the P14b-distilled rollout nets (docs §31; --v25r overrides)
 V25F = "checkpoints/rollout_net/v25/v25f3x.pt"
 V27R = "checkpoints/rollout_net/v27/v27d256.pt"  # distilled from P16 (docs §37)
+V28R = "checkpoints/rollout_net/v28/v28d256.pt"  # distilled from P17 (Q9, docs §39)
 TRACE_S = (5, 10, 30, 60)
 SEARCH_FROM = 125  # decisions (5 s, docs §32)
 
@@ -77,8 +79,9 @@ PERTURBED = {
 }
 # strategic_v27 (docs §33: V25 + a staged reserve walker for the second race; the strongest opponent)
 V27 = {"v27": ("strategic_v27", {"reserve_stage": 1.5}), "v27s1": ("strategic_v27", {"reserve_stage": 1.0}),
-       "v27s05": ("strategic_v27", {"reserve_stage": 0.5})}
-OPPONENTS = ("p14b", "p16", "v25", "v27", "v27s1", "v27s05", "v23", "v19", "p5a", "p11", "d256", "f3", "v23pA", "v23pB", "v25pA", "v25pB")
+       "v27s05": ("strategic_v27", {"reserve_stage": 0.5}),
+       "v28": ("strategic_v28", {"reserve_stage": 0.5, "trade_hold": "advance"})}  # docs §36
+OPPONENTS = ("p14b", "p16", "p17", "v28", "v25", "v27", "v27s1", "v27s05", "v23", "v19", "p5a", "p11", "d256", "f3", "v23pA", "v23pB", "v25pA", "v25pB")
 
 O4 = {"opp_branches": "samp:1.0x3", "opp_left": 150}
 # tag -> search options (None = plain P14b); "net": rollout net override ("v25r"), "deep": Searcher S4 options
@@ -94,6 +97,7 @@ VARIANTS = {
     "det_v25r": {"net": "v25r"},
     "det_v25f": {"net": V25F},
     "o4f_v27r": {"net": V27R, "deep": {**O4, "opp_agg": "mean"}},
+    "o4f_v28r": {"net": V28R, "deep": {**O4, "opp_agg": "mean"}},
     "o4f_v25f": {"net": V25F, "deep": {**O4, "opp_agg": "mean"}},
     "o4f_v25r": {"net": "v25r", "deep": {**O4, "opp_agg": "mean"}},
     # rollout f3_x_d2, opponent model: f3 {base, s0} + v25r {s1, s2}
