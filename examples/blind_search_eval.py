@@ -16,7 +16,8 @@ The opponent model inside the search never uses the real opponent's identity -- 
   ``mix_v25r`` = f3_x_d2 {arg max, sample} + v25r {arg max... samples}, see ``VARIANTS``.
 
 The held-out pool (``OPPONENTS``; none is used to fit anything in the search): V19, V23, V25, P5a, P11, P14b, the plain
-d256_f3_x32_d2 / f3_x_d2 nets (f3_x_d2 = the search's own model: the S3 exact-model case) and four fixed perturbed
+d256_f3_x32_d2 / f3_x_d2 nets (f3_x_d2 = the search's own model: the S3 exact-model case), strategic_v27 (§33,
+reserve_stage 1.5 = ``v27`` and 1.0 = ``v27s1``) and four fixed perturbed
 V23 / V25 settings drawn from the data-collection mixture's V17-family parameter cloud (``PERTURBED``).
 
 ``play``: one opponent, the given tags, seeds x both sides in lockstep chunks -> ``<out>/matches_<opponent>.jsonl``
@@ -69,7 +70,9 @@ PERTURBED = {
                                 "exposure_cost": 0.895, "steal_weight": 1.531, "camp_engage_radius": 4.95,
                                 "special_weights": (0.449, 0.685, 0.084, 0.103)}),
 }
-OPPONENTS = ("p14b", "v25", "v23", "v19", "p5a", "p11", "d256", "f3", "v23pA", "v23pB", "v25pA", "v25pB")
+# strategic_v27 (docs §33: V25 + a staged reserve walker for the second race; the strongest opponent)
+V27 = {"v27": ("strategic_v27", {"reserve_stage": 1.5}), "v27s1": ("strategic_v27", {"reserve_stage": 1.0})}
+OPPONENTS = ("p14b", "v25", "v27", "v27s1", "v23", "v19", "p5a", "p11", "d256", "f3", "v23pA", "v23pB", "v25pA", "v25pB")
 
 O4 = {"opp_branches": "samp:1.0x3", "opp_left": 150}
 # tag -> search options (None = plain P14b); "net": rollout net override ("v25r"), "deep": Searcher S4 options
@@ -130,8 +133,8 @@ def make_opponent(name: str, device: str):
         return rollout_policy(F3, device)
     if name == "d256":
         return rollout_policy(D256, device)
-    if name in PERTURBED:
-        return FixedHeuristicPolicy(*PERTURBED[name])
+    if name in PERTURBED or name in V27:
+        return FixedHeuristicPolicy(*(PERTURBED.get(name) or V27[name]))
     if name in ("v19", "v23", "v25"):
         return HeuristicPolicy(f"strategic_{name}")
     raise ValueError(name)
