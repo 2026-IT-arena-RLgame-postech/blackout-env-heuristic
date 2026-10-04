@@ -1,0 +1,14 @@
+strategic_v25                                        vs p11            n= 256 margin  +75.6± 0.9 win 0.99 race (251, 5, 0) 2nd (72, 179, 5) H-s 98/7 res100 6.7
+strategic_v27:reserve_stage=1.5                      vs p11            n= 256 margin  +74.9± 0.9 win 1.00 race (248, 8, 0) 2nd (104, 143, 9) H-s 108/11 res100 1.5
+                                                        - strategic_v25:   -0.8 ±  1.2 (128 seeds); both race-tied 3:  +15.3 ± 20.4; identical 0.00
+strategic_v25                                        vs p14b           n= 256 margin  +10.4± 4.0 win 0.56 race (0, 256, 0) 2nd (109, 3, 144) H-s 115/102 res100 6.7
+strategic_v27:reserve_stage=1.5                      vs p14b           n= 256 margin  +54.5± 2.7 win 0.88 race (0, 256, 0) 2nd (231, 3, 22) H-s 133/46 res100 1.5
+                                                        - strategic_v25:  +44.1 ±  4.8 (128 seeds); both race-tied 256:  +44.1 ±  4.8; identical 0.00
+strategic_v25                                        vs strategic_v23  n= 256 margin  +73.2± 1.3 win 0.98 race (243, 13, 0) 2nd (82, 164, 10) H-s 112/10 res100 6.8
+strategic_v27:reserve_stage=1.5                      vs strategic_v23  n= 256 margin  +74.6± 1.1 win 0.99 race (243, 13, 0) 2nd (96, 153, 7) H-s 104/5 res100 1.5
+                                                        - strategic_v25:   +1.4 ±  1.3 (128 seeds); both race-tied 13:  +22.2 ± 18.6; identical 0.00
+strategic_v25                                        vs strategic_v25  n= 256 margin   +0.0± 4.1 win 0.50 race (0, 256, 0) 2nd (124, 8, 124) H-s 91/91 res100 6.8
+strategic_v27:reserve_stage=1.5                      vs strategic_v25  n= 256 margin  +50.0± 2.9 win 0.86 race (0, 256, 0) 2nd (239, 1, 16) H-s 125/38 res100 1.5
+                                                        - strategic_v25:  +50.0 ±  3.1 (128 seeds); both race-tied 256:  +50.0 ±  3.1; identical 0.00
+strategic_v27:reserve_stage=2.5                      vs strategic_v25  n=  64 margin  +42.9± 6.5 win 0.81 race (0, 64, 0) 2nd (56, 0, 8) H-s 119/45 res100 2.4
+                                                        - strategic_v25:  +42.9 ±  7.2 (32 seeds); both race-tied 64:  +42.9 ±  7.2; identical 0.00

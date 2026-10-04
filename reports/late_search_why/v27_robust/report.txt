@@ -1,0 +1,9 @@
+strategic_v25:race_walk=false                        vs strategic_v25  n= 128 margin   -7.8± 5.7 win 0.45 race (0, 8, 120) 2nd (45, 1, 82) H-s 85/103 res100 7.0
+strategic_v27:race_walk=false,reserve_stage=1.5      vs strategic_v25  n= 128 margin  +48.1± 4.2 win 0.84 race (0, 9, 119) 2nd (95, 1, 32) H-s 145/52 res100 1.5
+strategic_v25                                        vs strategic_v27:reserve_stage=1.5 n=  64 margin  -44.5± 6.4 win 0.17 race (0, 64, 0) 2nd (5, 0, 59) H-s 49/128 res100 6.8
+strategic_v27:reserve_stage=1.0                      vs strategic_v27:reserve_stage=1.5 n=  64 margin  +17.5± 8.6 win 0.61 race (0, 64, 0) 2nd (33, 0, 31) H-s 101/81 res100 7.7
+                                                        - strategic_v25:  +62.0 ± 10.7 (32 seeds); both race-tied 64:  +62.0 ± 10.7; identical 0.00
+strategic_v27:reserve_stage=1.5                      vs strategic_v27:reserve_stage=1.5 n=  64 margin   +0.0± 8.7 win 0.50 race (0, 64, 0) 2nd (25, 14, 25) H-s 89/89 res100 1.5
+                                                        - strategic_v25:  +44.5 ±  7.6 (32 seeds); both race-tied 64:  +44.5 ±  7.6; identical 0.00
+strategic_v27:reserve_stage=2.5                      vs strategic_v27:reserve_stage=1.5 n=  64 margin  -46.5± 7.2 win 0.20 race (0, 64, 0) 2nd (11, 0, 53) H-s 48/107 res100 2.4
+                                                        - strategic_v25:   -2.0 ±  7.0 (32 seeds); both race-tied 64:   -2.0 ±  7.0; identical 0.00

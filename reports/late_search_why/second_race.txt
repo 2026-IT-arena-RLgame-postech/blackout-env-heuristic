@@ -1,0 +1,41 @@
+plain second race w/t/l 122/1/101  median ours 161 opp 170
+search second race w/t/l 186/1/37  median ours 151 opp 190
+ second race plain -1 -> search -1:  25 diff  +37.5 sum share +0.09
+ second race plain -1 -> search +1:  76 diff  +74.2 sum share +0.54
+ second race plain +0 -> search +1:   1 diff  -28.0 sum share -0.00
+ second race plain +1 -> search -1:  12 diff   -6.8 sum share -0.01
+ second race plain +1 -> search +0:   1 diff -123.0 sum share -0.01
+ second race plain +1 -> search +1: 109 diff  +38.0 sum share +0.39
+--- second-race winner details (our first post-opening transform)
+plain n 191 median t 161.0 {'fresh': 154, 'respawned': 37} held before transform {0: 96, -1: 95} dist@first+8 median 5.71
+    respawned 37 median t 337.0 dist 12.25
+    fresh 154 median t 146.0 dist 3.91
+search n 215 median t 151.0 {'fresh': 199, 'respawned': 16} held before transform {0: 109, -1: 106} dist@first+8 median 3.83
+    respawned 16 median t 209.0 dist 12.25
+    fresh 199 median t 148.0 dist 3.53
+plain reserve dist ours/opp: 50:7.7/7.6 | 75:7.2/7.1 | 90:7.0/7.1 | 100:6.8/7.0 | 110:6.3/6.1 | 125:5.0/4.9 | 150:3.9/3.8 n reserve (ours,opp) [((2, 2), 214), ((3, 2), 6), ((2, 3), 4)] held@100 Counter({np.int8(-1): 127, np.int8(0): 97})
+    ours@100 quantiles [3.4 4.5 6.8 7.8 8.4]  opp [3.4 4.7 7.  7.9 8.7]
+search reserve dist ours/opp: 50:7.4/7.6 | 75:7.0/7.1 | 90:6.3/7.2 | 100:5.8/7.0 | 110:5.0/6.4 | 125:3.8/4.9 | 150:3.2/4.0 n reserve (ours,opp) [((2, 2), 188), ((3, 2), 25), ((1, 2), 7), ((2, 3), 3)] held@100 Counter({np.int8(-1): 144, np.int8(0): 80})
+    ours@100 quantiles [2.2 3.7 5.8 7.4 8. ]  opp [3.5 4.7 7.  7.9 8.8]
+plain second race w/t/l 46/160/50  median ours 399 opp 482
+search second race w/t/l 97/115/44  median ours 309 opp 458
+ second race plain -1 -> search -1:  15 diff   +4.6 sum share +0.03
+ second race plain -1 -> search +0:  19 diff   +0.5 sum share +0.00
+ second race plain -1 -> search +1:  16 diff  +35.8 sum share +0.24
+ second race plain +0 -> search -1:  24 diff   +4.4 sum share +0.04
+ second race plain +0 -> search +0:  75 diff   +1.4 sum share +0.04
+ second race plain +0 -> search +1:  61 diff  +21.1 sum share +0.53
+ second race plain +1 -> search -1:   5 diff   -4.0 sum share -0.01
+ second race plain +1 -> search +0:  21 diff   -2.7 sum share -0.02
+ second race plain +1 -> search +1:  20 diff  +17.1 sum share +0.14
+--- second-race winner details (our first post-opening transform)
+plain n 51 median t 399.0 {'respawned': 43, 'fresh': 8} held before transform {-1: 42, 0: 9} dist@first+8 median 12.72
+    respawned 43 median t 437.0 dist 12.72
+    fresh 8 median t 153.5 dist 4.14
+search n 105 median t 309.0 {'respawned': 64, 'fresh': 41} held before transform {-1: 66, 0: 38, 2: 1} dist@first+8 median 7.48
+    respawned 64 median t 478.5 dist 12.77
+    fresh 41 median t 158.0 dist 4.22
+plain reserve dist ours/opp: 50:7.7/7.8 | 75:7.2/7.1 | 90:7.1/7.1 | 100:6.9/6.8 | 110:6.7/6.4 | 125:6.2/5.8 | 150:7.9/4.6 n reserve (ours,opp) [((2, 2), 249), ((3, 2), 4), ((2, 3), 3)] held@100 Counter({np.int8(-1): 139, np.int8(0): 117})
+    ours@100 quantiles [3.5 4.8 6.9 7.9 8.6]  opp [3.4 4.7 6.8 7.8 8.8]
+search reserve dist ours/opp: 50:7.0/7.8 | 75:5.9/7.1 | 90:5.3/7.1 | 100:5.0/6.8 | 110:4.8/6.4 | 125:5.1/5.6 | 150:7.5/4.2 n reserve (ours,opp) [((2, 2), 191), ((3, 2), 47), ((4, 2), 10), ((1, 2), 5)] held@100 Counter({np.int8(-1): 144, np.int8(0): 112})
+    ours@100 quantiles [1.8 3.3 5.  7.2 7.9]  opp [3.4 4.7 6.8 7.7 8.8]

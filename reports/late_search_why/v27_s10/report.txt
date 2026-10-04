@@ -1,0 +1,6 @@
+strategic_v25                                        vs p14b           n= 256 margin  +10.4± 4.0 win 0.56 race (0, 256, 0) 2nd (109, 3, 144) H-s 115/102 res100 6.7
+strategic_v27:reserve_stage=1.0                      vs p14b           n= 256 margin  +59.3± 2.6 win 0.89 race (0, 256, 0) 2nd (193, 5, 58) H-s 129/38 res100 7.7
+                                                        - strategic_v25:  +48.9 ±  4.7 (128 seeds); both race-tied 256:  +48.9 ±  4.7; identical 0.00
+strategic_v25                                        vs strategic_v25  n= 256 margin   +0.0± 4.1 win 0.50 race (0, 256, 0) 2nd (124, 8, 124) H-s 91/91 res100 6.8
+strategic_v27:reserve_stage=1.0                      vs strategic_v25  n= 256 margin  +51.7± 2.9 win 0.88 race (0, 256, 0) 2nd (194, 2, 60) H-s 128/34 res100 7.7
+                                                        - strategic_v25:  +51.7 ±  2.9 (128 seeds); both race-tied 256:  +51.7 ±  2.9; identical 0.00
