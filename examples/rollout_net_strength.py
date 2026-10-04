@@ -58,8 +58,10 @@ def make_policy(spec: str, device: str):
         pol = HeuristicPolicy(HEUR.get(spec, spec[5:]))
     elif spec == "r5" or spec.startswith("small:"):
         pol = NetPolicy(RolloutNet.from_checkpoint(str(CKPT["r5"] if spec == "r5" else spec[6:])), device=device)
-    elif spec in CKPT or spec.startswith("net:"):
-        pol = NetPolicy.from_checkpoint(str(CKPT[spec] if spec in CKPT else spec[4:]), device=device)
+    elif spec in CKPT or spec.startswith("net:"):  # a distill student or a RolloutNet checkpoint (e.g. f3x)
+        from blackout_env.train.distill.inference import load_checkpoint_net
+
+        pol = NetPolicy(load_checkpoint_net(str(CKPT[spec] if spec in CKPT else spec[4:])), device=device)
     else:
         raise ValueError(spec)
     _POLICIES[spec] = pol
