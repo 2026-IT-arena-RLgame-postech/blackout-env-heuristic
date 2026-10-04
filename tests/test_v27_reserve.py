@@ -66,3 +66,35 @@ def test_v27_is_a_function_of_the_observation():
     for obs in _fixtures():
         x, y = played.act(obs), StrategicHeuristicV27(reserve_stage=2.0).act(obs)
         assert all(np.array_equal(x[n], y[n]) for n in x)
+
+
+def test_act_teacher_v27_reserve_stage():
+    """P16 teacher: ``act:strategic_v27:reserve_stage=1.5`` parses, wraps V27 with the stage, and its
+    ``last_actions`` are exactly a fresh V27(1.5)'s moves along a played trajectory (team A's view)."""
+    from blackout_env.sim.state import SimState, obs_from_raw
+    from blackout_env.train.distill.act_teacher import ActTeacher
+    from blackout_env.train.distill.collect import TEACHERS, teacher_arg
+
+    name = "act:strategic_v27:reserve_stage=1.5"
+    assert teacher_arg(name) == name and name in TEACHERS
+    teacher = TEACHERS[name]()
+    assert isinstance(teacher, ActTeacher) and isinstance(teacher.policy, StrategicHeuristicV27)
+    assert teacher.policy.reserve_stage == 1.5
+    ref, opp = StrategicHeuristicV27(reserve_stage=1.5), StrategicHeuristicV25()
+    sim = SimState.from_seed(4_000_003)
+    staged = 0
+    for t in range(120):  # the race and the staging
+        obs = obs_from_raw(sim.raw_state(), sim.raw_map())
+        mine = {f"unit_{i}": obs[f"unit_{i}"] for i in range(5)}
+        labels = teacher.teach(mine)
+        want = ref.act(mine)
+        assert set(labels) == set(mine)
+        assert all(np.array_equal(teacher.last_actions[n], np.asarray(want[n], np.float32)) for n in want), t
+        staged += bool(teacher.policy.staged)
+        mv = np.zeros((10, 2), np.float32)
+        for n, a in teacher.last_actions.items():
+            mv[int(n.split("_")[1])] = np.clip(a, -1, 1)
+        for n, a in opp.act({f"unit_{i}": obs[f"unit_{i}"] for i in range(5, 10)}).items():
+            mv[int(n.split("_")[1])] = np.clip(np.asarray(a, np.float32), -1, 1)
+        sim.step(mv)
+    assert staged, "the teacher never staged a reserve"
