@@ -1,0 +1,72 @@
+== 07:35:18 v27 plain,det,o4f
+[plain vs v27] 128/256 margin -48.9 wall 538s (search 0s, 0 roots)
+[plain vs v27] 256/256 margin -51.4 wall 663s (search 0s, 0 roots)
+Traceback (most recent call last):
+  File "/home/cucumbersaurus/blackout-env-r1/examples/blind_search_eval.py", line 333, in <module>
+    main()
+  File "/home/cucumbersaurus/blackout-env-r1/examples/blind_search_eval.py", line 329, in main
+    {"play": cmd_play, "report": cmd_report}[args.cmd](args)
+  File "/home/cucumbersaurus/blackout-env-r1/examples/blind_search_eval.py", line 193, in cmd_play
+    res = play_matches([s for s, _ in chunk], [sd for _, sd in chunk], ModNetPolicy(net), opp, searcher, cfg,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-r1/blackout_env/sim/search.py", line 680, in play_matches
+    out = searcher.search(roots, sides[live], reseeds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-r1/blackout_env/sim/search.py", line 425, in search
+    raw = self.leaf(res.bsim, gteam).reshape(r, nb, no)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-r1/blackout_env/sim/search.py", line 344, in __call__
+    f = self.final(gr.reshape(-1, N_CH, H, W), tm.reshape(-1, 4), ag.reshape(-1, 10, N_AGENT_COLS)).reshape(-1, 2)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-r1/blackout_env/sim/search.py", line 329, in final
+    raw = self.net(g, t, a)
+          ^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-r1/blackout_env/value/model.py", line 102, in forward
+    return self.forward_full(graphic, team_state, agent_states)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-r1/blackout_env/value/model.py", line 87, in forward_full
+    tokens = self.trunk._trunk(graphic, team_state, agent_states)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-r1/blackout_env/model/my_model.py", line 478, in _trunk
+    vis_tokens = self.graphic_encoder(graphic)               # [B, 36, hidden]
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-r1/blackout_env/model/modules/graphic_encoder.py", line 67, in forward
+    tokens = self.tokenize_ffn(x.flatten(2).transpose(1, 2))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-r1/blackout_env/model/modules/ffn_block.py", line 31, in forward
+    x_gated = F.silu(gate) * x
+              ~~~~~~~~~~~~~^~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 144.00 MiB. GPU 0 has a total capacity of 10.57 GiB of which 144.00 MiB is free. Process 2738240 has 28.00 MiB memory in use. Process 3296263 has 2.46 GiB memory in use. Process 3296262 has 2.74 GiB memory in use. Process 3296259 has 2.74 GiB memory in use. Including non-PyTorch memory, this process has 1.14 GiB memory in use. Process 3516044 has 1.31 GiB memory in use. Of the allocated memory 786.38 MiB is allocated by PyTorch, and 191.62 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
+FAILED v27
+== 07:57:19 v27s1 plain,det,o4f
+== 10:24:52 v27 plain,det,o4f
+[det vs v27] 128/256 margin -36.3 wall 1662s (search 805s, 7293 roots)
+[det vs v27] 256/256 margin -31.0 wall 1510s (search 826s, 8115 roots)
+[o4f vs v27] 128/256 margin -26.2 wall 3833s (search 2996s, 7036 roots)
+[o4f vs v27] 256/256 margin -29.8 wall 3933s (search 3089s, 7408 roots)
+== 13:27:16 v27s1 plain,det,o4f
+[plain vs v27s1] 128/256 margin -49.1 wall 760s (search 0s, 0 roots)
+[plain vs v27s1] 256/256 margin -48.9 wall 540s (search 0s, 0 roots)
+[det vs v27s1] 128/256 margin -33.3 wall 1740s (search 877s, 7087 roots)
+[det vs v27s1] 256/256 margin -36.9 wall 1854s (search 932s, 7412 roots)
+[o4f vs v27s1] 128/256 margin -28.9 wall 3821s (search 2978s, 6520 roots)
+[o4f vs v27s1] 256/256 margin -30.1 wall 4397s (search 3453s, 7833 roots)
+== 17:05:54 lane g done

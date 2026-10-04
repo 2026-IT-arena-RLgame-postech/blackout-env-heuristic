@@ -1,0 +1,12 @@
+o4f      vs ckpt:checkpoints/distill/frozen/p14_v25.pt n= 300 margin  +33.4 ±  3.5  race w/t/l (0, 300, 0)  win 0.73  end {'cap': 9, 'exhausted': 51, 'game': 240}  len 50s  wall 140s/match  desync matches 1 (ticks 2)
+o4f      vs p11    n=  26 margin  +81.4 ±  1.1  race w/t/l (25, 1, 0)  win 1.00  end {'cap': 0, 'exhausted': 0, 'game': 26}  len 31s  wall 73s/match  desync matches 0 (ticks 0)
+o4f      vs strategic_v25 n= 300 margin  +22.7 ±  3.5  race w/t/l (0, 300, 0)  win 0.67  end {'cap': 11, 'exhausted': 53, 'game': 236}  len 52s  wall 142s/match  desync matches 0 (ticks 0)
+o4f      vs v23    n=  26 margin  +74.5 ±  6.4  race w/t/l (23, 3, 0)  win 0.96  end {'cap': 0, 'exhausted': 1, 'game': 25}  len 31s  wall 67s/match  desync matches 0 (ticks 0)
+PAIR o4f - reports/blind_search/unity/plain:plain vs ckpt:checkpoints/distill/frozen/p14_v25.pt:  +33.4 ±  2.4 (150 seeds, 300 matches; +33.4 vs +0.0)  race (0, 300, 0) vs (0, 300, 0)  same margin 9  search s/match 86.9 vs 0.0
+PAIR o4f - reports/blind_search/unity/plain:plain vs p11:   +1.3 ±  1.3 (13 seeds, 26 matches; +81.4 vs +80.0)  race (25, 1, 0) vs (25, 1, 0)  same margin 4  search s/match 39.5 vs 0.0
+PAIR o4f - reports/blind_search/unity/plain:plain vs strategic_v25:  +33.6 ±  3.2 (150 seeds, 300 matches; +22.7 vs -10.9)  race (0, 300, 0) vs (0, 300, 0)  same margin 7  search s/match 99.1 vs 0.0
+PAIR o4f - reports/blind_search/unity/plain:plain vs v23:  +11.4 ±  5.7 (13 seeds, 26 matches; +74.5 vs +63.1)  race (23, 3, 0) vs (23, 3, 0)  same margin 7  search s/match 40.6 vs 0.0
+PAIR o4f - reports/blind_search/unity/o4f:o4f vs ckpt:checkpoints/distill/frozen/p14_v25.pt:  +10.5 ±  2.8 (150 seeds, 300 matches; +33.4 vs +22.9)  race (0, 300, 0) vs (0, 300, 0)  same margin 10  search s/match 86.9 vs 62.5
+PAIR o4f - reports/blind_search/unity/o4f:o4f vs p11:   -0.5 ±  1.7 (13 seeds, 26 matches; +81.4 vs +81.9)  race (25, 1, 0) vs (25, 1, 0)  same margin 1  search s/match 39.5 vs 29.3
+PAIR o4f - reports/blind_search/unity/o4f:o4f vs strategic_v25:   +6.9 ±  3.1 (150 seeds, 300 matches; +22.7 vs +15.8)  race (0, 300, 0) vs (0, 300, 0)  same margin 7  search s/match 99.1 vs 67.4
+PAIR o4f - reports/blind_search/unity/o4f:o4f vs v23:   +2.7 ±  3.0 (13 seeds, 26 matches; +74.5 vs +71.8)  race (23, 3, 0) vs (23, 3, 0)  same margin 4  search s/match 40.6 vs 32.4

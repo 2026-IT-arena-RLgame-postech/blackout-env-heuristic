@@ -1,0 +1,15 @@
+== 07:22:54 f3 plain,det,o4f
+[plain vs f3] 128/256 margin +75.8 wall 159s (search 0s, 0 roots)
+[plain vs f3] 256/256 margin +72.0 wall 148s (search 0s, 0 roots)
+[det vs f3] 128/256 margin +82.5 wall 399s (search 322s, 2993 roots)
+[det vs f3] 256/256 margin +81.4 wall 482s (search 377s, 3182 roots)
+[o4f vs f3] 128/256 margin +81.6 wall 1351s (search 1271s, 3055 roots)
+[o4f vs f3] 256/256 margin +80.7 wall 1966s (search 1773s, 3395 roots)
+== 08:38:06 v23 plain,det,o4f
+[plain vs v23] 128/256 margin +75.8 wall 984s (search 0s, 0 roots)
+[plain vs v23] 256/256 margin +73.5 wall 781s (search 0s, 0 roots)
+[det vs v23] 128/256 margin +77.3 wall 1281s (search 564s, 3636 roots)
+[det vs v23] 256/256 margin +77.8 wall 1125s (search 564s, 3773 roots)
+[o4f vs v23] 128/256 margin +78.5 wall 2167s (search 1542s, 3383 roots)
+[o4f vs v23] 256/256 margin +77.7 wall 2086s (search 1430s, 3776 roots)
+== 10:58:47 lane d done

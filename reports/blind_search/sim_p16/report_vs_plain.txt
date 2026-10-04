@@ -1,0 +1,25 @@
+R1 blind search: paired difference vs 'plain' (same opponent, seed, side); +-SE over seeds, sides averaged
+opponents: p14b, p16, v25, v27, v27s05
+
+tag                   p14b           p16           v25           v27        v27s05        pooled                worst  s/match  roots/s
+plain margin         +61.1          +0.0         +58.9         +38.3         -20.4
+o4f               +8.5±4.0     +17.2±4.7     +10.6±4.8     +17.3±5.0                  +13.4±2.3*      +8.5±4.0 (p14b)     16.7      2.6
+o4f_v27r          +5.0±1.9     +23.7±4.6     +11.6±3.1     +14.7±5.6     +26.8±6.4     +16.4±2.1      +5.0±1.9 (p14b)     18.1      2.4
+o4f_v25r         +12.0±4.4     +13.4±4.5      +3.4±4.2     +18.4±5.4     +16.9±5.7     +12.8±2.2       +3.4±4.2 (v25)     17.4      2.4
+
+(* = pooled over the opponents present only)
+
+seeds per (tag, opponent):
+  plain        p14b:32 p16:32 v25:32 v27:32 v27s05:32
+  o4f          p14b:32 p16:32 v25:32 v27:32
+  o4f_v27r     p14b:32 p16:32 v25:32 v27:32 v27s05:32
+  o4f_v25r     p14b:32 p16:32 v25:32 v27:32 v27s05:32
+
+cost per tag (all opponents): search s/match, roots/match, lockstep roots/s, game-decisions/root, wall s/match
+  o4f            16.7 s   42.7 roots     2.6 roots/s    4509 gd/root  wall  22.6 s
+  o4f_v27r       18.1 s   43.3 roots     2.4 roots/s    4503 gd/root  wall  24.2 s
+  o4f_v25r       17.4 s   42.3 roots     2.4 roots/s    4488 gd/root  wall  23.2 s
+
+pairwise (a - b), pooled over common opponents:
+  o4f_v27r - o4f: pooled +0.4±2.0  p14b -3.5±3.9 p16 +6.5±4.0 v25 +1.0±3.2 v27 -2.6±4.6
+  o4f_v27r - o4f_v25r: pooled +3.5±2.0  p14b -7.0±4.2 p16 +10.4±5.7 v25 +8.2±3.5 v27 -3.8±3.3 v27s05 +9.9±5.4
