@@ -1,0 +1,11 @@
+== 13:24:22 v27s1 det_v25r
+[det_v25r vs v27s1] 64/64 margin -27.8 wall 940s (search 460s, 3448 roots)
+== 13:40:07 v25pA det_v25r
+[det_v25r vs v25pA] 64/64 margin -6.1 wall 1135s (search 575s, 5388 roots)
+== 13:59:06 v25pB det_v25r
+[det_v25r vs v25pB] 64/64 margin +66.9 wall 945s (search 397s, 2923 roots)
+== 14:14:55 v23pA det_v25r
+[det_v25r vs v23pA] 64/64 margin +78.6 wall 521s (search 184s, 1750 roots)
+== 14:23:41 lane h2 done
+== 14:23:41 v27 o4f_v25r
+[o4f_v25r vs v27] 128/256 margin -23.2 wall 4301s (search 3258s, 9048 roots)

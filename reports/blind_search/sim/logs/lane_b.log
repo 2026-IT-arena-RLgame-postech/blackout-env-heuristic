@@ -1,0 +1,15 @@
+== 07:22:54 v25 plain,det,o4f
+[plain vs v25] 128/256 margin -10.5 wall 911s (search 0s, 0 roots)
+[plain vs v25] 256/256 margin -7.8 wall 771s (search 0s, 0 roots)
+[det vs v25] 128/256 margin +3.6 wall 2417s (search 1113s, 7632 roots)
+[det vs v25] 256/256 margin +9.0 wall 2092s (search 916s, 6976 roots)
+[o4f vs v25] 128/256 margin +14.6 wall 4095s (search 3207s, 7446 roots)
+[o4f vs v25] 256/256 margin +16.2 wall 4412s (search 3440s, 7748 roots)
+== 11:27:59 p5a plain,det,o4f
+[plain vs p5a] 128/256 margin +70.6 wall 256s (search 0s, 0 roots)
+[plain vs p5a] 256/256 margin +73.0 wall 247s (search 0s, 0 roots)
+[det vs p5a] 128/256 margin +74.1 wall 810s (search 570s, 4153 roots)
+[det vs p5a] 256/256 margin +74.8 wall 768s (search 535s, 3982 roots)
+[o4f vs p5a] 128/256 margin +75.3 wall 1369s (search 1197s, 3731 roots)
+[o4f vs p5a] 256/256 margin +75.9 wall 1520s (search 1362s, 3782 roots)
+== 12:50:55 lane b done
