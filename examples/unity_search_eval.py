@@ -85,11 +85,13 @@ class _Remote:
         from blackout_env.sim.search_server import SearchClient
 
         from blackout_env.sim.search import search_config
+        from blackout_env.sim.search_server import server_meta
 
         self.branches = parse_branches(cfg["branches"])
         deep = cfg.get("deep") or {}
-        expect = {**search_config(cfg["branches"], cfg["window"], **{"leaf_decisions": 125, **deep}),
-                  "rollout": os.path.basename(cfg.get("net") or R5), "value": os.path.basename(cfg.get("value") or VALUE)}
+        sc = {k: v for k, v in deep.items() if k != "opp_nets"}
+        expect = {**search_config(cfg["branches"], cfg["window"], **{"leaf_decisions": 125, **sc}),
+                  **server_meta(cfg.get("net") or R5, cfg.get("value") or VALUE, deep, cfg.get("base"), not cfg.get("no_overlay"))}
         self.client = SearchClient(path, expect=expect, timeout=cfg.get("server_timeout", 60.0), connect_timeout=600.0)
         self.margin = cfg["margin"]
 
@@ -125,19 +127,26 @@ def _init_worker(build: str, time_scale: float, gpus, cfg: dict, wids=None) -> N
     net_path, value_path = cfg.get("net") or R5, cfg.get("value") or VALUE  # our net: acting = rollout model
     r5 = RolloutNet.from_checkpoint(str(REPO / net_path))
     acting = ModNetPolicy(NetPolicy(r5, device="cpu"))
+    # docs §34: an external acting policy (P14b): our team plays it except the units a live non-base branch moves
+    base = NetPolicy.from_checkpoint(str(REPO / cfg["base"]), device="cpu") if cfg.get("base") else None
     dev = cfg["device"]
     servers = cfg.get("servers") or []
     if servers:
         searcher = _Remote(servers[wid % len(servers)], cfg)
     else:
-        from blackout_env.sim.search import searcher_kwargs
+        from blackout_env.sim.search import deep_opp_nets, searcher_kwargs
 
-        searcher = Searcher(ModNetPolicy(NetPolicy(RolloutNet.from_checkpoint(str(REPO / net_path)), device=dev,
-                                                   cuda_graphs=cfg.get("cuda_graphs", False))),
+        mk = lambda p: NetPolicy(RolloutNet.from_checkpoint(str(REPO / p)), device=dev,  # noqa: E731
+                                 cuda_graphs=cfg.get("cuda_graphs", False))
+        kw = searcher_kwargs(cfg.get("deep"))
+        if base is not None:
+            kw |= {"base_policy": NetPolicy.from_checkpoint(str(REPO / cfg["base"]), device=dev),
+                   "overlay": not cfg.get("no_overlay")}
+        searcher = Searcher(ModNetPolicy(mk(net_path), opp_nets=[mk(x) for x in deep_opp_nets(cfg.get("deep"))]),
                             ValueNetLeaf(str(REPO / value_path), dev), parse_branches(cfg["branches"]),
-                            window=cfg["window"], margin=cfg["margin"], **searcher_kwargs(cfg.get("deep")))
+                            window=cfg["window"], margin=cfg["margin"], **kw)
     _W = {"env": env, "cap": _Capture(env), "acting": acting, "searcher": searcher, "cfg": cfg, "gpu": gpu,
-          "wid": wid}
+          "wid": wid, "base": base}
     threading.Thread(target=_watch_parent, args=(os.getppid(),), daemon=True).start()
     obs, _ = env.reset(seed=7)  # warm-up: the first match after a player starts is not seed-reproducible
     for _ in range(5):
@@ -187,6 +196,8 @@ def play_match(task: dict) -> dict:
     fallbacks, batch_roots, queue_s = 0, [], 0.0
     until = cfg.get("search_until_s")
     until_t = int(until * DPS) if until else None
+    from_t = int(round((cfg.get("search_from_s") or 0) * DPS))
+    base = _W.get("base")
     rec = {k: [] for k in ("tick", "map", "team_state", "agent_states", "values", "choice")} if cfg.get("record") else None
     desync, first_desync, empty = 0, -1, 0
     first = [-1, -1]
@@ -224,7 +235,7 @@ def play_match(task: dict) -> dict:
                 first[team] = t
         view = next((obs[a] for a in ours if a in obs), None)
         inp = _inputs(view, side, bufs) if view is not None else None
-        if search and t % cfg["every"] == 0 and (until_t is None or t < until_t):
+        if search and t % cfg["every"] == 0 and t >= from_t and (until_t is None or t < until_t):
             c0 = time.perf_counter()
             reseed = (seed * 7919 + t * 104729 + 12345 + side * 31337) % (2 ** 31)
             out = searcher.search([shadow.copy()], [side], [reseed])
@@ -253,7 +264,21 @@ def play_match(task: dict) -> dict:
         c0 = time.perf_counter()
         actions = {}
         if view is not None:
-            mv = our.moves(None, idx, (side,), inp)[side][0]
+            if base is None:
+                mv = our.moves(None, idx, (side,), inp)[side][0]
+            else:  # play_matches(base=...): the rollout net only for the units a live non-base branch moves
+                from blackout_env.sim.search import K_BASE, overlay_base
+
+                kd = int(our.kind[0]) if our.left[0] > 0 else K_BASE
+                unit = int(our.unit[0])
+                if kd != K_BASE:
+                    mod = our.moves(None, idx, (side,), inp)[side]
+                else:  # the net is not needed: count the decision as ModNetPolicy.moves would
+                    our.left[0] = max(int(our.left[0]) - 1, 0)
+                    our.oleft[0] = max(int(our.oleft[0]) - 1, 0)
+                    our.t[0] += 1
+                ext = base.moves(None, idx, (side,), inp)[side]
+                mv = (overlay_base(mod, ext, [kd], [unit], not cfg.get("no_overlay")) if kd != K_BASE else ext)[0]
             actions.update({a: mv[i] for i, a in enumerate(ours) if a in obs})
         opp_obs = {a: obs[a] for a in theirs if a in obs}
         if opp_obs:
@@ -307,7 +332,8 @@ def play_match(task: dict) -> dict:
             "desyncs": desync, "first_desync": first_desync, "empty_steps": empty, "fallbacks": fallbacks,
             "batch_roots_mean": float(np.mean(batch_roots)) if batch_roots else None, "queue_s": queue_s,
             "wall_s": time.perf_counter() - t0, "pid": os.getpid(), "gpu": _W["gpu"],
-            "meta": {k: cfg.get(k) for k in ("branches", "every", "window", "margin", "cap_s", "search_until_s", "net", "value")}
+            "meta": {k: cfg.get(k) for k in ("branches", "every", "window", "margin", "cap_s", "search_until_s", "net", "value",
+                                             "base", "search_from_s", "no_overlay")}
             | {"server": bool(cfg.get("servers")), "deep": cfg.get("deep")}}
 
 
@@ -322,7 +348,8 @@ def cmd_play(args):
     cfg = {"branches": args.branches, "every": args.every, "window": args.window, "margin": args.margin,
            "cap_s": args.cap_s, "device": args.device, "cuda_graphs": not args.no_cuda_graphs,
            "search_until_s": args.search_until_s, "record": args.record, "server_timeout": args.server_timeout,
-           "net": args.net, "value": args.value, "deep": json.loads(args.deep) if args.deep else None}
+           "net": args.net, "value": args.value, "deep": json.loads(args.deep) if args.deep else None,
+           "base": args.base or None, "search_from_s": args.search_from_s, "no_overlay": args.no_overlay}
     done = {(r["tag"], r["opponent"], r["seed"], r["side"]) for r in load_rows(out)}
     tasks = [{"tag": tag, "opponent": opp, "seed": s, "side": side}
              for s in range(args.seed0, args.seed0 + args.seeds) for opp in args.opponent.split(",")
@@ -404,6 +431,8 @@ def spawn_servers(args, out: Path):
             cmd.append("--no-cuda-graphs")
         if args.deep:
             cmd += ["--deep", args.deep]
+        if args.base:
+            cmd += ["--base", args.base] + (["--no-overlay"] if args.no_overlay else [])
         log = (out / f"server{i}.log").open("a")
         procs.append(subprocess.Popen(cmd, cwd=REPO, env=env, stdout=log, stderr=subprocess.STDOUT))
         paths.append(path)
@@ -515,6 +544,10 @@ def main():
     q.add_argument("--no-cuda-graphs", action="store_true", help="plain launches for the search's r5 forwards")
     q.add_argument("--time-scale", type=float, default=20.0)
     q.add_argument("--search-until-s", type=float, default=None, help="search only before this match time (race-only)")
+    q.add_argument("--search-from-s", type=float, default=None, help="search only from this match time on (docs §32: 5 s with P14b)")
+    q.add_argument("--base", default="", help="external acting policy checkpoint for our team (docs §32/§34, e.g. P14b); "
+                   "every tag acts with it, 'plain' = it alone")
+    q.add_argument("--no-overlay", action="store_true", help="--base: a non-base branch = the whole-team rollout net")
     q.add_argument("--server", default="none", help="none (search in the worker) | spawn | socket path(s), comma list")
     q.add_argument("--server-gpus", default="0", help="--server spawn: one server per entry (GPU id; repeat for 2 per GPU)")
     q.add_argument("--server-max-roots", type=int, default=32)

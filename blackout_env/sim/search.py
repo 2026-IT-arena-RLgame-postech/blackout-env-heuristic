@@ -127,9 +127,14 @@ class ModNetPolicy(BatchPolicy):
     the games in ``idx`` (both teams in one call, as ``BatchRollout`` does with the same policy
     object on both sides and repeat 1)."""
 
-    def __init__(self, net: NetPolicy):
+    def __init__(self, net: NetPolicy, opp_nets: list | None = None):
+        """``opp_nets`` (docs §34): extra nets for the other team's slot -- a game whose ``onet`` (``configure_opp``
+        ``net``) is j >= 1 plays the other team with ``opp_nets[j - 1]`` for the whole rollout (its own modification,
+        e.g. a sample, while ``oleft`` > 0); 0 = ``net`` as without it.  Same bins K (and offset head) as ``net``."""
         self.net = net
-        self.accepts_packed = getattr(net, "accepts_packed", False)
+        self.opp_nets = list(opp_nets or [])
+        self.accepts_packed = getattr(net, "accepts_packed", False) and all(
+            getattr(x, "accepts_packed", False) for x in self.opp_nets)
         self.noise = None
         self.configure(0)
 
@@ -144,10 +149,13 @@ class ModNetPolicy(BatchPolicy):
         self.t = z(np.int64)
         self.configure_opp(None)
 
-    def configure_opp(self, kind=None, unit=None, param=None, seed=None, left=None):
-        """The other team's modification in every game whose ``team`` is set (call after ``configure``)."""
+    def configure_opp(self, kind=None, unit=None, param=None, seed=None, left=None, net=None):
+        """The other team's modification in every game whose ``team`` is set (call after ``configure``);
+        ``net`` [n]: which net plays it (0 = ``self.net``, j = ``opp_nets[j - 1]``)."""
         n = len(self.team)
         z = lambda dt, v=0: np.full(n, v, dt)  # noqa: E731
+        self.onet = z(np.int64) if net is None else np.asarray(net, np.int64).copy()
+        assert not len(self.onet) or self.onet.max() <= len(self.opp_nets)
         self.okind = z(np.int64) if kind is None else np.asarray(kind, np.int64).copy()
         self.ounit = z(np.int64) if unit is None else np.asarray(unit, np.int64).copy()
         self.oparam = z(np.float64) if param is None else np.asarray(param, np.float64).copy()
@@ -166,12 +174,26 @@ class ModNetPolicy(BatchPolicy):
         t = team_in[:n][:, cut].reshape(n * len(sel), 4)
         a = agents[:n][:, cut].reshape(n * len(sel), 10, N_AGENT_COLS)
         q, off = self.net.forward(g, t, a)
-        q = q.reshape(n, len(sel), 5, -1)
         k = q.shape[-1]
         game_team = np.asarray(sel)[None, :].repeat(n, 0)          # [n, s]
         tm = self.team[idx][:, None]
         own = tm == game_team
         opp = (tm >= 0) & ~own
+        if self.opp_nets and (self.onet[idx] > 0).any():           # the other team played by another net
+            on = np.where(opp, self.onet[idx][:, None], 0).reshape(-1)  # per view [n * s]
+            q = np.array(q, copy=True)
+            off = None if off is None else np.array(off, copy=True)
+            for j in range(1, len(self.opp_nets) + 1):
+                v = np.nonzero(on == j)[0]
+                if not len(v):
+                    continue
+                qj, oj = self.opp_nets[j - 1].forward(np.ascontiguousarray(g[v]), np.ascontiguousarray(t[v]),
+                                                      np.ascontiguousarray(a[v]))
+                assert qj.shape[-1] == k and (oj is None) == (off is None), "opponent nets: same bins / offsets"
+                q[v] = qj
+                if off is not None:
+                    off[v] = oj
+        q = q.reshape(n, len(sel), 5, -1)
         act_own = own & (self.left[idx] > 0)[:, None]
         act_opp = opp & (self.oleft[idx] > 0)[:, None]
         kind = np.where(act_own, self.kind[idx][:, None], np.where(act_opp, self.okind[idx][:, None], K_BASE))
@@ -357,16 +379,18 @@ class Searcher:
                  leaf_decisions: int = 125, margin: float = 0.0, packed: bool = False,
                  opp_branches: list[Branch] | None = None, opp_agg: str = "min", opp_left: int | None = None,
                  children: list[Branch] | None = None, child_window: int | None = None, expand: int = 0,
-                 base_policy: BatchPolicy | None = None, overlay: bool = True):
+                 base_policy: BatchPolicy | None = None, overlay: bool = True, opp_net_idx: list[int] | None = None):
         assert branches[0].kind == K_BASE
         assert opp_branches is None or opp_branches[0].kind == K_BASE
         assert children is None or children[0].kind == K_BASE
-        assert opp_agg in ("min", "mean")
+        agg_fn(opp_agg)  # validates
+        assert not opp_net_idx or (opp_branches and len(opp_net_idx) == len(opp_branches)), "one net per opponent variant"
         assert not (opp_branches and children), "opponent variants and 2-ply are not combined"
         self.policy, self.leaf, self.branches = policy, leaf, branches
         self.window, self.leaf_decisions, self.margin = int(window), int(leaf_decisions), float(margin)
         self.opp_branches = opp_branches if opp_branches and len(opp_branches) > 1 else None
         self.opp_agg, self.opp_left = opp_agg, int(window if opp_left is None else opp_left)
+        self.opp_net_idx = [int(x) for x in opp_net_idx] if self.opp_branches and opp_net_idx and any(opp_net_idx) else None
         self.children = children if children and len(children) > 1 else None
         self.child_window = int(window if child_window is None else child_window)
         self.expand = int(expand)
@@ -393,12 +417,13 @@ class Searcher:
             ob = self.opp_branches * (r * nb)
             self.policy.configure_opp([b.kind for b in ob], [b.unit for b in ob], [b.param for b in ob],
                                       [b.seed + 32 * (b.kind == K_SAMP) for b in ob],  # draws other than ours
-                                      np.full(len(sims), self.opp_left))
+                                      np.full(len(sims), self.opp_left),
+                                      None if self.opp_net_idx is None else self.opp_net_idx * (r * nb))
         c0 = time.perf_counter()
         res = self.roll.run(sims, self.window + self.leaf_decisions, reseeds=np.repeat(np.asarray(reseeds), per))
         c1 = time.perf_counter()
         raw = self.leaf(res.bsim, gteam).reshape(r, nb, no)
-        vals = raw[..., 0] if no == 1 else (raw.min(-1) if self.opp_agg == "min" else raw.mean(-1))
+        vals = raw[..., 0] if no == 1 else agg_fn(self.opp_agg)(raw)
         c2 = time.perf_counter()
         return SearchOut(choose(vals, self.margin), vals,
                          {"rollout_s": c1 - c0, "leaf_s": c2 - c1, "games": len(sims),
@@ -446,7 +471,7 @@ class Searcher:
     def config(self) -> dict:
         """What a search result depends on besides the nets (``search_server`` handshake)."""
         return search_config(self.branches, self.window, self.leaf_decisions, self.opp_branches, self.opp_agg,
-                             self.opp_left, self.children, self.child_window, self.expand)
+                             self.opp_left, self.children, self.child_window, self.expand, self.opp_net_idx)
 
     def games_per_root(self) -> int:
         """Rollout games per root of the largest stage (CUDA-graph bucket sizing)."""
@@ -458,29 +483,64 @@ class Searcher:
         return nb
 
 
-DEEP_KEYS = ("leaf_decisions", "opp_branches", "opp_agg", "opp_left", "children", "child_window", "expand")
+DEEP_KEYS = ("leaf_decisions", "opp_branches", "opp_agg", "opp_left", "children", "child_window", "expand",
+             "opp_net_idx", "opp_nets")
+
+
+def agg_fn(spec: str):
+    """Opponent-variant aggregate (docs §26, §34) over the last axis: ``mean`` | ``min`` (max-min) |
+    ``mix:a`` = a * min + (1 - a) * mean | ``softmin:T`` = -T log mean exp(-v / T) (points; T -> 0 = min,
+    T -> inf = mean)."""
+    name, _, arg = str(spec).partition(":")
+    if name == "mean" and not arg:
+        return lambda v: v.mean(-1)
+    if name == "min" and not arg:
+        return lambda v: v.min(-1)
+    if name == "mix":
+        a = float(arg)
+        assert 0.0 <= a <= 1.0
+        return lambda v: a * v.min(-1) + (1.0 - a) * v.mean(-1)
+    if name == "softmin":
+        temp = float(arg)
+        assert temp > 0
+
+        def soft(v):
+            lo = v.min(-1, keepdims=True)
+            return lo[..., 0] - temp * np.log(np.exp(-(v - lo) / temp).mean(-1))
+        return soft
+    raise ValueError(f"unknown opponent aggregate {spec!r}")
 
 
 def searcher_kwargs(deep: dict | None) -> dict:
-    """S4 options (branch lists as ``parse_branches`` specs, ``None``/empty = off) -> ``Searcher`` kwargs."""
+    """S4 options (branch lists as ``parse_branches`` specs, ``None``/empty = off) -> ``Searcher`` kwargs.
+    ``opp_nets`` (checkpoint paths, docs §34) is not a ``Searcher`` argument: the builder loads them into
+    ``ModNetPolicy(opp_nets=...)`` (``deep_opp_nets``)."""
     kw = {}
     for k, v in (deep or {}).items():
         if k not in DEEP_KEYS:
             raise ValueError(f"unknown search option {k!r}")
-        if v in (None, ""):
+        if v in (None, "") or k == "opp_nets":
             continue
         kw[k] = parse_branches(v) if k in ("opp_branches", "children") else v
     return kw
 
 
+def deep_opp_nets(deep: dict | None) -> list[str]:
+    """The extra opponent-model checkpoints of a ``deep`` option dict (``[]`` = none)."""
+    v = (deep or {}).get("opp_nets") or []
+    return [v] if isinstance(v, str) else list(v)
+
+
 def search_config(branches, window=25, leaf_decisions=125, opp_branches=None, opp_agg="min", opp_left=None,
-                  children=None, child_window=None, expand=0) -> dict:
+                  children=None, child_window=None, expand=0, opp_net_idx=None) -> dict:
     """``Searcher.config()`` from its arguments (branch lists or specs for ``parse_branches``)."""
     names = lambda b: [x.name for x in (parse_branches(b) if isinstance(b, str) else b)]  # noqa: E731
     out = {"branches": names(branches), "window": int(window), "leaf_decisions": int(leaf_decisions)}
     ob = names(opp_branches) if opp_branches else []
     if len(ob) > 1:
         out |= {"opp_branches": ob, "opp_agg": opp_agg, "opp_left": int(window if opp_left is None else opp_left)}
+        if opp_net_idx and any(opp_net_idx):
+            out["opp_net_idx"] = [int(x) for x in opp_net_idx]
     ch = names(children) if children else []
     if len(ch) > 1:
         out |= {"children": ch, "child_window": int(window if child_window is None else child_window), "expand": int(expand)}
