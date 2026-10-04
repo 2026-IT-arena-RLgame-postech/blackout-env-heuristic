@@ -1,0 +1,6 @@
+[p14b_r10_rand vs p14b] 128/256 margin -52.7 first99 0.85 wall 181s (search 0s)
+[p14b_r10_rand vs p14b] 256/256 margin -46.6 first99 0.86 wall 234s (search 0s)
+[p14b_r10_rand vs v23] 128/256 margin +48.8 first99 0.84 wall 320s (search 0s)
+[p14b_r10_rand vs v23] 256/256 margin +52.4 first99 0.86 wall 335s (search 0s)
+[p14b_r10_rand vs v25] 128/256 margin -52.5 first99 0.84 wall 272s (search 0s)
+[p14b_r10_rand vs v25] 256/256 margin -55.3 first99 0.86 wall 404s (search 0s)

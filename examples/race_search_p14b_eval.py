@@ -221,6 +221,15 @@ def cmd_report(args):
             lines.append(f"{opp:8s} {tag:14s} {len(rs):4d}  {f'{w}/{t_}/{l_}':>12s}  {f99:7.2f}  {o99:6.2f}  "
                          f"{np.mean([x['margin'] for x in rs]):+7.1f}  {dtxt}  {nonbase:7.2f}  {spm:7.1f}  {first_dist(rs)}")
         lines.append("")
+    hrows = [(k, d) for k, d in sorted(by.items()) if any("hunters_at" in x for x in d.values())]
+    if hrows:
+        lines.append("Hunters (ours / opponent's, mean over matches) at 4.2 s, 5 s, 10 s; lead at 5 s, 10 s")
+        for (tag, opp), d in hrows:
+            rs = [x for x in d.values() if "hunters_at" in x]
+            h = {t: np.mean([x["hunters_at"][t] for x in rs], 0) for t in ("4.2", "5", "10")}
+            lines.append(f"  {opp:8s} {tag:14s} n={len(rs):4d}  " + "  ".join(f"{t}s {v[0]:.2f}/{v[1]:.2f}" for t, v in h.items())
+                         + f"  lead {np.mean([x['lead_at']['5'] for x in rs]):+5.1f} {np.mean([x['lead_at']['10'] for x in rs]):+5.1f}")
+        lines.append("")
     # race transitions vs ref
     lines.append(f"race outcome transitions vs {args.ref!r} (ref -> tag: count)")
     from blackout_env.sim.search import race
