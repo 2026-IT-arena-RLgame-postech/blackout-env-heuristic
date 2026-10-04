@@ -78,13 +78,20 @@ def cmd_play(args):
     else:
         branches = parse_branches(args.branches)
         leaf = ValueNetLeaf(str(REPO / args.value), args.device)
-        searcher = Searcher(ModNetPolicy(net), leaf, branches, window=args.window, margin=args.margin)
+        searcher = Searcher(ModNetPolicy(net), leaf, branches, window=args.window, margin=args.margin,
+                            leaf_decisions=args.leaf, packed=args.packed,
+                            opp_branches=parse_branches(args.opp_branches) if args.opp_branches else None,
+                            opp_agg=args.opp_agg, opp_left=args.opp_left,
+                            children=parse_branches(args.children) if args.children else None,
+                            child_window=args.child_window, expand=args.expand)
     cfg = MatchConfig(every=args.every, window=args.window, cap_s=args.cap_s)
     done = {(r["tag"], r["opponent"], r["seed"], r["side"]) for r in load_rows(out)}
     tasks = [(s, side) for s in range(args.seed0, args.seed0 + args.seeds) for side in (0, 1)]
     meta = {"branches": [b.name for b in branches], "every": args.every, "window": args.window,
             "margin": args.margin, "net": args.qhead or args.net, "value": args.value, "cap_s": args.cap_s,
-            "qhead": args.qhead}
+            "qhead": args.qhead, "leaf": args.leaf, "opp_branches": args.opp_branches, "opp_agg": args.opp_agg,
+            "opp_left": args.opp_left, "children": args.children, "child_window": args.child_window,
+            "expand": args.expand}
     print(json.dumps(meta), flush=True)
     rec_parts = []
     for tag, srch in (("plain", None), (args.tag, None if args.no_search else searcher)):
@@ -109,7 +116,9 @@ def cmd_play(args):
                            "first_ours": int(res["first_ours"][j]), "first_opp": int(res["first_opp"][j]),
                            "searches": int(res["searches"][j]), "chosen": res["chosen"][j].tolist(),
                            "gain_sum": float(res["gain_sum"][j]), "chunk_wall_s": wall, "chunk_n": len(chunk),
-                           "search_s": res["search_s"], "meta": meta if srch is not None else None}
+                           "search_s": res["search_s"], "chunk_searches": int(res["searches"].sum()),
+                           "chunk_game_decisions": int(res.get("search_game_decisions", 0)),
+                           "meta": meta if srch is not None else None}
                     fh.write(json.dumps(row) + "\n")
             if cfg.record:
                 rows = res["rows"]
@@ -196,9 +205,40 @@ def cmd_report(args):
             lines.append(f"PAIR {ta} - {tb} vs {opp:16s} n={len(keys):4d} seeds={len(ps):4d}  {np.mean([a[k]['margin'] for k in keys]):+6.1f} vs "
                          f"{np.mean([b[k]['margin'] for k in keys]):+6.1f}  diff {np.mean(ps):+6.1f} ± {se(ps):4.1f}  "
                          f"race w/t/l {ra} vs {rb}  search s/match {sa:.2f} vs {sb:.2f}")
+    if args.ref:
+        lines += ["", f"paired vs {args.ref} (same opponent, seed, side); cost = search s/match and roots/s"]
+        for (tag, opp), d in sorted(by.items()):
+            ref = by.get((args.ref, opp), {})
+            if tag in ("plain", args.ref) or not ref:
+                continue
+            keys = sorted(k for k in d if k in ref)
+            if not keys:
+                continue
+            diff = defaultdict(list)
+            for k in keys:
+                diff[k[0]].append(d[k]["margin"] - ref[k]["margin"])
+            per_seed = [np.mean(v) for v in diff.values()]
+            c_t, c_r = _cost([d[k] for k in keys]), _cost([ref[k] for k in keys])
+            same = np.mean([d[k]["margin"] == ref[k]["margin"] for k in keys])
+            lines.append(f"{tag:22s} vs {opp:16s} n={len(keys):4d}  diff {np.mean(per_seed):+6.1f} ± {se(per_seed):4.1f}  "
+                         f"same {same:.2f}  search {c_t['s_per_match']:6.1f} s/match (x{c_t['s_per_match'] / c_r['s_per_match']:.2f})  "
+                         f"{c_t['roots_per_s']:6.1f} roots/s (ref {c_r['roots_per_s']:.1f})  "
+                         f"games/root {c_t['gd_per_root']:6.0f} (x{c_t['gd_per_root'] / max(c_r['gd_per_root'], 1):.2f})")
     txt = "\n".join(lines)
     print(txt)
-    (Path(args.out) / "report.txt").write_text(txt + "\n")
+    (Path(args.out) / ("report.txt" if not args.ref else f"report_vs_{args.ref}.txt")).write_text(txt + "\n")
+
+
+def _cost(rows) -> dict:
+    """Search cost over the chunks of ``rows`` (chunk-level fields deduplicated)."""
+    chunks = {}
+    for r in rows:
+        chunks[(r["chunk_wall_s"], r["search_s"], r["chunk_n"])] = r
+    s = sum(r["search_s"] for r in chunks.values())
+    n = sum(r["chunk_n"] for r in chunks.values())
+    roots = sum(r.get("chunk_searches", 0) for r in chunks.values())
+    gd = sum(r.get("chunk_game_decisions", 0) for r in chunks.values())
+    return {"s_per_match": s / max(n, 1), "roots_per_s": roots / max(s, 1e-9), "gd_per_root": gd / max(roots, 1)}
 
 
 def main():
@@ -212,6 +252,14 @@ def main():
     q.add_argument("--every", type=int, default=25)
     q.add_argument("--window", type=int, default=25)
     q.add_argument("--margin", type=float, default=0.0)
+    q.add_argument("--leaf", type=int, default=125, help="leaf rollout decisions after the window (S4 d)")
+    q.add_argument("--packed", action="store_true", help="packed map render (fewer bytes to the GPU)")
+    q.add_argument("--opp-branches", default="", help="S4 c: opponent variants, e.g. 'samp:1.0x3' (base added)")
+    q.add_argument("--opp-agg", default="min", choices=("min", "mean"))
+    q.add_argument("--opp-left", type=int, default=None, help="opponent variant decisions (default: the window)")
+    q.add_argument("--children", default="", help="S4 b: 2-ply child branches, e.g. 'alt*' (base added)")
+    q.add_argument("--child-window", type=int, default=None)
+    q.add_argument("--expand", type=int, default=0, help="2-ply best-first: expand base + this many best (0 = all)")
     q.add_argument("--seeds", type=int, default=64)
     q.add_argument("--seed0", type=int, default=2_000_000)
     q.add_argument("--chunk", type=int, default=128)
@@ -229,6 +277,7 @@ def main():
     q = sub.add_parser("report")
     q.add_argument("--out", default=str(REPO / "reports/s3_search"))
     q.add_argument("--pairs", nargs="*", default=[], help="tagA:tagB -- A minus B per opponent, paired by (seed, side)")
+    q.add_argument("--ref", default="", help="also pair every tag against this tag (e.g. the S3 default)")
     args = p.parse_args()
     if getattr(args, "device", None) == "":
         from blackout_env.sim.search import default_device

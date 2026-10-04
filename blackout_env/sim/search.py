@@ -40,8 +40,8 @@ from .mapdata import HUNTER, H, W
 from .state import SimState
 
 F32 = np.float32
-K_BASE, K_ALT, K_ROT, K_SAMP, K_STOP = 0, 1, 2, 3, 4
-KIND_NAMES = {K_BASE: "base", K_ALT: "alt", K_ROT: "rot", K_SAMP: "samp", K_STOP: "stop"}
+K_BASE, K_ALT, K_ROT, K_SAMP, K_STOP, K_ALTM = 0, 1, 2, 3, 4, 5
+KIND_NAMES = {K_BASE: "base", K_ALT: "alt", K_ROT: "rot", K_SAMP: "samp", K_STOP: "stop", K_ALTM: "pair"}
 NOISE_SEEDS, NOISE_STEPS = 64, 256
 
 
@@ -72,7 +72,11 @@ class Branch:
     @property
     def name(self) -> str:
         n = KIND_NAMES[self.kind]
-        if self.kind in (K_ALT, K_STOP):
+        if self.kind == K_ALT:
+            return f"alt{self.unit}" + (f"r{round(self.param)}" if self.param else "")
+        if self.kind == K_ALTM:
+            return "pair" + "".join(str(u) for u in range(5) if (self.unit >> u) & 1)
+        if self.kind == K_STOP:
             return f"{n}{self.unit}"
         if self.kind == K_ROT:
             return f"rot{self.unit}{'+' if self.param > 0 else '-'}{round(abs(math.degrees(self.param)))}"
@@ -83,15 +87,23 @@ class Branch:
 
 def parse_branches(spec: str) -> list[Branch]:
     """Comma list: ``base`` | ``alt*`` / ``alt3`` | ``rot*:90`` (+-90 deg, every unit) / ``rot2:45`` |
-    ``samp:1.0x3`` (temperature 1, 3 seeds) | ``stop*``.  The base branch is always first."""
+    ``samp:1.0x3`` (temperature 1, 3 seeds; ``samp:1.0x3@8``: seeds 8..10) | ``stop*`` |
+    ``alt*:1`` (rank 1 = each unit's third choice: outside the top +- 1 and the second choice +- 1) |
+    ``pair*`` (every two-unit joint second choice, 10) / ``pair03``.  The base branch is always first."""
     out = [Branch(K_BASE)]
     for tok in (t.strip() for t in spec.split(",")):
         if not tok or tok == "base":
             continue
         name, _, arg = tok.partition(":")
         if name.startswith("samp"):
-            temp, _, n = (arg or "1.0x3").partition("x")
-            out += [Branch(K_SAMP, 0, float(temp), s) for s in range(int(n or 1))]
+            arg, _, s0 = (arg or "1.0x3").partition("@")
+            temp, _, n = arg.partition("x")
+            out += [Branch(K_SAMP, 0, float(temp), int(s0 or 0) + s) for s in range(int(n or 1))]
+            continue
+        if name.startswith("pair"):
+            pairs = ([(a, b) for a in range(5) for b in range(a + 1, 5)] if name == "pair*"
+                     else [(int(name[4]), int(name[5]))])
+            out += [Branch(K_ALTM, (1 << a) | (1 << b)) for a, b in pairs]
             continue
         kind = {"alt": K_ALT, "rot": K_ROT, "stop": K_STOP}[name.rstrip("*0123456789")]
         units = range(5) if name.endswith("*") else [int(name[-1])]
@@ -99,6 +111,8 @@ def parse_branches(spec: str) -> list[Branch]:
             if kind == K_ROT:
                 deg = float(arg or 90)
                 out += [Branch(K_ROT, u, math.radians(deg)), Branch(K_ROT, u, -math.radians(deg))]
+            elif kind == K_ALT:
+                out.append(Branch(K_ALT, u, float(arg or 0)))
             else:
                 out.append(Branch(kind, u))
     return out
@@ -106,10 +120,12 @@ def parse_branches(spec: str) -> list[Branch]:
 
 class ModNetPolicy(BatchPolicy):
     """A ``NetPolicy`` whose moves for one team of each game can carry a branch modification for
-    the next ``left[b]`` decisions.  Per-game state lives in arrays indexed by game; ``configure``
-    sets them (``reset`` keeps them, so ``BatchRollout.run`` does not wipe a configuration).
-    Each ``moves`` call is one decision for the games in ``idx`` (both teams in one call, as
-    ``BatchRollout`` does with the same policy object on both sides and repeat 1)."""
+    the next ``left[b]`` decisions -- and, optionally, the other team of that game another one
+    (``configure_opp``: the opponent-model variants of S4) for ``oleft[b]`` decisions.  Per-game
+    state lives in arrays indexed by game; ``configure`` sets them (``reset`` keeps them, so
+    ``BatchRollout.run`` does not wipe a configuration).  Each ``moves`` call is one decision for
+    the games in ``idx`` (both teams in one call, as ``BatchRollout`` does with the same policy
+    object on both sides and repeat 1)."""
 
     def __init__(self, net: NetPolicy):
         self.net = net
@@ -126,6 +142,17 @@ class ModNetPolicy(BatchPolicy):
         self.seed = z(np.int64) if seed is None else np.asarray(seed, np.int64).copy()
         self.left = z(np.int64) if left is None else np.asarray(left, np.int64).copy()
         self.t = z(np.int64)
+        self.configure_opp(None)
+
+    def configure_opp(self, kind=None, unit=None, param=None, seed=None, left=None):
+        """The other team's modification in every game whose ``team`` is set (call after ``configure``)."""
+        n = len(self.team)
+        z = lambda dt, v=0: np.full(n, v, dt)  # noqa: E731
+        self.okind = z(np.int64) if kind is None else np.asarray(kind, np.int64).copy()
+        self.ounit = z(np.int64) if unit is None else np.asarray(unit, np.int64).copy()
+        self.oparam = z(np.float64) if param is None else np.asarray(param, np.float64).copy()
+        self.oseed = z(np.int64) if seed is None else np.asarray(seed, np.int64).copy()
+        self.oleft = z(np.int64) if left is None else np.asarray(left, np.int64).copy()
 
     def set_game(self, b, team, br: Branch, left: int):
         self.team[b], self.kind[b], self.unit[b], self.param[b], self.seed[b] = team, br.kind, br.unit, br.param, br.seed
@@ -140,24 +167,43 @@ class ModNetPolicy(BatchPolicy):
         a = agents[:n][:, cut].reshape(n * len(sel), 10, N_AGENT_COLS)
         q, off = self.net.forward(g, t, a)
         q = q.reshape(n, len(sel), 5, -1)
+        k = q.shape[-1]
         game_team = np.asarray(sel)[None, :].repeat(n, 0)          # [n, s]
-        active = (self.left[idx] > 0)[:, None] & (self.team[idx][:, None] == game_team)  # [n, s]
-        kind = np.where(active, self.kind[idx][:, None], K_BASE)
-        unit = self.unit[idx][:, None].repeat(len(sel), 1)
+        tm = self.team[idx][:, None]
+        own = tm == game_team
+        opp = (tm >= 0) & ~own
+        act_own = own & (self.left[idx] > 0)[:, None]
+        act_opp = opp & (self.oleft[idx] > 0)[:, None]
+        kind = np.where(act_own, self.kind[idx][:, None], np.where(act_opp, self.okind[idx][:, None], K_BASE))
+        pick = lambda a, b: np.where(own, a[idx][:, None], b[idx][:, None])  # noqa: E731
+        unit, param, seed = pick(self.unit, self.ounit), pick(self.param, self.oparam), pick(self.seed, self.oseed)
         rows_n, rows_s = np.nonzero(kind == K_ALT)
-        if len(rows_n):
+        if len(rows_n):  # rank r = (r + 1)-th choice: mask the top bin +- 1, r more times
             u = unit[rows_n, rows_s]
-            k = q.shape[-1]
-            top = q[rows_n, rows_s, u].argmax(-1)
-            for d in (-1, 0, 1):
-                q[rows_n, rows_s, u, (top + d) % k] = -np.inf
+            rank = np.rint(param[rows_n, rows_s]).astype(np.int64)
+            for r in range(int(rank.max()) + 1):
+                m = rank >= r
+                rn, rs, ru = rows_n[m], rows_s[m], u[m]
+                top = q[rn, rs, ru].argmax(-1)
+                for d in (-1, 0, 1):
+                    q[rn, rs, ru, (top + d) % k] = -np.inf
+        rows_n, rows_s = np.nonzero(kind == K_ALTM)
+        if len(rows_n):  # several units at once, each its second choice
+            mask = unit[rows_n, rows_s]
+            for u in range(5):
+                m = ((mask >> u) & 1) == 1
+                rn, rs = rows_n[m], rows_s[m]
+                if len(rn):
+                    top = q[rn, rs, u].argmax(-1)
+                    for d in (-1, 0, 1):
+                        q[rn, rs, u, (top + d) % k] = -np.inf
         rows_n, rows_s = np.nonzero(kind == K_SAMP)
         if len(rows_n):
-            if self.noise is None or self.noise.shape[-1] != q.shape[-1]:
-                self.noise = _gumbel_table(q.shape[-1])
+            if self.noise is None or self.noise.shape[-1] != k:
+                self.noise = _gumbel_table(k)
             b = idx[rows_n]
-            temp = np.maximum(self.param[b], 1e-3)[:, None, None]
-            nz = self.noise[self.seed[b] % NOISE_SEEDS, self.t[b] % NOISE_STEPS]
+            temp = np.maximum(param[rows_n, rows_s], 1e-3)[:, None, None]
+            nz = self.noise[seed[rows_n, rows_s] % NOISE_SEEDS, self.t[b] % NOISE_STEPS]
             q[rows_n, rows_s] = q[rows_n, rows_s] / temp + nz
         q = q.reshape(n * len(sel), 5, -1)
         team_b = np.tile(np.asarray(sel) == 1, n)
@@ -168,12 +214,13 @@ class ModNetPolicy(BatchPolicy):
         rows_n, rows_s = np.nonzero(kind == K_ROT)
         if len(rows_n):
             u = unit[rows_n, rows_s]
-            ang = self.param[idx[rows_n]]
+            ang = param[rows_n, rows_s]
             v = mv[rows_n, rows_s, u].astype(np.float64)
             c, s = np.cos(ang), np.sin(ang)
             rot = np.stack([c * v[:, 0] - s * v[:, 1], s * v[:, 0] + c * v[:, 1]], -1)
             mv[rows_n, rows_s, u] = np.clip(rot, -1, 1).astype(F32)
         self.left[idx] = np.maximum(self.left[idx] - 1, 0)
+        self.oleft[idx] = np.maximum(self.oleft[idx] - 1, 0)
         self.t[idx] += 1
         return {tm: mv[:, i] for i, tm in enumerate(sel)}
 
@@ -238,35 +285,166 @@ class SearchOut:
 
 
 class Searcher:
-    """1-ply search: ``search(roots, teams, reseeds)`` scores every branch of every root in one batch."""
+    """Search over ``branches``: ``search(roots, teams, reseeds)`` scores every branch of every root in one batch.
+
+    The S3 default is 1-ply: branch for ``window`` decisions, both teams the rollout net for
+    ``leaf_decisions``, V_sym.  S4 options (docs §26):
+
+    * ``opp_branches`` (base first): every own branch is also played against each opponent
+      variant (the opponent's slot of ``ModNetPolicy``, for ``opp_left`` decisions, default the
+      window); a branch's value = ``opp_agg`` ("min" = max-min, "mean" = expectation) over them.
+    * ``children`` (base first): 2-ply -- after a branch's window, each of ``children`` is played
+      for ``child_window`` decisions, then the leaf rollout; a branch's value = max over its children
+      (our team will search again then).  ``expand`` k > 0: best-first -- only the base branch and the
+      k best by 1-ply value get children (the rest score -inf); 0 = every branch.
+    """
 
     def __init__(self, policy: ModNetPolicy, leaf: ValueNetLeaf, branches: list[Branch], window: int = 25,
-                 leaf_decisions: int = 125, margin: float = 0.0, packed: bool = False):
+                 leaf_decisions: int = 125, margin: float = 0.0, packed: bool = False,
+                 opp_branches: list[Branch] | None = None, opp_agg: str = "min", opp_left: int | None = None,
+                 children: list[Branch] | None = None, child_window: int | None = None, expand: int = 0):
         assert branches[0].kind == K_BASE
+        assert opp_branches is None or opp_branches[0].kind == K_BASE
+        assert children is None or children[0].kind == K_BASE
+        assert opp_agg in ("min", "mean")
+        assert not (opp_branches and children), "opponent variants and 2-ply are not combined"
         self.policy, self.leaf, self.branches = policy, leaf, branches
         self.window, self.leaf_decisions, self.margin = int(window), int(leaf_decisions), float(margin)
+        self.opp_branches = opp_branches if opp_branches and len(opp_branches) > 1 else None
+        self.opp_agg, self.opp_left = opp_agg, int(window if opp_left is None else opp_left)
+        self.children = children if children and len(children) > 1 else None
+        self.child_window = int(window if child_window is None else child_window)
+        self.expand = int(expand)
         self.roll = BatchRollout(policy, policy, repeat=1, packed=packed)
 
+    def _configure(self, n_games, gteam, br: list[Branch], left):
+        self.policy.configure(n_games, team=gteam, kind=[b.kind for b in br], unit=[b.unit for b in br],
+                              param=[b.param for b in br], seed=[b.seed for b in br], left=np.full(n_games, left))
+
     def search(self, roots: list[SimState], teams, reseeds) -> SearchOut:
+        if self.children is not None:
+            return self._search2(roots, teams, reseeds)
         r, nb = len(roots), len(self.branches)
+        no = len(self.opp_branches) if self.opp_branches else 1
+        per = nb * no
         teams = np.asarray(teams, np.int64)
-        sims = [s for s in roots for _ in range(nb)]
-        gteam = np.repeat(teams, nb)
-        br = self.branches * r
-        self.policy.configure(len(sims), team=gteam, kind=[b.kind for b in br], unit=[b.unit for b in br],
-                              param=[b.param for b in br], seed=[b.seed for b in br],
-                              left=np.full(len(sims), self.window))
+        sims = [s for s in roots for _ in range(per)]
+        gteam = np.repeat(teams, per)
+        br = [b for b in self.branches for _ in range(no)] * r      # game (root, branch, opponent variant)
+        self._configure(len(sims), gteam, br, self.window)
+        if self.opp_branches:
+            ob = self.opp_branches * (r * nb)
+            self.policy.configure_opp([b.kind for b in ob], [b.unit for b in ob], [b.param for b in ob],
+                                      [b.seed + 32 * (b.kind == K_SAMP) for b in ob],  # draws other than ours
+                                      np.full(len(sims), self.opp_left))
         c0 = time.perf_counter()
-        res = self.roll.run(sims, self.window + self.leaf_decisions, reseeds=np.repeat(np.asarray(reseeds), nb))
+        res = self.roll.run(sims, self.window + self.leaf_decisions, reseeds=np.repeat(np.asarray(reseeds), per))
         c1 = time.perf_counter()
-        vals = self.leaf(res.bsim, gteam).reshape(r, nb)
+        raw = self.leaf(res.bsim, gteam).reshape(r, nb, no)
+        vals = raw[..., 0] if no == 1 else (raw.min(-1) if self.opp_agg == "min" else raw.mean(-1))
         c2 = time.perf_counter()
-        return SearchOut(choose(vals, self.margin), vals, {"rollout_s": c1 - c0, "leaf_s": c2 - c1, "games": len(sims)})
+        return SearchOut(choose(vals, self.margin), vals,
+                         {"rollout_s": c1 - c0, "leaf_s": c2 - c1, "games": len(sims),
+                          "game_decisions": self.roll.timing["game_decisions"], "raw": raw if no > 1 else None})
+
+    def _search2(self, roots, teams, reseeds) -> SearchOut:
+        r, nb, nc = len(roots), len(self.branches), len(self.children)
+        teams = np.asarray(teams, np.int64)
+        gteam = np.repeat(teams, nb)
+        c0 = time.perf_counter()
+        gd = 0
+        self._configure(r * nb, gteam, self.branches * r, self.window)
+        res = self.roll.run([s for s in roots for _ in range(nb)], self.window, reseeds=np.repeat(np.asarray(reseeds), nb))
+        gd += self.roll.timing["game_decisions"]
+        parents = res.bsim
+        v1 = None
+        if self.expand > 0:  # 1-ply values of every branch (continue each parent: the rollout net both teams)
+            cont = take_games(parents, np.arange(parents.n))
+            self.policy.configure(cont.n)
+            res1 = self.roll.run(None, self.leaf_decisions, bsim=cont)
+            gd += self.roll.timing["game_decisions"]
+            v1 = self.leaf(res1.bsim, gteam).reshape(r, nb)
+            order = np.argsort(-v1[:, 1:], axis=1)[:, :self.expand] + 1
+            expanded = np.zeros((r, nb), bool)
+            expanded[:, 0] = True
+            expanded[np.arange(r)[:, None], order] = True
+        else:
+            expanded = np.ones((r, nb), bool)
+        pr = np.nonzero(expanded.reshape(-1))[0]                    # expanded parent games
+        kids = take_games(parents, np.repeat(pr, nc))
+        kteam = np.repeat(gteam[pr], nc)
+        self._configure(kids.n, kteam, self.children * len(pr), self.child_window)
+        res2 = self.roll.run(None, self.child_window + self.leaf_decisions, bsim=kids)
+        gd += self.roll.timing["game_decisions"]
+        c1 = time.perf_counter()
+        kv = self.leaf(res2.bsim, kteam).reshape(len(pr), nc)
+        vals = np.full(r * nb, -np.inf)
+        vals[pr] = kv.max(1)
+        vals = vals.reshape(r, nb)
+        c2 = time.perf_counter()
+        return SearchOut(choose(vals, self.margin), vals,
+                         {"rollout_s": c1 - c0, "leaf_s": c2 - c1, "games": int(r * nb + kids.n),
+                          "game_decisions": gd, "v1": v1})
 
     def config(self) -> dict:
         """What a search result depends on besides the nets (``search_server`` handshake)."""
-        return {"branches": [b.name for b in self.branches], "window": self.window,
-                "leaf_decisions": self.leaf_decisions}
+        return search_config(self.branches, self.window, self.leaf_decisions, self.opp_branches, self.opp_agg,
+                             self.opp_left, self.children, self.child_window, self.expand)
+
+    def games_per_root(self) -> int:
+        """Rollout games per root of the largest stage (CUDA-graph bucket sizing)."""
+        nb = len(self.branches)
+        if self.opp_branches:
+            return nb * len(self.opp_branches)
+        if self.children:
+            return max(nb, (self.expand + 1 if self.expand else nb) * len(self.children))
+        return nb
+
+
+DEEP_KEYS = ("leaf_decisions", "opp_branches", "opp_agg", "opp_left", "children", "child_window", "expand")
+
+
+def searcher_kwargs(deep: dict | None) -> dict:
+    """S4 options (branch lists as ``parse_branches`` specs, ``None``/empty = off) -> ``Searcher`` kwargs."""
+    kw = {}
+    for k, v in (deep or {}).items():
+        if k not in DEEP_KEYS:
+            raise ValueError(f"unknown search option {k!r}")
+        if v in (None, ""):
+            continue
+        kw[k] = parse_branches(v) if k in ("opp_branches", "children") else v
+    return kw
+
+
+def search_config(branches, window=25, leaf_decisions=125, opp_branches=None, opp_agg="min", opp_left=None,
+                  children=None, child_window=None, expand=0) -> dict:
+    """``Searcher.config()`` from its arguments (branch lists or specs for ``parse_branches``)."""
+    names = lambda b: [x.name for x in (parse_branches(b) if isinstance(b, str) else b)]  # noqa: E731
+    out = {"branches": names(branches), "window": int(window), "leaf_decisions": int(leaf_decisions)}
+    ob = names(opp_branches) if opp_branches else []
+    if len(ob) > 1:
+        out |= {"opp_branches": ob, "opp_agg": opp_agg, "opp_left": int(window if opp_left is None else opp_left)}
+    ch = names(children) if children else []
+    if len(ch) > 1:
+        out |= {"children": ch, "child_window": int(window if child_window is None else child_window), "expand": int(expand)}
+    return out
+
+
+def take_games(bsim: BatchSim, idx) -> BatchSim:
+    """A new ``BatchSim`` holding copies of games ``idx`` of ``bsim`` (repeats allowed): the
+    mid-rollout states of a search tree's parents, without a round trip through ``SimState``."""
+    from .batch import _SIM_ARRAYS
+
+    idx = np.asarray(idx, np.int64)
+    out = object.__new__(BatchSim)
+    out.n, out.order = len(idx), bsim.order
+    for name in _SIM_ARRAYS:
+        setattr(out, name, np.ascontiguousarray(getattr(bsim, name)[idx]))
+    out.Mb = tuple(np.ascontiguousarray(m[idx]) for m in bsim.Mb)
+    out.bg = np.ascontiguousarray(bsim.bg[idx])
+    out.layouts = [bsim.layouts[i] for i in idx]
+    out.all = np.arange(out.n, dtype=np.int64)
+    return out
 
 
 def choose(values: np.ndarray, margin) -> np.ndarray:
@@ -360,6 +538,7 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
                                  "top_bin", "alt_bin")} if cfg.record_roots else None
     searched_now = None
     t_search = t_play = 0.0
+    search_gd = 0
     cap = cfg.cap_s * 25
     t0 = time.perf_counter()
     for t in range(cap):
@@ -379,6 +558,7 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
                 cur_branch[b] = k
             searches[live] += 1
             searched_now = (live.copy(), out)
+            search_gd += int(out.timing.get("game_decisions", 0))
             t_search += time.perf_counter() - c0
         c0 = time.perf_counter()
         bs.render(live, *bufs)
@@ -443,7 +623,8 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
     out = {"seed": np.asarray(seeds), "side": sides, "ours": ours_score, "opp": opp_score,
            "margin": ours_score - opp_score, "over": bs.over.copy(), "ticks": bs.ticks,
            "first_ours": f_ours, "first_opp": f_opp, "searches": searches, "chosen": chosen,
-           "gain_sum": gain_sum, "wall_s": time.perf_counter() - t0, "search_s": t_search, "play_s": t_play}
+           "gain_sum": gain_sum, "wall_s": time.perf_counter() - t0, "search_s": t_search, "play_s": t_play,
+           "search_game_decisions": search_gd}
     if cfg.record:
         out["rows"] = {k: np.concatenate(v) for k, v in rows.items()}
     if cfg.record_roots:

@@ -1,0 +1,4 @@
+w12s|strategic_v23|128|--branches alt*,samp:1.0x6
+o4min|p11|64|--opp-branches samp:1.0x3 --opp-agg min
+l250|p11|64|--leaf 250
+w18pair|strategic_v23|64|--branches alt*,pair*,samp:1.0x2

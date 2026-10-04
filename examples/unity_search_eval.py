@@ -84,8 +84,11 @@ class _Remote:
         from blackout_env.sim.search import parse_branches
         from blackout_env.sim.search_server import SearchClient
 
+        from blackout_env.sim.search import search_config
+
         self.branches = parse_branches(cfg["branches"])
-        expect = {"branches": [b.name for b in self.branches], "window": cfg["window"], "leaf_decisions": 125,
+        deep = cfg.get("deep") or {}
+        expect = {**search_config(cfg["branches"], cfg["window"], **{"leaf_decisions": 125, **deep}),
                   "rollout": os.path.basename(cfg.get("net") or R5), "value": os.path.basename(cfg.get("value") or VALUE)}
         self.client = SearchClient(path, expect=expect, timeout=cfg.get("server_timeout", 60.0), connect_timeout=600.0)
         self.margin = cfg["margin"]
@@ -127,10 +130,12 @@ def _init_worker(build: str, time_scale: float, gpus, cfg: dict, wids=None) -> N
     if servers:
         searcher = _Remote(servers[wid % len(servers)], cfg)
     else:
+        from blackout_env.sim.search import searcher_kwargs
+
         searcher = Searcher(ModNetPolicy(NetPolicy(RolloutNet.from_checkpoint(str(REPO / net_path)), device=dev,
                                                    cuda_graphs=cfg.get("cuda_graphs", False))),
                             ValueNetLeaf(str(REPO / value_path), dev), parse_branches(cfg["branches"]),
-                            window=cfg["window"], margin=cfg["margin"])
+                            window=cfg["window"], margin=cfg["margin"], **searcher_kwargs(cfg.get("deep")))
     _W = {"env": env, "cap": _Capture(env), "acting": acting, "searcher": searcher, "cfg": cfg, "gpu": gpu,
           "wid": wid}
     threading.Thread(target=_watch_parent, args=(os.getppid(),), daemon=True).start()
@@ -303,7 +308,7 @@ def play_match(task: dict) -> dict:
             "batch_roots_mean": float(np.mean(batch_roots)) if batch_roots else None, "queue_s": queue_s,
             "wall_s": time.perf_counter() - t0, "pid": os.getpid(), "gpu": _W["gpu"],
             "meta": {k: cfg.get(k) for k in ("branches", "every", "window", "margin", "cap_s", "search_until_s", "net", "value")}
-            | {"server": bool(cfg.get("servers"))}}
+            | {"server": bool(cfg.get("servers")), "deep": cfg.get("deep")}}
 
 
 def load_rows(out: Path) -> list[dict]:
@@ -317,7 +322,7 @@ def cmd_play(args):
     cfg = {"branches": args.branches, "every": args.every, "window": args.window, "margin": args.margin,
            "cap_s": args.cap_s, "device": args.device, "cuda_graphs": not args.no_cuda_graphs,
            "search_until_s": args.search_until_s, "record": args.record, "server_timeout": args.server_timeout,
-           "net": args.net, "value": args.value}
+           "net": args.net, "value": args.value, "deep": json.loads(args.deep) if args.deep else None}
     done = {(r["tag"], r["opponent"], r["seed"], r["side"]) for r in load_rows(out)}
     tasks = [{"tag": tag, "opponent": opp, "seed": s, "side": side}
              for s in range(args.seed0, args.seed0 + args.seeds) for opp in args.opponent.split(",")
@@ -397,6 +402,8 @@ def spawn_servers(args, out: Path):
                "--stats", str(out / f"server{i}_stats.json")]
         if args.no_cuda_graphs:
             cmd.append("--no-cuda-graphs")
+        if args.deep:
+            cmd += ["--deep", args.deep]
         log = (out / f"server{i}.log").open("a")
         procs.append(subprocess.Popen(cmd, cwd=REPO, env=env, stdout=log, stderr=subprocess.STDOUT))
         paths.append(path)
@@ -500,6 +507,7 @@ def main():
     q.add_argument("--every", type=int, default=25)
     q.add_argument("--window", type=int, default=25)
     q.add_argument("--margin", type=float, default=3.0)
+    q.add_argument("--deep", default="", help='S4 search options as JSON, e.g. \'{"children": "alt*,samp:1.0x2", "expand": 2}\'')
     q.add_argument("--cap-s", type=float, default=150.0)
     q.add_argument("--workers", type=int, default=8)
     q.add_argument("--gpus", default="0,1,2,3", help="CUDA devices dealt to workers round-robin ('' = none)")

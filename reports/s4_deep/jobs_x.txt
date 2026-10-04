@@ -1,0 +1,4 @@
+s8e25m3|strategic_v23|128|
+t2bf|strategic_v23|64|--children alt*,samp:1.0x2 --expand 2
+w13stop|strategic_v23|64|--branches alt*,samp:1.0x2,stop*
+l200|p11|64|--leaf 200
