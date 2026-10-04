@@ -301,7 +301,7 @@ def main_net(args):
     pool = json.loads(args.pool) if args.pool else {"self": 0.5, "teacher": 0.5}
     n_jobs = args.games // args.per_job
     w = np.array(list(pool.values()), float)
-    counts = np.floor(w / w.sum() * n_jobs).astype(int)
+    counts = np.maximum(1, np.floor(w / w.sum() * n_jobs).astype(int))  # every listed opponent gets >= 1 job (§39)
     counts[np.argmax(w)] += n_jobs - counts.sum()
     opps = [o for o, c in zip(pool, counts) for _ in range(c)]
     jobs = [{"net": args.net if args.net != "none" else "", "teacher": args.teacher, "opponent": o, "games": args.per_job,
