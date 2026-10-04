@@ -45,7 +45,7 @@ F3 = "checkpoints/rollout_net/arch/f3_x_d2.pt"
 VALUE = "checkpoints/value/s2v_f3xd2/iter2.pt"
 P14B = "checkpoints/distill/frozen/p14_v25.pt"
 P11 = "checkpoints/distill/frozen/p11_v22.pt"
-TRACE_S = (5, 10, 15, 30, 60)
+TRACE_S = (4.2, 5, 10, 15, 30, 60)
 
 # tag -> (acting base: "p14b" | "v25" | None = the rollout net, search window seconds or None, overlay)
 TAGS = {
@@ -145,6 +145,7 @@ def cmd_play(args):
                         "margin": int(res["margin"][j]), "ours": int(res["ours"][j]), "opp": int(res["opp"][j]),
                         "over": bool(res["over"][j]), "ticks": int(res["ticks"][j]),
                         "lead_at": {str(k): int(v) for k, v in zip(TRACE_S, res["lead_at"][j])},
+                        "hunters_at": {str(k): res["hunters_at"][j, i].tolist() for i, k in enumerate(TRACE_S)},
                         "first_ours": int(res["first_ours"][j]), "first_opp": int(res["first_opp"][j]),
                         "searches": int(res["searches"][j]), "chosen": res["chosen"][j].tolist(),
                         "gain_sum": float(res["gain_sum"][j]), "chunk_wall_s": wall, "chunk_n": len(chunk),

@@ -591,6 +591,7 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
         base.reset(n)
     trace_t = [int(round(x * 25)) for x in cfg.trace_s]
     lead_at = np.full((n, len(trace_t)), np.iinfo(np.int64).min, np.int64)
+    hunters_at = np.full((n, len(trace_t), 2), -1, np.int64)   # (ours, opponent's) Hunters then; -1 = over
     bufs = (np.zeros((n, 2, N_CH, H, W), F32), np.zeros((n, 2, 4), F32), np.zeros((n, 2, 10, N_AGENT_COLS), F32))
     moves = np.zeros((n, 10, 2), F32)
     first = np.full((n, 2), -1, np.int64)
@@ -698,6 +699,9 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
             if at == t + 1:
                 ld = bs.scores[live, 0] - bs.scores[live, 1]
                 lead_at[live, i] = np.where(sides[live] == 0, ld, -ld)
+                nh = (bs.ui[live, :, core.U_CLS] == HUNTER).reshape(len(live), 2, 5).sum(-1)
+                hunters_at[live, i, 0] = np.where(sides[live] == 0, nh[:, 0], nh[:, 1])
+                hunters_at[live, i, 1] = np.where(sides[live] == 0, nh[:, 1], nh[:, 0])
         if log and t % 250 == 0:
             log(f"  t={t // 25}s live {len(live)} search {t_search:.0f}s play {t_play:.0f}s")
     sc = bs.scores
@@ -713,6 +717,7 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
     if trace_t:
         fin = (ours_score - opp_score)[:, None]
         out["lead_at"] = np.where(lead_at == np.iinfo(np.int64).min, fin, lead_at)
+        out["hunters_at"] = hunters_at
     if cfg.record:
         out["rows"] = {k: np.concatenate(v) for k, v in rows.items()}
     if cfg.record_roots:
