@@ -6,3 +6,4 @@ w13stop|r5|32|--branches alt*,samp:1.0x2,stop*
 w12s|r5|32|--branches alt*,samp:1.0x6
 t2full|p11|64|--children alt*
 o4fmean|p11|64|--opp-branches samp:1.0x3 --opp-agg mean --opp-left 150
+t2bf|strategic_v23|128|--children alt*,samp:1.0x2 --expand 2

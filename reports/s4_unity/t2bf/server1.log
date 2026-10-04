@@ -1,1 +1,3 @@
 [search-server 2547881] listening on /tmp/bo-search-2547654-1.sock (max_roots 32, wait 3.0 ms) config {'branches': ['base', 'alt0', 'alt1', 'alt2', 'alt3', 'alt4', 'samp1s0', 'samp1s1'], 'window': 25, 'leaf_decisions': 125, 'children': ['base', 'alt0', 'alt1', 'alt2', 'alt3', 'alt4', 'samp1s0', 'samp1s1'], 'child_window': 25, 'expand': 2, 'rollout': 'r5.pt', 'value': 's2v_iter5.pt', 'proto': 1}
+[search-server 2547881] last client gone (7803 batches, 15537 roots (2.0/batch, max 3), 2734 ms/batch, 1373.0 ms/root, clients 4)
+[search-server 2547881] exit (signal): 7803 batches, 15537 roots (2.0/batch, max 3), 2734 ms/batch, 1373.0 ms/root, clients 4

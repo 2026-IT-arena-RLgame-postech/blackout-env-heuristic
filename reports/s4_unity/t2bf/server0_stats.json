@@ -1,20 +1,16 @@
 {
- "batches": 2250,
- "roots": 8978,
- "requests": 8978,
- "search_s": 8787.454683521762,
- "max_batch_roots": 7,
+ "batches": 7923,
+ "roots": 15649,
+ "requests": 15649,
+ "search_s": 21416.688795966096,
+ "max_batch_roots": 3,
  "batch_hist": {
-  "1": 8,
-  "2": 14,
-  "3": 1097,
-  "4": 15,
-  "5": 1106,
-  "6": 9,
-  "7": 1
+  "1": 849,
+  "2": 6422,
+  "3": 652
  },
- "queue_s": 59.671655484242365,
- "clients_seen": 9,
+ "queue_s": 75.15641304547898,
+ "clients_seen": 4,
  "config": {
   "branches": [
    "base",

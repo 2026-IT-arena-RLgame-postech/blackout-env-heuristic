@@ -1,4 +1,4 @@
-t2bf vs p11: n=153  t2bf +40.5  - r5 +41.3 ± 5.7  - S3 default +13.9 ± 5.6  (S3 - r5 on these matches +27.3 ± 6.1)  race w/t/l (48, 103, 2) vs S3 (41, 110, 2) vs r5 (10, 140, 3)  win 0.78  same as S3 0.01  search 7222 ms (p95 9398)  search s/match 504  wall 618 s  fallbacks 16  desyncs 1
-   base share 0.81
-t2bf vs v23: n=152  t2bf +30.6  - r5 +44.4 ± 5.2  - S3 default +12.8 ± 5.5  (S3 - r5 on these matches +31.6 ± 5.0)  race w/t/l (41, 105, 6) vs S3 (39, 105, 8) vs r5 (10, 134, 8)  win 0.70  same as S3 0.02  search 7826 ms (p95 9977)  search s/match 503  wall 567 s  fallbacks 36  desyncs 0
-   base share 0.81
+t2bf vs p11: n=300  t2bf +41.7  - r5 +40.0 ± 4.0  - S3 default +14.4 ± 4.0  (S3 - r5 on these matches +25.6 ± 4.4)  race w/t/l (99, 199, 2) vs S3 (87, 211, 2) vs r5 (21, 276, 3)  win 0.79  same as S3 0.02  search 4650 ms (p95 6050)  search s/match 325  wall 413 s  fallbacks 16  desyncs 5
+   base share 0.82
+t2bf vs v23: n=300  t2bf +35.3  - r5 +43.2 ± 4.0  - S3 default +11.9 ± 3.8  (S3 - r5 on these matches +31.3 ± 4.1)  race w/t/l (84, 207, 9) vs S3 (77, 210, 13) vs r5 (17, 271, 12)  win 0.74  same as S3 0.02  search 5080 ms (p95 6462)  search s/match 329  wall 378 s  fallbacks 36  desyncs 0
+   base share 0.82
