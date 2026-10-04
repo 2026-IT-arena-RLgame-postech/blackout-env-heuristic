@@ -398,6 +398,39 @@ def teacher_dev_table(D, max_t=3750):
     return "\n".join(lines)
 
 
+def reserve_table(D) -> str:
+    """Our 4th-nearest Collector to the sanctuary at decision 98 (3 walkers + the reserve), Hunters at 99, our
+    next Hunter after 99 vs the opponent's, and the final margin per reserve-distance bucket."""
+    from blackout_env.sim import core
+
+    n = len(D["seed"])
+    res, nxt, onxt, n99, marg = [], [], [], [], []
+    ev = D["events"]
+    for b in range(n):
+        s = int(D["side"][b])
+        us, op = np.arange(5) + 5 * s, np.arange(5) + 5 * (1 - s)
+        c = D["cls"][98, b, us]
+        d = sanct_dist(D["pos"][98, b, us].astype(np.float32))
+        cc = np.sort(d[c == COLLECTOR])
+        res.append(cc[3] if len(cc) > 3 else np.nan)
+        n99.append(int((D["cls"][99, b, us] == HUNTER).sum()))
+        e = ev[(ev[:, 0] == b) & (ev[:, 2] == core.EV_TRANSFORM) & (ev[:, 4] == HUNTER) & (ev[:, 1] > 99)]
+        mine, theirs = e[np.isin(e[:, 3], us)], e[np.isin(e[:, 3], op)]
+        nxt.append(mine[:, 1].min() if len(mine) else 9999)
+        onxt.append(theirs[:, 1].min() if len(theirs) else 9999)
+        marg.append(int(D["final"][b, s] - D["final"][b, 1 - s]))
+    res, nxt, onxt, n99, marg = map(np.asarray, (res, nxt, onxt, n99, marg))
+    q = np.nanquantile(res, [.1, .25, .5, .75, .9])
+    out = [f"    reserve@98 p10/25/50/75/90 {' '.join(f'{x:.2f}' for x in q)}; Hunters at 99: {np.bincount(n99, minlength=6).tolist()}",
+           f"    next Hunter after 99: ours first {(nxt < onxt).sum()} tie {(nxt == onxt).sum()} opp first {(nxt > onxt).sum()}"]
+    for lo, hi in ((0, 0.5), (0.5, 1.0), (1.0, 1.4), (1.4, 99)):
+        m = (res >= lo) & (res < hi)
+        if m.any():
+            out.append(f"    reserve in [{lo}, {hi}): n={int(m.sum()):3d} margin {marg[m].mean():+6.1f}  ours-next median {np.median(nxt[m]):.0f}"
+                       f"  opp-next median {np.median(onxt[m]):.0f}  4 Hunters at 99: {int((n99[m] == 4).sum())}")
+    return "\n".join(out)
+
+
 def cmd_analyze(args):
     out = Path(args.out)
     lines = []
@@ -451,12 +484,16 @@ def cmd_analyze(args):
                 if m.any():
                     lines.append(f"    ours {'WTL'[1 - x]} ref {'WTL'[1 - y]}: n={int(m.sum()):4d} {dm[m].mean():+7.2f} share {dm[m].sum() / tot if tot else 0:+.2f}")
         lines.append(f"  race tied (ours): {int((r_a == 0).sum())}")
+        lines.append("  reserve (ours):")
+        lines.append(reserve_table(A))
+        lines.append("  reserve (ref):")
+        lines.append(reserve_table(B))
         if "shmv" in A and np.abs(A["shmv"]).sum() > 0:
             lines.append("  student vs shadow-teacher moves (ours=" + args.ours + "):")
             lines.append("    " + teacher_dev_table(A).replace("\n", "\n    "))
         if "shmv" in B and np.abs(B["shmv"]).sum() > 0:
-            ang, a_st, t_st = angle_dev(B["ownmv"].astype(np.float32), B["shmv"].astype(np.float32))
-            lines.append(f"  ref sanity: ref vs shadow max angle {np.nanmax(ang):.2f} deg (should be 0 if ref = shadow)")
+            same = np.abs(B["ownmv"].astype(np.float32) - B["shmv"].astype(np.float32)).max() < 1e-3
+            lines.append(f"  ref sanity: ref moves == shadow labels everywhere: {bool(same)}")
         lines.append("")
     txt = "\n".join(lines)
     print(txt)
@@ -626,6 +663,32 @@ def cmd_cf(args):
               f"arms {time.time() - t1:.0f}s, total {time.time() - t_all:.0f}s", flush=True)
 
 
+def cmd_cfreport(args):
+    """Per arm: mean (arm - base) final margin +- SE over roots, share of roots changed; by root phase."""
+    lines = []
+    for path in sorted(Path(args.out).glob("cf_*.jsonl")):
+        rows = [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
+        if not rows:
+            continue
+        lines.append(f"=== {path.name}  ({len(rows)} roots, value = final margin(arm) - final margin(student))")
+        arms = list(rows[0]["arms"])
+        for lo, hi in ((0, 10 ** 9),) + tuple((a * 25, z * 25) for a, z in WINDOWS):
+            sub = [r for r in rows if lo <= r["tick"] < hi]
+            if not sub or (lo, hi) != (0, 10 ** 9) and len(sub) == len(rows):
+                continue
+            tag = "all" if hi == 10 ** 9 else f"{lo // 25}-{hi // 25}s"
+            cells = []
+            for a in arms:
+                v = np.array([r["arms"][a] for r in sub], float)
+                cells.append(f"{a}: {v.mean():+6.2f}±{se(v):4.2f} (chg {np.mean(v != 0):.2f})")
+            lines.append(f"  {tag:7s} n={len(sub):3d}  " + "  ".join(cells))
+        ok = np.mean([r["base"] == r["recorded_final"] for r in rows])
+        lines.append(f"  base reproduces the recorded final margin: {ok:.2f}")
+    txt = "\n".join(lines)
+    print(txt)
+    (Path(args.out) / "cf_report.txt").write_text(txt + "\n")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -662,8 +725,10 @@ def main():
     q.add_argument("--stop-exhausted", action="store_true")
     q.add_argument("--threads", type=int, default=1)
     q.add_argument("--out", default=str(REPO / "reports/q7_v28"))
+    q = sub.add_parser("cfreport")
+    q.add_argument("--out", default=str(REPO / "reports/q7_v28"))
     args = p.parse_args()
-    {"play": cmd_play, "analyze": cmd_analyze, "cf": cmd_cf}[args.cmd](args)
+    {"play": cmd_play, "analyze": cmd_analyze, "cf": cmd_cf, "cfreport": cmd_cfreport}[args.cmd](args)
 
 
 if __name__ == "__main__":
