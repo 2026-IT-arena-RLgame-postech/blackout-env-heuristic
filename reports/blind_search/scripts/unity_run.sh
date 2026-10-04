@@ -15,7 +15,7 @@ for o in ${OPPS//,/ }; do
   OPPD=${OPPD:+$OPPD,}$d
 done
 ~/blackout-env/.venv/bin/python examples/unity_search_eval.py play --opponent "$OPPD" --seeds $SEEDS --seed0 4000000 \
-    --tags $TAGS --cap-s 150 --search-from-s 5 --base $P14B --net checkpoints/rollout_net/arch/f3_x_d2.pt \
+    --tags $TAGS --cap-s 150 --search-from-s 5 --base $P14B --net ${NET:-checkpoints/rollout_net/arch/f3_x_d2.pt} \
     --value checkpoints/value/s2v_f3xd2/iter2.pt ${DEEP:+--deep "$DEEP"} --server spawn --server-gpus $SG \
     --workers $W --gpus "" --server-max-roots ${MAXR:-8} --out $OUT
 echo "== $(date +%T) done"
