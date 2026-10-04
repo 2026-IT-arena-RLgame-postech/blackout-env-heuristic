@@ -192,6 +192,58 @@ def cmd_agree(args):
         json.dump(out, open(args.json, "w"), indent=1)
 
 
+def cmd_table(args):
+    """reports/rollout_v25/table.md: per candidate x opponent the paired Δ vs f3x and vs P14b (± seed SE),
+    first-Hunter histogram, rollout cost x r5 (BatchRollout loop, N = 2048, mean of the rounds), and the
+    agreement with P14b on held-out states by match time."""
+    from collections import defaultdict
+
+    from rollout_net_strength import DPS as SDPS, summarize
+
+    root = Path(args.root)
+    rows = [json.loads(x) for x in (root / "sim/games.jsonl").read_text().splitlines()]
+    by = {ref: {(r["candidate"], r["opponent"]): r for r in summarize(rows, ref)} for ref in ("f3x", "p14b")}
+    cands = [c for c in args.candidates if any(k[0] == c for k in by["f3x"])]
+    opps = [o for o in args.opponents if any(k[1] == o for k in by["f3x"])]
+    thr = defaultdict(list)
+    for f in sorted((root / "throughput").glob("throughput_*.json")):
+        name = f.stem.removeprefix("throughput_").rsplit("_r", 1)[0]
+        for r in json.load(open(f)):
+            if r["N"] == 2048:
+                thr[(name, r["precision"])].append(r["game_decisions_per_s"])
+    cost = {k: np.mean(thr[("r5", k[1])]) / np.mean(v) for k, v in thr.items()}
+    lines = ["| 후보 | 상대 | n | 점수차 | Δ vs f3x | Δ vs P14b | 경주 승/동/패 | 첫 Hunter 98-/99/100/101+/없음 |", "|" + "---|" * 8]
+    for c in cands:
+        for o in opps:
+            r = by["f3x"].get((c, o))
+            if r is None:
+                continue
+            grp = [d for d in rows if (d["candidate"], d["opponent"]) == (c, o)]
+            dec = [round(d["first_hunter_s"][0] * SDPS) if d["first_hunter_s"][0] is not None else None for d in grp]
+            hist = "/".join(str(x) for x in (sum(v is not None and v <= 98 for v in dec), dec.count(99), dec.count(100),
+                                             sum(v is not None and v > 100 for v in dec), dec.count(None)))
+            d1 = f"{r['dmargin']:+.1f}±{r['dmargin_se']:.1f}" if "dmargin" in r else "–"
+            r2 = by["p14b"].get((c, o), {})
+            d2 = f"{r2['dmargin']:+.1f}±{r2['dmargin_se']:.1f}" if "dmargin" in r2 else "–"
+            lines.append(f"| {c} | {o} | {r['n']} | {r['margin']:+.1f}±{r['margin_se']:.1f} | {d1} | {d2} | "
+                         f"{'/'.join(map(str, r['race']))} | {hist} |")
+    lines += ["", "| 망 | 처리량 fp32 / fp16 (게임 결정/초, N=2048) | 비용 ×r5 fp32 / fp16 |", "|---|---|---|"]
+    for n in ("r5", "f3x", "v25f3x", "d256x32", "v25d256"):
+        if (n, "fp32") in thr:
+            lines.append(f"| {n} | {np.mean(thr[(n, 'fp32')]):.0f} / {np.mean(thr[(n, 'fp16')]):.0f} | "
+                         f"{cost[(n, 'fp32')]:.2f} / {cost[(n, 'fp16')]:.2f} |")
+    ag = json.load(open(root / "agree.json"))
+    buckets = ["all", "0-10s", "10-30s", "30-60s", "60-120s", "120-s"]
+    for s in next(iter(ag.values())):
+        lines += ["", f"P14b 일치 — {s} (arc hit / arg max 일치 / 각도 오차°)", "| 망 | " + " | ".join(buckets) + " |", "|" + "---|" * 7]
+        for n, d in ag.items():
+            lines.append(f"| {n} | " + " | ".join(f"{d[s][b]['hit']:.3f} / {d[s][b]['argmax_agree']:.3f} / {d[s][b]['err_deg']:.1f}"
+                                                 if b in d[s] else "–" for b in buckets) + " |")
+    txt = "\n".join(lines)
+    print(txt)
+    (root / "table.md").write_text(txt + "\n")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -207,8 +259,12 @@ def main():
     q.add_argument("--nets", nargs="+", required=True, help="NAME=small:PATH | NAME=net:PATH")
     q.add_argument("--device", default="cuda")
     q.add_argument("--json", default="")
+    q = sub.add_parser("table")
+    q.add_argument("--root", default="reports/rollout_v25")
+    q.add_argument("--candidates", nargs="+", default=["v25f3x", "v25d256", "f3x", "d256x32", "p14b"])
+    q.add_argument("--opponents", nargs="+", default=["p11", "v23", "v25", "p14b"])
     args = p.parse_args()
-    {"teacher-check": cmd_teacher_check, "agree": cmd_agree}[args.cmd](args)
+    {"teacher-check": cmd_teacher_check, "agree": cmd_agree, "table": cmd_table}[args.cmd](args)
 
 
 if __name__ == "__main__":
