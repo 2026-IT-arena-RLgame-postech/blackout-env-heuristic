@@ -1,0 +1,6 @@
+strategic_v25    vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt n=300 margin  +10.9± 3.7 win 0.57 race w/t/l (0, 300, 0) first-ours {99:300} end {'game': 222, 'exhausted': 52, 'cap': 26} desync matches 1
+strategic_v27:reserve_stage=1.5 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt n=300 margin  +53.5± 2.6 win 0.87 race w/t/l (0, 300, 0) first-ours {99:300} end {'game': 254, 'exhausted': 18, 'cap': 28} desync matches 0
+   paired strategic_v27:reserve_stage=1.5 - strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt:  +42.7 ±  4.5 (150 seeds)  race 
+strategic_v25    vs strategic_v25  n=300 margin   +0.0± 3.8 win 0.50 race w/t/l (0, 300, 0) first-ours {99:300} end {'game': 244, 'cap': 30, 'exhausted': 26} desync matches 2
+strategic_v27:reserve_stage=1.5 vs strategic_v25  n=300 margin  +50.7± 2.7 win 0.86 race w/t/l (0, 300, 0) first-ours {99:300} end {'game': 261, 'exhausted': 15, 'cap': 24} desync matches 1
+   paired strategic_v27:reserve_stage=1.5 - strategic_v25 vs strategic_v25:  +50.7 ±  2.9 (150 seeds)  race 
