@@ -243,8 +243,11 @@ def unity_rows(path: Path) -> list[dict]:
         lead = d["learner_score"] - d["opponent_score"]
         fr = d.get("first_reached", {})
         fc, fo = fr.get("first_hunter1_s", 1e9), fr.get("opp_first_hunter1_s", 1e9)
-        # metrics.py stamps the observation after the decision (4.04 s = decision 100, as BatchRollout.first_hunter)
-        first = [None if x is None else round(x - 1 / DPS, 2) for x in (fr.get("first_hunter1_s"), fr.get("opp_first_hunter1_s"))]
+        # metrics.py stamps the observation after the decision (4.04 s = decision 100, as BatchRollout.first_hunter).
+        # Some Unity matches (~2-5%) run the whole clock one decision ahead from the start (first Carrier 0.40 s
+        # instead of 0.44 s, every policy's opening): count decisions from that, not from the clock.
+        shift = 0.44 - fr.get("first_carrier1_s", 0.44) if abs(fr.get("first_carrier1_s", 0.44) - 0.42) < 0.03 else 0.0
+        first = [None if x is None else round(x - 1 / DPS + shift, 2) for x in (fr.get("first_hunter1_s"), fr.get("opp_first_hunter1_s"))]
         trace = {}
         for s in (30, 60, 120):
             m = d.get("margins", {}).get(f"margin_{s}s")
