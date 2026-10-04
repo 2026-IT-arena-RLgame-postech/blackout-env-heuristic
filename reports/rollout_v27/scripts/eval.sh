@@ -24,5 +24,5 @@ fi
 export OMP_NUM_THREADS=1
 export BLACKOUT_SMALL="v27d256=$NEWD,v27f3x=$NEWF,v25d256=$V25D,v25f3x=$V25F" BLACKOUT_NETS="p16=$P16,p14b=$P14B,p11=$P11"
 $PY examples/v27_eval.py play --ours "${OURS:-p16;v27d256;v27f3x;v25d256}" --opponent "${OPPS:-p16;p14b;p11}" --seeds ${SEEDS:-64} \
-   --seed0 1100000 --chunk ${CHUNK:-64} --cap-s 425 --stop-exhausted --workers ${WORKERS:-4} --device cuda --out $O/sim_wsl > $L/sim_wsl.log 2>&1
+   --seed0 1100000 --chunk ${CHUNK:-64} --cap-s 425 --stop-exhausted --workers ${WORKERS:-4} --device cuda --out ${OUT:-$O/sim_wsl} > $L/sim_wsl_${TAG:-0}.log 2>&1
 echo EVAL DONE
