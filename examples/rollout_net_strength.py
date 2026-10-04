@@ -58,8 +58,10 @@ def make_policy(spec: str, device: str):
         pol = HeuristicPolicy(HEUR.get(spec, spec[5:]))
     elif spec == "r5" or spec.startswith("small:"):
         pol = NetPolicy(RolloutNet.from_checkpoint(str(CKPT["r5"] if spec == "r5" else spec[6:])), device=device)
-    elif spec in CKPT or spec.startswith("net:"):
-        pol = NetPolicy.from_checkpoint(str(CKPT[spec] if spec in CKPT else spec[4:]), device=device)
+    elif spec in CKPT or spec.startswith("net:"):  # a distill student or a RolloutNet checkpoint (e.g. f3x)
+        from blackout_env.train.distill.inference import load_checkpoint_net
+
+        pol = NetPolicy(load_checkpoint_net(str(CKPT[spec] if spec in CKPT else spec[4:])), device=device)
     else:
         raise ValueError(spec)
     _POLICIES[spec] = pol
@@ -168,6 +170,20 @@ def summarize(rows: list[dict], ref: str, key=lambda d: d["lead"]) -> list[dict]
     return table
 
 
+def first_hunter_lines(rows: list[dict]) -> list[str]:
+    """P14: the race arrival -- each team's first Hunter decision (V25's exact walk: 99; V23/P11: 100)."""
+    lines = ["", "first Hunter decision (ours / theirs): counts of 98, 99, 100, 101+, never"]
+    for (c, o) in sorted({(d["candidate"], d["opponent"]) for d in rows}):
+        grp = [d for d in rows if (d["candidate"], d["opponent"]) == (c, o)]
+        hist = []
+        for i in (0, 1):
+            dec = [round(d["first_hunter_s"][i] * DPS) if d["first_hunter_s"][i] is not None else None for d in grp]
+            hist.append("/".join(str(x) for x in (sum(v is not None and v <= 98 for v in dec), dec.count(99), dec.count(100),
+                                                 sum(v is not None and v > 100 for v in dec), dec.count(None))))
+        lines.append(f"{c:10s} vs {o:10s} n={len(grp):5d} ours {hist[0]:>22s}   theirs {hist[1]:>22s}")
+    return lines
+
+
 def cmd_summary(args):
     out = Path(args.out)
     rows = [json.loads(line) for line in (out / "games.jsonl").read_text().splitlines()]
@@ -205,17 +221,7 @@ def cmd_summary(args):
         cond = " ".join(f"{name} {lead[race == v].mean():+.1f}(n{(race == v).sum()})" for name, v in (("raceW", 1), ("raceT", 0), ("raceL", -1)) if (race == v).any())
         lines.append(f"{c:10s} vs {o:10s} length {steps.mean() / DPS:5.1f}s (p90 {np.percentile(steps, 90) / DPS:5.1f}) "
                      f"target/timeout {ov:.2f} exhausted {ex:.2f} | margin by race: {cond}")
-    # P14: the race arrival -- our first Hunter's decision (V25's exact walk: 99; V23/P11: 100)
-    lines.append("")
-    lines.append("first Hunter decision (ours / theirs): counts of 98, 99, 100, 101+, never")
-    for (c, o) in sorted({(d["candidate"], d["opponent"]) for d in rows}):
-        grp = [d for d in rows if (d["candidate"], d["opponent"]) == (c, o)]
-        hist = []
-        for i in (0, 1):
-            dec = [round(d["first_hunter_s"][i] * DPS) if d["first_hunter_s"][i] is not None else None for d in grp]
-            hist.append("/".join(str(x) for x in (sum(v is not None and v <= 98 for v in dec), dec.count(99), dec.count(100),
-                                                 sum(v is not None and v > 100 for v in dec), dec.count(None))))
-        lines.append(f"{c:10s} vs {o:10s} n={len(grp):5d} ours {hist[0]:>22s}   theirs {hist[1]:>22s}")
+    lines += first_hunter_lines(rows)
     text = "\n".join(lines)
     print(text)
     (out / "summary.txt").write_text(text + "\n")
@@ -239,12 +245,18 @@ def unity_rows(path: Path) -> list[dict]:
         lead = d["learner_score"] - d["opponent_score"]
         fr = d.get("first_reached", {})
         fc, fo = fr.get("first_hunter1_s", 1e9), fr.get("opp_first_hunter1_s", 1e9)
+        # metrics.py stamps the observation after the decision (4.04 s = decision 100, as BatchRollout.first_hunter).
+        # Some Unity matches (~2-5%) run the whole clock one decision ahead from the start (first Carrier 0.40 s
+        # instead of 0.44 s, every policy's opening): count decisions from that, not from the clock.
+        shift = 0.44 - fr.get("first_carrier1_s", 0.44) if abs(fr.get("first_carrier1_s", 0.44) - 0.42) < 0.03 else 0.0
+        first = [None if x is None else round(x - 1 / DPS + shift, 2) for x in (fr.get("first_hunter1_s"), fr.get("opp_first_hunter1_s"))]
         trace = {}
         for s in (30, 60, 120):
             m = d.get("margins", {}).get(f"margin_{s}s")
             trace[str(s)] = m if m is not None else (lead if d["elapsed_s"] < s else float("nan"))
         rows.append({"candidate": short(d["candidate"]), "opponent": short(d["opponent"]), "seed": d["seed"],
-                     "side": int(d["swap"]), "lead": lead, "race": int(np.sign(fo - fc)) if abs(fo - fc) > 0.05 else 0,
+                     "side": int(d["swap"]), "lead": lead, "race": int(np.sign(fo - fc)) if abs(fo - fc) > 0.5 / DPS else 0,  # one decision (0.04 s) decides
+                     "first_hunter_s": first,
                      "steps": int(d["elapsed_s"] * DPS), "over": d["elapsed_s"] >= 419, "exhausted": False,
                      "trace": trace, "counts": d.get("counts", {})})
     return rows
@@ -301,6 +313,7 @@ def cmd_unity_summary(args):
         cond = " ".join(f"{name} {lead[race == v].mean():+.1f}(n{(race == v).sum()})"
                         for name, v in (("raceW", 1), ("raceT", 0), ("raceL", -1)) if (race == v).any())
         lines.append(f"{c:10s} vs {o:10s} length {steps.mean() / DPS:5.1f}s timeout {np.mean([d['over'] for d in grp]):.2f} | margin by race: {cond}")
+    lines += first_hunter_lines(rows)
     text = "\n".join(lines)
     print(text)
     (Path(args.out) / "summary_paired.txt").write_text(text + "\n")

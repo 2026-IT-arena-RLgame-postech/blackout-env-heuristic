@@ -1,0 +1,64 @@
+{
+ "strategic_v25/ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt": {
+  "n": 300,
+  "margin": 10.856666666666667,
+  "se": 3.681359287800013,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1
+ },
+ "strategic_v27:reserve_stage=1.5/ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt": {
+  "n": 300,
+  "margin": 53.54666666666667,
+  "se": 2.5686783875158965,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 0,
+  "paired": 42.69,
+  "paired_se": 4.467993734210977,
+  "seeds": 150
+ },
+ "strategic_v25/strategic_v25": {
+  "n": 300,
+  "margin": 0.0,
+  "se": 3.7899297417030975,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 2
+ },
+ "strategic_v27:reserve_stage=1.5/strategic_v25": {
+  "n": 300,
+  "margin": 50.71,
+  "se": 2.6920912494618765,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1,
+  "paired": 50.71,
+  "paired_se": 2.8779197604608453,
+  "seeds": 150
+ }
+}

@@ -81,7 +81,7 @@ def cmd_pack(args):
             parts = list(ex.map(_load, ps, chunksize=8))
         data = {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
         if args.p11:
-            data.update(p11_targets(data))
+            data.update(p11_targets(data, device=args.p11_device))
         np.savez(out / f"{name}.npz", **data)
         print(name, len(ps), "shards", len(data["tick"]), "rows", f"{time.time() - t0:.0f}s", flush=True)
 
@@ -557,7 +557,9 @@ def main():
     p.add_argument("--val-frac", type=float, default=0.04)
     p.add_argument("--max-shards", type=int, default=0)
     p.add_argument("--workers", type=int, default=6)
-    p.add_argument("--p11", action="store_true", help="also store P11's logits/offsets per row (MPS)")
+    p.add_argument("--p11", action="store_true", help="also store P11's logits/offsets per row ($BLACKOUT_P11: any "
+                   "logits + angle MyModel student, e.g. P14b for docs §31)")
+    p.add_argument("--p11-device", default="mps")
     p = sub.add_parser("train")
     p.add_argument("--data", required=True)
     p.add_argument("--out", required=True)

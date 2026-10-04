@@ -1,0 +1,46 @@
+[
+ {
+  "policy": "small:/home/cucumbersaurus/rv25runs/ck/v25f3x.pt",
+  "device": "cuda",
+  "precision": "fp32",
+  "N": 256,
+  "game_decisions_per_s": 19278.391513273345,
+  "us_per_game_decision": 51.87154744271538,
+  "render_us": 4.15135744761604,
+  "policy_us": 44.07100965120965,
+  "step_us": 2.556225494610468
+ },
+ {
+  "policy": "small:/home/cucumbersaurus/rv25runs/ck/v25f3x.pt",
+  "device": "cuda",
+  "precision": "fp32",
+  "N": 2048,
+  "game_decisions_per_s": 21910.480659309054,
+  "us_per_game_decision": 45.64025844750842,
+  "render_us": 4.458102230794039,
+  "policy_us": 37.79272238675991,
+  "step_us": 2.1123889468279473
+ },
+ {
+  "policy": "small:/home/cucumbersaurus/rv25runs/ck/v25f3x.pt",
+  "device": "cuda",
+  "precision": "fp16",
+  "N": 256,
+  "game_decisions_per_s": 20152.619945222796,
+  "us_per_game_decision": 49.62133969271084,
+  "render_us": 4.090726155595803,
+  "policy_us": 41.91520087518559,
+  "step_us": 2.4986943794450176
+ },
+ {
+  "policy": "small:/home/cucumbersaurus/rv25runs/ck/v25f3x.pt",
+  "device": "cuda",
+  "precision": "fp16",
+  "N": 2048,
+  "game_decisions_per_s": 25496.68691898122,
+  "us_per_game_decision": 39.220782024645786,
+  "render_us": 4.405193548135352,
+  "policy_us": 31.649347914329155,
+  "step_us": 1.9521563968712865
+ }
+]
