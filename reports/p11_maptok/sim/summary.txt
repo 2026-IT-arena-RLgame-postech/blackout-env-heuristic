@@ -1,0 +1,28 @@
+candidate  opponent       n  margin   ±se        W/D/L %     race W/T/L   Δ vs p11   ±se same race
+net:runs/ft_base/model.pt p5a         1000   +71.6   0.4  100/  0/  0         998/2/0       -1.0   0.5     0.998
+net:runs/ft_base/model.pt v19         1000   +77.6   0.6   98/  0/  2        1000/0/0       +0.9   0.7     1.000
+net:runs/ft_base/model.pt v23         1000    +6.5   2.1   55/  0/ 45      100/859/41       +5.8   2.2     0.906
+net:runs/ft_f3/model.pt p5a         1000   +71.2   0.5   99/  0/  1         996/3/1       -1.5   0.5     0.998
+net:runs/ft_f3/model.pt v19         1000   +76.7   0.7   98/  0/  2        1000/0/0       -0.1   0.8     1.000
+net:runs/ft_f3/model.pt v23         1000   +20.6   2.1   63/  0/ 37      293/672/35      +20.0   2.3     0.703
+p11        p5a         1000   +72.6   0.4  100/  0/  0         998/2/0 
+p11        v19         1000   +76.8   0.7   97/  0/  3        1000/0/0 
+p11        v23         1000    +0.7   2.1   51/  0/ 49       18/935/47 
+
+paired Δ lead vs p11 by match time (s):        10        20        30        45        60        90       120       150       240       300      final
+net:runs/ft_base/model.pt vs p5a                               -0.1±0.5  -1.3±0.9  -1.6±0.8  -1.5±0.6  -1.2±0.6  -1.1±0.5  -1.1±0.5  -1.1±0.5  -1.1±0.5  -1.1±0.5  -1.0±0.5
+net:runs/ft_base/model.pt vs v19                               +0.3±0.3  +0.4±0.6  +0.1±0.6  +0.6±0.7  +0.7±0.7  +0.9±0.7  +0.9±0.7  +0.9±0.7  +0.9±0.7  +0.9±0.7  +0.9±0.7
+net:runs/ft_base/model.pt vs v23                               +1.5±0.5  +4.3±1.3  +5.4±1.7  +5.8±2.0  +5.8±2.1  +5.8±2.2  +5.7±2.1  +5.8±2.2  +5.8±2.2  +5.8±2.2  +5.8±2.2
+net:runs/ft_f3/model.pt vs p5a                               -0.6±0.4  -0.8±0.8  -1.2±0.8  -1.4±0.6  -1.4±0.5  -1.4±0.5  -1.5±0.5  -1.5±0.5  -1.5±0.5  -1.5±0.5  -1.5±0.5
+net:runs/ft_f3/model.pt vs v19                               +0.1±0.4  +0.2±0.6  -0.2±0.7  -0.0±0.7  -0.2±0.8  +0.0±0.8  -0.1±0.8  -0.1±0.8  -0.1±0.8  -0.1±0.8  -0.1±0.8
+net:runs/ft_f3/model.pt vs v23                               +4.8±0.5 +14.5±1.4 +17.9±1.8 +19.2±2.1 +19.8±2.2 +20.0±2.2 +20.1±2.2 +20.1±2.3 +20.0±2.3 +20.0±2.3 +20.0±2.3
+
+net:runs/ft_base/model.pt vs p5a        length  37.5s (p90  51.6) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +71.6(n998) raceT +74.0(n2)
+net:runs/ft_base/model.pt vs v19        length  34.8s (p90  47.4) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +77.6(n1000)
+net:runs/ft_base/model.pt vs v23        length  71.1s (p90 100.0) target/timeout 0.90 exhausted 0.10 | margin by race: raceW +75.1(n100) raceT +2.4(n859) raceL -75.8(n41)
+net:runs/ft_f3/model.pt vs p5a        length  37.1s (p90  52.1) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +71.3(n996) raceT +75.0(n3) raceL -77.0(n1)
+net:runs/ft_f3/model.pt vs v19        length  37.2s (p90  51.9) target/timeout 0.96 exhausted 0.04 | margin by race: raceW +76.7(n1000)
+net:runs/ft_f3/model.pt vs v23        length  62.2s (p90  80.0) target/timeout 0.92 exhausted 0.09 | margin by race: raceW +76.3(n293) raceT +1.4(n672) raceL -75.8(n35)
+p11        vs p5a        length  34.8s (p90  50.5) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +72.6(n998) raceT +82.0(n2)
+p11        vs v19        length  34.1s (p90  47.9) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +76.8(n1000)
+p11        vs v23        length  67.4s (p90  91.6) target/timeout 0.85 exhausted 0.15 | margin by race: raceW +79.9(n18) raceT +3.0(n935) raceL -74.9(n47)

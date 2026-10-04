@@ -82,6 +82,20 @@ HELDOUT_SEEDS = range(900_000, 1_000_000)
 # an embedding broadcast over the batch (token_type_emb, vec_slot_emb, spr_cls_emb) by the batch
 # size, so the embeddings stay eager; compiled this way every gradient matches CPU eager.
 COMPILED_MODULES = ("graphic_encoder", "vector_encoder", "attention", "q_head")  # examples/distill_heldout_eval.py
+
+
+def compile_modules(net: MyModel) -> None:
+    """torch.compile COMPILED_MODULES in place (state_dict keys stay the same).  With the map-token
+    path the trunk runs its layers one by one (MyModel._trunk_xattn), so each layer and the cross
+    blocks are compiled instead of ``attention`` as a whole."""
+    for name in COMPILED_MODULES:
+        if name == "attention" and net.map_xattn is not None:
+            for layer in net.attention.layers:
+                layer.compile()
+            for block in net.map_xattn.blocks:
+                block.compile()
+        else:
+            getattr(net, name).compile()
 # On CUDA that bug does not occur (tests/test_accel.py), but the whole MyModel compiled under fp16
 # autocast gives wrong outputs there (value/train.compile_value_net), so CUDA compiles these too.
 
@@ -191,6 +205,11 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--inference", choices=INFERENCE, default="iqn",
                    help="how collection and eval students turn logits into a move (inference.py; arc_mean: circular "
                    "mean of the top contiguous arc, for K bins)")
+    p.add_argument("--map-xattn", choices=("f3", "f2"), default=None,
+                   help="§25: the 11 vector tokens also cross-attend to map tokens (keys/values only) from the "
+                   "GraphicEncoder's 6x6 (f3) or 12x12 (f2) features after --map-xattn-layers trunk layers; zero-"
+                   "initialised, so an --init without the path starts with identical outputs")
+    p.add_argument("--map-xattn-layers", type=int, default=2, help="--map-xattn: cross blocks (spread over the 4 layers)")
     p.add_argument("--temporal", action="store_true",
                    help="a student with memory (MyModel(temporal=True): per-slot KDA between trunk and head), trained on "
                    "windows of consecutive ticks; --init from a stateless checkpoint warm-starts it with identical outputs")
@@ -336,11 +355,11 @@ class Learner:
             torch.backends.cudnn.allow_tf32 = True
         self.net = MyModel(n_actions=args.action_bins + int(args.stand_action), temporal=args.temporal,
                            policy_head=args.policy_head, angle_head=args.angle_head,
-                           angle_arc_bins=args.angle_arc_bins).to(self.device)
+                           angle_arc_bins=args.angle_arc_bins, map_xattn=getattr(args, "map_xattn", None),
+                           map_xattn_layers=getattr(args, "map_xattn_layers", 2)).to(self.device)
         self.angle = bool(args.angle_head)
         if args.compile:
-            for name in COMPILED_MODULES:  # in place: state_dict keys stay the same
-                getattr(self.net, name).compile()
+            compile_modules(self.net)
         self.optimizer = adamw(self.net.parameters(), self.device, lr=args.lr, weight_decay=args.weight_decay)
         self._bit_index = torch.arange(args.action_bins, device=self.device)
         self.accuracy = LabelAccuracy(self.device)
@@ -626,7 +645,8 @@ class Run:
                         "action_bins": self.args.action_bins, "stand_action": self.args.stand_action,
                         "policy_head": self.args.policy_head, "lr": self.args.lr,
                         "angle_head": self.args.angle_head, "angle_loss_weight": self.args.angle_loss_weight,
-                        "angle_arc_bins": self.args.angle_arc_bins,
+                        "angle_arc_bins": self.args.angle_arc_bins, "map_xattn": self.args.map_xattn,
+                        "map_xattn_layers": self.args.map_xattn_layers,
                         "opening_weight": self.args.opening_weight, "opening_seconds": self.args.opening_seconds,
                         "lr_schedule": self.args.lr_schedule, "lr_warmup": self.args.lr_warmup,
                         "lr_final": self.args.lr_final, "steps": self.args.steps},
