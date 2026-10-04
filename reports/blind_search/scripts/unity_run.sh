@@ -7,7 +7,7 @@ OUT=$1; TAGS=$2; DEEP=$3; SG=$4; W=$5; OPPS=${6:-p14b,v25,v23,p11}; SEEDS=${7:-1
 cd ~/blackout-env-r1
 mkdir -p $OUT
 echo $$ > $OUT/run.pid
-export PYTHONPATH=. OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True PYTHONPATH=. OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1
 P14B=checkpoints/distill/frozen/p14_v25.pt
 OPPD=""
 for o in ${OPPS//,/ }; do
@@ -17,6 +17,6 @@ done
 ~/blackout-env/.venv/bin/python examples/unity_search_eval.py play --opponent "$OPPD" --seeds $SEEDS --seed0 4000000 \
     --tags $TAGS --cap-s 150 --search-from-s 5 --base $P14B --net checkpoints/rollout_net/arch/f3_x_d2.pt \
     --value checkpoints/value/s2v_f3xd2/iter2.pt ${DEEP:+--deep "$DEEP"} --server spawn --server-gpus $SG \
-    --workers $W --gpus "" --out $OUT
+    --workers $W --gpus "" --server-max-roots ${MAXR:-8} --out $OUT
 echo "== $(date +%T) done"
 rm -f $OUT/run.pid
