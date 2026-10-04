@@ -34,7 +34,9 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 MAIN = Path(os.environ.get("BLACKOUT_MAIN", "/Users/mac/project/26rl/blackout-env"))  # shared checkpoints (read-only)
 CKPT = {"p11": MAIN / "checkpoints/distill/frozen/p11_v22.pt", "p5a": MAIN / "checkpoints/distill/frozen/p5a_v22.pt",
-        "r5": MAIN / "checkpoints/rollout_net/r5.pt"}
+        "r5": MAIN / "checkpoints/rollout_net/r5.pt",
+        # docs §22 map-token nets (f3 6x6 cross-attention K/V), DAgger round 2
+        "d256x32": MAIN / "checkpoints/rollout_net/arch/d256_f3_x32_d2.pt", "f3x": MAIN / "checkpoints/rollout_net/arch/f3_x_d2.pt"}
 # more named students: BLACKOUT_CKPTS="p14=/path/a.pt,p14b=/path/b.pt" (P14 on wsl_gpu)
 CKPT.update(dict(kv.split("=", 1) for kv in os.environ.get("BLACKOUT_CKPTS", "").split(",") if "=" in kv))
 HEUR = {"v23": "strategic_v23", "v22": "strategic_v22", "v19": "strategic_v19", "v24": "strategic_v24",
@@ -250,6 +252,11 @@ def unity_rows(path: Path) -> list[dict]:
 
 def cmd_unity_summary(args):
     rows = unity_rows(Path(args.out) / "matches.jsonl")
+    for extra in args.extra:  # PATH:cand1,cand2 -- another run's rows of those candidates (e.g. the Mac r5 run)
+        path, _, keep = extra.rpartition(":")
+        have = {(d["candidate"], d["opponent"], d["seed"], d["side"]) for d in rows}
+        rows += [d for d in unity_rows(Path(path)) if d["candidate"] in keep.split(",")
+                 and (d["candidate"], d["opponent"], d["seed"], d["side"]) not in have]
     table = summarize(rows, args.ref)
     lines = [f"{'candidate':10s} {'opponent':10s} {'n':>5s} {'margin':>7s} {'±se':>5s} {'W/D/L %':>14s} "
              f"{'race W/T/L':>14s} {'Δ vs ' + args.ref:>10s} {'±se':>5s} {'same race':>9s}"]
@@ -388,6 +395,7 @@ def main():
     s = sub.add_parser("unity-summary", help="pair a distill_heldout_eval.py --out (r5 / p11 checkpoints)")
     s.add_argument("--ref", default="p11")
     s.add_argument("--out", default="reports/rollout_net_strength/unity")
+    s.add_argument("--extra", nargs="*", default=[], help="PATH:cand1,cand2 -- rows of those candidates from another matches.jsonl")
     s = sub.add_parser("latency")
     s.add_argument("--nets", nargs="+", default=["p11", "r5"])
     s.add_argument("--reps", type=int, default=300)

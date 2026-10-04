@@ -35,7 +35,9 @@ the same means over the offset headings.  Without an angle head nothing changes.
 
 from __future__ import annotations
 
+import os
 import warnings
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -244,6 +246,20 @@ def checkpoint_meta(path) -> dict:
     if "policy_state" in ckpt:
         return dict(ckpt.get("distill", {}))
     return {"version": 0, "action_bins": int(ckpt.get("config", {}).get("k", 32)), "rollout_net": True}
+
+
+CUDA_NETS_ENV = "BLACKOUT_CUDA_NETS"
+
+
+def net_device(path) -> str:
+    """Where the student path runs the checkpoint at ``path``: ``cuda`` when its file name is in
+    the comma-separated ``$BLACKOUT_CUDA_NETS`` (or that is ``all``) and CUDA is available, else
+    ``cpu``.  Unity evaluations on a GPU server put the big nets (P11, P5a: 5.8M, ~14 ms on a busy
+    CPU at batch 1) on the GPU and keep the small ones on the CPU (docs §21 throughput)."""
+    names = {n.strip() for n in os.environ.get(CUDA_NETS_ENV, "").split(",") if n.strip()}
+    if names and ("all" in names or Path(path).name in names) and torch.cuda.is_available():
+        return "cuda"
+    return "cpu"
 
 
 def make_student(net: MyModel, inference: str = "iqn", device: str = "cpu") -> MyPolicy:

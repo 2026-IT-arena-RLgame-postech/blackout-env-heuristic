@@ -351,11 +351,11 @@ def _load_student(path: str | None, inference: str = "iqn") -> tuple[object | No
         return None, 0
     import torch
 
-    from blackout_env.train.distill.inference import checkpoint_meta, load_checkpoint_net, make_student
+    from blackout_env.train.distill.inference import checkpoint_meta, load_checkpoint_net, make_student, net_device
 
     key = (path, Path(path).stat().st_mtime, inference)
     if _STUDENT is None or _STUDENT[0] != key:  # a distill or a rollout-net (RolloutNet, r5) checkpoint
-        device = os.environ.get("BLACKOUT_STUDENT_DEVICE", "cpu")  # run.py --collector-device
+        device = os.environ.get("BLACKOUT_STUDENT_DEVICE") or net_device(path)  # run.py --collector-device / $BLACKOUT_CUDA_NETS
         _STUDENT = (key, make_student(load_checkpoint_net(path), inference, device), int(checkpoint_meta(path).get("version", 0)))
     return _STUDENT[1], _STUDENT[2]
 

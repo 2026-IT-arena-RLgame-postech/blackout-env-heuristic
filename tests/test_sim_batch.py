@@ -181,21 +181,28 @@ def test_heuristic_policy_both_teams_move():
     assert moved[:5].any() and moved[5:].any()
 
 
-def _rollout_net(seed=0):
+def _rollout_net(seed=0, **kw):
     from blackout_env.sim.rollout_net import RolloutNet
 
     torch.manual_seed(seed)
-    return RolloutNet(arch="attn", d=32, layers=1, heads=2, hidden=32).eval()
+    return RolloutNet(arch="attn", **{"d": 32, "layers": 1, "heads": 2, "hidden": 32, **kw}).eval()
 
 
-def test_rollout_net_student_matches_batched_policy(tmp_path):
-    """A RolloutNet checkpoint (config + state) loads through the distill student path
-    (inference.load_checkpoint_net + make_student: the Unity evaluations' MyPolicy) and plays the
-    same trajectory as the simulator's NetPolicy at batch 1."""
+# r5's shape, and the map-token variants of docs §22 (f3 6x6 tokens as cross-attention K/V, with and
+# without a narrower map_dim, d256_f3_x32_d2 / f3_x_d2 in miniature)
+STUDENT_NETS = {"plain": {}, "f3_cross": {"map_tokens": "f3", "map_attn": "cross", "layers": 2},
+                "f3_cross_dm16": {"map_tokens": "f3", "map_attn": "cross", "map_dim": 16, "d": 64, "hidden": 64, "layers": 2}}
+
+
+@pytest.mark.parametrize("variant", sorted(STUDENT_NETS))
+def test_rollout_net_student_matches_batched_policy(tmp_path, variant):
+    """A RolloutNet checkpoint (config + state; with or without map tokens) loads through the
+    distill student path (inference.load_checkpoint_net + make_student: the Unity evaluations'
+    MyPolicy, batch-1 jit trace) and plays the same trajectory as the simulator's NetPolicy at batch 1."""
     from blackout_env.train.distill.inference import checkpoint_meta, load_checkpoint_net, make_student
 
     torch.set_num_threads(1)
-    net = _rollout_net(3)
+    net = _rollout_net(3, **STUDENT_NETS[variant])
     path = tmp_path / "rnet.pt"
     torch.save({"config": net.config, "state": net.state_dict()}, path)
     assert checkpoint_meta(path)["action_bins"] == 32
@@ -223,6 +230,41 @@ def test_rollout_net_student_matches_batched_policy(tmp_path):
     res = BatchRollout(pol, pol).run(roots, steps, reseeds=[200 + i for i in range(len(roots))], record=True)
     for b, traj in enumerate(ref):
         assert np.abs(res.positions[: len(traj), b] - traj).max() < 1e-4, b
+    loaded = load_checkpoint_net(path)
+    assert loaded.config == net.config and loaded.map_tokens == STUDENT_NETS[variant].get("map_tokens", "none")
+
+
+ARCH_CKPTS = Path(__file__).resolve().parents[1] / "checkpoints/rollout_net/arch"
+
+
+@pytest.mark.parametrize("name", ["d256_f3_x32_d2", "f3_x_d2"])
+def test_map_token_checkpoint_student_equals_net(name):
+    """The real §22 map-token checkpoints (skipped where they are not synced): the student path's
+    traced batch-1 forward gives the net's own logits and offsets, on states the trace never saw."""
+    from blackout_env.env.team_frame import canonical_obs
+    from blackout_env.sim.rollout_net import RolloutNet
+    from blackout_env.train.distill.inference import load_checkpoint_net, make_student
+
+    path = ARCH_CKPTS / f"{name}.pt"
+    if not path.exists():
+        pytest.skip(f"{path} not here")
+    torch.set_num_threads(1)
+    net = load_checkpoint_net(path)
+    assert isinstance(net, RolloutNet) and net.config["map_tokens"] == "f3" and net.config["map_attn"] == "cross"
+    stu = make_student(load_checkpoint_net(path))
+    states = [SimState.from_seed(31)] + _trace_states(150)[:2]
+    for sim in states:
+        obs = sim.obs()
+        stu.act({f"unit_{u}": obs[f"unit_{u}"] for u in range(5)})  # the first call traces
+        c = canonical_obs(obs["unit_0"])
+        x = (torch.tensor(c["graphic"], dtype=torch.float32).permute(2, 0, 1).unsqueeze(0),
+             torch.tensor(c["team_state"], dtype=torch.float32).unsqueeze(0),
+             torch.tensor(c["agent_states"], dtype=torch.float32).unsqueeze(0))
+        with torch.inference_mode():
+            want = net(*x, q_units=5, angle=True)
+            got = stu._net(*x)
+        for w, g in zip(want, got):
+            torch.testing.assert_close(g, w, atol=1e-5, rtol=1e-5)
 
 
 def test_stop_when_exhausted_and_lead_trace():
@@ -243,3 +285,27 @@ def test_stop_when_exhausted_and_lead_trace():
     assert not res.exhausted[0] and res.exhausted[1]
     assert res.steps[1] <= 20 * 25 + 1 and res.steps[0] == 30 * 25
     assert res.lead_trace.shape == (2, 2) and res.lead_trace[1, 1] == res.lead(0)[1]
+
+
+def test_net_device_from_env(monkeypatch, tmp_path):
+    """$BLACKOUT_CUDA_NETS picks which checkpoints the student path puts on the GPU (by file name,
+    or ``all``); without CUDA everything stays on the CPU.  Where CUDA exists, the GPU student
+    gives the CPU student's moves."""
+    from blackout_env.train.distill import inference
+
+    monkeypatch.delenv(inference.CUDA_NETS_ENV, raising=False)
+    assert inference.net_device("x/p11_v22.pt") == "cpu"
+    monkeypatch.setenv(inference.CUDA_NETS_ENV, "p11_v22.pt, p5a_v22.pt")
+    cuda = torch.cuda.is_available()
+    assert inference.net_device("x/p11_v22.pt") == ("cuda" if cuda else "cpu")
+    assert inference.net_device("x/f3_x_d2.pt") == "cpu"
+    monkeypatch.setenv(inference.CUDA_NETS_ENV, "all")
+    assert inference.net_device("x/f3_x_d2.pt") == ("cuda" if cuda else "cpu")
+    if cuda:
+        net = _rollout_net(4, **STUDENT_NETS["f3_cross"])
+        obs = SimState.from_seed(41).obs()
+        team = {f"unit_{u}": obs[f"unit_{u}"] for u in range(5, 10)}
+        cpu = inference.make_student(net).act(team)
+        gpu = inference.make_student(_rollout_net(4, **STUDENT_NETS["f3_cross"]), device="cuda").act(team)
+        for k in cpu:
+            assert np.abs(cpu[k] - gpu[k]).max() < 1e-3
