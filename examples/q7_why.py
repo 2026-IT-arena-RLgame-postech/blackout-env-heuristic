@@ -561,11 +561,11 @@ def cmd_cf(args):
                 spec = a[5:]
                 if spec == "all":
                     mask[q] = True
-                else:
+                elif spec[0].isdigit():  # explicit own unit indices 0-4
                     for u in spec.split(","):
-                        mask[q, int(u)] = True  # placeholder: resolved per root below
-        # resolve role-named unit sets at the root: "res" (our nearest empty Collector > 1 tile from the
-        # sanctuary that is not walking), "walk" (our nearest Collector to the sanctuary), "hunters", "carriers"
+                        mask[q, int(u)] = True
+        # resolve role-named unit sets at the root: "c<k>" (our k-th nearest Collector to the sanctuary; in the
+        # race c1-c3 are the walkers and c4 the reserve), "hunters", "carriers", "collectors"
         for q, a in enumerate(arm_of):
             if not a.startswith("swap:") or a[5:] == "all" or a[5:][0].isdigit():
                 continue
@@ -581,14 +581,11 @@ def cmd_cf(args):
                     sel |= c == CARRIER
                 elif tok == "collectors":
                     sel |= c == COLLECTOR
-                elif tok in ("walk", "res"):
+                elif tok[0] == "c" and tok[1:].isdigit():  # k-th nearest Collector to the sanctuary
                     cc = np.nonzero(c == COLLECTOR)[0]
-                    if len(cc):
-                        order = cc[np.argsort(d[cc])]
-                        if tok == "walk":
-                            sel[order[0]] = True
-                        elif len(order) > 1:
-                            sel[order[1]] = True
+                    order = cc[np.argsort(d[cc], kind="stable")]
+                    if len(order) >= int(tok[1:]):
+                        sel[order[int(tok[1:]) - 1]] = True
             mask[q] = sel
         window = args.window
         cstop = np.zeros(N, bool)
@@ -656,7 +653,7 @@ def main():
     q.add_argument("--tmin", type=int, default=0)
     q.add_argument("--tmax", type=int, default=1500)
     q.add_argument("--window", type=int, default=25)
-    q.add_argument("--units", default="all;walk;res;hunters;carriers")
+    q.add_argument("--units", default="all;c4;hunters;carriers", help="';'-separated unit sets: all, c<k>, hunters, carriers, collectors (comma = union)")
     q.add_argument("--select-seed", type=int, default=0)
     q.add_argument("--part", default=None, help="k/m: this process takes roots k::m")
     q.add_argument("--suffix", default="")
