@@ -9,6 +9,9 @@ later than its first Hunter + 8 decisions), Hunter-seconds of both teams, our ne
 non-walker's distance to the Hunter sanctuary at decision 100.  Rows append to
 ``<out>/matches.jsonl`` (a rerun skips rows already there).
 
+Policies: heuristic descriptors, distill students (``p11`` / ``p14b`` / BLACKOUT_NETS names / ``net:<path>``),
+small rollout nets (BLACKOUT_SMALL names / ``small:<path>``).
+
 ``report``: per (ours, opponent) margin minus ``--base``'s on the same (seed, side), SE over seeds
 (both sides averaged first), race and second-race win/tie/loss.
 
@@ -36,6 +39,8 @@ sys.path.insert(0, str(REPO))
 NETS = {"p11": "checkpoints/distill/frozen/p11_v22.pt", "p14b": "checkpoints/distill/frozen/p14_v25.pt"}
 # more nets / other paths (P16 on wsl_gpu): BLACKOUT_NETS="p16=/abs/p16.pt,p14b=/abs/p14b.pt"; ``net:<path>`` also works
 NETS.update(dict(kv.split("=", 1) for kv in os.environ.get("BLACKOUT_NETS", "").split(",") if "=" in kv))
+# small rollout nets (RolloutNet, docs §31 / §37): BLACKOUT_SMALL="v27d256=/abs/v27d256.pt,..."; ``small:<path>`` also works
+SMALL = dict(kv.split("=", 1) for kv in os.environ.get("BLACKOUT_SMALL", "").split(",") if "=" in kv)
 DEVICE = os.environ.get("BLACKOUT_NET_DEVICE", "cpu")  # set by --device (inherited by the spawned workers)
 SANCT = (11.0, 13.0)
 
@@ -43,6 +48,11 @@ SANCT = (11.0, 13.0)
 def _policy(name: str):
     from blackout_env.sim.batch import HeuristicPolicy, NetPolicy
 
+    if name in SMALL or name.startswith("small:"):
+        from blackout_env.sim.rollout_net import RolloutNet
+
+        path = SMALL[name] if name in SMALL else name[6:]
+        return NetPolicy(RolloutNet.from_checkpoint(str(REPO / path)), device=DEVICE)
     if name in NETS or name.startswith("net:"):
         path = NETS[name] if name in NETS else name[4:]
         return NetPolicy.from_checkpoint(str(REPO / path), device=DEVICE)  # an absolute path stays absolute
