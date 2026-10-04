@@ -1,0 +1,226 @@
+{
+ "device": "NVIDIA GeForce RTX 2080 Ti",
+ "at_s": 20.0,
+ "rows": [
+  {
+   "tag": "s8e25m3",
+   "roots": 128,
+   "first_stage_games": 1024,
+   "wall_s": 6.475025488995016,
+   "roots_per_s": 19.768261950095706,
+   "game_decisions_per_root": 1188.2421875,
+   "game_decisions_per_s": 23489.482822654736,
+   "cost_x": 1.0
+  },
+  {
+   "tag": "s8e25m3",
+   "roots": 256,
+   "first_stage_games": 2048,
+   "wall_s": 13.453745924052782,
+   "roots_per_s": 19.02815776699929,
+   "game_decisions_per_root": 1181.69921875,
+   "game_decisions_per_s": 22485.559167514806,
+   "cost_x": 1.0
+  },
+  {
+   "tag": "w12s",
+   "roots": 128,
+   "first_stage_games": 1536,
+   "wall_s": 10.210498588858172,
+   "roots_per_s": 12.536116516354573,
+   "game_decisions_per_root": 1781.3515625,
+   "game_decisions_per_s": 22331.230744090277,
+   "cost_x": 1.5769047714502415
+  },
+  {
+   "tag": "w12s",
+   "roots": 256,
+   "first_stage_games": 3072,
+   "wall_s": 19.47434227040503,
+   "roots_per_s": 13.14550172968053,
+   "game_decisions_per_root": 1771.8984375,
+   "game_decisions_per_s": 23292.493974974477,
+   "cost_x": 1.4475033481633206
+  },
+  {
+   "tag": "w13stop",
+   "roots": 128,
+   "first_stage_games": 1664,
+   "wall_s": 11.32424804312177,
+   "roots_per_s": 11.303178764063356,
+   "game_decisions_per_root": 1932.1875,
+   "game_decisions_per_s": 21839.860718188665,
+   "cost_x": 1.7489117320647645
+  },
+  {
+   "tag": "w13stop",
+   "roots": 256,
+   "first_stage_games": 3328,
+   "wall_s": 21.661725157056935,
+   "roots_per_s": 11.818079961032124,
+   "game_decisions_per_root": 1921.328125,
+   "game_decisions_per_s": 22706.409412629924,
+   "cost_x": 1.610088764819753
+  },
+  {
+   "tag": "w18pair",
+   "roots": 128,
+   "first_stage_games": 2304,
+   "wall_s": 15.554625115473755,
+   "roots_per_s": 8.229063641827375,
+   "game_decisions_per_root": 2673.140625,
+   "game_decisions_per_s": 21997.444326679204,
+   "cost_x": 2.402249248579866
+  },
+  {
+   "tag": "w18pair",
+   "roots": 256,
+   "first_stage_games": 4608,
+   "wall_s": 29.073479900485836,
+   "roots_per_s": 8.805275490799506,
+   "game_decisions_per_root": 2659.97265625,
+   "game_decisions_per_s": 23421.792036274986,
+   "cost_x": 2.160995165555185
+  },
+  {
+   "tag": "w50",
+   "roots": 128,
+   "first_stage_games": 1024,
+   "wall_s": 7.412875473964959,
+   "roots_per_s": 17.267253503657745,
+   "game_decisions_per_root": 1384.0390625,
+   "game_decisions_per_s": 23898.553351152303,
+   "cost_x": 1.1448411263498373
+  },
+  {
+   "tag": "w50",
+   "roots": 256,
+   "first_stage_games": 2048,
+   "wall_s": 15.25817987730261,
+   "roots_per_s": 16.777885832950115,
+   "game_decisions_per_root": 1372.49609375,
+   "game_decisions_per_s": 23027.5827671075,
+   "cost_x": 1.134121304463156
+  },
+  {
+   "tag": "t2bf",
+   "roots": 128,
+   "first_stage_games": 1024,
+   "wall_s": 25.84374264185317,
+   "roots_per_s": 4.952843006287635,
+   "game_decisions_per_root": 4747.96875,
+   "game_decisions_per_s": 23515.943817509746,
+   "cost_x": 3.9912958930860305
+  },
+  {
+   "tag": "t2bf",
+   "roots": 256,
+   "first_stage_games": 2048,
+   "wall_s": 51.123686065431684,
+   "roots_per_s": 5.007463657302668,
+   "game_decisions_per_root": 4706.26171875,
+   "game_decisions_per_s": 23566.434518395417,
+   "cost_x": 3.7999592347014737
+  },
+  {
+   "tag": "t2full",
+   "roots": 128,
+   "first_stage_games": 1024,
+   "wall_s": 39.28027538652532,
+   "roots_per_s": 3.25863295866579,
+   "game_decisions_per_root": 7300.859375,
+   "game_decisions_per_s": 23790.82098595912,
+   "cost_x": 6.066427916505698
+  },
+  {
+   "tag": "t2full",
+   "roots": 256,
+   "first_stage_games": 2048,
+   "wall_s": 80.0515405558981,
+   "roots_per_s": 3.1979397051233667,
+   "game_decisions_per_root": 7241.47265625,
+   "game_decisions_per_s": 23157.79293098705,
+   "cost_x": 5.950130246831918
+  },
+  {
+   "tag": "o4min",
+   "roots": 128,
+   "first_stage_games": 1024,
+   "wall_s": 25.69335942354519,
+   "roots_per_s": 4.981831993627965,
+   "game_decisions_per_root": 4754.125,
+   "game_decisions_per_s": 23684.252026706552,
+   "cost_x": 3.968070777051573
+  },
+  {
+   "tag": "o4min",
+   "roots": 256,
+   "first_stage_games": 2048,
+   "wall_s": 51.424956098082475,
+   "roots_per_s": 4.978127730663161,
+   "game_decisions_per_root": 4725.34375,
+   "game_decisions_per_s": 23523.364758790853,
+   "cost_x": 3.8223522570129904
+  },
+  {
+   "tag": "o4full",
+   "roots": 128,
+   "first_stage_games": 1024,
+   "wall_s": 26.15497774851974,
+   "roots_per_s": 4.893905903140913,
+   "game_decisions_per_root": 4754.5546875,
+   "game_decisions_per_s": 23268.343251962553,
+   "cost_x": 4.039362901809865
+  },
+  {
+   "tag": "o4full",
+   "roots": 256,
+   "first_stage_games": 2048,
+   "wall_s": 52.08898979250807,
+   "roots_per_s": 4.914666247507459,
+   "game_decisions_per_root": 4729.0,
+   "game_decisions_per_s": 23241.456684462773,
+   "cost_x": 3.8717090456853875
+  },
+  {
+   "tag": "l200",
+   "roots": 128,
+   "first_stage_games": 1024,
+   "wall_s": 9.177830791450106,
+   "roots_per_s": 13.946650674715249,
+   "game_decisions_per_root": 1764.3359375,
+   "game_decisions_per_s": 24606.576993158735,
+   "cost_x": 1.417420025148749
+  },
+  {
+   "tag": "l200",
+   "roots": 256,
+   "first_stage_games": 2048,
+   "wall_s": 19.3474545085337,
+   "roots_per_s": 13.231714791580696,
+   "game_decisions_per_root": 1746.796875,
+   "game_decisions_per_s": 23113.118048824435,
+   "cost_x": 1.4380719405399256
+  },
+  {
+   "tag": "l250",
+   "roots": 128,
+   "first_stage_games": 1024,
+   "wall_s": 10.993166524567641,
+   "roots_per_s": 11.643596930324332,
+   "game_decisions_per_root": 2135.40625,
+   "game_decisions_per_s": 24863.809657495396,
+   "cost_x": 1.6977796524896591
+  },
+  {
+   "tag": "l250",
+   "roots": 256,
+   "first_stage_games": 2048,
+   "wall_s": 23.450265261577442,
+   "roots_per_s": 10.916720861978835,
+   "game_decisions_per_root": 2109.328125,
+   "game_decisions_per_s": 23026.9463469462,
+   "cost_x": 1.7430286995128061
+  }
+ ]
+}

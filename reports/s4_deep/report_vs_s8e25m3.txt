@@ -1,9 +1,11 @@
 l200           vs p11              n= 128 seeds=  64  search  +24.5  plain   +1.3  diff  +23.3 ±  5.8  win(sign) +0.34 vs +0.05  race w/t/l (33, 92, 3) vs (15, 113, 0)  capped 0.23/0.22  len 135s  wall 10.6s/match (plain 1.23)  e25 w25 m3.0 B8
                   base share 0.69; alt0 0.05, alt1 0.04, alt2 0.04, alt3 0.04, alt4 0.05, samp1s0 0.04, samp1s1 0.05
-o4fmean        vs p11              n= 128 seeds=  64  search  +41.6  plain   +1.3  diff  +40.3 ±  5.7  win(sign) +0.55 vs +0.05  race w/t/l (37, 91, 0) vs (15, 113, 0)  capped 0.25/0.22  len 141s  wall 16.3s/match (plain 1.23)  e25 w25 m3.0 B8
+o4fmean        vs p11              n= 256 seeds= 128  search  +46.4  plain   +0.3  diff  +46.2 ±  3.9  win(sign) +0.64 vs +0.05  race w/t/l (73, 183, 0) vs (25, 230, 1)  capped 0.24/0.23  len 140s  wall 15.2s/match (plain 1.35)  e25 w25 m3.0 B8
+                  base share 0.80; alt0 0.03, alt1 0.02, alt2 0.03, alt3 0.03, alt4 0.03, samp1s0 0.03, samp1s1 0.03
+o4fmean        vs r5               n=  64 seeds=  32  search  +74.9  plain   +0.0  diff  +74.9 ±  2.5  win(sign) +0.97 vs +0.00  race w/t/l (18, 45, 1) vs (4, 56, 4)  capped 0.14/0.56  len 111s  wall 8.4s/match (plain 1.06)  e25 w25 m3.0 B8
+                  base share 0.84; alt0 0.03, alt1 0.02, alt2 0.02, alt3 0.03, alt4 0.02, samp1s0 0.02, samp1s1 0.02
+o4fmean        vs strategic_v23    n= 256 seeds= 128  search  +42.7  plain   -1.8  diff  +44.5 ±  3.9  win(sign) +0.62 vs +0.04  race w/t/l (72, 177, 7) vs (22, 225, 9)  capped 0.19/0.31  len 126s  wall 50.1s/match (plain 7.87)  e25 w25 m3.0 B8
                   base share 0.79; alt0 0.04, alt1 0.03, alt2 0.03, alt3 0.03, alt4 0.03, samp1s0 0.03, samp1s1 0.03
-o4fmean        vs strategic_v23    n= 128 seeds=  64  search  +44.3  plain   -0.9  diff  +45.2 ±  5.4  win(sign) +0.64 vs +0.06  race w/t/l (35, 89, 4) vs (13, 111, 4)  capped 0.20/0.27  len 124s  wall 81.4s/match (plain 8.44)  e25 w25 m3.0 B8
-                  base share 0.78; alt0 0.04, alt1 0.03, alt2 0.03, alt3 0.03, alt4 0.03, samp1s0 0.03, samp1s1 0.03
 o4min          vs p11              n= 128 seeds=  64  search  +20.4  plain   +1.3  diff  +19.1 ±  5.6  win(sign) +0.33 vs +0.05  race w/t/l (28, 100, 0) vs (15, 113, 0)  capped 0.21/0.22  len 136s  wall 20.1s/match (plain 1.23)  e25 w25 m3.0 B8
                   base share 0.74; alt0 0.04, alt1 0.04, alt2 0.03, alt3 0.04, alt4 0.04, samp1s0 0.03, samp1s1 0.04
 s8e25m3        vs p11              n= 256 seeds= 128  search  +28.4  plain   +0.3  diff  +28.1 ±  4.8  win(sign) +0.42 vs +0.05  race w/t/l (73, 179, 4) vs (25, 230, 1)  capped 0.23/0.23  len 133s  wall 4.6s/match (plain 1.35)  e25 w25 m3.0 B8
@@ -37,8 +39,9 @@ w50            vs p11              n= 256 seeds= 128  search  +28.5  plain   +0.
 
 paired vs s8e25m3 (same opponent, seed, side); cost = search s/match and roots/s
 l200                   vs p11              n= 128  diff   +2.2 ±  6.3  same 0.04  search    8.7 s/match (x2.25)     7.8 roots/s (ref 17.9)  games/root   1713 (x1.47)
-o4fmean                vs p11              n= 128  diff  +19.2 ±  6.3  same 0.02  search   14.9 s/match (x3.85)     4.7 roots/s (ref 17.9)  games/root   4655 (x4.00)
-o4fmean                vs strategic_v23    n= 128  diff  +17.2 ±  5.9  same 0.02  search   73.4 s/match (x10.73)     0.9 roots/s (ref 10.6)  games/root   4612 (x3.95)
+o4fmean                vs p11              n= 256  diff  +18.0 ±  4.3  same 0.02  search   14.0 s/match (x4.02)     5.0 roots/s (ref 19.2)  games/root   4648 (x4.01)
+o4fmean                vs r5               n=  64  diff   -7.8 ±  1.9  same 0.08  search    8.2 s/match (x1.40)     6.8 roots/s (ref 6.8)  games/root   4573 (x4.12)
+o4fmean                vs strategic_v23    n= 256  diff  +12.7 ±  3.9  same 0.03  search   43.4 s/match (x8.07)     1.5 roots/s (ref 12.8)  games/root   4619 (x3.98)
 o4min                  vs p11              n= 128  diff   -2.0 ±  5.9  same 0.02  search   18.1 s/match (x4.69)     3.8 roots/s (ref 17.9)  games/root   4647 (x3.99)
 t2bf                   vs p11              n= 256  diff  +14.3 ±  4.0  same 0.01  search   12.0 s/match (x3.45)     5.5 roots/s (ref 19.2)  games/root   4591 (x3.96)
 t2bf                   vs r5               n=  64  diff   -0.0 ±  0.9  same 0.05  search   16.4 s/match (x2.80)     2.6 roots/s (ref 6.8)  games/root   4380 (x3.94)
