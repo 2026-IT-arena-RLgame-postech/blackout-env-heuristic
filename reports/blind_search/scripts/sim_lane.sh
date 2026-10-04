@@ -4,7 +4,7 @@
 # Launch detached: setsid nohup bash sim_lane.sh 1 a 128 plain,det,o4f v23,p11 </dev/null >lane.log 2>&1 &
 set -u
 GPU=$1; NAME=$2; SEEDS=$3; TAGS=$4; OPPS=$5
-cd ~/blackout-env-r1
+cd "$(dirname "$0")/../../.."
 OUT=reports/blind_search/sim
 mkdir -p $OUT/logs
 echo $$ > $OUT/logs/lane_$NAME.pid
