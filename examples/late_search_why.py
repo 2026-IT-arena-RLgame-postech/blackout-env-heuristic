@@ -621,6 +621,13 @@ def root_features(S):
     f["u_dprey"] = np.where(gu >= 0, dprey.min(1), np.nan)
     # team-level: any own collector carrying battery within 4 tiles of an enemy Hunter
     f["team_bat"] = np.where(HT[r[:, None], own] == 0, HA[r[:, None], own], 0).sum(1)
+    # opening walker or reserve: the deviating unit's distance to the sanctuary just before the race
+    tr = np.minimum(np.minimum(fo[g], fp[g]), S["end"][g]) - 1
+    pr = S["pos"][np.maximum(tr, 0), g, np.maximum(gu, 0)]
+    dx = np.maximum(np.maximum(SANCT[0] - pr[:, 0], pr[:, 0] - SANCT[1]), 0)
+    dy = np.maximum(np.maximum(SANCT[0] - pr[:, 1], pr[:, 1] - SANCT[1]), 0)
+    f["u_walker"] = (gu >= 0) & (np.hypot(dx, dy) <= 1.0)
+    f["t_race"] = np.minimum(fo[g], fp[g])
     del COLLECTOR
     return f
 
@@ -634,7 +641,11 @@ def situation(f):
         if f["choice"][i] == 0:
             continue
         if f["prerace"][i]:
-            cat[i] = "race (before first Hunter)"
+            cat[i] = ("race: joint sample" if f["kind"][i] == "sam" else
+                      "race: walker" if f["u_walker"][i] else "race: reserve (non-walker)")
+        elif f["tick"][i] < f["t_race"][i] + 150:
+            cat[i] = "second race (<= 6 s after the race)" + (": sample" if f["kind"][i] == "sam" else
+                                                              ": Hunter" if f["u_cls"][i] == HUNTER else "")
         elif f["kind"][i] == "sam":
             cat[i] = "joint sample (all units)"
         elif f["u_cls"][i] == HUNTER:
