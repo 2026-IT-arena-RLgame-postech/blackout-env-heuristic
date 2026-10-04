@@ -1,0 +1,14 @@
+12 jobs (12 to do): {'self': 5, 'teacher': 3, 'net:/home/cucumbersaurus/p14assets/checkpoints/distill/frozen/p11_v22.pt': 1, 'small:/home/cucumbersaurus/rv25assets/ck/f3_x_d2.pt': 1, 'heur:strategic_v25': 1, 'heur:strategic_v23': 1}
+/home/cucumbersaurus/rv25runs/dagger_v25f3x/part_010.npz 179400 over 0.83 net 346s 1299s
+/home/cucumbersaurus/rv25runs/dagger_v25f3x/part_011.npz 133390 over 0.95 net 268s 1299s
+/home/cucumbersaurus/rv25runs/dagger_v25f3x/part_000.npz 155246 over 0.91 net 201s 1299s
+/home/cucumbersaurus/rv25runs/dagger_v25f3x/part_001.npz 170872 over 0.86 net 240s 1299s
+/home/cucumbersaurus/rv25runs/dagger_v25f3x/part_002.npz 153056 over 0.91 net 274s 1299s
+/home/cucumbersaurus/rv25runs/dagger_v25f3x/part_003.npz 175338 over 0.85 net 228s 1299s
+/home/cucumbersaurus/rv25runs/dagger_v25f3x/part_004.npz 169524 over 0.88 net 298s 1299s
+/home/cucumbersaurus/rv25runs/dagger_v25f3x/part_005.npz 204776 over 0.78 net 315s 1299s
+/home/cucumbersaurus/rv25runs/dagger_v25f3x/part_006.npz 188788 over 0.82 net 343s 1299s
+/home/cucumbersaurus/rv25runs/dagger_v25f3x/part_007.npz 190358 over 0.81 net 352s 1320s
+/home/cucumbersaurus/rv25runs/dagger_v25f3x/part_008.npz 152436 over 0.90 net 233s 1571s
+/home/cucumbersaurus/rv25runs/dagger_v25f3x/part_009.npz 163128 over 0.87 net 248s 1609s
+rows 2036312 1624s
