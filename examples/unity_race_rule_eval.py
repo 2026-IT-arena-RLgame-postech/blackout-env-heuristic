@@ -189,13 +189,18 @@ def load_rows(path: Path) -> list[dict]:
     return [json.loads(x) for x in path.read_text().splitlines() if x.strip()] if path.exists() else []
 
 
+def split_list(text: str) -> list[str]:
+    """``;``-separated when any ``;`` is present (descriptors with several params contain commas), else ``,``."""
+    return [x for x in text.split(";" if ";" in text else ",") if x]
+
+
 def cmd_play(args):
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     done = {(r["ours"], r["opponent"], r["seed"], r["side"]) for r in load_rows(out / "matches.jsonl")}
     tasks = [{"ours": ours, "opponent": opp, "seed": s, "side": side, "cap_s": args.cap_s, "ckpt_root": args.ckpt_root}
-             for s in range(args.seed0, args.seed0 + args.seeds) for opp in args.opponent.split(",")
-             for ours in args.ours.split(",") for side in (0, 1)]
+             for s in range(args.seed0, args.seed0 + args.seeds) for opp in split_list(args.opponent)
+             for ours in split_list(args.ours) for side in (0, 1)]
     tasks = [x for x in tasks if (x["ours"], x["opponent"], x["seed"], x["side"]) not in done]
     print(f"{len(tasks)} matches to play ({len(done)} done), {args.workers} workers", flush=True)
     ctx = mp.get_context("spawn")
@@ -312,8 +317,8 @@ def main():
     q = sub.add_parser("play")
     q.add_argument("--build", default="build/linux_server/BlackOut.x86_64")
     q.add_argument("--ckpt-root", default=str(REPO), help="directory holding checkpoints/ (p11 / r5 shorthands)")
-    q.add_argument("--ours", default="strategic_v23,strategic_v25", help="comma list of descriptors")
-    q.add_argument("--opponent", default="strategic_v23,p11", help="comma list: p11 | r5 | v23 | v25 | descriptors")
+    q.add_argument("--ours", default="strategic_v23,strategic_v25", help="comma (or ;) list of descriptors")
+    q.add_argument("--opponent", default="strategic_v23,p11", help="comma (or ;) list: p11 | r5 | v23 | v25 | descriptors")
     q.add_argument("--seeds", type=int, default=150)
     q.add_argument("--seed0", type=int, default=4_000_000)
     q.add_argument("--cap-s", type=float, default=150.0)
