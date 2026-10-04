@@ -12,7 +12,8 @@ The opponent model inside the search never uses the real opponent's identity -- 
 * ``o4f_mix3`` / ``o4f_soft5`` / ``o4f_min``  the same variants, a mild pessimistic aggregate
                  (0.3 min + 0.7 mean / soft-min T = 5 points / max-min);
 * ``mix_r5``     two opponent-model nets: f3_x_d2 {arg max, one sample} + r5 {two samples}, mean;
-* ``*_v25r``     the same with the P14b-distilled rollout net (``--v25r``, docs §34) as the rollout / opponent model;
+* ``*_v25r`` / ``*_v25f``  the same with the P14b-distilled rollout nets (§31: v25d256 / v25f3x) as the rollout and
+                 opponent model (leaf V still s2v_f3xd2 iter2, fit to the f3_x_d2 continuation);
   ``mix_v25r`` = f3_x_d2 {arg max, sample} + v25r {arg max... samples}, see ``VARIANTS``.
 
 The held-out pool (``OPPONENTS``; none is used to fit anything in the search): V19, V23, V25, P5a, P11, P14b, the plain
@@ -50,7 +51,8 @@ VALUE = "checkpoints/value/s2v_f3xd2/iter2.pt"
 P14B = "checkpoints/distill/frozen/p14_v25.pt"
 P11 = "checkpoints/distill/frozen/p11_v22.pt"
 P5A = "checkpoints/distill/frozen/p5a_v22.pt"
-V25R = "checkpoints/rollout_net/v25/rollout_v25.pt"  # the P14b-distilled rollout net (--v25r overrides)
+V25R = "checkpoints/rollout_net/v25/v25d256.pt"  # the P14b-distilled rollout nets (docs §31; --v25r overrides)
+V25F = "checkpoints/rollout_net/v25/v25f3x.pt"
 TRACE_S = (5, 10, 30, 60)
 SEARCH_FROM = 125  # decisions (5 s, docs §32)
 
@@ -86,6 +88,8 @@ VARIANTS = {
     # base, samp s0 = f3_x_d2; samp s1, s2 = r5 (opponent draws other than ours: seed + 32)
     "mix_r5": {"deep": {**O4, "opp_agg": "mean", "opp_net_idx": [0, 0, 1, 1], "opp_nets": [R5]}},
     "det_v25r": {"net": "v25r"},
+    "det_v25f": {"net": V25F},
+    "o4f_v25f": {"net": V25F, "deep": {**O4, "opp_agg": "mean"}},
     "o4f_v25r": {"net": "v25r", "deep": {**O4, "opp_agg": "mean"}},
     # rollout f3_x_d2, opponent model: f3 {base, s0} + v25r {s1, s2}
     "mix_v25r": {"deep": {**O4, "opp_agg": "mean", "opp_net_idx": [0, 0, 1, 1], "opp_nets": ["v25r"]}},
