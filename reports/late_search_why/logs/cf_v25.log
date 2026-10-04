@@ -1,0 +1,12 @@
+600 roots -> /Users/mac/project/26rl/blackout-env/.claude/worktrees/late-search-why/reports/late_search_why/cf_search_strategic_v25_true.npz
+games 64/219 roots 198 replay-mismatch 0 cont 1584 games 1143s total 1252s
+games 128/219 roots 351 replay-mismatch 0 cont 1224 games 903s total 2253s
+games 192/219 roots 527 replay-mismatch 0 cont 1408 games 1125s total 3481s
+games 219/219 roots 600 replay-mismatch 0 cont 584 games 416s total 3931s
+wrote /Users/mac/project/26rl/blackout-env/.claude/worktrees/late-search-why/reports/late_search_why/cf_search_strategic_v25_true.npz
+600 roots -> /Users/mac/project/26rl/blackout-env/.claude/worktrees/late-search-why/reports/late_search_why/cf_search_strategic_v25_model.npz
+games 64/219 roots 198 replay-mismatch 0 cont 1584 games 111s total 248s
+games 128/219 roots 351 replay-mismatch 0 cont 1224 games 73s total 424s
+games 192/219 roots 527 replay-mismatch 0 cont 1408 games 77s total 601s
+games 219/219 roots 600 replay-mismatch 0 cont 584 games 39s total 669s
+wrote /Users/mac/project/26rl/blackout-env/.claude/worktrees/late-search-why/reports/late_search_why/cf_search_strategic_v25_model.npz

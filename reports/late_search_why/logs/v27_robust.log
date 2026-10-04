@@ -1,0 +1,18 @@
+8 chunks
+[strategic_v25:race_walk=false vs strategic_v25] 32 matches margin -21.0 wall 85s
+[strategic_v25:race_walk=false vs strategic_v25] 32 matches margin -8.0 wall 83s
+[strategic_v25:race_walk=false vs strategic_v25] 32 matches margin -5.1 wall 80s
+[strategic_v25:race_walk=false vs strategic_v25] 32 matches margin +2.8 wall 118s
+[strategic_v27:race_walk=false,reserve_stage=1.5 vs strategic_v25] 32 matches margin +50.0 wall 83s
+[strategic_v27:race_walk=false,reserve_stage=1.5 vs strategic_v25] 32 matches margin +63.8 wall 92s
+[strategic_v27:race_walk=false,reserve_stage=1.5 vs strategic_v25] 32 matches margin +31.1 wall 86s
+[strategic_v27:race_walk=false,reserve_stage=1.5 vs strategic_v25] 32 matches margin +47.5 wall 93s
+8 chunks
+[strategic_v25 vs strategic_v27:reserve_stage=1.5] 32 matches margin -42.2 wall 76s
+[strategic_v25 vs strategic_v27:reserve_stage=1.5] 32 matches margin -46.7 wall 80s
+[strategic_v27:reserve_stage=1.5 vs strategic_v27:reserve_stage=1.5] 32 matches margin +0.0 wall 93s
+[strategic_v27:reserve_stage=1.5 vs strategic_v27:reserve_stage=1.5] 32 matches margin +0.0 wall 75s
+[strategic_v27:reserve_stage=2.5 vs strategic_v27:reserve_stage=1.5] 32 matches margin -49.2 wall 72s
+[strategic_v27:reserve_stage=2.5 vs strategic_v27:reserve_stage=1.5] 32 matches margin -43.8 wall 65s
+[strategic_v27:reserve_stage=1.0 vs strategic_v27:reserve_stage=1.5] 32 matches margin +26.8 wall 74s
+[strategic_v27:reserve_stage=1.0 vs strategic_v27:reserve_stage=1.5] 32 matches margin +8.2 wall 86s

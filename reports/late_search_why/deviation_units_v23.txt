@@ -1,0 +1,6 @@
+0-50: roots 512 dev 320 (0.62) {'reserve': 204, 'samp': 76, 'walker': 40}
+50-100: roots 512 dev 273 (0.53) {'samp': 91, 'reserve': 163, 'walker': 19}
+100-150: roots 512 dev 336 (0.66) {'walker': 55, 'samp': 113, 'walker/H': 82, 'reserve': 85, 'reserve/H': 1}
+150-250: roots 1024 dev 651 (0.64) {'samp': 194, 'walker/H': 83, 'reserve/H': 64, 'reserve': 152, 'walker': 158}
+250-500: roots 2547 dev 1230 (0.48) {'walker': 290, 'reserve': 227, 'walker/H': 237, 'samp': 331, 'reserve/H': 145}
+500-4000: roots 11849 dev 1425 (0.12) {'samp': 387, 'reserve/H': 165, 'reserve': 305, 'walker': 286, 'walker/H': 282}
