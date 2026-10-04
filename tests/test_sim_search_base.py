@@ -11,7 +11,7 @@ from blackout_env.sim.search import (K_ALT, K_ALTM, K_BASE, K_ROT, K_SAMP, K_STO
                                      ModNetPolicy, Searcher, ValueNetLeaf, branch_units, overlay_base,
                                      parse_branches, play_matches)
 
-from test_sim_search import _net, _states, _value
+from tests.test_sim_search import _net, _states, _value
 
 
 def test_branch_units_and_overlay():
