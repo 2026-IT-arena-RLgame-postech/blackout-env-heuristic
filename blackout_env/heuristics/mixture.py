@@ -33,6 +33,7 @@ from .v23_opening import StrategicHeuristicV23
 from .v25_race import StrategicHeuristicV25
 from .v26_trade import StrategicHeuristicV26
 from .v27_reserve import StrategicHeuristicV27
+from .v28_trade_hold import StrategicHeuristicV28
 from .v24_late import StrategicHeuristicV24
 from .raider import StrategicRaider
 from .cargo_hunter import StrategicCargoHunter
@@ -81,6 +82,7 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
     "strategic_v25": StrategicHeuristicV25,  # V23 + exact taut race walk (enters at decision 99); not in the default weights
     "strategic_v26": StrategicHeuristicV26,  # V25 + Hunter-for-Hunter trades after a lost race (P15: no gain, -9.9 vs V25); not in the default weights
     "strategic_v27": StrategicHeuristicV27,  # V25 + a staged reserve walker for the second race (Q6); rules default off = V25; not in the default weights
+    "strategic_v28": StrategicHeuristicV28,  # V27 + reserve does not evade Hunters about to trade (Q7); trade_hold default off = V27; not in the default weights
     # Named strategies on the V17 planner, each on a strategic axis the V-series lacks (held-out
     # opponents for distillation; not in the mixture's default weights):
     "strategic_raider": StrategicRaider,  # steal-first economy, Hunter escorts the thieves
