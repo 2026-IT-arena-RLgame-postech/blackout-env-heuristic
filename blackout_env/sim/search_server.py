@@ -442,13 +442,16 @@ def view_buckets(max_views: int) -> list[int]:
 
 def build_searcher(rollout: str = R5, value: str = VALUE, branches: str = "alt*,samp:1.0x2", window: int = 25,
                    leaf_decisions: int = 125, device: str = "cuda", cuda_graphs: bool = True,
-                   max_roots: int = 32, repo: str | None = None, packed: bool = True, deep: dict | None = None):
+                   max_roots: int = 32, repo: str | None = None, packed: bool = True, deep: dict | None = None,
+                   base: str | None = None, overlay: bool = True):
     """The Searcher the Unity eval uses (unity_search_eval._init_worker), graphs bucketed for a server.
     ``deep``: S4 options (``search.searcher_kwargs`` keys: opp_branches, opp_agg, opp_left, children,
-    child_window, expand; branch lists as specs)."""
+    child_window, expand, opp_net_idx; branch lists as specs; ``opp_nets``: extra opponent-model
+    RolloutNet checkpoints, docs §34).  ``base``: an external acting policy checkpoint (a MyModel student,
+    e.g. P14b; ``Searcher(base_policy=..., overlay=...)``, docs §32)."""
     from .batch import NetPolicy
     from .rollout_net import RolloutNet
-    from .search import ModNetPolicy, Searcher, ValueNetLeaf, parse_branches
+    from .search import ModNetPolicy, Searcher, ValueNetLeaf, deep_opp_nets, parse_branches
 
     def at(p):
         return p if repo is None or os.path.isabs(p) else os.path.join(repo, p)
@@ -461,10 +464,29 @@ def build_searcher(rollout: str = R5, value: str = VALUE, branches: str = "alt*,
     probe = Searcher(None, None, br, window=window, **kw)  # games per root only (no nets)
     # graphs up to 2048 views (bigger batches: eager kernels, launches no longer dominate)
     buckets = view_buckets(min(2 * probe.games_per_root() * max_roots, 2048)) if cuda_graphs else None
-    pol = ModNetPolicy(NetPolicy(RolloutNet.from_checkpoint(at(rollout)), device=device, cuda_graphs=cuda_graphs,
-                                 graph_buckets=buckets))
+
+    def rnet(path):
+        return NetPolicy(RolloutNet.from_checkpoint(at(path)), device=device, cuda_graphs=cuda_graphs, graph_buckets=buckets)
+
+    pol = ModNetPolicy(rnet(rollout), opp_nets=[rnet(x) for x in deep_opp_nets(deep)])
+    if base:
+        kw["base_policy"] = NetPolicy.from_checkpoint(at(base), device=device, cuda_graphs=cuda_graphs, graph_buckets=buckets)
+        kw["overlay"] = overlay
     return Searcher(pol, ValueNetLeaf(at(value), device), br, window=window, leaf_decisions=leaf_decisions,
                     packed=packed, **kw)
+
+
+def server_meta(rollout: str, value: str, deep: dict | None = None, base: str | None = None, overlay: bool = True) -> dict:
+    """Handshake fields besides ``Searcher.config()``: the net file names (the client's ``expect`` builds the same).
+    ``opp_nets`` / ``base`` only when set, so a server without them answers exactly as before."""
+    from .search import deep_opp_nets
+
+    out = {"rollout": os.path.basename(rollout), "value": os.path.basename(value)}
+    if deep_opp_nets(deep):
+        out["opp_nets"] = [os.path.basename(x) for x in deep_opp_nets(deep)]
+    if base:
+        out |= {"base": os.path.basename(base), "overlay": bool(overlay)}
+    return out
 
 
 def _serve(args):
@@ -476,14 +498,15 @@ def _serve(args):
     numba.set_num_threads(min(args.threads, numba.config.NUMBA_NUM_THREADS))
     import json
 
+    deep = json.loads(args.deep) if args.deep else None
     searcher = build_searcher(args.rollout, args.value, args.branches, args.window, args.leaf, args.device,
-                              not args.no_cuda_graphs, args.max_roots, repo=args.repo,
-                              deep=json.loads(args.deep) if args.deep else None)
+                              not args.no_cuda_graphs, args.max_roots, repo=args.repo, deep=deep,
+                              base=args.base or None, overlay=not args.no_overlay)
     # warm-up off the clock: numba compile, the bucketed CUDA graphs for 1 and max_roots roots
     for n in (1, args.max_roots):
         searcher.search([SimState.from_seed(1 + k) for k in range(n)], [k % 2 for k in range(n)], list(range(n)))
     server = SearchServer(searcher, args.socket, args.max_roots, args.max_wait_ms, args.linger_s, args.startup_s,
-                          args.parent_pid, meta={"rollout": os.path.basename(args.rollout), "value": os.path.basename(args.value)})
+                          args.parent_pid, meta=server_meta(args.rollout, args.value, deep, args.base or None, not args.no_overlay))
     signal.signal(signal.SIGTERM, lambda *a: setattr(server, "stop", True))
     signal.signal(signal.SIGINT, lambda *a: setattr(server, "stop", True))
     stats = server.serve()
@@ -508,6 +531,8 @@ def main(argv=None):
     q.add_argument("--leaf", type=int, default=125)
     q.add_argument("--deep", default="", help="S4 search options as JSON (search.searcher_kwargs keys)")
     q.add_argument("--device", default="cuda")
+    q.add_argument("--base", default="", help="external acting policy checkpoint (docs §32; e.g. P14b), '' = none")
+    q.add_argument("--no-overlay", action="store_true", help="--base: a non-base branch = the whole-team rollout net")
     q.add_argument("--no-cuda-graphs", action="store_true")
     q.add_argument("--max-roots", type=int, default=32)
     q.add_argument("--max-wait-ms", type=float, default=3.0)

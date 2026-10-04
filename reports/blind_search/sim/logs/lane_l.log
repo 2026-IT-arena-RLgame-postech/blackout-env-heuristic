@@ -1,0 +1,10 @@
+== 13:24:22 v25pA o4f_v25r
+[o4f_v25r vs v25pA] 128/256 margin -4.4 wall 5508s (search 4313s, 9574 roots)
+[o4f_v25r vs v25pA] 256/256 margin -4.6 wall 5182s (search 4043s, 8053 roots)
+== 16:22:39 v25pB o4f_v25r
+[o4f_v25r vs v25pB] 128/256 margin +66.6 wall 3585s (search 2585s, 5313 roots)
+[o4f_v25r vs v25pB] 256/256 margin +70.1 wall 2890s (search 1994s, 4910 roots)
+== 18:10:40 lane l done
+== 18:10:40 v23pA o4f_v25r
+[o4f_v25r vs v23pA] 128/128 margin +78.9 wall 2091s (search 1443s, 3366 roots)
+== 18:45:36 lane l2 done

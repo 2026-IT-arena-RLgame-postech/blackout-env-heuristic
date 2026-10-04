@@ -1,0 +1,6 @@
+== 19:05:40 v27s05 plain,det,o4f,o4f_v25r
+[plain vs v27s05] 64/64 margin -48.7 wall 428s (search 0s, 0 roots)
+[det vs v27s05] 64/64 margin -34.4 wall 1131s (search 542s, 4324 roots)
+[o4f vs v27s05] 64/64 margin -23.0 wall 2161s (search 1579s, 4138 roots)
+[o4f_v25r vs v27s05] 64/64 margin -16.9 wall 2061s (search 1476s, 4320 roots)
+== 20:42:05 lane n done

@@ -1,0 +1,42 @@
+{
+ "batches": 18810,
+ "roots": 46146,
+ "requests": 46146,
+ "search_s": 17620.36026366381,
+ "max_batch_roots": 4,
+ "batch_hist": {
+  "1": 2586,
+  "2": 5557,
+  "3": 10222,
+  "4": 445
+ },
+ "queue_s": 173.36743253376335,
+ "clients_seen": 6,
+ "config": {
+  "branches": [
+   "base",
+   "alt0",
+   "alt1",
+   "alt2",
+   "alt3",
+   "alt4",
+   "samp1s0",
+   "samp1s1"
+  ],
+  "window": 25,
+  "leaf_decisions": 125,
+  "opp_branches": [
+   "base",
+   "samp1s0",
+   "samp1s1",
+   "samp1s2"
+  ],
+  "opp_agg": "mean",
+  "opp_left": 150,
+  "rollout": "f3_x_d2.pt",
+  "value": "iter2.pt",
+  "base": "p14_v25.pt",
+  "overlay": true,
+  "proto": 1
+ }
+}

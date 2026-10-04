@@ -1,0 +1,90 @@
+{
+ "o4f/ckpt:checkpoints/distill/frozen/p14_v25.pt": {
+  "n": 300,
+  "margin": 33.39666666666667,
+  "se": 3.4771459558830085,
+  "race": [
+   0,
+   300,
+   0
+  ]
+ },
+ "o4f/p11": {
+  "n": 26,
+  "margin": 81.38461538461539,
+  "se": 1.0983581076062483,
+  "race": [
+   25,
+   1,
+   0
+  ]
+ },
+ "o4f/strategic_v25": {
+  "n": 300,
+  "margin": 22.683333333333334,
+  "se": 3.4930140771252502,
+  "race": [
+   0,
+   300,
+   0
+  ]
+ },
+ "o4f/v23": {
+  "n": 26,
+  "margin": 74.5,
+  "se": 6.381764887311588,
+  "race": [
+   23,
+   3,
+   0
+  ]
+ },
+ "o4f-plain:plain/ckpt:checkpoints/distill/frozen/p14_v25.pt": {
+  "diff": 33.39666666666667,
+  "se": 2.4390709377799458,
+  "seeds": 150,
+  "matches": 300
+ },
+ "o4f-plain:plain/p11": {
+  "diff": 1.3461538461538463,
+  "se": 1.341383489049377,
+  "seeds": 13,
+  "matches": 26
+ },
+ "o4f-plain:plain/strategic_v25": {
+  "diff": 33.556666666666665,
+  "se": 3.20508731751583,
+  "seeds": 150,
+  "matches": 300
+ },
+ "o4f-plain:plain/v23": {
+  "diff": 11.423076923076923,
+  "se": 5.653693526633423,
+  "seeds": 13,
+  "matches": 26
+ },
+ "o4f-o4f:o4f/ckpt:checkpoints/distill/frozen/p14_v25.pt": {
+  "diff": 10.46,
+  "se": 2.790834792080864,
+  "seeds": 150,
+  "matches": 300
+ },
+ "o4f-o4f:o4f/p11": {
+  "diff": -0.5384615384615384,
+  "se": 1.6969632931050562,
+  "seeds": 13,
+  "matches": 26
+ },
+ "o4f-o4f:o4f/strategic_v25": {
+  "diff": 6.93,
+  "se": 3.052523179742217,
+  "seeds": 150,
+  "matches": 300
+ },
+ "o4f-o4f:o4f/v23": {
+  "diff": 2.6923076923076925,
+  "se": 3.0474550445446624,
+  "seeds": 13,
+  "matches": 26
+ }
+}
