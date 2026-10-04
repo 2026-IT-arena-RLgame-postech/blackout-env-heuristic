@@ -12,6 +12,8 @@ Simulator only.
 * ``p14b_r10_team`` the same, a non-base branch = the whole team f3_x_d2 (no overlay);
 * ``p14b_s5_10``    search only 5 s <= t < 10 s (after the race);
 * ``p14b_full`` / ``p14b_from5`` / ``p14b_from10``  search the whole match / from 5 s / from 10 s;
+* ``p14b_r10_rand`` control: like ``p14b_r10`` but a uniformly random non-base branch with
+                    probability ``--rand-rate`` per search point (no rollouts) -- symmetry breaking alone;
 * ``v25`` / ``v25_r10``  the V25 heuristic acting (plain / race10);
 * ``f3`` / ``f3_r10``  plain f3_x_d2 / search-new race10 (§24), f3_x_d2 acting (reference).
 
@@ -54,11 +56,28 @@ TAGS = {
     "p14b_full": ("p14b", (0, 150), True),
     "p14b_from5": ("p14b", (5, 150), True),
     "p14b_from10": ("p14b", (10, 150), True),
+    "p14b_r10_rand": ("p14b", (0, 10), True),
     "v25": ("v25", None, True),
     "v25_r10": ("v25", (0, 10), True),
     "f3": (None, None, True),
     "f3_r10": (None, (0, 10), True),
 }
+
+
+class RandomBranchSearcher:
+    """Control for a search: per root a uniformly random non-base branch with probability ``rate``."""
+
+    def __init__(self, branches, rate: float, seed: int = 0):
+        self.branches, self.rate = branches, float(rate)
+        self.rng = np.random.default_rng(seed)
+
+    def search(self, roots, teams, reseeds=None):
+        from blackout_env.sim.search import SearchOut
+
+        r = len(roots)
+        go = self.rng.random(r) < self.rate
+        choice = np.where(go, 1 + self.rng.integers(0, len(self.branches) - 1, r), 0)
+        return SearchOut(choice, np.zeros((r, len(self.branches))), {"games": r})
 
 
 def make_policy(name: str, device: str):
@@ -101,7 +120,9 @@ def cmd_play(args):
             bases[base_name] = make_policy(base_name, args.device)
         base = bases.get(base_name)
         searcher = None
-        if window is not None:
+        if tag.endswith("_rand"):
+            searcher = RandomBranchSearcher(branches, args.rand_rate, seed=args.seed0)
+        elif window is not None:
             searcher = Searcher(ModNetPolicy(net), leaf, branches, window=args.window, margin=args.margin,
                                 leaf_decisions=args.leaf, base_policy=base, overlay=overlay)
         cfg = MatchConfig(every=args.every, window=args.window, cap_s=args.cap_s, trace_s=TRACE_S,
@@ -239,6 +260,7 @@ def main():
     q.add_argument("--chunk", type=int, default=128)
     q.add_argument("--cap-s", type=int, default=150)
     q.add_argument("--threads", type=int, default=1)
+    q.add_argument("--rand-rate", type=float, default=0.65, help="_rand tags: non-base rate (p14b_r10: ~0.65)")
     q.add_argument("--device", default="")
     q.add_argument("--verbose", action="store_true")
     q.add_argument("--out", default=str(REPO / "reports/race_search_p14b"))
