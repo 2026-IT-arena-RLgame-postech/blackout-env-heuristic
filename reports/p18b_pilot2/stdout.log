@@ -1,0 +1,58 @@
+[p18bp2 vs p17] 16
+[p18bp2 vs p17] 16
+[p18bp2 vs p17] 16
+[p18bp2 vs p17] 16
+[p18bp2 vs V29] 16
+[p18bp2 vs V29] 16
+[p18bp2 vs V28] 16
+[p18bp2 vs V28] 16
+[p18bp2 vs V28] 16
+[p18bp2 vs V28] 16
+[p18bp2 vs V29] 16
+[p18bp2 vs V23] 16
+[p18bp2 vs V23] 16
+[p18bp2 vs V29] 16
+[p18bp2 vs V23] 16
+[p18bp2 vs V23] 16
+[p18bp2 vs V25] 16
+[p18bp2 vs V25] 16
+[p18bp2 vs V25] 16
+[p18bp2 vs V27] 16
+[p18bp2 vs V25] 16
+[p18bp2 vs V27] 16
+[p18bp2 vs V27] 16
+[p18bp2 vs V27] 16
+32 chunks
+[p18bp2 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +25.9 wall 312s
+[p18bp2 vs p17] 16 matches margin +40.4 wall 367s
+[p18bp2 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +34.1 wall 454s
+[p18bp2 vs p17] 16 matches margin +38.9 wall 335s
+[p18bp2 vs p17] 16 matches margin +34.9 wall 919s
+[p18bp2 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +23.8 wall 950s
+[p18bp2 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +57.6 wall 954s
+[p18bp2 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +25.6 wall 993s
+[p18bp2 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +35.1 wall 1001s
+[p18bp2 vs p17] 16 matches margin +39.4 wall 713s
+[p18bp2 vs p17] 16 matches margin +47.9 wall 665s
+[p18bp2 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +51.1 wall 1039s
+[p18bp2 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +35.4 wall 1078s
+[p18bp2 vs p17] 16 matches margin +48.2 wall 1244s
+[p18bp2 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin +2.0 wall 348s
+[p18bp2 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin -19.1 wall 350s
+[p18bp2 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin +9.2 wall 395s
+[p18bp2 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin +9.4 wall 463s
+[p18bp2 vs strategic_v23] 16 matches margin +77.2 wall 245s
+[p18bp2 vs strategic_v23] 16 matches margin +73.9 wall 232s
+[p18bp2 vs strategic_v23] 16 matches margin +79.2 wall 230s
+[p18bp2 vs strategic_v23] 16 matches margin +74.2 wall 338s
+[p18bp2 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin +8.6 wall 904s
+[p18bp2 vs strategic_v23] 16 matches margin +75.9 wall 314s
+[p18bp2 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin +12.6 wall 921s
+[p18bp2 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin +7.6 wall 954s
+[p18bp2 vs p17] 16 matches margin +34.1 wall 1238s
+[p18bp2 vs strategic_v23] 16 matches margin +80.9 wall 332s
+[p18bp2 vs strategic_v23] 16 matches margin +65.6 wall 809s
+[p18bp2 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin -2.3 wall 1023s
+[p18bp2 vs strategic_v23] 16 matches margin +77.1 wall 610s
+[p18bp2 vs p17] 16 matches margin +31.6 wall 1415s
+EVAL DONE

@@ -202,6 +202,15 @@ def parse_args(argv=None) -> argparse.Namespace:
                    "play (the race to the sanctuary); 1 = off")
     p.add_argument("--opening-seconds", type=float, default=OPENING_SECONDS,
                    help="--opening-weight's window: seconds of play, from team_state's time left")
+    p.add_argument("--stand-seconds", type=lambda s: tuple(float(x) for x in s.split(",")), default=None,
+                   help="--stand-action: train STAND only on unlabelled rows whose seconds of play lie in 'start,end' "
+                   "(P18b, §43: the staged reserve's hold before the race join); elsewhere unlabelled rows stay "
+                   "untrained as without --stand-action.  Default: everywhere")
+    p.add_argument("--window-weight", type=float, default=1.0,
+                   help="multiplies the per-row loss of rows whose seconds of play lie in --window-seconds (P18b, §43: "
+                   "the race-join decisions ~ decision 85-115); stacks with --opening-weight; 1 = off")
+    p.add_argument("--window-seconds", type=lambda s: tuple(float(x) for x in s.split(",")), default=(3.4, 4.6),
+                   help="--window-weight's window 'start,end' in seconds of play (25 decisions/s)")
     p.add_argument("--inference", choices=INFERENCE, default="iqn",
                    help="how collection and eval students turn logits into a move (inference.py; arc_mean: circular "
                    "mean of the top contiguous arc, for K bins)")
@@ -383,6 +392,10 @@ class Learner:
         kinds = batch["kinds"]
         if self.args.stand_action:  # no label = the teacher stands: target STAND alone
             stand = batch["labels"] == 0
+            window = getattr(self.args, "stand_seconds", None)
+            if window is not None:  # P18b (§43): STAND targets only in this window of play; elsewhere no label, as before
+                el = (1.0 - batch["team_state"][:, 2].float()) * MATCH_SECONDS
+                stand = stand & ((el >= window[0]) & (el < window[1]))[:, None]
             masks = torch.cat((masks, stand.unsqueeze(-1)), dim=-1)
             kinds = torch.where(stand, torch.full_like(kinds, KIND_INDEX["stand"]), kinds)
         # P11: the teacher's raw headings (NaN = none) and seconds of play (team_state[2] = time left)
@@ -449,12 +462,17 @@ class Learner:
                   {k: flat(v) for k, v in aux.items()}, offsets)
 
     def row_weights(self, valid: torch.Tensor, classes: torch.Tensor, elapsed: torch.Tensor) -> torch.Tensor | None:
-        """[B, 5] per-unit loss weights: --class-weighting times --opening-weight on the opening rows
-        (None = uniform)."""
+        """[B, 5] per-unit loss weights: --class-weighting times --opening-weight on the opening rows times
+        --window-weight on the --window-seconds rows (None = uniform)."""
         weights = class_weights(classes, valid) if self.args.class_weighting == "balanced" else None
         if self.args.opening_weight != 1.0:
             opening = torch.where(elapsed < self.args.opening_seconds, self.args.opening_weight, 1.0)[:, None]
             weights = opening.expand_as(valid) if weights is None else weights * opening
+        ww = getattr(self.args, "window_weight", 1.0)
+        if ww != 1.0:
+            a, b = self.args.window_seconds
+            win = torch.where((elapsed >= a) & (elapsed < b), ww, 1.0)[:, None]
+            weights = win.expand_as(valid) if weights is None else weights * win
         return weights
 
     def _fit(self, logits: torch.Tensor, masks: torch.Tensor, classes: torch.Tensor, kinds: torch.Tensor,
@@ -648,6 +666,7 @@ class Run:
                         "angle_arc_bins": self.args.angle_arc_bins, "map_xattn": self.args.map_xattn,
                         "map_xattn_layers": self.args.map_xattn_layers,
                         "opening_weight": self.args.opening_weight, "opening_seconds": self.args.opening_seconds,
+                        "window_weight": self.args.window_weight, "stand_seconds": self.args.stand_seconds, "window_seconds": list(self.args.window_seconds),
                         "lr_schedule": self.args.lr_schedule, "lr_warmup": self.args.lr_warmup,
                         "lr_final": self.args.lr_final, "steps": self.args.steps},
         }

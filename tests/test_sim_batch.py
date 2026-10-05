@@ -36,11 +36,11 @@ def _trace_states(every=40):
     return states
 
 
-def _student(seed=0):
+def _student(seed=0, n_actions=32):
     from blackout_env.model.my_model import MyModel
 
     torch.manual_seed(seed)
-    net = MyModel(hidden_size=64, n_actions=32, policy_head="logits", angle_head=True, angle_arc_bins=1).eval()
+    net = MyModel(hidden_size=64, n_actions=n_actions, policy_head="logits", angle_head=True, angle_arc_bins=1).eval()
     with torch.no_grad():  # the offsets start at 0: make them matter
         net.q_head.angle_out.weight.normal_(0, 0.5)
         net.q_head.angle_out.bias.normal_(0, 0.5)
@@ -88,12 +88,18 @@ def test_render_matches_canonical_obs_both_teams(parallel):
     assert held > 0  # the fixture's states do exercise held items
 
 
-def test_decode_matches_mypolicy_team_b():
+@pytest.mark.parametrize("n_actions", [32, 33])  # 33 = 32 bins + STAND (P18b, §43)
+def test_decode_matches_mypolicy_team_b(n_actions):
     from blackout_env.model.my_policy import MyPolicy
 
-    net = _student(1)
+    net = _student(1, n_actions)
+    if n_actions % 2:  # make STAND win for some units and lose for others
+        with torch.no_grad():
+            row = [m for m in net.q_head.value_head if isinstance(m, torch.nn.Linear)][-1]
+            row.weight[-1].normal_(0, 3.0)
     pol = MyPolicy(net)
     states = _trace_states(60)
+    stood = moved = 0
     for s in states:
         obs = s.obs()
         for team in (0, 1):
@@ -107,6 +113,8 @@ def test_decode_matches_mypolicy_team_b():
             mv = decode_moves(out[0][:, :5].numpy(), out[-1][:, :5].numpy(), np.array([team == 1]))[0]
             for i, k in enumerate(names):
                 assert np.clip(acts[k], -1, 1).tobytes() == mv[i].tobytes(), (team, k)
+                stood += int(not mv[i].any()); moved += int(mv[i].any())
+    assert moved > 0 and (stood > 0) == bool(n_actions % 2)
 
 
 def test_batched_student_rollout_equals_reference():

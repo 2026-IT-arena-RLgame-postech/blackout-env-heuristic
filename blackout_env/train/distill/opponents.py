@@ -20,6 +20,11 @@ distribution descriptors no collection draws:
 * ``teacher:v21-teach`` -- a teacher following its own labels;
 * ``self`` -- the learner's own policy on the other side (the student, or the teacher when the
   teacher plays alone), resolved by ``play_labelled_match``;
+* ``switch:<seconds>:<A>|<B>`` -- A's moves before ``seconds`` of play (from team_state's time left), B's after;
+  both are stepped every tick (P18b, docs §43: ``act:switch:6:<V29>|ckpt:<P17>`` = V29's race join, P17's play after);
+* ``joinswitch:<t0>,<t1>,<seconds>:<A>|<B>`` -- A before ``seconds``; after it A only if the enemy had 4+ Hunters at
+  once between ``t0`` and ``t1`` seconds (both teams' reserves joined the race, the (4,4) opening), otherwise B
+  (P18b, docs §43: V29's play after a (4,4) opening beats P17's, P17's beats V29's after (4,3)/(3,3));
 * ``perturb:<key=value,...>:<base>`` -- any other descriptor (not ``self``) executed with
   learned-policy errors: ``perturb:eps=0.2:strategic_v21``, ``perturb:sticky=4,lag=3:teacher:v21-teach``
   (keys eps, dither, sticky, lag, freeze; see perturb.py).
@@ -40,6 +45,9 @@ from blackout_env.train.distill.perturb import PerturbedPolicy, split_descriptor
 
 CHECKPOINT_PREFIX = "ckpt:"
 TEACHER_PREFIX = "teacher:"
+SWITCH_PREFIX = "switch:"
+JOINSWITCH_PREFIX = "joinswitch:"
+MATCH_SECONDS = 420.0  # metrics.MATCH_SECONDS (team_state[2] = time left / MATCH_SECONDS)
 SELF = "self"
 RANDOM_TURN = 0.1  # per tick; a random walker keeps its heading ~10 ticks
 _CHECKPOINT_CACHE: dict[str, object] = {}  # worker-side: path -> policy
@@ -97,6 +105,12 @@ def draw_opponent(rng: np.random.Generator, pool: dict[str, float], checkpoints:
 
 
 def make_opponent(descriptor: str, seed: int):
+    if descriptor.startswith(SWITCH_PREFIX):
+        seconds, a, b = split_switch(descriptor)
+        return SwitchPolicy(seconds, make_opponent(a, seed), make_opponent(b, seed + 1))
+    if descriptor.startswith(JOINSWITCH_PREFIX):
+        (t0, t1, seconds), a, b = split_joinswitch(descriptor)
+        return JoinSwitchPolicy(t0, t1, seconds, make_opponent(a, seed), make_opponent(b, seed + 1))
     if descriptor == "mixture":
         return HeuristicPolicyMixture(seed=seed, perturb_top_tier=True)
     if descriptor.startswith(CHECKPOINT_PREFIX):
@@ -122,6 +136,13 @@ def make_opponent(descriptor: str, seed: int):
 def check_opponent(descriptor: str) -> None:
     """Raise now, not in a worker, on a descriptor ``make_opponent`` cannot build."""
     if descriptor == SELF:
+        return
+    if descriptor.startswith((SWITCH_PREFIX, JOINSWITCH_PREFIX)):
+        _, a, b = split_switch(descriptor) if descriptor.startswith(SWITCH_PREFIX) else split_joinswitch(descriptor)
+        if SELF in (a, b):
+            raise ValueError(f"{descriptor!r}: switch: halves cannot be 'self'")
+        check_opponent(a)
+        check_opponent(b)
         return
     if descriptor.startswith(PERTURB_PREFIX):
         parameters, base = split_descriptor(descriptor)
@@ -155,6 +176,80 @@ def _parse_value(value: str):
         except ValueError:
             pass
     return value
+
+
+def split_switch(descriptor: str) -> tuple[float, str, str]:
+    """``switch:<seconds>:<A>|<B>`` -> (seconds, A, B)."""
+    seconds, sep, rest = descriptor[len(SWITCH_PREFIX):].partition(":")
+    a, bar, b = rest.partition("|")
+    if not sep or not bar or not a or not b:
+        raise ValueError(f"{descriptor!r}: expected switch:<seconds>:<A>|<B>")
+    return float(seconds), a, b
+
+
+class SwitchPolicy(BaseModel):
+    """A before ``seconds`` of play, B after; both act on every call so stateful policies keep their history."""
+
+    def __init__(self, seconds: float, a, b):
+        self.seconds, self.a, self.b = float(seconds), a, b
+
+    def reset(self) -> None:
+        for p in (self.a, self.b):
+            if hasattr(p, "reset"):
+                p.reset()
+
+    def act(self, obs):
+        if not obs:
+            return {}
+        moves_a, moves_b = self.a.act(obs), self.b.act(obs)
+        elapsed = (1.0 - float(np.asarray(next(iter(obs.values()))["team_state"])[2])) * MATCH_SECONDS
+        return moves_a if elapsed < self.seconds else moves_b
+
+
+def split_joinswitch(descriptor: str) -> tuple[tuple[float, float, float], str, str]:
+    """``joinswitch:<t0>,<t1>,<seconds>:<A>|<B>`` -> ((t0, t1, seconds), A, B)."""
+    times, sep, rest = descriptor[len(JOINSWITCH_PREFIX):].partition(":")
+    a, bar, b = rest.partition("|")
+    t = tuple(float(x) for x in times.split(","))
+    if not sep or not bar or not a or not b or len(t) != 3:
+        raise ValueError(f"{descriptor!r}: expected joinswitch:<t0>,<t1>,<seconds>:<A>|<B>")
+    return t, a, b
+
+
+ENEMY_JOIN_HUNTERS = 4
+HUNTER_COL = 10  # agent_states class one-hot (cols 9-11, COLLECTOR / HUNTER / CARRIER); col 2 = +1 own team
+
+
+def enemy_hunters(obs) -> int:
+    """Enemy Hunters in an observation dict (any own unit's agent_states)."""
+    a = np.asarray(next(iter(obs.values()))["agent_states"])
+    return int(((a[:, 2] < 0) & (a[:, HUNTER_COL] > 0.5)).sum())
+
+
+class JoinSwitchPolicy(SwitchPolicy):
+    """SwitchPolicy whose late half is A again when the enemy had ENEMY_JOIN_HUNTERS Hunters during [t0, t1] s."""
+
+    def __init__(self, t0: float, t1: float, seconds: float, a, b):
+        super().__init__(seconds, a, b)
+        self.t0, self.t1 = float(t0), float(t1)
+        self.enemy_max, self._last_elapsed = 0, 0.0
+
+    def reset(self) -> None:
+        super().reset()
+        self.enemy_max, self._last_elapsed = 0, 0.0
+
+    def act(self, obs):
+        if not obs:
+            return {}
+        moves_a, moves_b = self.a.act(obs), self.b.act(obs)
+        elapsed = (1.0 - float(np.asarray(next(iter(obs.values()))["team_state"])[2])) * MATCH_SECONDS
+        if elapsed < self._last_elapsed:
+            self.enemy_max = 0  # a new match without reset()
+        self._last_elapsed = elapsed
+        if self.t0 <= elapsed <= self.t1:
+            self.enemy_max = max(self.enemy_max, enemy_hunters(obs))
+        late_a = self.enemy_max >= ENEMY_JOIN_HUNTERS
+        return moves_a if elapsed < self.seconds or late_a else moves_b
 
 
 class Idle(BaseModel):

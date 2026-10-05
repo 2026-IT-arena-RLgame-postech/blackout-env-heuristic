@@ -45,8 +45,31 @@ DEVICE = os.environ.get("BLACKOUT_NET_DEVICE", "cpu")  # set by --device (inheri
 SANCT = (11.0, 13.0)
 
 
+class SwitchPolicy:
+    """``switch:<seconds>:<A>|<B>`` (P18b, docs §43): A's moves before ``seconds`` of play, B's after.  Both are
+    stepped every decision (stateful heuristics keep their history either way)."""
+
+    def __init__(self, seconds: float, a, b):
+        self.ticks, self.a, self.b = int(round(seconds * 50)), a, b  # 50 sim ticks per second (core.DT)
+        self.needs_inputs = getattr(a, "needs_inputs", True) or getattr(b, "needs_inputs", True)
+
+    def reset(self, n: int) -> None:
+        self.a.reset(n)
+        self.b.reset(n)
+
+    def moves(self, bsim, idx, teams, inputs):
+        ma, mb = self.a.moves(bsim, idx, teams, inputs), self.b.moves(bsim, idx, teams, inputs)
+        late = (bsim.ticks[idx] >= self.ticks)[:, None, None]
+        return {tm: np.where(late, mb[tm], ma[tm]) for tm in teams}
+
+
 def _policy(name: str):
     from blackout_env.sim.batch import HeuristicPolicy, NetPolicy
+
+    if name.startswith("switch:"):
+        _, sec, rest = name.split(":", 2)
+        a, b = rest.split("|")
+        return SwitchPolicy(float(sec), _policy(a), _policy(b))
 
     if name in SMALL or name.startswith("small:"):
         from blackout_env.sim.rollout_net import RolloutNet

@@ -1,0 +1,12 @@
+p18bp vs V23  n=64 margin   -6.3 ticks   252 | H@99 {(3, 0): 59, (3, 1): 2, (3, 2): 1, (2, 0): 1}
+     H ours/theirs @150:nan/nan 250:nan/nan 500:nan/nan 1000:nan/nan 2000:nan/nan | score-diff @500:+nan 1000:+nan 2000:+nan | new H ours/theirs 0.23/0.00 | kills by us C2.95,Ca0.02 of us 
+p18bp vs V25  n=64 margin   -4.3 ticks   252 | H@99 {(3, 3): 34, (3, 2): 26, (3, 1): 2, (2, 3): 1}
+     H ours/theirs @150:nan/nan 250:nan/nan 500:nan/nan 1000:nan/nan 2000:nan/nan | score-diff @500:+nan 1000:+nan 2000:+nan | new H ours/theirs 0.88/0.02 | kills by us C0.16 of us C0.05
+p18bp vs V27  n=64 margin   -0.5 ticks   252 | H@99 {(3, 3): 64}
+     H ours/theirs @150:nan/nan 250:nan/nan 500:nan/nan 1000:nan/nan 2000:nan/nan | score-diff @500:+nan 1000:+nan 2000:+nan | new H ours/theirs 0.88/0.16 | kills by us C0.62 of us 
+p18bp vs V28  n=64 margin   -0.1 ticks   252 | H@99 {(3, 3): 64}
+     H ours/theirs @150:nan/nan 250:nan/nan 500:nan/nan 1000:nan/nan 2000:nan/nan | score-diff @500:+nan 1000:+nan 2000:+nan | new H ours/theirs 0.80/0.77 | kills by us C0.05 of us C0.06
+p18bp vs V29  n=64 margin   -0.1 ticks   252 | H@99 {(3, 4): 41, (3, 3): 23}
+     H ours/theirs @150:nan/nan 250:nan/nan 500:nan/nan 1000:nan/nan 2000:nan/nan | score-diff @500:+nan 1000:+nan 2000:+nan | new H ours/theirs 0.23/0.12 | kills by us C0.05 of us C1.12
+p18bp vs p17  n=64 margin   -0.2 ticks   252 | H@99 {(3, 4): 53, (3, 3): 11}
+     H ours/theirs @150:nan/nan 250:nan/nan 500:nan/nan 1000:nan/nan 2000:nan/nan | score-diff @500:+nan 1000:+nan 2000:+nan | new H ours/theirs 0.14/0.03 | kills by us C0.02 of us C1.09

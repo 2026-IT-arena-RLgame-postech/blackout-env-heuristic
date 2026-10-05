@@ -1,0 +1,6 @@
+p18  vs V23  n=8 margin  +70.4 ticks  2387 | H@99 {(4, 0): 6, (4, 2): 1, (3, 1): 1}
+     H ours/theirs @150:3.5/0.0 250:3.9/0.0 500:3.9/0.0 1000:4.0/0.0 2000:nan/nan | score-diff @500:+28.0 1000:+47.6 2000:+nan | new H ours/theirs 0.38/0.00 | kills by us C42.75,Ca14.75 of us 
+p17  vs V28  n=20 margin  +54.6 ticks  2110 | H@99 {(4, 3): 18, (3, 3): 2}
+     H ours/theirs @150:0.9/0.6 250:2.7/1.0 500:2.6/0.7 1000:2.4/1.4 2000:2.0/2.0 | score-diff @500:+31.1 1000:+12.1 2000:-57.0 | new H ours/theirs 2.70/1.50 | kills by us C28.65,Ca8.70 of us C7.95,Ca1.55
+p18  vs V28  n=20 margin  +31.6 ticks  2074 | H@99 {(4, 3): 18, (3, 3): 2}
+     H ours/theirs @150:0.9/0.7 250:2.0/0.9 500:2.0/0.9 1000:1.3/2.0 2000:nan/nan | score-diff @500:+28.6 1000:+16.4 2000:+nan | new H ours/theirs 2.00/2.15 | kills by us C22.25,Ca5.55 of us C19.40,Ca1.95
