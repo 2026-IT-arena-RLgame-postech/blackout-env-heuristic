@@ -1,0 +1,8 @@
+train rows 2131179 labelled 2120184 val 96463
+params 1831552 {} device cuda:0 x1 amp fp16 compile default channels_last
+batches: host gather + prefetch
+{"step": 500, "loss": NaN, "ce": NaN, "acc": 0.1458534151315689, "angle_loss": NaN, "loss_mean": NaN, "s": 25.849153757095337, "ms_step": 51.698307514190674, "rows_s": 19807.224824892422, "loss_scale": 0.0}
+{"step": 1000, "loss": NaN, "ce": NaN, "acc": 0.14378048479557037, "angle_loss": NaN, "loss_mean": NaN, "s": 41.544414043426514, "ms_step": 31.389275074005127, "rows_s": 32622.607485702036, "loss_scale": 0.0}
+{"step": 1500, "loss": NaN, "ce": NaN, "acc": 0.15012846887111664, "angle_loss": NaN, "loss_mean": NaN, "s": 61.141624450683594, "ms_step": 39.13151693344116, "rows_s": 26168.16520917711, "loss_scale": 0.0}
+{"step": 2000, "loss": NaN, "ce": NaN, "acc": 0.14451074600219727, "angle_loss": NaN, "loss_mean": NaN, "s": 81.4823784828186, "ms_step": 40.529456615448, "rows_s": 25265.57436276354, "loss_scale": 0.0}
+{"step": 2500, "loss": NaN, "ce": NaN, "acc": 0.157931849360466, "angle_loss": NaN, "loss_mean": NaN, "s": 102.21037125587463, "ms_step": 41.08605432510376, "rows_s": 24923.29859414929, "loss_scale": 0.0}

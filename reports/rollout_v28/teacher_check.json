@@ -1,0 +1,173 @@
+{
+ "teacher": "/home/cucumbersaurus/p14frozen/p17.pt",
+ "device": "cuda",
+ "same_states": {
+  "decisions": 8054,
+  "units": 80540,
+  "max_deg": 172.79344177246094,
+  "mean_deg": 0.0035956003703176975,
+  "frac_gt_0p01deg": 0.0035261981624037744,
+  "frac_gt_1deg": 6.208095356344674e-05,
+  "bin_agree": 0.9999379190464366,
+  "s": 150.7
+ },
+ "free_running": {
+  "games": [
+   {
+    "seed": 6100000,
+    "batched_first_hunter": [
+     99,
+     99
+    ],
+    "ref_first_hunter": [
+     99,
+     99
+    ],
+    "batched_score": [
+     19,
+     102
+    ],
+    "ref_score": [
+     19,
+     102
+    ]
+   },
+   {
+    "seed": 6100001,
+    "batched_first_hunter": [
+     99,
+     99
+    ],
+    "ref_first_hunter": [
+     99,
+     99
+    ],
+    "batched_score": [
+     33,
+     103
+    ],
+    "ref_score": [
+     33,
+     104
+    ]
+   },
+   {
+    "seed": 6100002,
+    "batched_first_hunter": [
+     99,
+     99
+    ],
+    "ref_first_hunter": [
+     99,
+     99
+    ],
+    "batched_score": [
+     93,
+     51
+    ],
+    "ref_score": [
+     47,
+     51
+    ]
+   },
+   {
+    "seed": 6100003,
+    "batched_first_hunter": [
+     99,
+     99
+    ],
+    "ref_first_hunter": [
+     99,
+     99
+    ],
+    "batched_score": [
+     54,
+     105
+    ],
+    "ref_score": [
+     47,
+     101
+    ]
+   },
+   {
+    "seed": 6100004,
+    "batched_first_hunter": [
+     99,
+     99
+    ],
+    "ref_first_hunter": [
+     99,
+     99
+    ],
+    "batched_score": [
+     26,
+     103
+    ],
+    "ref_score": [
+     26,
+     103
+    ]
+   },
+   {
+    "seed": 6100005,
+    "batched_first_hunter": [
+     99,
+     99
+    ],
+    "ref_first_hunter": [
+     99,
+     99
+    ],
+    "batched_score": [
+     45,
+     100
+    ],
+    "ref_score": [
+     45,
+     100
+    ]
+   },
+   {
+    "seed": 6100006,
+    "batched_first_hunter": [
+     99,
+     99
+    ],
+    "ref_first_hunter": [
+     99,
+     99
+    ],
+    "batched_score": [
+     30,
+     44
+    ],
+    "ref_score": [
+     30,
+     44
+    ]
+   },
+   {
+    "seed": 6100007,
+    "batched_first_hunter": [
+     99,
+     99
+    ],
+    "ref_first_hunter": [
+     99,
+     99
+    ],
+    "batched_score": [
+     22,
+     100
+    ],
+    "ref_score": [
+     22,
+     100
+    ]
+   }
+  ],
+  "same_first_hunter": 1.0,
+  "same_score": 0.625,
+  "s": 110.0
+ }
+}

@@ -113,6 +113,8 @@ def make_opponent(name: str, device: str):
         return NetPolicy(RolloutNet.from_checkpoint(str(REPO / R5)), device=device)
     if name.startswith("rnet:"):
         return NetPolicy(RolloutNet.from_checkpoint(name[5:]), device=device)
+    if name.startswith("net:"):  # any stateless distill student (e.g. P17, docs §39)
+        return NetPolicy.from_checkpoint(name[4:], device=device)
     return HeuristicPolicy(name)
 
 
@@ -272,8 +274,11 @@ def save_matches(out: Path, seeds, sides, opp_name, res, args) -> int:
 def parse_mix(spec: str) -> list[tuple[str, float]]:
     out = []
     for tok in spec.split(","):
-        name, _, w = tok.partition(":")
-        out.append((name, float(w or 1)))
+        name, _, w = tok.rpartition(":")  # the weight is after the last ':' (net:/path.pt:0.25)
+        try:
+            out.append((name, float(w))) if name else out.append((tok, 1.0))
+        except ValueError:
+            out.append((tok, 1.0))
     return out
 
 
@@ -283,7 +288,7 @@ def main():
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--seeds", type=int, default=512)
     p.add_argument("--seed0", type=int, default=6_000_000)
-    p.add_argument("--mix", default=DEFAULT_MIX, help="opponent:weight list (self | p11 | r5 | rnet:<ckpt> | descriptor)")
+    p.add_argument("--mix", default=DEFAULT_MIX, help="opponent:weight list (self | p11 | r5 | rnet:<ckpt> | net:<student ckpt> | descriptor)")
     p.add_argument("--branches", default="alt*,samp:1.0x2")
     p.add_argument("--window", type=int, default=25)
     p.add_argument("--chunk", type=int, default=128, help="games per lockstep chunk (one opponent per chunk)")
