@@ -98,6 +98,9 @@ VARIANTS = {
     "det_v25f": {"net": V25F},
     "o4f_v27r": {"net": V27R, "deep": {**O4, "opp_agg": "mean"}},
     "o4f_v28r": {"net": V28R, "deep": {**O4, "opp_agg": "mean"}},
+    "det_v28r": {"net": V28R},
+    # rollout v27d256 (our continuation), opponent model = v28d256 {base, s0, s1, s2}: separates the two roles
+    "o4f_v27r_opp28": {"net": V27R, "deep": {**O4, "opp_agg": "mean", "opp_net_idx": [1, 1, 1, 1], "opp_nets": [V28R]}},
     "o4f_v25f": {"net": V25F, "deep": {**O4, "opp_agg": "mean"}},
     "o4f_v25r": {"net": "v25r", "deep": {**O4, "opp_agg": "mean"}},
     # rollout f3_x_d2, opponent model: f3 {base, s0} + v25r {s1, s2}
