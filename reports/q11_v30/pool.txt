@@ -1,0 +1,1 @@
+strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve;strategic_v28:reserve_stage=0.5,trade_hold=advance;p17;p16;strategic_v27:reserve_stage=1.5;strategic_v25;p14b;strategic_v23;strategic_v29:reserve_stage=0.75,trade_hold=advance,reserve_join=reserve

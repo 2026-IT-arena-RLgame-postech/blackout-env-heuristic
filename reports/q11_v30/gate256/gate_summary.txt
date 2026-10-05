@@ -1,0 +1,11 @@
+== strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,sentry_min_hunters=1  - strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve   +9.49 ±  1.74  (256 seeds, z  +5.5) 
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance    +23.04 ±  2.29  (256 seeds, z +10.1) 
+   vs p17                                                   +11.51 ±  1.85  (256 seeds, z  +6.2) 
+   vs p16                                                   +14.99 ±  2.09  (256 seeds, z  +7.2) 
+   vs strategic_v27:reserve_stage=1.5                        +8.93 ±  1.78  (256 seeds, z  +5.0) 
+   vs strategic_v25                                          +5.03 ±  1.78  (256 seeds, z  +2.8) 
+   vs p14b                                                  +10.92 ±  1.89  (256 seeds, z  +5.8) 
+   vs strategic_v23                                          +0.06 ±  0.32  (256 seeds, z  +0.2) 
+   vs strategic_v29:reserve_stage=0.75,trade_hold=advance,reserve_join=reserve   +8.52 ±  1.79  (256 seeds, z  +4.7) 
+   POOL (9 opponents, 256 seeds): +10.28 ± 0.84; worst strategic_v23 +0.06 ± 0.32; rule -> adopt
