@@ -30,6 +30,7 @@ from .v26_trade import StrategicHeuristicV26
 from .v27_reserve import StrategicHeuristicV27
 from .v28_trade_hold import StrategicHeuristicV28
 from .v29_reserve_join import StrategicHeuristicV29
+from .v30_solo_sentry import StrategicHeuristicV30
 from .raider import StrategicRaider
 from .cargo_hunter import StrategicCargoHunter
 from .early_rush import StrategicEarlyRush
@@ -51,7 +52,7 @@ __all__ = [
     "StrategicHeuristicV9",
     "StrategicHeuristicV10", "StrategicHeuristicV11", "StrategicHeuristicV12",
     "StrategicHeuristicV13", "StrategicHeuristicV14", "StrategicHeuristicV15", "StrategicHeuristicV16",
-    "StrategicHeuristicV17", "StrategicHeuristicV18", "StrategicHeuristicV19", "StrategicHeuristicV20", "StrategicHeuristicV21", "StrategicHeuristicV21AnyAngle", "StrategicHeuristicV21AnyAngleED", "AnyAngleMixin", "AnyAngleFieldMixin", "StrategicHeuristicV22", "StrategicHeuristicV22Teach", "StrategicHeuristicV23", "StrategicHeuristicV24", "StrategicHeuristicV25", "StrategicHeuristicV26", "StrategicHeuristicV27", "StrategicHeuristicV28", "StrategicHeuristicV29",
+    "StrategicHeuristicV17", "StrategicHeuristicV18", "StrategicHeuristicV19", "StrategicHeuristicV20", "StrategicHeuristicV21", "StrategicHeuristicV21AnyAngle", "StrategicHeuristicV21AnyAngleED", "AnyAngleMixin", "AnyAngleFieldMixin", "StrategicHeuristicV22", "StrategicHeuristicV22Teach", "StrategicHeuristicV23", "StrategicHeuristicV24", "StrategicHeuristicV25", "StrategicHeuristicV26", "StrategicHeuristicV27", "StrategicHeuristicV28", "StrategicHeuristicV29", "StrategicHeuristicV30",
     "StrategicRaider", "StrategicCargoHunter", "StrategicEarlyRush", "StrategicFortress", "StrategicDuelist",
     "RecommendedStrategicHeuristic",
     "StrategicHeuristicV4Teach", "StrategicHeuristicV17Teach", "StrategicHeuristicV20Teach", "StrategicHeuristicV21Teach", "TeachLabel", "TeachLabeller",
