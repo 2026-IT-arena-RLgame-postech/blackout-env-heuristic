@@ -1,0 +1,95 @@
+{
+ "ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p16_v27.pt/ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p16_v27.pt": {
+  "n": 300,
+  "margin": 0.0,
+  "se": 4.191454916181405,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 2
+ },
+ "ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt/ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p16_v27.pt": {
+  "n": 300,
+  "margin": 36.943333333333335,
+  "se": 3.4848102249586295,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1,
+  "paired": 36.943333333333335,
+  "paired_se": 3.3564107302750865,
+  "seeds": 150
+ },
+ "ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p16_v27.pt/strategic_v25": {
+  "n": 300,
+  "margin": 57.03,
+  "se": 2.376174778394992,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 0
+ },
+ "ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt/strategic_v25": {
+  "n": 300,
+  "margin": 60.42666666666667,
+  "se": 2.177731083460305,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1,
+  "paired": 3.3966666666666665,
+  "paired_se": 2.752405076690096,
+  "seeds": 150
+ },
+ "ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p16_v27.pt/strategic_v28:reserve_stage=0.5,trade_hold=advance": {
+  "n": 300,
+  "margin": -16.10333333333333,
+  "se": 3.941328056946186,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 0
+ },
+ "ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt/strategic_v28:reserve_stage=0.5,trade_hold=advance": {
+  "n": 300,
+  "margin": 35.626666666666665,
+  "se": 3.34553094916889,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1,
+  "paired": 51.73,
+  "paired_se": 4.8552046153404556,
+  "seeds": 150
+ }
+}

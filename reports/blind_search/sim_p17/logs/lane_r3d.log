@@ -1,0 +1,7 @@
+== 02:03:54 p17 det_v28r,o4f_v27r_opp28
+[det_v28r vs p17] 64/64 margin +25.9 wall 480s (search 340s, 3787 roots)
+[o4f_v27r_opp28 vs p17] 64/64 margin +18.0 wall 1534s (search 1397s, 3360 roots)
+== 02:37:32 v28 det_v28r,o4f_v27r_opp28
+[det_v28r vs v28] 64/64 margin +65.0 wall 558s (search 252s, 2366 roots)
+[o4f_v27r_opp28 vs v28] 64/64 margin +65.6 wall 1371s (search 1042s, 2414 roots)
+== 03:09:45 lane r3d done
