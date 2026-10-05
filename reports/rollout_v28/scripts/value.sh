@@ -9,12 +9,14 @@ export PYTHONPATH=. OMP_NUM_THREADS=5 NUMBA_NUM_THREADS=5
 R=~/rv28runs; L=$R/logs; D=$R/value_v28d256; O=$R/v_v28d256
 NET=$R/ck/v28d256.pt; P17=$HOME/p14frozen/p17.pt; V27D=$HOME/rv27runs/ck/v27d256.pt
 MIX="self:0.5,net:$P17:0.25,rnet:$V27D:0.25"
-# roots: seeds 6200000+ / 6300000+ (both sides), two processes
-$PY examples/value_net_branch_data.py --net $NET --mix "$MIX" --seeds ${SEEDS:-256} --seed0 6200000 --threads 5 --device cuda --out $D > $L/vdata_a.log 2>&1 &
-A=$!
-$PY examples/value_net_branch_data.py --net $NET --mix "$MIX" --seeds ${SEEDS:-256} --seed0 6300000 --threads 5 --device cuda --out $D > $L/vdata_b.log 2>&1 &
-B=$!
-wait $A; wait $B
+# roots: seeds 6200000+ / 6300000+ / 6400000+ (both sides), three processes (~300k rows; GPU-bound on the 3060)
+# (on the first run the third batch started 10 min after the other two; WAIT_PIDS = already-running data processes to wait for)
+PIDS="${WAIT_PIDS:-}"
+for s0 in ${SEED0S:-6200000 6300000 6400000}; do
+  $PY examples/value_net_branch_data.py --net $NET --mix "$MIX" --seeds ${SEEDS:-256} --seed0 $s0 --threads 4 --device cuda --out $D > $L/vdata_$s0.log 2>&1 &
+  PIDS="$PIDS $!"
+done
+for p in $PIDS; do while kill -0 $p 2>/dev/null; do sleep 20; done; done
 echo "$(date +%T) data done"
 $PY examples/value_branch_train.py train --data $D --out-dir $O --init $HOME/rv25assets/ck/s2v_f3xd2/iter2.pt \
    --shard-frac 0 --iters 4 --steps 2500 --group-roots 16 --rank-weight 2.0 --final-beta 10.0 --amp fp16 --packed --device cuda \
