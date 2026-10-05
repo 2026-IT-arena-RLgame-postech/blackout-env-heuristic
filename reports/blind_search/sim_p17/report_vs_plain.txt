@@ -1,0 +1,38 @@
+R1 blind search: paired difference vs 'plain' (same opponent, seed, side); +-SE over seeds, sides averaged
+opponents: p14b, p16, p17, v28, v25, v27
+
+tag                   p14b           p16           p17           v28           v25           v27        pooled                worst  s/match  roots/s
+plain margin         +66.1         +44.6          +0.0         +44.2         +62.0         +42.0
+o4f_v27r          +7.9±2.5     +18.2±3.4     +12.7±4.3     +17.3±3.4      +9.6±2.8     +26.5±4.3     +15.4±1.4      +7.9±2.5 (p14b)     15.0      2.7
+o4f_v28r         +10.6±2.4     +16.2±3.2     +26.2±4.6     +19.0±3.6     +10.1±3.2     +23.6±4.0     +17.6±1.5      +10.1±3.2 (v25)     12.3      3.2
+det_v28r                                     +25.9±6.0     +16.6±4.0                                +21.2±3.6*      +16.6±4.0 (v28)      4.6     10.4
+o4f_v28r_V1       +8.3±2.1     +15.7±3.5     +28.9±4.6     +17.2±3.6     +10.7±2.9     +24.1±3.9     +17.5±1.4      +8.3±2.1 (p14b)     12.5      3.2
+o4f_v28r_V2       +7.5±2.1     +16.2±3.1     +24.9±4.6     +19.0±3.6     +11.2±3.0     +22.7±3.8     +16.9±1.4      +7.5±2.1 (p14b)     12.4      3.2
+o4f_v27r_opp28                                 +18.0±5.8     +17.2±4.7                                +17.6±3.7*      +17.2±4.7 (v28)     19.1      2.4
+
+(* = pooled over the opponents present only)
+
+seeds per (tag, opponent):
+  plain        p14b:64 p16:64 p17:64 v28:64 v25:64 v27:64
+  o4f_v27r     p14b:64 p16:64 p17:64 v28:64 v25:64 v27:64
+  o4f_v28r     p14b:64 p16:64 p17:64 v28:64 v25:64 v27:64
+  det_v28r     p17:32 v28:32
+  o4f_v28r_V1  p14b:64 p16:64 p17:64 v28:64 v25:64 v27:64
+  o4f_v28r_V2  p14b:64 p16:64 p17:64 v28:64 v25:64 v27:64
+  o4f_v27r_opp28 p17:32 v28:32
+
+cost per tag (all opponents): search s/match, roots/match, lockstep roots/s, game-decisions/root, wall s/match
+  o4f_v27r       15.0 s   41.0 roots     2.7 roots/s    4478 gd/root  wall  20.3 s
+  o4f_v28r       12.3 s   39.6 roots     3.2 roots/s    4472 gd/root  wall  15.7 s
+  det_v28r        4.6 s   48.1 roots    10.4 roots/s    1135 gd/root  wall   8.1 s
+  o4f_v28r_V1    12.5 s   40.3 roots     3.2 roots/s    4478 gd/root  wall  15.5 s
+  o4f_v28r_V2    12.4 s   39.9 roots     3.2 roots/s    4466 gd/root  wall  15.5 s
+  o4f_v27r_opp28   19.1 s   45.1 roots     2.4 roots/s    4514 gd/root  wall  22.7 s
+
+pairwise (a - b), pooled over common opponents:
+  o4f_v28r_V1 - o4f_v28r: pooled -0.1±0.8  p14b -2.3±1.4 p16 -0.5±1.3 p17 +2.7±3.2 v28 -1.8±2.2 v25 +0.6±1.4 v27 +0.6±1.7
+  o4f_v28r_V2 - o4f_v28r: pooled -0.7±0.9  p14b -3.1±1.5 p16 +0.0±1.4 p17 -1.3±3.9 v28 -0.0±1.9 v25 +1.1±1.3 v27 -0.8±1.5
+  o4f_v28r_V1 - o4f_v28r_V2: pooled +0.5±0.7  p14b +0.8±0.7 p16 -0.6±1.6 p17 +4.0±3.2 v28 -1.8±1.7 v25 -0.5±0.9 v27 +1.4±1.6
+  o4f_v28r - o4f_v27r: pooled +2.2±1.4  p14b +2.7±1.9 p16 -2.0±2.7 p17 +13.4±6.4 v28 +1.7±3.1 v25 +0.5±1.8 v27 -3.0±3.0
+  det_v28r - o4f_v28r: pooled +1.5±3.7  p17 +5.1±6.4 v28 -2.1±3.7
+  o4f_v27r_opp28 - o4f_v27r: pooled +2.4±3.9  p17 +2.6±7.1 v28 +2.2±3.1

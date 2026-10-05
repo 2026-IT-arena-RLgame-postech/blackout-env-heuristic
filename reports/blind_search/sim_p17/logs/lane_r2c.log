@@ -1,0 +1,7 @@
+== 22:49:39 p16 plain,o4f_v27r
+[plain vs p16] 64/64 margin +49.0 wall 176s (search 0s, 0 roots)
+[o4f_v27r vs p16] 64/64 margin +65.0 wall 1213s (search 998s, 2645 roots)
+== 23:12:53 v27 plain,o4f_v27r
+[plain vs v27] 64/64 margin +52.5 wall 606s (search 0s, 0 roots)
+[o4f_v27r vs v27] 64/64 margin +70.6 wall 1515s (search 961s, 2554 roots)
+== 23:48:19 lane r2c done
