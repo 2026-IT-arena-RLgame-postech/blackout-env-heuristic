@@ -203,7 +203,8 @@ def cmd_play(args):
     tag = args.tag + base_suffix(args.base)
     tasks = [(s, side) for s in range(args.seed0, args.seed0 + args.seeds) for side in (0, 1)]
     for c in range(0, len(tasks), args.chunk):
-        path = out / f"{tag}_{args.opponent}_{c:04d}.npz"
+        # file index = global task index from seed 2100000, so lanes with other --seed0 never collide
+        path = out / f"{tag}_{args.opponent}_{c + 2 * (args.seed0 - 2_100_000):04d}.npz"
         if path.exists():
             print("exists", path, flush=True)
             continue
