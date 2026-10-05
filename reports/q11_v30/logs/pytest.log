@@ -1,0 +1,32 @@
+.......sssssss...............s.......................................... [ 11%]
+........................................................................ [ 23%]
+........................................................................ [ 35%]
+...................................s.................................... [ 47%]
+........................................................................ [ 58%]
+........................................................................ [ 70%]
+........................................................sss............. [ 82%]
+........................................................................ [ 94%]
+...................................                                      [100%]
+=============================== warnings summary ===============================
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: Type google.protobuf.pyext._message.ScalarMapContainer uses PyType_Spec with a metaclass that has custom tp_new. This is deprecated and will no longer be allowed in Python 3.14.
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: Type google.protobuf.pyext._message.MessageMapContainer uses PyType_Spec with a metaclass that has custom tp_new. This is deprecated and will no longer be allowed in Python 3.14.
+
+../blackout-env/.venv/lib/python3.12/site-packages/google/protobuf/internal/well_known_types.py:91
+  /home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/google/protobuf/internal/well_known_types.py:91: DeprecationWarning: datetime.datetime.utcfromtimestamp() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.fromtimestamp(timestamp, datetime.UTC).
+    _EPOCH_DATETIME_NAIVE = datetime.datetime.utcfromtimestamp(0)
+
+tests/test_accel.py: 14 warnings
+  /home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/jit/_script.py:365: DeprecationWarning: `torch.jit.script_method` is deprecated. Please switch to `torch.compile` or `torch.export`.
+    warnings.warn(
+
+tests/test_value_targets.py::test_shard_targets_are_in_the_learner_frame[False]
+tests/test_value_targets.py::test_shard_targets_are_in_the_learner_frame[True]
+tests/test_value_targets.py::test_smoke_train_and_eval
+  /usr/lib/python3.12/multiprocessing/popen_fork.py:66: DeprecationWarning: This process (pid=2703034) is multi-threaded, use of fork() may lead to deadlocks in the child.
+    self.pid = os.fork()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+599 passed, 12 skipped, 20 warnings in 240.51s (0:04:00)

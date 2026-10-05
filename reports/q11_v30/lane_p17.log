@@ -1,0 +1,7 @@
+== 18:30:01 plain vs p17
+[plain vs p17] 64/128 margin +0.0 170s (search 0s)
+[plain vs p17] 128/128 margin +0.0 172s (search 0s)
+== 18:35:48 search vs p17
+[search vs p17] 64/128 margin +28.9 1180s (search 1028s)
+[search vs p17] 128/128 margin +23.3 1342s (search 1190s)
+== 19:17:54 lane p17 done

@@ -1,0 +1,104 @@
+Hun: 556 cf roots; columns: n, realised gain, d(death, pickup, steal, deposit_amt, lost_amt) of the unit
+-- cargo
+   empty                  n  556 gain  +1.77±0.95  death -0.03 pickup -0.02 steal -0.00 deposit_amt -0.03 lost_amt +0.00   v29  +5.1 v28  -0.2 v25  +1.9
+-- enemy Collector distance
+   <1.5                   n   93 gain  +3.59±2.85  death -0.02 pickup -0.01 steal +0.00 deposit_amt -0.04 lost_amt +0.02   v29 +12.0 v28  +3.1 v25  -1.0
+   <3                     n  145 gain  +0.31±1.83  death -0.02 pickup -0.01 steal +0.00 deposit_amt +0.00 lost_amt +0.00   v29  -1.5 v28  -2.0 v25  +4.4
+   <6                     n  105 gain  +7.08±2.09  death -0.04 pickup +0.00 steal +0.00 deposit_amt +0.00 lost_amt +0.00   v29 +10.9 v28  +7.5 v25  +4.1
+   >=6                    n  213 gain  -0.65±1.37  death -0.04 pickup -0.03 steal -0.00 deposit_amt -0.06 lost_amt +0.00   v29  +3.7 v28  -3.9 v25  +0.5
+-- enemy Hunter distance
+   <2                     n    9 gain  +3.45±10.02  death -0.11 pickup +0.17 steal +0.00 deposit_amt -0.33 lost_amt +0.28   v29 +12.2 v28  -9.7 v25 -22.7
+   <4                     n   17 gain  +7.83±6.07  death -0.41 pickup -0.06 steal +0.00 deposit_amt +0.00 lost_amt +0.00   v29 +10.4 v28  +9.9 v25  -3.5
+   >=4/none               n  530 gain  +1.54±0.96  death -0.02 pickup -0.02 steal -0.00 deposit_amt -0.03 lost_amt +0.00   v29  +4.2 v28  -0.2 v25  +2.1
+-- dist to centre
+   <3                     n  137 gain  +2.24±1.36  death -0.01 pickup +0.00 steal +0.00 deposit_amt -0.02 lost_amt +0.02   v29  +7.8 v28  +1.8 v25  -1.3
+   <6                     n  122 gain  +0.77±3.11  death -0.02 pickup -0.02 steal +0.00 deposit_amt -0.02 lost_amt +0.00   v29  +1.9 v28  -6.7 v25  +7.8
+   <9                     n  107 gain  +3.99±2.46  death -0.09 pickup -0.05 steal +0.00 deposit_amt -0.11 lost_amt +0.00   v29 +10.0 v28  +2.9 v25  +0.4
+   >=9                    n  190 gain  +0.82±0.92  death -0.02 pickup -0.01 steal -0.01 deposit_amt +0.00 lost_amt +0.00   v29  +1.4 v28  +0.5 v25  +0.8
+-- time
+   10-20                  n  288 gain  +2.12±0.98  death -0.04 pickup -0.03 steal -0.00 deposit_amt -0.05 lost_amt +0.00   v29  +6.7 v28  +0.8 v25  +1.4
+   20-40                  n   92 gain  +1.71±1.60  death -0.05 pickup -0.01 steal +0.00 deposit_amt +0.00 lost_amt +0.00   v29  +2.6 v28  +1.6 v25  +0.2
+   40+                    n   39 gain  +3.36±1.73  death -0.05 pickup +0.00 steal +0.00 deposit_amt +0.00 lost_amt +0.00   v29  +3.0 v28  +4.0 v25  +2.6
+   5-10                   n  137 gain  +0.61±3.04  death +0.00 pickup +0.01 steal +0.00 deposit_amt -0.02 lost_amt +0.02   v29  +9.6 v28  -4.2 v25  +3.3
+-- cos(exec, P17)
+   <-0.5                  n   44 gain  +2.66±2.00  death -0.11 pickup -0.02 steal -0.02 deposit_amt -0.07 lost_amt +0.00   v29  +4.4 v28  -0.2 v25  +3.6
+   <0.5                   n  448 gain  +2.08±1.05  death -0.02 pickup -0.02 steal +0.00 deposit_amt -0.02 lost_amt +0.00   v29  +6.0 v28  -0.0 v25  +2.3
+   >=0.5                  n   64 gain  -1.04±3.44  death -0.02 pickup +0.02 steal +0.00 deposit_amt -0.05 lost_amt +0.04   v29  +0.6 v28  -1.6 v25  -1.7
+-- own death change
+   fewer                  n   32 gain  +6.16±3.79  death -1.08 pickup -0.19 steal +0.00 deposit_amt -0.11 lost_amt +0.02   v29  +8.2 v28  +2.6 v25  +7.6
+   more                   n   17 gain -15.22±10.42  death +1.03 pickup +0.09 steal +0.00 deposit_amt +0.26 lost_amt +0.00   v29  -1.2 v28 -39.3 v25  -6.2
+   same                   n  507 gain  +2.06±0.94  death +0.00 pickup -0.01 steal -0.00 deposit_amt -0.04 lost_amt +0.00   v29  +5.2 v28  +0.8 v25  +1.8
+-- cargo x enemy Collector
+   empty/col<3            n  238 gain  +1.59±1.58  death -0.02 pickup -0.01 steal +0.00 deposit_amt -0.02 lost_amt +0.01   v29  +3.7 v28  -0.1 v25  +2.2
+   empty/col>=3           n  318 gain  +1.90±1.17  death -0.04 pickup -0.02 steal -0.00 deposit_amt -0.04 lost_amt +0.00   v29  +6.2 v28  -0.3 v25  +1.7
+Car: 470 cf roots; columns: n, realised gain, d(death, pickup, steal, deposit_amt, lost_amt) of the unit
+-- cargo
+   bat                    n  191 gain  +2.44±1.42  death +0.02 pickup -0.10 steal +0.00 deposit_amt -0.55 lost_amt +0.01   v29  +2.3 v28  +3.1 v25  +1.9
+   empty                  n  279 gain  +4.73±1.46  death -0.08 pickup -0.01 steal +0.01 deposit_amt -0.33 lost_amt -0.07   v29  +1.5 v28  +9.8 v25  +2.7
+-- enemy Collector distance
+   <1.5                   n    1 gain  +9.00± nan  death +0.00 pickup -1.00 steal +1.00 deposit_amt +10.00 lost_amt +0.00   v25  +9.0
+   <3                     n    1 gain  -2.00± nan  death +0.00 pickup +2.00 steal -1.00 deposit_amt +6.00 lost_amt +0.00   v25  -2.0
+   <6                     n   29 gain  +3.81±4.56  death +0.02 pickup +0.07 steal -0.09 deposit_amt -0.17 lost_amt -0.66   v29  +8.5 v28  +2.3 v25  +0.5
+   >=6                    n  439 gain  +3.80±1.07  death -0.04 pickup -0.06 steal +0.01 deposit_amt -0.47 lost_amt +0.00   v29  +1.5 v28  +7.6 v25  +2.6
+-- enemy Hunter distance
+   <2                     n   82 gain  +5.55±1.99  death -0.09 pickup +0.21 steal -0.03 deposit_amt +1.13 lost_amt -0.29   v29  +4.2 v28  +8.3 v25  -0.5
+   <4                     n   62 gain  +6.13±2.56  death -0.17 pickup +0.18 steal -0.01 deposit_amt +1.48 lost_amt -0.45   v29  +7.4 v28  +1.8 v25 +23.2
+   >=4/none               n  326 gain  +2.91±1.33  death +0.00 pickup -0.16 steal +0.02 deposit_amt -1.17 lost_amt +0.10   v29  -0.5 v28  +8.3 v25  +1.6
+-- dist to centre
+   <3                     n    5 gain  -7.70±9.27  death +0.20 pickup -0.20 steal -0.40 deposit_amt -2.20 lost_amt -0.80   v29  +6.5 v28  -8.5 v25 -21.5
+   <6                     n   97 gain  +5.17±2.69  death -0.09 pickup +0.10 steal -0.04 deposit_amt +1.02 lost_amt -0.42   v29  +3.9 v28  +9.2 v25  +1.2
+   <9                     n  126 gain  +3.91±1.82  death -0.09 pickup +0.05 steal +0.06 deposit_amt +0.39 lost_amt -0.15   v29  +2.6 v28  +3.4 v25  +6.7
+   >=9                    n  242 gain  +3.43±1.41  death +0.01 pickup -0.15 steal +0.01 deposit_amt -1.38 lost_amt +0.19   v29  +0.7 v28  +8.5 v25  +1.0
+-- time
+   10-20                  n  164 gain  +2.79±1.85  death -0.01 pickup -0.14 steal +0.02 deposit_amt -0.44 lost_amt -0.20   v29  +2.4 v28  +4.0 v25  +1.9
+   20-40                  n   93 gain  +3.89±1.21  death -0.09 pickup +0.23 steal +0.00 deposit_amt +1.71 lost_amt -0.22   v29  +4.9 v28  +3.0 v25  +2.9
+   40+                    n   53 gain  +0.89±1.66  death -0.09 pickup +0.13 steal -0.04 deposit_amt +0.81 lost_amt +0.00   v29  +0.7 v28  -0.3 v25  +5.0
+   5-10                   n  160 gain  +5.74±2.23  death -0.01 pickup -0.17 steal +0.01 deposit_amt -2.05 lost_amt +0.21   v29  -0.2 v28 +15.2 v25  +2.3
+-- cos(exec, P17)
+   <-0.5                  n   35 gain  +3.53±4.69  death +0.07 pickup -0.67 steal -0.17 deposit_amt -5.91 lost_amt +0.43   v29  +9.7 v28  -1.4 v25  -1.9
+   <0.5                   n  262 gain  +3.97±1.39  death -0.04 pickup -0.04 steal +0.01 deposit_amt -0.62 lost_amt -0.10   v29  +1.7 v28  +7.8 v25  +2.3
+   >=0.5                  n  173 gain  +3.59±1.65  death -0.05 pickup +0.07 steal +0.05 deposit_amt +1.00 lost_amt -0.04   v29  +0.5 v28  +7.7 v25  +4.6
+-- own death change
+   fewer                  n   66 gain  +7.18±2.17  death -1.36 pickup +0.53 steal +0.14 deposit_amt +4.17 lost_amt -1.33   v29  +5.4 v28  +6.9 v25 +16.0
+   more                   n   53 gain  +2.67±4.80  death +1.36 pickup -0.65 steal -0.22 deposit_amt -4.99 lost_amt +1.38   v29  -3.3 v28 +19.9 v25 -14.3
+   same                   n  351 gain  +3.33±1.12  death +0.00 pickup -0.07 steal +0.02 deposit_amt -0.59 lost_amt -0.01   v29  +2.0 v28  +5.6 v25  +2.5
+-- cargo x enemy Collector
+   bat/col>=3             n  191 gain  +2.44±1.42  death +0.02 pickup -0.10 steal +0.00 deposit_amt -0.55 lost_amt +0.01   v29  +2.3 v28  +3.1 v25  +1.9
+   empty/col<3            n    2 gain  +3.50±5.50  death +0.00 pickup +0.50 steal +0.00 deposit_amt +8.00 lost_amt +0.00   v25  +3.5
+   empty/col>=3           n  277 gain  +4.73±1.47  death -0.08 pickup -0.02 steal +0.01 deposit_amt -0.39 lost_amt -0.07   v29  +1.5 v28  +9.8 v25  +2.7
+Col: 943 cf roots; columns: n, realised gain, d(death, pickup, steal, deposit_amt, lost_amt) of the unit
+-- cargo
+   bat                    n  107 gain  +2.38±1.62  death +0.03 pickup -0.02 steal +0.01 deposit_amt +0.20 lost_amt -0.09   v29  -0.1 v28  +5.0 v25  +2.2
+   empty                  n  836 gain  +1.26±0.68  death -0.09 pickup +0.27 steal +0.02 deposit_amt +1.02 lost_amt +0.08   v29  +0.9 v28  +1.4 v25  +2.2
+-- enemy Collector distance
+   <1.5                   n    6 gain +20.15±17.10  death +0.00 pickup +0.25 steal +0.00 deposit_amt +0.00 lost_amt -0.08   v29 +34.0 v25  -7.5
+   <3                     n   12 gain  +3.19±4.73  death -0.17 pickup +0.08 steal +0.00 deposit_amt +0.08 lost_amt +0.42   v29  +5.1 v28  +0.5 v25  -1.6
+   <6                     n   30 gain  +1.93±2.73  death +0.10 pickup +0.13 steal -0.03 deposit_amt +0.47 lost_amt -0.73   v29  +5.2 v28  -7.5 v25  +4.4
+   >=6                    n  895 gain  +1.22±0.64  death -0.08 pickup +0.24 steal +0.02 deposit_amt +0.96 lost_amt +0.09   v29  +0.3 v28  +2.1 v25  +2.2
+-- enemy Hunter distance
+   <2                     n  195 gain  +2.59±1.43  death -0.02 pickup +0.02 steal +0.00 deposit_amt +0.12 lost_amt -0.03   v29  +2.6 v28  +3.0 v25  -9.5
+   <4                     n  214 gain  +1.61±1.20  death -0.08 pickup +0.08 steal +0.00 deposit_amt +0.29 lost_amt +0.09   v29  +1.4 v28  +1.6 v25  +5.6
+   >=4/none               n  534 gain  +0.85±0.85  death -0.09 pickup +0.38 steal +0.03 deposit_amt +1.48 lost_amt +0.09   v29  -0.5 v28  +1.5 v25  +2.2
+-- dist to centre
+   <3                     n   33 gain +10.67±6.38  death +0.02 pickup -0.17 steal -0.03 deposit_amt -0.92 lost_amt +0.42   v29 +10.3 v28 +11.0 v25 +11.3
+   <6                     n  165 gain  +1.18±1.26  death -0.03 pickup +0.42 steal +0.02 deposit_amt +1.96 lost_amt +0.26   v29  +1.7 v28  +0.9 v25  +0.9
+   <9                     n  246 gain  +2.39±1.24  death -0.10 pickup +0.17 steal +0.05 deposit_amt +0.81 lost_amt -0.16   v29  +2.8 v28  +3.7 v25  -1.4
+   >=9                    n  499 gain  +0.35±0.82  death -0.08 pickup +0.24 steal +0.01 deposit_amt +0.77 lost_amt +0.09   v29  -1.0 v28  +1.0 v25  +4.8
+-- time
+   10-20                  n  343 gain  +1.66±1.09  death -0.06 pickup +0.03 steal -0.01 deposit_amt +0.05 lost_amt -0.03   v29  +1.6 v28  +1.9 v25  +1.4
+   20-40                  n  163 gain  +0.58±0.84  death -0.04 pickup +0.07 steal +0.02 deposit_amt +0.27 lost_amt -0.11   v29  +0.4 v28  +0.6 v25  +2.0
+   40+                    n  117 gain  +0.81±1.09  death -0.04 pickup +0.04 steal +0.00 deposit_amt +0.21 lost_amt -0.03   v29  -0.3 v28  +2.0 v25 +12.2
+   5-10                   n  320 gain  +1.71±1.31  death -0.12 pickup +0.62 steal +0.06 deposit_amt +2.47 lost_amt +0.29   v29  +0.4 v28  +2.4 v25  +2.4
+-- cos(exec, P17)
+   <-0.5                  n   30 gain  +2.59±2.21  death -0.20 pickup +0.10 steal -0.13 deposit_amt +0.50 lost_amt -1.13   v29  +5.1 v28  +0.7 v25  +0.8
+   <0.5                   n  347 gain  +2.02±0.99  death -0.11 pickup +0.24 steal +0.03 deposit_amt +0.84 lost_amt +0.08   v29  +1.1 v28  +3.9 v25  +0.9
+   >=0.5                  n  566 gain  +0.93±0.84  death -0.05 pickup +0.24 steal +0.02 deposit_amt +1.00 lost_amt +0.12   v29  +0.5 v28  +0.6 v25  +3.3
+-- own death change
+   fewer                  n  225 gain  +5.11±1.69  death -1.19 pickup +0.28 steal +0.03 deposit_amt +1.18 lost_amt -0.29   v29  +5.6 v28  +2.4 v25 +15.7
+   more                   n  166 gain  -1.87±1.32  death +1.20 pickup +0.02 steal -0.02 deposit_amt -0.20 lost_amt +0.77   v29  -2.7 v28  -1.8 v25  +6.3
+   same                   n  552 gain  +0.84±0.71  death +0.00 pickup +0.28 steal +0.03 deposit_amt +1.17 lost_amt -0.00   v29  -0.8 v28  +2.7 v25  +0.8
+-- cargo x enemy Collector
+   bat/col<3              n    2 gain  -4.50±4.50  death +0.00 pickup +0.50 steal +0.00 deposit_amt -3.50 lost_amt +0.00   v28  +0.0 v25  -9.0
+   bat/col>=3             n  105 gain  +2.51±1.65  death +0.03 pickup -0.03 steal +0.01 deposit_amt +0.27 lost_amt -0.10   v29  -0.1 v28  +5.1 v25  +2.7
+   empty/col<3            n   16 gain +10.51±7.20  death -0.12 pickup +0.09 steal +0.00 deposit_amt +0.50 lost_amt +0.28   v29 +14.7 v28  +1.0 v25  -3.1
+   empty/col>=3           n  820 gain  +1.08±0.67  death -0.08 pickup +0.27 steal +0.02 deposit_amt +1.03 lost_amt +0.08   v29  +0.5 v28  +1.4 v25  +2.3

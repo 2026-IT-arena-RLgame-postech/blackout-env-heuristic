@@ -1,0 +1,2 @@
+search on top of V29 (q11_why.py play --base v29, o4f_v28r, 4 lanes x 4 seeds x 2 sides, seeds 2100000-015) vs V29:
+search_b29 - plain V29 (mirror): +9.1 +- 8.6 (16 seeds); lane margins +15.2 / -4.2 / +11.0 / +14.2; cost ~1300-2500 s search per 8 matches (fresh V29 instances per rollout batch)
