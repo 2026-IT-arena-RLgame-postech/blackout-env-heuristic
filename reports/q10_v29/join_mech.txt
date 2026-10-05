@@ -1,0 +1,4 @@
+ce,reserve_join=always   vs strategic_v27:reserve_stage=1.5  our Hunters@104 [10, 53, 1, 0] our Hunter->sanctuary @110 median 1.91  enemy Collector closest 101-130 median 1.34  enemy Hunter by 130: 0.08 by 200: 0.56
+0.5,trade_hold=advance   vs strategic_v27:reserve_stage=1.5  our Hunters@104 [10, 54, 0, 0] our Hunter->sanctuary @110 median 1.19  enemy Collector closest 101-130 median 1.12  enemy Hunter by 130: 0.08 by 200: 0.33
+ce,reserve_join=always   vs strategic_v25                    our Hunters@104 [10, 43, 11, 0] our Hunter->sanctuary @110 median 1.86  enemy Collector closest 101-130 median 5.18  enemy Hunter by 130: 0.03 by 200: 0.45
+0.5,trade_hold=advance   vs strategic_v25                    our Hunters@104 [10, 43, 11, 0] our Hunter->sanctuary @110 median 1.19  enemy Collector closest 101-130 median 5.13  enemy Hunter by 130: 0.03 by 200: 0.44
