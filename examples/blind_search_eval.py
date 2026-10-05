@@ -99,6 +99,9 @@ VARIANTS = {
     "o4f_v27r": {"net": V27R, "deep": {**O4, "opp_agg": "mean"}},
     "o4f_v28r": {"net": V28R, "deep": {**O4, "opp_agg": "mean"}},
     "det_v28r": {"net": V28R},
+    # leaf V refit on v28d256 continuations (Q9, docs §39) -- "value": a per-tag leaf V override
+    "o4f_v28r_V1": {"net": V28R, "value": "checkpoints/value/s2v_v28d256/iter1.pt", "deep": {**O4, "opp_agg": "mean"}},
+    "o4f_v28r_V2": {"net": V28R, "value": "checkpoints/value/s2v_v28d256/iter2.pt", "deep": {**O4, "opp_agg": "mean"}},
     # rollout v27d256 (our continuation), opponent model = v28d256 {base, s0, s1, s2}: separates the two roles
     "o4f_v27r_opp28": {"net": V27R, "deep": {**O4, "opp_agg": "mean", "opp_net_idx": [1, 1, 1, 1], "opp_nets": [V28R]}},
     "o4f_v25f": {"net": V25F, "deep": {**O4, "opp_agg": "mean"}},
@@ -170,9 +173,10 @@ def build_searcher(tag: str, base, device: str, args):
     deep = dict(v.get("deep") or {})
     opp = [rollout_policy(res(p), device) for p in deep_opp_nets(deep)]
     net = rollout_policy(net_path, device)
-    s = Searcher(ModNetPolicy(net, opp_nets=opp), ValueNetLeaf(str(REPO / args.value), device), parse_branches(args.branches),
+    value = v.get("value", args.value)
+    s = Searcher(ModNetPolicy(net, opp_nets=opp), ValueNetLeaf(str(REPO / value), device), parse_branches(args.branches),
                  window=args.window, margin=args.margin, base_policy=base, overlay=True, **searcher_kwargs(deep))
-    meta = {"net": net_path, "opp_nets": [res(p) for p in deep_opp_nets(deep)],
+    meta = {"net": net_path, "value": value, "opp_nets": [res(p) for p in deep_opp_nets(deep)],
             **{k: x for k, x in deep.items() if k != "opp_nets"}}
     return s, net, meta
 
