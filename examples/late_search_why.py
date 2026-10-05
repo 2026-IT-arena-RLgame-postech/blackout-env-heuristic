@@ -533,11 +533,11 @@ def match_facts(D):
     return f
 
 
-def match_report(out, opponents, tags):
+def match_report(out, opponents, tags, plain="plain"):
     lines = []
     for opp in opponents:
         try:
-            P = load_tag(out, "plain", opp)
+            P = load_tag(out, plain, opp)
         except FileNotFoundError:
             continue
         fp_ = match_facts(P)
