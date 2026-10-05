@@ -3,10 +3,10 @@
 Q11 recorded the §40 search champion (P17 acting + o4fmean search from 5 s, rollout v28d256) against V29, V28, V25
 and P17 next to plain P17 on the same seeds.  The search's whole gain (+11 to +26 per opponent) accrues between 10
 and 20 s: it deposits more and, against the opponents that stage a reserve (V29, P17), it cuts the enemy's Hunter
-transforms in 10-15 s by a quarter to a half (the second race after the opening trades).  Its deviations from P17
-that are worth something against the true opponent (counterfactual, ``examples/q11_why.py cf``) are spread over
-every class, the largest per deviation being Carriers and, consistently over the opponents, Hunters at 10-20 s that
-head for the sanctuary instead of the nearer prey when an enemy Collector is 1.5-3 tiles away.
+transforms in 10-15 s by a quarter to a half -- it wins the second race after the opening trades more often.  Its
+deviations from P17, valued against the true opponent (counterfactual, ``examples/q11_why.py cf``), add up to the
+measured gain and are spread over every class; per deviation the largest are Carriers and Hunters at 10-15 s
+(+10.9 against V29), without one dominant direction.
 
 In V22-V29 the sanctuary sentry (``StrategicHeuristicV22Teach._hunter_goals``: the Hunter nearest a post on the
 enemy side of the sanctuary strikes enemy Collectors within ``sentry_radius`` of it or holds the post) is posted only
