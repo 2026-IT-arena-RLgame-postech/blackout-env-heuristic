@@ -263,6 +263,33 @@ def test_learner_trains_the_angle_head_and_reports_angle_error():
     assert learner.pop_stats()["train/angle_loss"] == 0.0
 
 
+def test_window_weight_stacks_with_the_opening_weight():
+    from blackout_env.train.distill.run import Learner, parse_args
+
+    argv = ["--build", "x", "--device", "cpu", "--policy-head", "logits", "--action-bins", "32", "--angle-head",
+            "--opening-weight", "3", "--window-weight", "2", "--window-seconds", "4,6"]
+    learner = Learner(parse_args(argv))
+    *_, aux = learner._tensors(_batch())
+    weights = learner.row_weights(torch.ones(4, 5), torch.zeros(4, 5, 3), aux["elapsed"])
+    assert torch.equal(weights[:, 0], torch.tensor([6.0, 1.0, 6.0, 1.0]))
+    learner = Learner(parse_args(argv[:-4] + ["--window-weight", "2", "--window-seconds", "100,300"]))
+    weights = learner.row_weights(torch.ones(4, 5), torch.zeros(4, 5, 3), aux["elapsed"])
+    assert torch.equal(weights[:, 0], torch.tensor([3.0, 2.0, 3.0, 2.0]))
+
+
+def test_stand_seconds_limits_stand_targets_to_its_window():
+    from blackout_env.train.distill.run import Learner, parse_args
+
+    base = ["--build", "x", "--device", "cpu", "--policy-head", "logits", "--action-bins", "32", "--angle-head",
+            "--stand-action"]
+    rows = _batch()  # unit 4 has no label; rows 0, 2 at 5 s of play, rows 1, 3 at 210 s
+    _, _, _, masks, *_ = Learner(parse_args(base))._tensors(rows)
+    assert masks[:, 4, K].tolist() == [True] * 4 and not masks[:, :4, K].any()
+    _, _, _, masks, *_ = Learner(parse_args(base + ["--stand-seconds", "2.5,6"]))._tensors(rows)
+    assert masks[:, 4, K].tolist() == [True, False, True, False] and not masks[:, :4, K].any()
+    assert not masks[1, 4].any()  # outside the window: no target at all (as without --stand-action)
+
+
 def test_label_accuracy_measures_bin_centres_without_offsets():
     acc = LabelAccuracy(torch.device("cpu"))
     logits = torch.zeros(1, 1, K)

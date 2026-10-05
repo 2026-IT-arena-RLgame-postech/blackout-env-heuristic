@@ -346,23 +346,28 @@ def mirror_order(k: int) -> np.ndarray:
 def decode_moves(q: np.ndarray, off: np.ndarray | None, team_b: np.ndarray) -> np.ndarray:
     """[n, 5, K] logits (+ offsets, radians, canonical frame) of n team views -> [n, 5, 2] float32
     world moves, the way ``MyPolicy.act`` and ``joint_moves``' clip turn them into moves.
-    ``team_b`` [n] bool.  K bins, no STAND (a STAND-width head is not supported here)."""
-    n, units, k = q.shape
-    if k % 2:
-        raise ValueError("decode_moves: STAND heads are not supported")
+    ``team_b`` [n] bool.  K bins, or K bins + STAND (odd width, P18b §43: STAND = the zero move,
+    mirrors to itself; offsets cover the K bins only)."""
+    n, units, width = q.shape
+    k = width - (width % 2)
     order = mirror_order(k)
+    if width != k:
+        order = np.r_[order, k]
     qw = np.where(team_b[:, None, None], q[..., order], q)
     j = qw.argmax(axis=-1)  # first max in world order, like np.argmax on MyPolicy's world row
+    stand = j == k
+    j = np.where(stand, 0, j)
     if off is None:  # bin centres, exactly direction_bins.bin_vectors
         from blackout_env.model.direction_bins import bin_vectors
 
         vec = bin_vectors(k)[j]
     else:
-        offw = np.where(team_b[:, None, None], -off[..., order], off)
+        offw = np.where(team_b[:, None, None], -off[..., order[:k]], off)
         o = np.take_along_axis(offw, j[..., None], axis=-1)[..., 0].astype(np.float64)
         ang = 2 * math.pi * j / k + o  # direction_bins.offset_vectors' expression
         vec = np.stack([np.cos(ang), np.sin(ang)], axis=-1).astype(np.float32)
-    return np.clip(vec, F32(-1), F32(1))
+    vec = np.where(stand[..., None], F32(0), vec)
+    return np.clip(vec, F32(-1), F32(1)).astype(F32)
 
 
 # ---------------------------------------------------------------------------------- policies
