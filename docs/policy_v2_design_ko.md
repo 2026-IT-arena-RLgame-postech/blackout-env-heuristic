@@ -3060,3 +3060,14 @@ V29 = `strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve`,
 - 산출물: `reports/q10_v29/` — `analyze_*.txt`(분해), `pilot32/`·`gate64/`·`gate256/`(matches.jsonl, report.txt, gate_summary.txt), `hunters99.txt`, `join_mech.txt`,
   `diag_join/analyze_*.txt`, `scripts/`(gate.sh, hunters99.py, join_mech.py), `unity/`(6절). 원시 기록(`raw/` 102 MB, `diag_join/raw/` 17 MB)은 커밋하지 않음.
 - P18(V29 증류, P17 시작)은 메인이 `cfc2dcb`에서 wsl_gpu로 시작함.
+
+### 6. Unity 확인 (2026-10-05, gpu2 Linux 헤드리스 빌드, 8워커, `reports/q10_v29/unity`, `unity/scripts/run.sh`)
+§40.1과 같은 설정: 시드 4000000–149 × 양 진영 = 짝당 300경기, 상한 425초, 짝 = 같은 시드·진영의 V28(0.5, advance), ± = 시드 SE. 1800경기 87분.
+
+| 상대 | V28 점수차 (승률) | V29 점수차 (승률) | **V29 − V28 (Unity)** | 시뮬 (§41.4, 256시드) |
+|---|---|---|---|---|
+| V28 = 직접 대결 | 0.0±3.5 | +20.8±3.7 (0.64) | **+20.8±2.8** | +24.3±2.1 |
+| P17 | −35.6±3.3 (0.24) | **+26.8±3.6 (0.69)** | **+62.5±4.6** | +68.8±3.4 |
+| V25 | +54.3±2.5 (0.90) | +54.3±2.5 (0.90) | 0.0 (경기 비트 동일) | −0.04±0.04 |
+- 첫 Hunter 결정 99 1800/1800, 경주 전부 동률, 비결정 경기 6/1800. 시뮬과 SE 안에서 같다(직접 대결 −3.5, 대 P17 −6.3, 각 ~1 SE).
+- **V29 = Unity 확인된 교사 챔피언**: Unity에서 P17을 +26.8로 이기는 첫 휴리스틱(V28은 −35.6, §40.1 P17 − V28 +35.6과 일치).
