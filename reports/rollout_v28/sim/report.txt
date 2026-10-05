@@ -1,0 +1,42 @@
+p17                                                  vs p14b           n= 512 margin  +63.0± 1.5 win 0.93 race (0, 512, 0) 2nd (351, 12, 149) H-s 159/35 res100 7.8 (p10 3.6) first 98-:0 99:512 100:0 101+:0 none:0
+v27d256                                              vs p14b           n= 128 margin  +64.7± 2.7 win 0.95 race (0, 128, 0) 2nd (96, 2, 30) H-s 211/59 res100 7.8 (p10 3.2) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:   +3.6 ±  3.1 (64 seeds); both race-tied 128:   +3.6 ±  3.1; identical 0.00
+v28d256                                              vs p14b           n= 256 margin  +60.3± 2.2 win 0.93 race (0, 256, 0) 2nd (182, 6, 68) H-s 188/45 res100 8.0 (p10 3.5) first 98-:0 99:256 100:0 101+:0 none:0
+                                                        - p17:   -1.6 ±  2.5 (128 seeds); both race-tied 256:   -1.6 ±  2.5; identical 0.00
+v28f3x                                               vs p14b           n= 256 margin  +60.1± 2.3 win 0.92 race (0, 256, 0) 2nd (178, 2, 76) H-s 200/45 res100 8.1 (p10 4.3) first 98-:0 99:256 100:0 101+:0 none:0
+                                                        - p17:   -1.8 ±  2.5 (128 seeds); both race-tied 256:   -1.8 ±  2.5; identical 0.00
+p17                                                  vs p16            n= 256 margin  +37.8± 3.7 win 0.76 race (0, 256, 0) 2nd (132, 28, 96) H-s 141/84 res100 7.9 (p10 3.4) first 98-:0 99:256 100:0 101+:0 none:0
+v27d256                                              vs p16            n= 128 margin   +0.4± 6.4 win 0.52 race (0, 128, 0) 2nd (55, 6, 67) H-s 104/104 res100 7.8 (p10 3.2) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:  -38.0 ±  7.0 (64 seeds); both race-tied 128:  -38.0 ±  7.0; identical 0.00
+v28d256                                              vs p16            n= 256 margin  +39.5± 3.7 win 0.77 race (0, 256, 0) 2nd (144, 24, 88) H-s 164/76 res100 7.9 (p10 3.5) first 98-:0 99:256 100:0 101+:0 none:0
+                                                        - p17:   +1.7 ±  3.7 (128 seeds); both race-tied 256:   +1.7 ±  3.7; identical 0.00
+v28f3x                                               vs p16            n= 256 margin  +39.2± 3.6 win 0.77 race (0, 256, 0) 2nd (133, 30, 93) H-s 181/72 res100 8.1 (p10 4.3) first 98-:0 99:256 100:0 101+:0 none:0
+                                                        - p17:   +1.4 ±  4.0 (128 seeds); both race-tied 256:   +1.4 ±  4.0; identical 0.00
+p17                                                  vs p17            n= 256 margin   +0.0± 4.3 win 0.50 race (0, 256, 0) 2nd (43, 170, 43) H-s 90/90 res100 7.9 (p10 3.4) first 98-:0 99:256 100:0 101+:0 none:0
+v27d256                                              vs p17            n= 128 margin  -38.6± 5.3 win 0.24 race (0, 128, 0) 2nd (45, 11, 72) H-s 82/184 res100 7.7 (p10 3.2) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:  -38.6 ±  5.0 (64 seeds); both race-tied 128:  -38.6 ±  5.0; identical 0.00
+v28d256                                              vs p17            n= 256 margin   +3.4± 4.3 win 0.53 race (0, 256, 0) 2nd (43, 173, 40) H-s 87/68 res100 7.9 (p10 3.8) first 98-:0 99:256 100:0 101+:0 none:0
+                                                        - p17:   +3.4 ±  3.9 (128 seeds); both race-tied 256:   +3.4 ±  3.9; identical 0.00
+v28f3x                                               vs p17            n= 256 margin   +0.9± 4.3 win 0.51 race (0, 256, 0) 2nd (37, 174, 45) H-s 91/79 res100 8.1 (p10 4.3) first 98-:0 99:256 100:0 101+:0 none:0
+                                                        - p17:   +0.9 ±  3.9 (128 seeds); both race-tied 256:   +0.9 ±  3.9; identical 0.00
+p17                                                  vs strategic_v25  n= 512 margin  +61.3± 1.6 win 0.92 race (0, 512, 0) 2nd (330, 2, 180) H-s 151/37 res100 7.8 (p10 3.7) first 98-:0 99:512 100:0 101+:0 none:0
+v27d256                                              vs strategic_v25  n= 128 margin  +55.6± 3.9 win 0.88 race (0, 128, 0) 2nd (91, 0, 37) H-s 158/30 res100 7.8 (p10 3.3) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:   -2.3 ±  3.7 (64 seeds); both race-tied 128:   -2.3 ±  3.7; identical 0.00
+v28d256                                              vs strategic_v25  n= 256 margin  +57.7± 2.4 win 0.91 race (0, 256, 0) 2nd (156, 1, 99) H-s 175/37 res100 8.0 (p10 3.3) first 98-:0 99:256 100:0 101+:0 none:0
+                                                        - p17:   -0.3 ±  2.6 (128 seeds); both race-tied 256:   -0.3 ±  2.6; identical 0.00
+v28f3x                                               vs strategic_v25  n= 256 margin  +54.5± 2.7 win 0.88 race (0, 256, 0) 2nd (151, 3, 102) H-s 203/55 res100 8.1 (p10 4.3) first 98-:0 99:256 100:0 101+:0 none:0
+                                                        - p17:   -3.6 ±  2.8 (128 seeds); both race-tied 256:   -3.6 ±  2.8; identical 0.00
+p17                                                  vs strategic_v27:reserve_stage=1.5 n= 512 margin  +35.7± 2.6 win 0.75 race (0, 512, 0) 2nd (201, 2, 309) H-s 147/70 res100 7.9 (p10 3.6) first 98-:0 99:512 100:0 101+:0 none:0
+v27d256                                              vs strategic_v27:reserve_stage=1.5 n= 128 margin  +49.1± 4.5 win 0.84 race (0, 128, 0) 2nd (83, 3, 42) H-s 152/58 res100 7.7 (p10 2.8) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:   +5.0 ±  4.8 (64 seeds); both race-tied 128:   +5.0 ±  4.8; identical 0.00
+v28d256                                              vs strategic_v27:reserve_stage=1.5 n= 256 margin  +31.8± 3.7 win 0.71 race (0, 256, 0) 2nd (101, 1, 154) H-s 164/86 res100 7.9 (p10 3.5) first 98-:0 99:256 100:0 101+:0 none:0
+                                                        - p17:   -4.6 ±  3.9 (128 seeds); both race-tied 256:   -4.6 ±  3.9; identical 0.00
+v28f3x                                               vs strategic_v27:reserve_stage=1.5 n= 256 margin  +32.7± 3.6 win 0.72 race (0, 256, 0) 2nd (101, 1, 154) H-s 233/90 res100 8.1 (p10 4.3) first 98-:0 99:256 100:0 101+:0 none:0
+                                                        - p17:   -3.6 ±  4.0 (128 seeds); both race-tied 256:   -3.6 ±  4.0; identical 0.00
+p17                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n= 256 margin  +41.0± 3.6 win 0.79 race (0, 256, 0) 2nd (111, 0, 145) H-s 169/80 res100 7.9 (p10 3.4) first 98-:0 99:256 100:0 101+:0 none:0
+v27d256                                              vs strategic_v28:reserve_stage=0.5,trade_hold=advance n= 128 margin  -24.0± 5.9 win 0.35 race (0, 128, 0) 2nd (41, 12, 75) H-s 94/95 res100 7.8 (p10 3.2) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:  -70.9 ±  7.5 (64 seeds); both race-tied 128:  -70.9 ±  7.5; identical 0.00
+v28d256                                              vs strategic_v28:reserve_stage=0.5,trade_hold=advance n= 256 margin  +35.4± 3.8 win 0.74 race (0, 256, 0) 2nd (111, 0, 145) H-s 155/73 res100 7.9 (p10 3.5) first 98-:0 99:256 100:0 101+:0 none:0
+                                                        - p17:   -5.5 ±  3.2 (128 seeds); both race-tied 256:   -5.5 ±  3.2; identical 0.00
+v28f3x                                               vs strategic_v28:reserve_stage=0.5,trade_hold=advance n= 256 margin  +36.7± 3.6 win 0.76 race (0, 256, 0) 2nd (121, 0, 135) H-s 208/68 res100 8.1 (p10 4.3) first 98-:0 99:256 100:0 101+:0 none:0
+                                                        - p17:   -4.2 ±  3.6 (128 seeds); both race-tied 256:   -4.2 ±  3.6; identical 0.00

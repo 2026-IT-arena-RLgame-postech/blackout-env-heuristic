@@ -1,0 +1,14 @@
+12 jobs (12 to do): {'self': 4, 'teacher': 2, 'net:/home/cucumbersaurus/p14frozen/p16.pt': 1, 'net:/home/cucumbersaurus/p14frozen/p14b.pt': 1, 'heur:strategic_v28:reserve_stage=0.5,trade_hold=advance': 1, 'heur:strategic_v27:reserve_stage=1.5': 1, 'heur:strategic_v25': 1, 'heur:strategic_v23': 1}
+/home/cucumbersaurus/rv28runs/dagger_v28f3x/part_008.npz 204380 over 0.81 net 255s 1520s
+/home/cucumbersaurus/rv28runs/dagger_v28f3x/part_009.npz 192354 over 0.84 net 249s 1520s
+/home/cucumbersaurus/rv28runs/dagger_v28f3x/part_010.npz 168432 over 0.91 net 244s 1520s
+/home/cucumbersaurus/rv28runs/dagger_v28f3x/part_011.npz 164066 over 0.92 net 245s 1520s
+/home/cucumbersaurus/rv28runs/dagger_v28f3x/part_000.npz 178768 over 0.89 net 197s 1520s
+/home/cucumbersaurus/rv28runs/dagger_v28f3x/part_001.npz 180880 over 0.88 net 219s 1619s
+/home/cucumbersaurus/rv28runs/dagger_v28f3x/part_002.npz 186244 over 0.86 net 240s 1712s
+/home/cucumbersaurus/rv28runs/dagger_v28f3x/part_003.npz 160920 over 0.93 net 231s 1712s
+/home/cucumbersaurus/rv28runs/dagger_v28f3x/part_004.npz 182654 over 0.86 net 269s 1832s
+/home/cucumbersaurus/rv28runs/dagger_v28f3x/part_005.npz 173048 over 0.87 net 250s 1907s
+/home/cucumbersaurus/rv28runs/dagger_v28f3x/part_006.npz 180574 over 0.90 net 186s 2035s
+/home/cucumbersaurus/rv28runs/dagger_v28f3x/part_007.npz 217384 over 0.77 net 190s 2057s
+rows 2189704 2071s
