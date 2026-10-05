@@ -237,7 +237,8 @@ def cmd_cf(args):
     S = load_tag(out, "search" + ("" if args.base == "p17" else "_b29"), args.opponent)
     rng = np.random.default_rng(args.select_seed)
     ch, tk = S["root_choice"].astype(np.int64), S["root_tick"].astype(np.int64)
-    dev = np.nonzero((ch > 0) & (tk >= args.min_tick))[0]
+    dev = np.nonzero((ch > 0) & (tk >= args.min_tick)
+                     & ((S["chunk0"][S["root_game"]] == args.chunk0) if args.chunk0 >= 0 else True))[0]
     sel = np.sort(rng.choice(dev, size=min(args.n_roots, len(dev)), replace=False))
     if args.part is not None:
         k, m = map(int, args.part.split("/"))
@@ -496,6 +497,7 @@ def main():
     q.add_argument("--opponent", required=True)
     q.add_argument("--n-roots", type=int, default=600)
     q.add_argument("--base", default="p17", choices=("p17", "v29"))
+    q.add_argument("--chunk0", type=int, default=-1, help="only roots of this play chunk (its first task index)")
     q.add_argument("--min-tick", type=int, default=0)
     q.add_argument("--select-seed", type=int, default=0)
     q.add_argument("--part", default=None, help="k/m: every m-th selected root from k")
