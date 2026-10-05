@@ -1,0 +1,95 @@
+{
+ "strategic_v28:reserve_stage=0.5,trade_hold=advance/ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt": {
+  "n": 300,
+  "margin": -35.626666666666665,
+  "se": 3.3455309491688903,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1
+ },
+ "strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve/ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt": {
+  "n": 300,
+  "margin": 26.83,
+  "se": 3.58893743416551,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1,
+  "paired": 62.45666666666666,
+  "paired_se": 4.646802409438549,
+  "seeds": 150
+ },
+ "strategic_v28:reserve_stage=0.5,trade_hold=advance/strategic_v25": {
+  "n": 300,
+  "margin": 54.33,
+  "se": 2.462540607387486,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1
+ },
+ "strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve/strategic_v25": {
+  "n": 300,
+  "margin": 54.33,
+  "se": 2.462540607387486,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1,
+  "paired": 0.0,
+  "paired_se": 0.0,
+  "seeds": 150
+ },
+ "strategic_v28:reserve_stage=0.5,trade_hold=advance/strategic_v28:reserve_stage=0.5,trade_hold=advance": {
+  "n": 300,
+  "margin": 0.0,
+  "se": 3.4701209100598756,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 0
+ },
+ "strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve/strategic_v28:reserve_stage=0.5,trade_hold=advance": {
+  "n": 300,
+  "margin": 20.793333333333333,
+  "se": 3.6569037757129297,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 2,
+  "paired": 20.793333333333333,
+  "paired_se": 2.8083017974981725,
+  "seeds": 150
+ }
+}
