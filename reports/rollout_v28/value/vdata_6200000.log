@@ -1,0 +1,7 @@
+opponent self: 256 matches, 256 to play
+[self] 128/256: 28054 rows (traj 8324, branch 19730), 55 root ticks, match len 65s, chunk 386s (branches 303s); total 28054 rows, 393s
+[self] 256/256: 27170 rows (traj 8784, branch 18386), 51 root ticks, match len 69s, chunk 494s (branches 388s); total 55224 rows, 895s
+opponent net:/home/cucumbersaurus/p14frozen/p17.pt: 128 matches, 128 to play
+[net:/home/cucumbersaurus/p14frozen/p17.pt] 128/128: 19193 rows (traj 0, branch 19193), 56 root ticks, match len 63s, chunk 945s (branches 425s); total 74417 rows, 1847s
+opponent rnet:/home/cucumbersaurus/rv27runs/ck/v27d256.pt: 128 matches, 128 to play
+[rnet:/home/cucumbersaurus/rv27runs/ck/v27d256.pt] 128/128: 19976 rows (traj 0, branch 19976), 52 root ticks, match len 79s, chunk 646s (branches 381s); total 94393 rows, 2499s
