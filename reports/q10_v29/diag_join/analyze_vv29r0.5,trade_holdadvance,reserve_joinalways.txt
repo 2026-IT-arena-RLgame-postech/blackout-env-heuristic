@@ -1,0 +1,60 @@
+=== strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=always vs strategic_v25  (ref strategic_v28:reserve_stage=0.5,trade_hold=advance, 64 matches)
+  margin         ours  +55.25  ref  +60.30  diff   -5.05 ±  4.77
+  m0_5           ours   -4.52  ref   -4.52  diff   +0.00 ±  0.17
+  m5_10          ours   -0.17  ref   +2.92  diff   -3.09 ±  1.33
+  m10_30         ours  +38.62  ref  +43.72  diff   -5.09 ±  5.09
+  m30_60         ours  +18.72  ref  +15.91  diff   +2.81 ±  1.77
+  m60_150        ours   +2.59  ref   +2.27  diff   +0.33 ±  0.69
+  hunter_s       ours +155.78  ref +127.99  diff  +27.79 ± 12.96
+  opp_hunter_s   ours  +30.98  ref  +23.79  diff   +7.19 ±  9.98
+  ticks          ours +1415.36  ref +1212.92  diff +202.44 ± 105.12
+  race       w/t/l ours (0, 64, 0)  ref (0, 64, 0)
+  2nd race   w/t/l ours (40, 1, 23)  ref (41, 1, 22)
+  first Hunter ours: 99 64 100 0 other 0 | ref 99 64; opp first 99: 64 / 64
+  reserve99      median ours 7.76 (p10 4.39)  ref 7.76 (p10 4.39)
+  opp_reserve99  median ours 6.99 (p10 3.71)  ref 6.99 (p10 3.71)
+  2nd Hunter decision median ours 198 ref 198; opp 184 / 182
+  events per match (ours - ref, by window):
+    event                 0-5s           5-10s          10-30s          30-60s         60-150s
+    kill_our   0.95 +0.42±0.07 3.92 -0.44±0.2820.92 +0.70±1.3216.58 +2.45±1.67 8.66 +3.88±2.54
+    kill_opp   0.03 -0.03±0.02 0.45 +0.05±0.09 2.41 +0.59±0.63 3.09 +1.47±1.11 3.06 +1.28±3.31
+    death_our  2.86 -0.03±0.02 0.62 +0.03±0.12 2.78 +0.50±0.65 3.16 +1.50±1.11 3.09 +1.28±3.31
+    death_opp  3.78 +0.42±0.07 4.09 -0.45±0.2921.30 +0.61±1.3316.64 +2.48±1.67 8.69 +3.88±2.54
+    death_c_our 0.03 -0.03±0.02 0.39 +0.02±0.09 2.03 +0.41±0.52 2.88 +1.64±1.10 3.06 +1.31±3.29
+    death_c_opp 0.95 +0.42±0.07 3.55 -0.28±0.2516.20 +0.69±0.9813.34 +1.52±1.53 7.91 +3.25±2.24
+    death_h_our 2.83 +0.00±0.00 0.17 -0.02±0.07 0.38 -0.09±0.09 0.06 +0.03±0.03 0.03 +0.00±0.00
+    death_h_opp 2.83 +0.00±0.00 0.17 -0.02±0.07 0.38 -0.09±0.09 0.06 +0.03±0.03 0.03 +0.00±0.00
+    death_k_our 0.00 +0.00±0.00 0.06 +0.03±0.02 0.38 +0.19±0.15 0.22 -0.17±0.18 0.00 -0.03±0.03
+    death_k_opp 0.00 +0.00±0.00 0.38 -0.16±0.10 4.72 +0.02±0.51 3.23 +0.94±0.39 0.75 +0.62±0.52
+    dep_our    3.12 +0.00±0.00 2.59 -0.12±0.07 8.69 -0.64±0.44 4.28 +0.53±0.38 0.84 +0.06±0.26
+    dep_opp    3.95 +0.00±0.02 2.81 +0.08±0.18 3.41 -0.09±0.50 1.19 +0.56±0.29 0.08 +0.03±0.07
+    steal_our  0.00 +0.00±0.00 0.33 -0.11±0.05 1.91 -0.02±0.14 0.27 +0.00±0.11 0.00 -0.02±0.02
+    steal_opp  0.00 +0.00±0.00 0.23 +0.05±0.03 1.03 +0.05±0.18 0.20 +0.08±0.07 0.00 +0.00±0.00
+    pick_our   5.19 +0.00±0.00 2.94 -0.16±0.08 7.30 -0.55±0.35 4.47 +0.70±0.39 0.95 +0.08±0.28
+    pick_opp   6.52 -0.05±0.03 3.52 +0.17±0.18 4.52 -0.17±0.44 1.81 +0.86±0.26 0.16 -0.02±0.10
+    tr_h_our   3.86 +0.00±0.00 2.34 +0.22±0.10 0.33 -0.17±0.08 0.14 -0.02±0.06 0.06 +0.00±0.00
+    tr_h_opp   2.84 +0.00±0.00 0.72 -0.02±0.10 0.22 +0.02±0.10 0.08 +0.00±0.04 0.03 +0.00±0.00
+    tr_k_our   1.00 +0.00±0.00 0.05 +0.02±0.02 0.38 +0.19±0.15 0.17 -0.19±0.17 0.00 -0.03±0.03
+    tr_k_opp   1.00 +0.00±0.00 0.31 -0.14±0.08 4.66 +0.00±0.50 3.00 +0.89±0.38 0.69 +0.61±0.50
+    lost_our   6.77 +0.00±0.00 2.06 +0.20±0.24 2.47 +0.25±0.58 0.98 +0.39±0.26 0.16 -0.09±0.09
+    lost_opp   6.97 +0.00±0.00 5.81 -0.12±0.5312.62 +0.62±1.31 3.72 +1.44±0.76 0.22 +0.00±0.19
+  margin diff by 2nd race (ours, ref) outcome:  [n, mean diff, share of total]
+    ours W ref W: n=  38   +0.47 share -0.06
+    ours W ref T: n=   1   -3.00 share +0.01
+    ours W ref L: n=   1  +20.00 share -0.06
+    ours T ref L: n=   1   +6.00 share -0.02
+    ours L ref W: n=   3  -16.00 share +0.15
+    ours L ref L: n=  20  -15.80 share +0.98
+  race tied (ours): 64
+  reserve (ours):
+    reserve@98 p10/25/50/75/90 0.02 0.04 0.06 0.11 4.28; Hunters at 99: [0, 0, 0, 10, 54, 0]
+    next Hunter after 99: ours first 24 tie 1 opp first 39
+    reserve in [0, 0.5): n= 54 margin  +59.0  ours-next median 198  opp-next median 169  4 Hunters at 99: 54
+    reserve in [1.4, 99): n= 10 margin  +35.1  ours-next median 166  opp-next median 184  4 Hunters at 99: 0
+  reserve (ref):
+    reserve@98 p10/25/50/75/90 0.34 0.36 0.37 0.41 4.28; Hunters at 99: [0, 0, 0, 64, 0, 0]
+    next Hunter after 99: ours first 37 tie 1 opp first 26
+    reserve in [0, 0.5): n= 53 margin  +65.5  ours-next median 102  opp-next median 170  4 Hunters at 99: 0
+    reserve in [0.5, 1.0): n=  1 margin  +44.0  ours-next median 103  opp-next median 313  4 Hunters at 99: 0
+    reserve in [1.4, 99): n= 10 margin  +34.3  ours-next median 166  opp-next median 184  4 Hunters at 99: 0
+
