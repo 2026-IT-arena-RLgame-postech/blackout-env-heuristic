@@ -13,6 +13,6 @@ V28="strategic_v28:reserve_stage=0.5,trade_hold=advance"
   --workers ${EW:-11} --chunk 16 --device cuda --out $OUT/h99
 .venv/bin/python reports/p20_diag/scripts/diag.py summary --out $OUT/h99 2>/dev/null | grep -v "^ " > $OUT/h99.txt
 .venv/bin/python examples/v27_eval.py play --seeds ${SS:-16} --seed0 1800000 --cap-s 425 --stop-exhausted --device cuda --chunk 16 \
-  --workers ${EW:-11} --out $OUT/full --ours "$OURS" --opponent "$V28;p17"
+  --workers ${EW:-11} --out $OUT/full --ours "$OURS" --opponent "${SOPP:-$V28;p17}"
 .venv/bin/python examples/v27_eval.py report --base p20 --out $OUT/full > $OUT/full.txt
 echo "SCREEN DONE" >> $OUT/stdout.log

@@ -1,0 +1,15 @@
+200 lr=9.89e-05 reserve_rows=0.0041 loss=0.0000 steps/s=1.78
+400 lr=9.58e-05 reserve_rows=0.0037 loss=0.0000 steps/s=0.65
+600 lr=9.07e-05 reserve_rows=0.0040 loss=0.0000 steps/s=0.44
+800 lr=8.38e-05 reserve_rows=0.0035 loss=0.0000 steps/s=0.34
+1000 lr=7.55e-05 reserve_rows=0.0035 loss=0.0000 steps/s=0.43
+1200 lr=6.62e-05 reserve_rows=0.0033 loss=0.0000 steps/s=0.79
+1400 lr=5.61e-05 reserve_rows=0.0032 loss=0.0000 steps/s=0.57
+1600 lr=4.59e-05 reserve_rows=0.0031 loss=0.0000 steps/s=0.60
+1800 lr=3.59e-05 reserve_rows=0.0032 loss=0.0000 steps/s=0.59
+2000 lr=2.65e-05 reserve_rows=0.0034 loss=0.0000 steps/s=0.52
+2200 lr=1.82e-05 reserve_rows=0.0035 loss=0.0000 steps/s=1.57
+2400 lr=1.14e-05 reserve_rows=0.0032 loss=0.0000 steps/s=0.45
+2600 lr=6.24e-06 reserve_rows=0.0034 loss=0.0000 steps/s=0.77
+2800 lr=3.07e-06 reserve_rows=0.0032 loss=0.0000 steps/s=0.48
+3000 lr=2.00e-06 reserve_rows=0.0032 loss=0.0000 steps/s=0.93
