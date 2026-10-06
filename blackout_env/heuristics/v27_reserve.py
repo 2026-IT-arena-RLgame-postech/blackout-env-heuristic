@@ -50,7 +50,7 @@ class StrategicHeuristicV27(StrategicHeuristicV25):
         ctx = self._teach_ctx
         if any(e.cls == HUNTER and not e.in_base for e in ctx["enemies"]):
             return goals
-        tiles = tuple(sorted((int(y), int(x)) for y, x in np.argwhere((graphic[..., SITE_HUNTER] > 0.5) & walkable)))
+        tiles = self._site_tiles(graphic, SITE_HUNTER, walkable)  # sorted (row-major)
         if not tiles:
             return goals
         shape = graphic.shape[:2]

@@ -58,7 +58,7 @@ class StrategicHeuristicV28(StrategicHeuristicV27):
             return goals
         if any(min(math.dist(t, o) for o in ours) > self.trade_radius for t in theirs):
             return goals
-        tiles = tuple(sorted((int(y), int(x)) for y, x in np.argwhere((graphic[..., SITE_HUNTER] > 0.5) & walkable)))
+        tiles = self._site_tiles(graphic, SITE_HUNTER, walkable)  # sorted (row-major)
         if not tiles:
             return goals
         planner = self._planner(np.ascontiguousarray(walkable, dtype=bool), tiles, UNIT_RADIUS[COLLECTOR])

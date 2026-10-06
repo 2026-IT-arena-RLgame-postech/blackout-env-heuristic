@@ -82,6 +82,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from ..env.constants import unit_index
+from . import _shared
 from .spread_deposit import StrategicHeuristicV4
 from .strategic import CARRIER, COLLECTOR, HUNTER, SITE_CARRIER, SITE_HUNTER, SPAWN_ENEMY, STORAGE_ALLY, WALL
 from .v17_planner import StrategicHeuristicV17
@@ -102,6 +103,58 @@ STORAGE_BAND = 1.0  # V3 storage cost units = tiles
 _CANCELLING = 0.5  # |mean of the union's unit vectors| below this = tied goals on opposite sides
 _PROGRESS_TOLERANCE = 1e-3
 _ARRIVAL_RADIUS = 0.22  # StrategicHeuristic._navigate: closer than this counts as arrived
+
+try:
+    from numba import njit
+except ImportError:  # pragma: no cover - numba is a project dependency
+    njit = None
+
+# Speed (O1, docs/policy_v2_design_ko.md "O1"): a label mask has 256 possible values, so every
+# quantity that depends on the mask alone is tabulated once, by the very expressions it replaces
+# (bit-identical).  ``_BITS`` maps ``mask.tobytes()`` to the mask's bit pattern (bit i = move i).
+_MASKS = np.array([[(bits >> i) & 1 for i in range(N_DIRECTIONS)] for bits in range(256)], dtype=bool)
+_MASKS.flags.writeable = False
+_BITS = {_MASKS[bits].tobytes(): bits for bits in range(256)}
+_MEAN = [None] + [DIRECTIONS[_MASKS[bits]].mean(axis=0) for bits in range(1, 256)]  # DIRECTIONS[mask].mean(axis=0)
+_MEAN_NORM = [math.nan] + [float(np.linalg.norm(_MEAN[bits])) for bits in range(1, 256)]
+with np.errstate(invalid="ignore", divide="ignore"):  # cancelling masks are never valid labels
+    _ACTION = [None] + [(_MEAN[bits] / float(np.linalg.norm(_MEAN[bits]))).astype(np.float32) for bits in range(1, 256)]
+for _v in _MEAN[1:] + _ACTION[1:]:
+    _v.flags.writeable = False
+_SQRT2 = math.sqrt(2.0)
+_MOVES_DR = np.array([m[0] for m in MOVES], dtype=np.int64)
+_MOVES_DC = np.array([m[1] for m in MOVES], dtype=np.int64)
+_EVASION_SLACK = 1e-4  # tiles/12: float64 pre-filter margin over the float32 distance (error < 1e-6)
+
+
+def _progress_bits_py(distance, pos_r, pos_c, walkable, dr, dc, root2, tolerance):
+    """``TeachLabeller._progress_moves`` as a bit pattern (the reference the kernel must match)."""
+    h, w = distance.shape
+    here = float(distance[pos_r, pos_c])
+    if not math.isfinite(here) or here <= 0.0:
+        return 0
+    progress = [-math.inf] * 8
+    for i in range(8):
+        nr, nc = pos_r + dr[i], pos_c + dc[i]
+        if not (0 <= nr < h and 0 <= nc < w) or not walkable[nr, nc]:
+            continue
+        if dr[i] != 0 and dc[i] != 0 and not (walkable[pos_r, nc] and walkable[nr, pos_c]):
+            continue
+        step = root2 if dr[i] != 0 and dc[i] != 0 else 1.0
+        progress[i] = (here - float(distance[nr, nc])) / step
+    best = -math.inf
+    for i in range(8):
+        if progress[i] > best:
+            best = progress[i]
+    bits = 0
+    if math.isfinite(best) and best > 0.0:
+        for i in range(8):
+            if progress[i] >= best - tolerance:
+                bits |= 1 << i
+    return bits
+
+
+_progress_bits = njit(cache=True)(_progress_bits_py) if njit is not None else _progress_bits_py
 
 Goal = tuple[tuple[tuple[int, int], ...], str]  # (goal tiles, kind): progress toward the nearest tile
 
@@ -132,6 +185,9 @@ def label_action(label: TeachLabel) -> np.ndarray:
     still where the teacher has no label (interacting, nowhere to go)."""
     if not label.valid:
         return np.zeros(2, dtype=np.float32)
+    bits = _BITS.get(label.mask.tobytes()) if label.mask.dtype == np.bool_ and label.mask.shape == (N_DIRECTIONS,) else None
+    if bits:
+        return _ACTION[bits].copy()  # the expression below, tabulated
     vector = DIRECTIONS[label.mask].mean(axis=0)  # never cancels: see _CANCELLING
     return (vector / float(np.linalg.norm(vector))).astype(np.float32)
 
@@ -152,6 +208,8 @@ class TeachLabeller:
         super().reset()
         self._teach_distance_cache.clear()
         self._teach_walkable = None
+        self._o1_memo = None
+        self._enemy_rows_entry = None
 
     def teach(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, TeachLabel]:
         raise NotImplementedError
@@ -199,7 +257,7 @@ class TeachLabeller:
             if missing <= 0 or not candidates:
                 continue
             # the enemy's own sanctuary sits inside its base, where we cannot walk
-            tiles = tuple((int(y), int(x)) for y, x in np.argwhere((graphic[..., channel] > 0.5) & walkable))
+            tiles = self._site_tiles(graphic, channel, walkable)
             if not tiles:
                 continue
             distance = self._distance_to(walkable, tiles)
@@ -236,18 +294,25 @@ class TeachLabeller:
                 single[int(np.argmax(DIRECTIONS @ toward))] = True
                 return TeachLabel(single, True, kind, pos, goals)
 
-        mask = np.zeros(N_DIRECTIONS, dtype=bool)
+        bits = 0
         for tiles, _ in goals:
-            mask |= self._progress_moves(self._distance_to(walkable, tiles), pos, walkable, shape)
-        if not mask.any() or float(np.linalg.norm(DIRECTIONS[mask].mean(axis=0))) < _CANCELLING:
+            bits |= self._progress_bits(self._distance_to(walkable, tiles), pos, walkable, shape)
+        if not bits or _MEAN_NORM[bits] < _CANCELLING:
             return _invalid(goals)  # nowhere to go, or tied goals pulling opposite ways
         kind, target = goals[0][1], goals[0][0][0]
-        evade = self._evasion(state, states, DIRECTIONS[mask].mean(axis=0))
-        if evade is not None and not mask[evade]:
+        evade = self._evasion(state, states, _MEAN[bits])
+        if evade is not None and not (bits >> evade) & 1:
             single = np.zeros(N_DIRECTIONS, dtype=bool)
             single[evade] = True
             return TeachLabel(single, True, kind, target, goals, evading=True)
-        return TeachLabel(mask, True, kind, target, goals)
+        return TeachLabel(_MASKS[bits].copy(), True, kind, target, goals)
+
+    @staticmethod
+    def _progress_bits(distance: np.ndarray, pos: tuple[int, int], walkable: np.ndarray, shape: tuple[int, int]) -> int:
+        """``_progress_moves`` as a bit pattern (bit i = compass move i), by the numba kernel."""
+        if distance.dtype != np.float32 or walkable.dtype != np.bool_ or distance.shape != tuple(shape):
+            return int(np.packbits(TeachLabeller._progress_moves(distance, pos, walkable, shape), bitorder="little")[0])
+        return _progress_bits(distance, pos[0], pos[1], walkable, _MOVES_DR, _MOVES_DC, _SQRT2, _PROGRESS_TOLERANCE)
 
     @staticmethod
     def _progress_moves(
@@ -279,11 +344,18 @@ class TeachLabeller:
         cls = self._class_id(state)
         if not (self._is_holding(state) or cls == CARRIER or (self.evade_empty_collectors and cls == COLLECTOR)):
             return None
+        # Enemies clearly outside the threat radius (float64 distance beyond it by a margin far above
+        # the float32 rounding of the exact test) add nothing: only the others take the exact path.
+        radius = self.threat_radius
+        sx, sy = float(state[0]), float(state[1])
+        near = [row for row, hunter, ex, ey in self._enemy_rows(states)
+                if (hunter or cls == CARRIER) and math.hypot(sx - ex, sy - ey) < radius + _EVASION_SLACK]
+        if not near:
+            return None
         total = delta.astype(np.float32).copy()
         repelled = False
-        for enemy in states[states[:, 2] < 0]:
-            if not (self._class_id(enemy) == HUNTER or cls == CARRIER):
-                continue
+        for row in near:
+            enemy = states[row]
             away = state[:2] - enemy[:2]
             dist = float(np.sqrt(away.dot(away)))
             if 1e-5 < dist < self.threat_radius:
@@ -293,15 +365,66 @@ class TeachLabeller:
             return None
         return int(np.argmax(DIRECTIONS @ total))
 
+    def _enemy_rows(self, states: np.ndarray) -> list[tuple[int, bool, float, float]]:
+        """(row, is Hunter, x, y) of every enemy row of ``states`` (``states[:, 2] < 0``), per array."""
+        entry = getattr(self, "_enemy_rows_entry", None)
+        tick = getattr(self, "_tick", None)
+        if entry is not None and entry[0] is states and entry[2] == tick:
+            return entry[1]
+        rows = [(i, self._class_id(states[i]) == HUNTER, float(states[i, 0]), float(states[i, 1]))
+                for i in np.flatnonzero(states[:, 2] < 0).tolist()]
+        self._enemy_rows_entry = (states, rows, tick)
+        return rows
+
+    def _tick_memo(self) -> dict:
+        """A dict that lives for the current decision tick (``_tick``): per-tick memos of pure
+        functions of arrays held by reference (identity keys stay valid while the entry lives)."""
+        tick = getattr(self, "_tick", None)
+        memo = getattr(self, "_o1_memo", None)
+        if memo is None or memo[0] != tick or len(memo[1]) > 4096:
+            memo = self._o1_memo = (tick, {})
+        return memo[1]
+
+    def _site_tiles(self, graphic: np.ndarray, channel: int, walkable: np.ndarray) -> tuple[tuple[int, int], ...]:
+        """``tuple((int(y), int(x)) for y, x in np.argwhere((graphic[..., channel] > 0.5) & walkable))`` (row-major,
+        i.e. already sorted), memoised per tick and array pair."""
+        memo = self._tick_memo()
+        key = ("site_tiles", id(graphic), channel, id(walkable))
+        hit = memo.get(key)
+        if hit is not None and hit[0] is graphic and hit[1] is walkable:
+            return hit[2]
+        tiles = tuple((int(y), int(x)) for y, x in np.argwhere((graphic[..., channel] > 0.5) & walkable))
+        memo[key] = (graphic, walkable, tiles)
+        return tiles
+
     def _distance_to(self, walkable: np.ndarray, tiles: tuple[tuple[int, int], ...] | tuple[int, int]) -> np.ndarray:
         """Path distance from every cell to the nearest of ``tiles`` (one tile or a cluster)."""
+        memo = self._tick_memo()
+        try:
+            mkey = ("teach_distance_to", id(walkable), tiles, getattr(self, "field_goals", None))
+            hit = memo.get(mkey)
+        except TypeError:  # unhashable tiles
+            mkey, hit = None, None
+        if hit is not None and hit[0] is walkable:
+            return hit[1]
+        cached = self._teach_distance_to(walkable, tiles)
+        if mkey is not None:
+            memo[mkey] = (walkable, cached)
+        return cached
+
+    def _teach_distance_to(self, walkable: np.ndarray, tiles) -> np.ndarray:
         if tiles and isinstance(tiles[0], (int, np.integer)):
             tiles = (tuple(tiles),)
         key = (walkable.tobytes(), tuple(sorted(tiles)))
         cached = self._teach_distance_cache.get(key)
         if cached is None:
             # 8-neighbour, no corner cutting => symmetric, so a map from a tile is a map to it.
-            cached = np.minimum.reduce([self._distance_map(walkable, tile) for tile in key[1]])
+            fn = self._distance_map
+            shared_key = ("goal", getattr(fn, "__func__", fn), walkable.shape, key[0], key[1])
+            cached = _shared.GOAL_FIELDS.get(shared_key)
+            if cached is None:
+                cached = _shared.GOAL_FIELDS.put(shared_key, _shared.frozen(
+                    np.minimum.reduce([fn(walkable, tile) for tile in key[1]])))
             if len(self._teach_distance_cache) > 4096:
                 self._teach_distance_cache.clear()
             self._teach_distance_cache[key] = cached

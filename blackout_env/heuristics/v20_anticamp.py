@@ -37,6 +37,23 @@ DANGER_TILES = 3.0  # cells this close to a camping Hunter are avoided when a ro
 BREAKOUT_UNITS = 2  # blocked units waiting in the base that leave together
 
 
+_DISCS: dict = {}
+
+
+def _disc(shape: tuple[int, int], r: int, c: int, radius: float) -> np.ndarray:
+    """``(rows - r) ** 2 + (cols - c) ** 2 <= radius * radius`` over ``np.mgrid`` (read-only, cached)."""
+    key = (shape, r, c, radius)
+    disc = _DISCS.get(key)
+    if disc is None:
+        rows, cols = np.mgrid[: shape[0], : shape[1]]
+        disc = (rows - r) ** 2 + (cols - c) ** 2 <= radius * radius
+        disc.flags.writeable = False
+        if len(_DISCS) >= 65536:
+            _DISCS.clear()
+        _DISCS[key] = disc
+    return disc
+
+
 class StrategicHeuristicV20Teach(StrategicHeuristicV17Teach):
     """V17-teach plus spawn-camp counterplay: route around, break out together, run from chasers."""
 
@@ -89,10 +106,9 @@ class StrategicHeuristicV20Teach(StrategicHeuristicV17Teach):
 
     @staticmethod
     def _near(shape: tuple[int, int], points: list[tuple[int, int]], radius: float) -> np.ndarray:
-        rows, cols = np.mgrid[: shape[0], : shape[1]]
         mask = np.zeros(shape, dtype=bool)
         for r, c in points:
-            mask |= (rows - r) ** 2 + (cols - c) ** 2 <= radius * radius
+            mask |= _disc(tuple(shape), r, c, radius)
         return mask
 
 

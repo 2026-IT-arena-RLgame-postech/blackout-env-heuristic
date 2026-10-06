@@ -1,0 +1,51 @@
+Tue Oct  6 23:04:16 2026    /private/tmp/claude-501/-Users-mac-project-26rl/cf90b6b9-cf12-47d9-8496-6b6e85b4751b/scratchpad/o1/prof_new.prof
+
+         61967662 function calls (61957584 primitive calls) in 18.656 seconds
+
+   Ordered by: internal time
+   List reduced from 547 to 40 due to restriction <40>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+     4228    0.617    0.000    0.619    0.000 any_angle.py:384(anyangle_field_numba)
+    85049    0.583    0.000    0.583    0.000 any_angle.py:225(_best_waypoint)
+    75235    0.570    0.000    0.570    0.000 race_path.py:240(_query)
+    24385    0.530    0.000    1.279    0.000 v17_planner.py:641(_economy_pairs)
+    29078    0.507    0.000    1.057    0.000 my_obs_preprocessor.py:157(preprocess_agent_states)
+   461923    0.482    0.000    0.716    0.000 strategic.py:439(_to_pixel)
+    29078    0.472    0.000    0.605    0.000 my_obs_preprocessor.py:241(preprocess_graphic)
+    29078    0.370    0.000    1.893    0.000 v17_planner.py:331(_context)
+   157362    0.337    0.000    0.973    0.000 teach.py:342(_evasion)
+    29078    0.309    0.000    2.277    0.000 v22_teacher.py:138(_context)
+   212437    0.301    0.000    2.988    0.000 teach.py:273(_label)
+   437588    0.290    0.000    0.290    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+     1660    0.286    0.000    0.287    0.000 any_angle.py:575(_node_adjacency_from)
+  2109266    0.284    0.000    0.284    0.000 {built-in method builtins.round}
+  3243271    0.276    0.000    0.276    0.000 {method 'get' of 'dict' objects}
+   249668    0.273    0.000    0.273    0.000 {method 'nonzero' of 'numpy.ndarray' objects}
+  3124092    0.260    0.000    0.323    0.000 {built-in method builtins.max}
+   728517    0.245    0.000    0.322    0.000 teach.py:379(_tick_memo)
+    88684    0.243    0.000    2.087    0.000 any_angle.py:866(_any_angle)
+   222976    0.222    0.000    0.294    0.000 teach.py:310(_progress_bits)
+  1019528    0.217    0.000    0.271    0.000 strategic.py:160(_class_id)
+   409204    0.214    0.000    1.871    0.000 teach.py:400(_distance_to)
+    29078    0.200    0.000    2.078    0.000 v17_teach.py:132(_economy_goals)
+  3540863    0.197    0.000    0.267    0.000 {built-in method builtins.getattr}
+    58156    0.183    0.000    0.285    0.000 v17_planner.py:248(_stores)
+   290780    0.176    0.000    0.326    0.000 v17_planner.py:205(_parse_unit)
+       18    0.167    0.009   18.793    1.044 replay.py:22(run)
+    29078    0.163    0.000   16.171    0.001 v22_teacher.py:178(teach)
+    24385    0.163    0.000    0.363    0.000 strategic.py:504(_special_pixels)
+2096614/2086950    0.157    0.000    0.345    0.000 {built-in method builtins.min}
+  2123627    0.153    0.000    0.153    0.000 {method 'tolist' of 'numpy.ndarray' objects}
+   456168    0.150    0.000    0.150    0.000 {built-in method numpy.array}
+    29078    0.144    0.000    2.566    0.000 v25_race.py:97(_composition_goals)
+   604565    0.134    0.000    0.134    0.000 any_angle.py:701(pixel_position)
+   166848    0.125    0.000    1.334    0.000 any_angle.py:987(_teach_distance_to)
+   211756    0.125    0.000    6.057    0.000 any_angle.py:853(_label)
+    29078    0.121    0.000    1.976    0.000 state.py:474(obs_from_raw)
+    29078    0.121    0.000    0.273    0.000 replay.py:12(state_repr)
+    68845    0.119    0.000    0.405    0.000 teach.py:388(_site_tiles)
+    29078    0.118    0.000    1.774    0.000 v22_teacher.py:209(_composition_goals)
+
+
+

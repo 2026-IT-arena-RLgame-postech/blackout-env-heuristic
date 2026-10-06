@@ -49,7 +49,7 @@ class StrategicHeuristicV29(StrategicHeuristicV28):
         if self.reserve_join == "always":
             self.joining = True
             return goals
-        tiles = tuple(sorted((int(y), int(x)) for y, x in np.argwhere((graphic[..., SITE_HUNTER] > 0.5) & walkable)))
+        tiles = self._site_tiles(graphic, SITE_HUNTER, walkable)  # sorted (row-major)
         if not tiles:
             return goals
         shape = graphic.shape[:2]
