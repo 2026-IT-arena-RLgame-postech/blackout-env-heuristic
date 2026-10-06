@@ -83,3 +83,15 @@ def test_student_cuda_graph_is_exact(monkeypatch):
         ref, got = eager(*x), graphed(*x)
         for r, o in zip(ref, got):
             assert torch.equal(r, o)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="fp16c is a CUDA path")
+def test_fp16c_matches_fp16_and_pads():
+    net = _student()
+    g, t, a = _inputs(5)  # 10 views -> padded to the 16 bucket
+    q0, o0 = NetPolicy(net, device="cuda").forward(g, t, a)
+    pol = NetPolicy(net, device="cuda", precision="fp16c")
+    q1, o1 = pol.forward(g, t, a)
+    assert q1.shape == q0.shape and np.abs(q1 - q0).max() < 0.05 and np.abs(o1 - o0).max() < 0.05
+    assert all(p.device.type == "cuda" for p in net.parameters())  # compile_parts works on a copy
+    assert not any("_orig_mod" in k for k in net.state_dict())
