@@ -3,7 +3,7 @@
 # warm-started from v28d256.  Q9's stage-1 data were P17's Unity collection shards; P20's shards live on wsl
 # (reserved), so stage 1 uses simulator games that P20 drives (rollout_net_collect.py --net none: team A = P20,
 # team B = a pool), labelled by P20 (arc = arg max +- 1, KL targets = its logits / offsets).
-#   data   : P20-driven sim games, 1536 x 150 s (train) + 512 x every-8 (val), seeds 5600000+ / 5690000+
+#   data   : P20-driven sim games, 1536 x 150 s every 3rd decision (train) + 512 x every-8 (val), seeds 5600000+ / 5690000+
 #   stage 1: 30k steps lr 2e-3 OneCycle, KL to P20 1.0, init = v28d256
 #   DAgger : the stage-1 net drives (teacher-frac 0.1), P20 labels both teams' views (GPU), seeds 5610000+
 #   stage 2: 20k steps from stage 1, 50 % DAgger rows, lr 1e-3, KL 0.5
@@ -42,7 +42,7 @@ TR="examples/rollout_net_train.py train --data $D --amp fp16 --compile --eval-ev
 [ -f $D/val.npz ] || { PERJOB=64 collect $R/s1val s1val --net none --pool "$POOL1" --games 512 --every 8 --seed0 5690000 \
                        && mv $R/s1val/train.npz $D/val.npz; }
 echo "$(date +%T) val done"
-[ -f $D/train.npz ] || { collect $R/s1train s1train --net none --pool "$POOL1" --games 1536 --seed0 5600000 \
+[ -f $D/train.npz ] || { collect $R/s1train s1train --net none --pool "$POOL1" --games 1536 --every 3 --seed0 5600000 \
                          && mv $R/s1train/train.npz $D/train.npz; }
 echo "$(date +%T) s1 data done"
 [ -f $CK/r20d256_s1.pt.done ] || { $PY $TR --out $CK/r20d256_s1.pt --init $V28D --steps ${S1:-30000} --lr 2e-3 --p11-kl 1.0 \
