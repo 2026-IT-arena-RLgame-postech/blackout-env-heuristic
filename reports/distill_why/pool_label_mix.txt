@@ -1,0 +1,39 @@
+opponent                                 games join@85-99 rows/g hold@85-99 rows/g games w/ join  h99=4
+mixture                                     32              0.00              2.44          0.00   0.00
+p16                                         32             10.09              0.62          0.81   0.56
+p17                                         32             10.16              0.56          0.81   0.62
+p19                                         32             10.22              0.66          0.84   0.56
+perturb:dither=0.1:strategic_v19            32              0.00              2.44          0.00   0.00
+perturb:eps=0.05:strategic_v19              32              0.00              2.44          0.00   0.00
+perturb:lag=2:strategic_v17                 32              0.00              2.44          0.00   0.00
+perturb:sticky=3:strategic_v21              32              0.00              2.44          0.00   0.00
+strategic_cargo_hunter                      32              0.00              2.44          0.00   0.00
+strategic_duelist                           32              0.00              2.44          0.00   0.00
+strategic_early_rush                        32              0.00              2.44          0.00   0.00
+strategic_fortress                          32              0.00              2.44          0.00   0.00
+strategic_raider                            32              0.00              2.44          0.00   0.00
+strategic_v27:reserve_stage=1.0             32             10.16              0.56          0.81   0.62
+v28                                         32             10.16              0.56          0.81   0.62
+v29                                         32             10.16              0.56          0.81   0.62
+v30                                         32             10.16              0.56          0.81   0.62
+pool-weighted join rows (staged reserve, ticks 85-98, teacher moving in) per match: 1.871  (simulated weight 0.77 of 1)
+unit-rows per training match ~ 35 s x 25 x 5 = 4375; join-row share ~ 4.3e-04
+opponent                             rows/g(4th Coll <=1.5 tiles, t88-98)  toward  stand  away(cos<0)  side
+mixture                                  8.28    5.97    2.06    0.25    0.00
+p16                                      8.28    7.47    0.56    0.25    0.00
+p17                                      8.28    7.50    0.53    0.25    0.00
+p19                                      8.28    7.47    0.56    0.25    0.00
+perturb:dither=0.1:strategic_v19         8.28    5.97    2.06    0.25    0.00
+perturb:eps=0.05:strategic_v19           8.28    5.97    2.06    0.25    0.00
+perturb:lag=2:strategic_v17              8.28    5.97    2.06    0.25    0.00
+perturb:sticky=3:strategic_v21           8.28    5.97    2.06    0.25    0.00
+strategic_cargo_hunter                   8.28    5.97    2.06    0.25    0.00
+strategic_duelist                        8.28    5.97    2.06    0.25    0.00
+strategic_early_rush                     8.28    5.97    2.06    0.25    0.00
+strategic_fortress                       8.28    5.97    2.06    0.25    0.00
+strategic_raider                         8.28    5.97    2.06    0.25    0.00
+strategic_v27:reserve_stage=1.0          8.28    7.50    0.53    0.25    0.00
+v28                                      8.28    7.50    0.53    0.25    0.00
+v29                                      8.28    7.50    0.53    0.25    0.00
+v30                                      8.28    7.50    0.53    0.25    0.00
+pool-weighted per match (toward, stand, away, side): [4.88 1.31 0.19 0.  ] of simulated weight 0.77
