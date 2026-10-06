@@ -3426,6 +3426,18 @@ V30 = `strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,s
 - 산출물: `reports/p20_diag/`(h99, h99_snap, scripts), `reports/p20_sim/`(64시드 matches·report), `reports/p20_gate256/`(병합 matches, report.txt, `merge.sh`; gpu2 부분 88행 포함),
   `reports/p20_train/`(launch_pilot, eval_net, screen_h99, gate256_*, screen_a/b), `reports/p20_pilot_a/`. 코드는 `run.py --join-weight/--join-seconds`.
 
+### 5. Unity 이정표 (2026-10-06, poscat_gpu1 CPU 8워커, `reports/p20_unity`, `scripts/run.sh`)
+P20과 P17(기준)을 V30·V28(0.5, advance)·P17·V25와 300경기/짝(150시드 × 양 진영, 시드 4000000+, 상한 425초), 2400경기 3.0시간. Δ = P20 − P17 같은 시드·진영 짝.
+
+| 상대 | P17 점수차 | P20 점수차 (승률) | **Unity Δ** | 시뮬 Δ (256시드) |
+|---|---|---|---|---|
+| V30 | −38.5±3.3 | **+17.1±3.5 (0.64)** | **+55.6±4.2** | +55.0 |
+| P17 = 직접 | 0.0 | **+36.6±3.5 (0.78)** | **+36.6±3.0** | +43.1±2.3 |
+| V28(0.5, advance) | +35.6±3.3 | +49.7±2.9 (0.85) | **+14.1±3.4** | +9.4±2.4 |
+| V25 | +60.4±2.2 | +63.1±1.9 (0.95) | +2.7±2.6 | +4.4 |
+- 경주 전부 동률, 첫 Hunter 결정 99 300/300(모든 짝), 비동기 경기 0–2/300. 시뮬과 SE 안팎에서 일치(직접은 6.5 낮지만 1.7 SE).
+- **P20 = Unity 확인된 학생 챔피언**: P17을 +36.6, 교사 V30을 +17.1로 이긴다. 퇴보 없음.
+
 
 ## 48. D1: 증류가 실패하는 이유 (2026-10-06, 브랜치 `feat/distill-why`, `examples/d1_why.py`, `examples/d1_probe.py`, `reports/distill_why`)
 

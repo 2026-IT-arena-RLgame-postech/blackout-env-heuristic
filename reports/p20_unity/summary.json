@@ -1,0 +1,126 @@
+{
+ "ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt/ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt": {
+  "n": 300,
+  "margin": 0.0,
+  "se": 4.118920640941848,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 2
+ },
+ "ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt/ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt": {
+  "n": 300,
+  "margin": 36.64,
+  "se": 3.470832631045658,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 0,
+  "paired": 36.64,
+  "paired_se": 3.0479836001602165,
+  "seeds": 150
+ },
+ "ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt/strategic_v25": {
+  "n": 300,
+  "margin": 60.42666666666667,
+  "se": 2.177731083460305,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1
+ },
+ "ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt/strategic_v25": {
+  "n": 300,
+  "margin": 63.126666666666665,
+  "se": 1.9011795513212177,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1,
+  "paired": 2.7,
+  "paired_se": 2.6172248225576804,
+  "seeds": 150
+ },
+ "ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt/strategic_v28:reserve_stage=0.5,trade_hold=advance": {
+  "n": 300,
+  "margin": 35.626666666666665,
+  "se": 3.34553094916889,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1
+ },
+ "ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt/strategic_v28:reserve_stage=0.5,trade_hold=advance": {
+  "n": 300,
+  "margin": 49.74,
+  "se": 2.935356528382532,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 0,
+  "paired": 14.113333333333333,
+  "paired_se": 3.4354909924832087,
+  "seeds": 150
+ },
+ "ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt/strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true": {
+  "n": 300,
+  "margin": -38.52333333333333,
+  "se": 3.2983135393169896,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1
+ },
+ "ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt/strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true": {
+  "n": 300,
+  "margin": 17.086666666666666,
+  "se": 3.512661834334919,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1,
+  "paired": 55.61,
+  "paired_se": 4.15045042163629,
+  "seeds": 150
+ }
+}
