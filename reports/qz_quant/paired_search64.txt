@@ -1,0 +1,6 @@
+search vs v28                                      n= 128 A  +58.7 B  +56.6  B-A  -2.2 ±  1.7 (64 seeds), same margin 0.22
+    A: wall 13.8 s/game, search 0.248 s/root, 35.8 roots/game
+    B: wall 12.8 s/game, search 0.248 s/root, 31.9 roots/game
+search vs v30                                      n= 128 A   -6.3 B   -9.2  B-A  -2.9 ±  3.3 (64 seeds), same margin 0.08
+    A: wall 24.4 s/game, search 0.301 s/root, 55.6 roots/game
+    B: wall 22.1 s/game, search 0.286 s/root, 51.0 roots/game
