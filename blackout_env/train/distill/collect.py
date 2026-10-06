@@ -59,7 +59,7 @@ from blackout_env.model.direction_bins import (
 from blackout_env.model.my_policy import N_DIRECTIONS, direction_vector_to_idx
 from blackout_env.train.dead_segments import batteries_in_play
 from blackout_env.train.distill.act_teacher import ACT_KIND, ZERO_MOVE, ActTeacher, check_act_teacher, is_act_teacher
-from blackout_env.train.distill.dataset import EXTRA_FIELDS, FIELDS, KIND_INDEX, N_TEAM, encode_graphic, save_shard
+from blackout_env.train.distill.dataset import EXTRA_FIELDS, FIELDS, FOCUS_BIT, KIND_INDEX, N_TEAM, encode_graphic, save_shard
 from blackout_env.train.distill.metrics import MATCH_SECONDS, STAND, MatchRecorder
 from blackout_env.train.distill.opponents import SELF, make_opponent, opponent_label
 
@@ -199,7 +199,7 @@ def play_labelled_match(env, task: MatchTask, student) -> tuple[dict[str, np.nda
                 recorder.before_step(learner_obs, opponent_obs, labels, actions, student_actions, teacher_drove,
                                      compass=None if task.bins_are_compass else compass, teacher_moves=teacher_moves)
                 row = _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove, task.action_bins,
-                                    teacher_moves=teacher_moves)
+                                    teacher_moves=teacher_moves, focus=getattr(teacher, "focus", None))
                 row["tick"] = np.int32(tick)
                 for field, value in row.items():  # unlabelled ticks too: context / STAND targets
                     rows[field].append(value)
@@ -245,7 +245,7 @@ def teacher_angle(label: TeachLabel, raw_move) -> float:
 
 
 def _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove, bins: int = N_DIRECTIONS,
-                  teacher_moves: dict | None = None) -> dict[str, np.ndarray]:
+                  teacher_moves: dict | None = None, focus=None) -> dict[str, np.ndarray]:
     """One tick in the canonical frame: own units in rows 0-4, labels and moves mirrored for
     team B (dataset.py schema).  ``bins`` > 8: labels are K-bit sets (uint64), moves bin indices.
     ``teacher_moves``: an act-teacher's raw moves, kept as ``angles`` (NaN without)."""
@@ -265,6 +265,8 @@ def _labelled_row(learner_obs, labels, actions, student_actions, teacher_drove, 
         else:
             per_unit["labels"][i] = pack_bits(label.mask)
         per_unit["kinds"][i] = KIND_INDEX.get(label.kind, 0) if label.valid else 0
+        if focus and name in focus:  # P21: the teacher's staged reserve (labelled or standing)
+            per_unit["kinds"][i] |= FOCUS_BIT
         per_unit["actions"][i] = _direction(actions[name], bins)
         if name in student_actions:
             per_unit["student"][i] = _direction(student_actions[name], bins)

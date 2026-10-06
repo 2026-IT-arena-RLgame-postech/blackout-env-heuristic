@@ -1,0 +1,34 @@
+dv1                                                  vs p17            n=  32 margin  +17.2±12.4 win 0.66 race (0, 32, 0) 2nd (8, 15, 9) H-s 55/46 res100 7.8 (p10 3.7) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:   +0.0 ±  0.0 (16 seeds); both race-tied 32:   +0.0 ±  0.0; identical 1.00
+dv2                                                  vs p17            n=  32 margin  -34.8±10.9 win 0.25 race (0, 32, 0) 2nd (5, 6, 21) H-s 106/116 res100 7.7 (p10 4.4) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:  -52.0 ± 15.3 (16 seeds); both race-tied 32:  -52.0 ± 15.3; identical 0.00
+dv3                                                  vs p17            n=  32 margin  +32.4±10.1 win 0.75 race (0, 32, 0) 2nd (10, 16, 6) H-s 168/67 res100 7.8 (p10 3.8) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:  +15.2 ± 11.2 (16 seeds); both race-tied 32:  +15.2 ± 11.2; identical 0.00
+dv4                                                  vs p17            n=  32 margin  +34.8±10.8 win 0.78 race (0, 32, 0) 2nd (7, 19, 6) H-s 99/55 res100 7.8 (p10 4.2) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:  +17.7 ± 12.4 (16 seeds); both race-tied 32:  +17.7 ± 12.4; identical 0.00
+dv5                                                  vs p17            n=  32 margin  +28.4±10.8 win 0.78 race (0, 32, 0) 2nd (8, 18, 6) H-s 119/37 res100 8.1 (p10 3.7) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:  +11.3 ± 12.9 (16 seeds); both race-tied 32:  +11.3 ± 12.9; identical 0.00
+dv6                                                  vs p17            n=  32 margin  +25.9±11.4 win 0.72 race (0, 32, 0) 2nd (7, 19, 6) H-s 142/65 res100 7.6 (p10 3.7) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:   +8.8 ± 13.1 (16 seeds); both race-tied 32:   +8.8 ± 13.1; identical 0.00
+dv7                                                  vs p17            n=  32 margin  +26.8±11.1 win 0.69 race (0, 32, 0) 2nd (7, 19, 6) H-s 87/36 res100 8.0 (p10 3.7) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:   +9.6 ± 13.6 (16 seeds); both race-tied 32:   +9.6 ± 13.6; identical 0.00
+dv8                                                  vs p17            n=  32 margin  +26.8±11.1 win 0.69 race (0, 32, 0) 2nd (7, 19, 6) H-s 87/36 res100 8.0 (p10 3.7) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:   +9.6 ± 13.6 (16 seeds); both race-tied 32:   +9.6 ± 13.6; identical 0.00
+p20                                                  vs p17            n=  32 margin  +17.2±12.4 win 0.66 race (0, 32, 0) 2nd (8, 15, 9) H-s 55/46 res100 7.8 (p10 3.7) first 98-:0 99:32 100:0 101+:0 none:0
+dv1                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  32 margin  +47.3± 8.3 win 0.84 race (0, 32, 0) 2nd (23, 5, 4) H-s 144/52 res100 7.8 (p10 3.7) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:   +0.0 ±  0.0 (16 seeds); both race-tied 32:   +0.0 ±  0.0; identical 1.00
+dv2                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  32 margin  +12.6±10.8 win 0.62 race (0, 32, 0) 2nd (8, 20, 4) H-s 73/37 res100 7.7 (p10 4.4) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:  -34.7 ± 13.0 (16 seeds); both race-tied 32:  -34.7 ± 13.0; identical 0.00
+dv3                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  32 margin  +56.8± 6.3 win 0.88 race (0, 32, 0) 2nd (27, 2, 3) H-s 282/50 res100 7.8 (p10 3.8) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:   +9.5 ±  6.5 (16 seeds); both race-tied 32:   +9.5 ±  6.5; identical 0.03
+dv4                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  32 margin  +58.5± 7.4 win 0.91 race (0, 32, 0) 2nd (29, 1, 2) H-s 88/13 res100 7.8 (p10 4.2) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:  +11.2 ±  4.0 (16 seeds); both race-tied 32:  +11.2 ±  4.0; identical 0.00
+dv5                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  32 margin  +55.0± 7.6 win 0.88 race (0, 32, 0) 2nd (29, 1, 2) H-s 113/36 res100 7.9 (p10 3.7) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:   +7.7 ±  3.8 (16 seeds); both race-tied 32:   +7.7 ±  3.8; identical 0.00
+dv6                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  32 margin  +51.9± 8.9 win 0.88 race (0, 32, 0) 2nd (29, 1, 2) H-s 113/15 res100 7.7 (p10 3.7) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:   +4.6 ±  5.1 (16 seeds); both race-tied 32:   +4.6 ±  5.1; identical 0.00
+dv7                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  32 margin  +61.8± 5.9 win 0.94 race (0, 32, 0) 2nd (30, 1, 1) H-s 124/29 res100 8.0 (p10 3.7) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:  +14.6 ±  6.5 (16 seeds); both race-tied 32:  +14.6 ±  6.5; identical 0.00
+dv8                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  32 margin  +61.8± 5.9 win 0.94 race (0, 32, 0) 2nd (30, 1, 1) H-s 124/29 res100 8.0 (p10 3.7) first 98-:0 99:32 100:0 101+:0 none:0
+                                                        - p20:  +14.6 ±  6.5 (16 seeds); both race-tied 32:  +14.6 ±  6.5; identical 0.00
+p20                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  32 margin  +47.3± 8.3 win 0.84 race (0, 32, 0) 2nd (23, 5, 4) H-s 144/52 res100 7.8 (p10 3.7) first 98-:0 99:32 100:0 101+:0 none:0

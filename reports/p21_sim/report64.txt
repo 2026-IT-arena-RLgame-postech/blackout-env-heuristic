@@ -1,0 +1,27 @@
+p20                                                  vs p14b           n= 128 margin  +67.2± 2.1 win 0.98 race (0, 128, 0) 2nd (112, 4, 12) H-s 136/18 res100 8.0 (p10 3.5) first 98-:0 99:128 100:0 101+:0 none:0
+p21c                                                 vs p14b           n= 128 margin  +66.3± 2.3 win 0.98 race (0, 128, 0) 2nd (112, 3, 13) H-s 126/15 res100 7.9 (p10 3.6) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p20:   -0.9 ±  2.1 (64 seeds); both race-tied 128:   -0.9 ±  2.1; identical 0.00
+p20                                                  vs p17            n= 128 margin  +35.6± 5.1 win 0.79 race (0, 128, 0) 2nd (29, 75, 24) H-s 140/64 res100 8.0 (p10 3.5) first 98-:0 99:128 100:0 101+:0 none:0
+p21c                                                 vs p17            n= 128 margin  +43.6± 4.7 win 0.83 race (0, 128, 0) 2nd (28, 77, 23) H-s 101/42 res100 8.0 (p10 3.7) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p20:   +8.0 ±  4.3 (64 seeds); both race-tied 128:   +8.0 ±  4.3; identical 0.00
+p20                                                  vs p18bp2         n= 128 margin  +15.2± 5.5 win 0.64 race (0, 128, 0) 2nd (36, 69, 23) H-s 73/53 res100 8.0 (p10 3.5) first 98-:0 99:128 100:0 101+:0 none:0
+p21c                                                 vs p18bp2         n= 128 margin  +23.2± 4.9 win 0.69 race (0, 128, 0) 2nd (37, 69, 22) H-s 122/81 res100 8.0 (p10 3.6) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p20:   +8.0 ±  3.8 (64 seeds); both race-tied 128:   +8.0 ±  3.8; identical 0.00
+p20                                                  vs strategic_v23  n= 128 margin  +74.2± 1.2 win 0.99 race (124, 4, 0) 2nd (19, 107, 2) H-s 117/4 res100 8.0 (p10 3.5) first 98-:0 99:128 100:0 101+:0 none:0
+p21c                                                 vs strategic_v23  n= 128 margin  +74.8± 1.3 win 0.98 race (124, 4, 0) 2nd (19, 103, 6) H-s 134/5 res100 8.0 (p10 3.6) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p20:   +0.6 ±  1.6 (64 seeds); both race-tied 4:   +7.2 ±  9.6; identical 0.00
+p20                                                  vs strategic_v25  n= 128 margin  +67.3± 1.7 win 0.98 race (0, 128, 0) 2nd (118, 0, 10) H-s 166/28 res100 7.9 (p10 3.5) first 98-:0 99:128 100:0 101+:0 none:0
+p21c                                                 vs strategic_v25  n= 128 margin  +64.2± 2.5 win 0.96 race (0, 128, 0) 2nd (115, 2, 11) H-s 128/14 res100 8.0 (p10 3.6) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p20:   -3.1 ±  2.5 (64 seeds); both race-tied 128:   -3.1 ±  2.5; identical 0.00
+p20                                                  vs strategic_v27:reserve_stage=1.5 n= 128 margin  +52.8± 4.1 win 0.88 race (0, 128, 0) 2nd (106, 0, 22) H-s 116/23 res100 8.0 (p10 3.5) first 98-:0 99:128 100:0 101+:0 none:0
+p21c                                                 vs strategic_v27:reserve_stage=1.5 n= 128 margin  +52.0± 4.3 win 0.88 race (0, 128, 0) 2nd (108, 0, 20) H-s 123/17 res100 8.0 (p10 3.7) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p20:   -0.8 ±  3.1 (64 seeds); both race-tied 128:   -0.8 ±  3.1; identical 0.00
+p20                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n= 128 margin  +41.1± 5.0 win 0.80 race (0, 128, 0) 2nd (93, 16, 19) H-s 123/42 res100 8.0 (p10 3.5) first 98-:0 99:128 100:0 101+:0 none:0
+p21c                                                 vs strategic_v28:reserve_stage=0.5,trade_hold=advance n= 128 margin  +51.6± 4.4 win 0.87 race (0, 128, 0) 2nd (113, 0, 15) H-s 114/21 res100 8.0 (p10 3.8) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p20:  +10.5 ±  2.9 (64 seeds); both race-tied 128:  +10.5 ±  2.9; identical 0.00
+p20                                                  vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve n= 128 margin  +15.4± 5.3 win 0.65 race (0, 128, 0) 2nd (40, 63, 25) H-s 93/52 res100 8.0 (p10 3.5) first 98-:0 99:128 100:0 101+:0 none:0
+p21c                                                 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve n= 128 margin  +24.3± 4.9 win 0.71 race (0, 128, 0) 2nd (44, 64, 20) H-s 131/57 res100 8.0 (p10 3.8) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p20:   +8.9 ±  4.5 (64 seeds); both race-tied 128:   +8.9 ±  4.5; identical 0.00
+p20                                                  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true n= 128 margin   +8.1± 5.4 win 0.59 race (0, 128, 0) 2nd (32, 65, 31) H-s 98/57 res100 8.0 (p10 3.5) first 98-:0 99:128 100:0 101+:0 none:0
+p21c                                                 vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true n= 128 margin  +17.3± 5.3 win 0.66 race (0, 128, 0) 2nd (36, 67, 25) H-s 82/39 res100 8.0 (p10 3.8) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p20:   +9.2 ±  3.8 (64 seeds); both race-tied 128:   +9.2 ±  3.8; identical 0.00
