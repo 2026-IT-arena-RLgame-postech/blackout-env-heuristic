@@ -302,7 +302,7 @@ def cmd_fidelity(args):
 
     torch.backends.cudnn.benchmark = True
     v = load_views(sorted(Path(args.data).glob("*.npz")))
-    ref_path = Path(args.data) / "ref_fp32.npz"
+    ref_path = Path(args.data) / f"ref_fp32_{len(v['t'])}.npz"
     if ref_path.exists():
         z = np.load(ref_path)
         ref = (z["q"], z["off"])

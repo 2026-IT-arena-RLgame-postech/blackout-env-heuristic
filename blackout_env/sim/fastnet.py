@@ -5,9 +5,9 @@
 (``_net_forward``) -- through a ``FastCore``:
 
 * ``fp16``   autocast fp16 (eager);
-* ``fp16c``  autocast fp16 under ``torch.compile`` (static shapes: a batch is padded up to the next of
-             ``FAST_BUCKETS`` with copies of its row 0, the pad outputs dropped, so a handful of shapes compile once).
-             3.5x the fp32 forward on a 2080 Ti at 2048-8192 views (reports/qz_quant).
+* ``fp16c``  autocast fp16 with the net's parts under ``torch.compile`` (``compile_parts``; static shapes: a batch is
+             padded up to the next of ``FAST_BUCKETS`` with copies of its row 0, the pad outputs dropped, so a handful
+             of shapes compile once).  ~3x the fp32 forward on a 2080 Ti at 2048-8192 views (reports/qz_quant).
 
 The policy keeps ``fp16=False`` (callers would otherwise wrap a second autocast around it).  A checkpoint may carry
 a ``"precision"`` key (``fast_checkpoint``): ``NetPolicy.from_checkpoint`` then builds that precision, so a
@@ -29,7 +29,7 @@ class FastCore:
         self.torch, self.precision, self.device = torch, precision, device
         self.compiled = precision.endswith("c")
         self.buckets = tuple(sorted(int(b) for b in buckets)) if (buckets and self.compiled) else ()
-        self.core = torch.compile(own, dynamic=False) if self.compiled else own
+        self.core = compile_parts(own) if self.compiled else own
 
     def _pad(self, m: int) -> int:
         for b in self.buckets:
@@ -52,6 +52,31 @@ class FastCore:
         if isinstance(out, tuple):
             return tuple(x[:m].float() for x in out)
         return out[:m].float()
+
+
+COMPILED_PARTS = ("graphic_encoder", "vector_encoder", "attention", "q_head")
+
+
+def compile_parts(own):
+    """A copy of ``own`` (an ``_OwnQ`` over a MyModel) with ``COMPILED_PARTS`` compiled one by one (static shapes).
+
+    Not the whole forward: inductor (torch 2.11, fp16 autocast) miscompiles MyModel's trunk when the attention
+    stack shares a graph with the token assembly before it -- arg max agreement with fp32 0.75-0.90, NaN logits on
+    some rows -- while each part compiled alone matches the eager fp16 forward (agreement 0.997, reports/qz_quant).
+    The parts cost ~7 ms of the whole-graph 37.6 ms at 2048 views."""
+    import copy
+
+    import torch
+
+    from blackout_env.model.my_model import MyModel
+
+    own = copy.deepcopy(own)
+    net = getattr(own, "net", None)
+    if not isinstance(net, MyModel):
+        raise ValueError("fp16c compiles a MyModel student's parts; got " + type(net).__name__)
+    for name in COMPILED_PARTS:
+        setattr(net, name, torch.compile(getattr(net, name), dynamic=False))
+    return own
 
 
 def fast_checkpoint(src: str, dst: str, precision: str, **extra) -> None:
