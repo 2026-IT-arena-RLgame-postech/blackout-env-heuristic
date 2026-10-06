@@ -1,0 +1,88 @@
+16 chunks
+[p20 vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin -4.5 wall 4599s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20 vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin -3.8 wall 4609s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20 vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin +17.1 wall 4621s
+[p20 vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin +13.4 wall 4620s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20 vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin +20.9 wall 4635s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20c vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin +16.4 wall 98s
+[p20c vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin +20.2 wall 120s
+[p20c vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin +13.7 wall 128s
+[p20 vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin +3.9 wall 4757s
+[p20c vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin -1.5 wall 124s
+[p20 vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin +27.5 wall 4773s
+[p20 vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin +12.9 wall 4772s
+[p20c vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin +25.8 wall 175s
+[p20c vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin -3.0 wall 72s
+[p20c vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin +8.4 wall 142s
+[p20c vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true] 16 matches margin +22.4 wall 199s
+16 chunks
+[p20 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +66.2 wall 91s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +64.7 wall 106s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +34.4 wall 131s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +42.9 wall 245s
+[p20c vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +38.2 wall 155s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +28.8 wall 252s
+[p20 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +43.2 wall 253s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +37.6 wall 262s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20c vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +42.7 wall 244s
+[p20c vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +65.4 wall 113s
+[p20c vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +56.2 wall 241s
+[p20c vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +41.2 wall 117s
+[p20 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +56.0 wall 382s
+[p20c vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +30.3 wall 1071s
+[p20c vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +61.0 wall 1067s
+[p20c vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +39.4 wall 1107s
+16 chunks
+[p20 vs p17] 16 matches margin +33.7 wall 111s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20 vs p17] 16 matches margin +57.2 wall 116s
+[p20 vs p17] 16 matches margin +39.2 wall 116s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20 vs p17] 16 matches margin +24.0 wall 127s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20 vs p17] 16 matches margin +34.1 wall 131s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20c vs p17] 16 matches margin +61.2 wall 104s
+[p20 vs p17] 16 matches margin +42.0 wall 234s
+[p20c vs p17] 16 matches margin +16.8 wall 119s
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[p20c vs p17] 16 matches margin +21.4 wall 109s
+[p20c vs p17] 16 matches margin +44.0 wall 144s
+[p20c vs p17] 16 matches margin +42.3 wall 181s
+[p20c vs p17] 16 matches margin +32.4 wall 82s
+[p20c vs p17] 16 matches margin +46.5 wall 107s
+[p20 vs p17] 16 matches margin +61.2 wall 357s
+[p20c vs p17] 16 matches margin +47.8 wall 245s
+[p20 vs p17] 16 matches margin +42.1 wall 5280s
+PLAIN DONE

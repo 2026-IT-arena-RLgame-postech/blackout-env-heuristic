@@ -3647,3 +3647,63 @@ Hunter 99·진 경기 수 같음). → STAND 표현력은 V30 이득에 필요 �
 ### 5. 권장
 - 탐색 평가는 `--pipeline 1 --pipeline-graphs`, GPU마다 프로세스 하나(`CUDA_VISIBLE_DEVICES`). 결과는 옛 모드와 비트 동일하다.
 - 다음 지렛대: (1) P20 창 forward(QZ fp16c, 비트 동일 아님), (2) step+render GPU 이식(위 추정). CPU SIMD는 하지 않는다.
+
+## 53. QZ: P20 추론 가속 — fp16c(옵트인), 탐색 기본은 fp32 유지 (2026-10-07, 브랜치 `feat/qz-quant`, `blackout_env/sim/fastnet.py`, `NetPolicy(precision=)`, `examples/qz_quant.py`, `reports/qz_quant`)
+
+질문: 학생 챔피언 P20의 forward를 양자화(필요하면 QAT)로 빠르게 해서 탐색·평가를 가속할 수 있나. B1(§52) 뒤 탐색 1회(128루트) 21.5초 중 창 25결정 ~10초가 P20 forward(GPU)였다.
+
+### 1. 기준 속도와 프로파일 (gpu2 2080 Ti, 실제 P20 뷰, 호출당 중앙값 ms, `bench.jsonl`)
+
+| 뷰 | fp32 eager(현재 탐색) | fp16 autocast | **fp16c** |
+|---|---|---|---|
+| 2048 | 156 | 94 | **48.7** |
+| 4096 | 314 | 188 | **81** |
+| 8192 | 631 | 373 | **162** |
+
+- fp16c = fp16 autocast + `torch.compile`(정적 모양, 배치를 버킷 크기로 채움). 3.2–3.9×.
+- 컴파일된 fp16 forward의 구성: GEMM ~35%, conv ~16%(첫 5×5 conv 하나가 4.8 ms), 주의 ~6%, 나머지는 융합된 원소별 연산. int8 GEMM은 GEMM만 1.2–2.1×(`torch._int_mm` 실측)라
+  활성값 양자화 비용을 빼면 fp16c 위에 많아야 ~7%다. fp16c가 깨끗해서 int8·TensorRT·QAT는 하지 않았다.
+- **Inductor 버그(torch 2.11)**: 모델 전체를 한 그래프로 fp16 컴파일하면 주의 층과 그 앞의 토큰 조립이 한 그래프에 있을 때 틀린 코드가 나온다(fp32와 arg max 일치 0.75–0.90,
+  일부 행 NaN; `aot_eager`는 정확 → 코드 생성 문제). 그래서 `compile_parts`가 graphic_encoder·vector_encoder·attention·q_head를 따로 컴파일한다(전체 그래프보다 ~7 ms 느림).
+  처음 보고한 37.6 ms는 이 깨진 빌드의 값이었다.
+
+### 2. 충실도 (`fidelity.jsonl`, fp32 P20 기준, 보류 P20 뷰 19,409개 = P20 대 P20·V30·V28, 시드 3000000+ 32 × 양 진영)
+
+| | arg max 일치(전 행) | KL 평균 / p99 | 방향 오차 평균 / p99 | 한 유닛이라도 바뀐 뷰 | 결정 85–99 일치 (2,880뷰) |
+|---|---|---|---|---|---|
+| fp16 | 0.99832 | 4e-5 / 6e-4 | 0.05° / 0.09° | 0.8% | 0.99972 |
+| fp16c | 0.99835 | 4e-5 / 6e-4 | 0.04° / 0.09° | 0.8% | 0.99965 |
+
+결정 85–99 행은 자기 유닛 전부다(예비 유닛만 고른 것은 아님). fp16c는 fp16 eager와 같은 충실도라 QAT가 필요 없다.
+
+### 3. 강도
+- **단독 정책**(`plain64/`, `v27_eval.py`, 시드 2000000+, cap 425초, stop-exhausted, p20c − p20 짝 차): 대 V30 **+1.9±1.0**, 대 V28 **+0.1±1.0**, 대 P17 **−2.6±2.2**(각 64시드, `paired_plain64.txt`), 합 −0.2±0.9.
+  대 P17은 규칙상(>1 SE·>1점) 경계의 퇴행 신호다. 다른 두 상대와 합하면 동등이지만 64시드라 확정은 아니다.
+- **탐색 안**(`search_p20{,c}/`, o4f_v28r, B1 파이프라인 + 그래프, 시드 2100000+ 64 × 양 진영): 대 V28 −2.2±1.7, 대 V30 −2.9±3.3, 합 **−2.6±1.9 — 미해결**(`paired_search64.txt`).
+  fp16의 0.2% 결정 뒤집힘이 탐색 안에서 갈래를 바꿔(같은 점수차 경기 8–22%) 경기가 일찍 갈라진다. 64시드로는 판정할 수 없고 256시드가 필요하다.
+
+### 4. 탐색 속도 (`search_time.jsonl`, 128루트 o4f_v28r, 파이프라인 + 그래프, GPU당 1프로세스, 첫 회 뺀 3회 중앙값; p20c 첫 회는 컴파일 포함 21.9초)
+
+| base | 탐색 1회 | 창 | base 대기 | step | 렌더 |
+|---|---|---|---|---|---|
+| p20(fp32) | 22.1 s | 10.4 s | 6.0 s | 7.6 s | 5.2 s |
+| p20c | **18.0 s (1.23×)** | 6.1 s | 1.75 s | 7.7 s | 5.2 s |
+
+- 이제 CPU(step + 렌더 ~13초)가 벽이다. 64시드 탐색 실행은 두 프로세스가 GPU 0을 같이 써서 루트당 0–5%만 보였다(§52의 "GPU 하나에 둘이면 이득이 사라진다").
+- 64시드 실행 비용: 대 V28 s/경기 13.8 → 12.8, s/루트 0.248 → 0.248; 대 V30 24.4 → 22.1, 0.301 → 0.286.
+
+### 5. 수집기 배치 1 학생 (`bench1.jsonl`, gpu2, CPU 경합 중, ms/호출)
+
+| CPU jit fp32 | CUDA eager fp32 | CUDA eager fp16 | **CUDA 그래프 fp32** | CUDA 그래프 fp16 | fp16 + compile |
+|---|---|---|---|---|---|
+| 14.1 | 11.2 | 14.7 | **2.0** | 2.8 | 1.76 |
+
+배치 1은 커널 실행 오버헤드 한계라 CUDA 그래프가 5.5×이고 eager와 비트 동일하다(같은 커널). 옵트인 `BLACKOUT_STUDENT_CUDA_GRAPH=1`(`inference._FastNet`, 기본 꺼짐).
+wsl의 Unity + 교사 틱 대비 몫은 측정하지 않았다.
+
+### 6. 결정·코드
+- **탐색 기본은 fp32 유지**: 탐색 1회 1.23×의 이득이 미해결 −2.6±1.9의 위험과 256시드 gpu2 시간보다 작다. fp16c는 단독 정책·평가용 옵트인이다.
+- 코드: `NetPolicy(precision="fp32"|"fp16"|"fp16c")`(기본 fp32 = 기존 경로 그대로, B1 `pipeline._net_forward`도 `_own`을 거치므로 그대로 적용),
+  체크포인트의 `"precision"` 키(`fastnet.fast_checkpoint`) → `from_checkpoint`가 따름(BLACKOUT_NETS 별칭), `blind_search_eval.py --base p20c`.
+  `examples/qz_quant.py` bench/bench1/profile/collect/fidelity/search_time, `reports/qz_quant/scripts/`(plain64.sh, search_lane.sh, paired.py), `tests/test_fastnet.py`(CPU + CUDA 7개).
+- 하지 않은 것: int8/TensorRT/QAT(위 1·2절), 롤아웃 망 r20d256(생략 결정).

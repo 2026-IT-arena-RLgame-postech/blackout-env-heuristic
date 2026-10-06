@@ -110,6 +110,10 @@ class _FastNet(nn.Module):
         self.angle_head = bool(getattr(net, "angle_head", False))
         self.fixed_tau, self.n_quantiles = tau, n_quantiles
         self._traced = None
+        # QZ (opt-in, BLACKOUT_STUDENT_CUDA_GRAPH=1): a CUDA batch-1 stateless forward replays one captured CUDA
+        # graph -- the same kernels as the eager forward (same values), ~5x less launch overhead (reports/qz_quant)
+        self.cuda_graph = os.environ.get("BLACKOUT_STUDENT_CUDA_GRAPH", "0") == "1"
+        self._graph = None
 
     def _tau(self, batch: int, device=None) -> tuple:
         """The trailing tau argument of ``own``: none for a logits net."""
@@ -124,7 +128,9 @@ class _FastNet(nn.Module):
             return self._step(graphic, team_state, agent_states, tau, memory)
         with torch.inference_mode():
             args = (graphic, team_state, agent_states, *tau)
-            if batch != 1 or graphic.device.type != "cpu":  # the trace is batch-1 only; it bakes shape
+            if batch == 1 and graphic.device.type == "cuda" and self.cuda_graph:
+                out = self._graph_call(args)
+            elif batch != 1 or graphic.device.type != "cpu":  # the trace is batch-1 only; it bakes shape
                 out = self.own(*args)                         # constants as CPU tensors (cuda: eager)
             else:
                 if self._traced is None:
@@ -133,6 +139,27 @@ class _FastNet(nn.Module):
                         self._traced = torch.jit.trace(self.own, args, check_trace=False)
                 out = self._traced(*args)
             return tuple(out) if self.angle_head else (out,)
+
+    def _graph_call(self, args):
+        """``own(*args)`` (batch 1, CUDA) through a CUDA graph captured on the first call; the outputs are
+        copies (the next replay overwrites the graph's own)."""
+        if self._graph is None:
+            static = tuple(x.clone() for x in args)
+            side = torch.cuda.Stream()
+            side.wait_stream(torch.cuda.current_stream())
+            with torch.cuda.stream(side):
+                for _ in range(3):  # warm-up (cuDNN / cuBLAS workspaces) off the capture
+                    self.own(*static)
+            torch.cuda.current_stream().wait_stream(side)
+            graph = torch.cuda.CUDAGraph()
+            with torch.cuda.graph(graph):
+                out = self.own(*static)
+            self._graph = (graph, static, out)
+        graph, static, out = self._graph
+        for dst, src in zip(static, args):
+            dst.copy_(src)
+        graph.replay()
+        return tuple(x.clone() for x in out) if isinstance(out, tuple) else out.clone()
 
     def _step(self, graphic, team_state, agent_states, tau, memory):
         batch = graphic.shape[0]
