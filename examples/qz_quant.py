@@ -247,6 +247,55 @@ def cmd_bench1(args):
                 fh.write(json.dumps(r) + "\n")
 
 
+def cmd_search_time(args):
+    """One search on ``--roots`` mid-match roots (P20 x P20 for ``--warm`` decisions), as blind_search_eval builds
+    it (tag, base, B1 pipeline + graphs): wall per search (median of ``--reps`` after one warm-up search) and the
+    rollout's timing split (``wait_base`` = CPU waiting on the base net)."""
+    import types
+
+    import torch
+
+    sys.path.insert(0, str(REPO / "examples"))
+    import blind_search_eval as bse
+
+    from blackout_env.sim.batch import BatchRollout, NetPolicy
+    from blackout_env.sim.state import SimState
+
+    torch.set_num_threads(1)
+    p20 = NetPolicy.from_checkpoint(str(REPO / P20), device=args.device)
+    res = BatchRollout(p20, p20).run([SimState.from_seed(args.seed0 + k) for k in range(args.roots + 32)], args.warm)
+    keep = np.nonzero(~res.over)[0][:args.roots]
+    roots = [res.bsim.state(int(b)) for b in keep]
+    sides = np.arange(len(roots)) % 2
+    reseeds = [(args.seed0 + 7 * k) % 2 ** 31 for k in range(len(roots))]
+    rows = []
+    for base_name in args.bases.split(","):
+        base = NetPolicy.from_checkpoint(str(REPO / bse.BASES[base_name]), device=args.device)
+        ns = types.SimpleNamespace(v25r=bse.V25R, value=bse.VALUE, branches=args.branches, window=25, margin=3.0,
+                                   pipeline=args.pipeline, pipeline_graphs=args.pipeline_graphs)
+        searcher, _, _ = bse.build_searcher(args.tag, base, args.device, ns)
+        walls = []
+        for rep in range(args.reps + 1):
+            torch.cuda.synchronize()
+            t0 = time.perf_counter()
+            out = searcher.search(roots, sides, reseeds)
+            walls.append(time.perf_counter() - t0)
+            tm = {k: (round(v, 2) if isinstance(v, float) else v) for k, v in searcher.roll.timing.items()}
+            print(json.dumps({"base": base_name, "rep": rep, "wall_s": round(walls[-1], 2), "timing": tm,
+                              "rollout_s": round(out.timing["rollout_s"], 2), "leaf_s": round(out.timing["leaf_s"], 2)}), flush=True)
+        row = {"base": base_name, "tag": args.tag, "roots": len(roots), "pipeline": args.pipeline,
+               "graphs": args.pipeline_graphs, "wall_s_median": round(float(np.median(walls[1:])), 2),
+               "walls": [round(w, 2) for w in walls], "timing_last": tm}
+        rows.append(row)
+        print(json.dumps(row), flush=True)
+        del searcher, base
+        torch.cuda.empty_cache()
+    if args.out:
+        with open(args.out, "a") as fh:
+            for r in rows:
+                fh.write(json.dumps(r) + "\n")
+
+
 def load_views(paths) -> dict:
     zs = [np.load(p) for p in paths]
     return {k: np.concatenate([z[k] for z in zs]) for k in zs[0].files}
@@ -365,6 +414,19 @@ def main():
     b1.add_argument("--data", default=None)
     b1.add_argument("--out", default=None)
     b1.set_defaults(fn=cmd_bench1)
+    s = sub.add_parser("search_time")
+    s.add_argument("--bases", default="p20,p20c")
+    s.add_argument("--tag", default="o4f_v28r")
+    s.add_argument("--branches", default="alt*,samp:1.0x2")
+    s.add_argument("--roots", type=int, default=128)
+    s.add_argument("--warm", type=int, default=150)
+    s.add_argument("--seed0", type=int, default=5_200_000)
+    s.add_argument("--reps", type=int, default=2)
+    s.add_argument("--pipeline", type=int, default=1)
+    s.add_argument("--pipeline-graphs", action="store_true")
+    s.add_argument("--device", default="cuda")
+    s.add_argument("--out", default=None)
+    s.set_defaults(fn=cmd_search_time)
     f = sub.add_parser("fidelity")
     f.add_argument("--data", default=str(REPO / "datasets/qz/heldout"))
     f.add_argument("--ref", default=P20)
