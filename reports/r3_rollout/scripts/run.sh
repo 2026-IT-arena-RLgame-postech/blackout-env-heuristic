@@ -33,7 +33,7 @@ collect() {  # out-dir log args...
   local p=$!; sleep 2
   local g=$(ps -o pgid= -p $p | tr -d ' ')
   [ "${GUARD:-1}" = 1 ] && [ -n "$g" ] && echo "$g" >> ~/cpu_extra.pgids
-  wait $p; local rc=$?
+  local rc=0; wait $p || rc=$?
   [ -n "$g" ] && sed -i "/^$g\$/d" ~/cpu_extra.pgids
   return $rc
 }
