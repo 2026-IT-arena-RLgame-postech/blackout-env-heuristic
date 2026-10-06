@@ -85,8 +85,10 @@ V27 = {"v27": ("strategic_v27", {"reserve_stage": 1.5}), "v27s1": ("strategic_v2
        "v27s05": ("strategic_v27", {"reserve_stage": 0.5}),
        "v28": ("strategic_v28", {"reserve_stage": 0.5, "trade_hold": "advance"}),  # docs §36
        "v30": ("strategic_v30", {"reserve_stage": 0.5, "trade_hold": "advance", "reserve_join": "reserve",
-                                 "solo_sentry": True})}  # docs §44
-OPPONENTS = ("p14b", "p16", "p17", "p20", "v28", "v30", "v25", "v27", "v27s1", "v27s05", "v23", "v19", "p5a", "p11", "d256", "f3", "v23pA", "v23pB", "v25pA", "v25pB")
+                                 "solo_sentry": True}),  # docs §44
+       "v31": ("strategic_v30", {"reserve_stage": 0.5, "trade_hold": "advance", "reserve_join": "reserve",
+                                 "solo_sentry": True, "threat_radius": 0.13, "camp_engage_radius": 6.5})}  # V31, docs §46
+OPPONENTS = ("p14b", "p16", "p17", "p20", "v28", "v30", "v31", "v25", "v27", "v27s1", "v27s05", "v23", "v19", "p5a", "p11", "d256", "f3", "v23pA", "v23pB", "v25pA", "v25pB")
 
 O4 = {"opp_branches": "samp:1.0x3", "opp_left": 150}
 # tag -> search options (None = plain P14b); "net": rollout net override ("v25r"), "deep": Searcher S4 options
