@@ -413,7 +413,9 @@ class NetPolicy(BatchPolicy):
     the single-game path even on CPU (tests/test_sim_batch.py, docs "S3 준비")."""
 
     def __init__(self, net, device: str = "cpu", fp16: bool = False, max_batch: int = 2048,
-                 per_sample: bool = False, cuda_graphs: bool = False, graph_buckets=None):
+                 per_sample: bool = False, cuda_graphs: bool = False, graph_buckets=None, precision: str = "fp32"):
+        """``precision`` (QZ, sim/fastnet.py): ``"fp32"`` = this exact path; ``"fp16"`` / ``"fp16c"`` (autocast fp16,
+        + torch.compile) run ``_own`` through a ``FastCore`` -- faster, not bit-exact."""
         import torch
 
         from blackout_env.train.distill.inference import _OwnQ
@@ -434,6 +436,13 @@ class NetPolicy(BatchPolicy):
         self.cuda_graphs = bool(cuda_graphs) and self.device.type == "cuda"
         self.graph_buckets = sorted(int(b) for b in graph_buckets) if graph_buckets else None
         self._graphs: dict = {}
+        self.precision = precision
+        self._fast = None
+        if precision != "fp32":
+            from .fastnet import FastCore
+
+            self.fp16 = False  # FastCore runs its own autocast
+            self._fast = FastCore(self.own, precision, self.device)
 
     def _bucket(self, m: int):
         if self.graph_buckets is None:
@@ -447,7 +456,8 @@ class NetPolicy(BatchPolicy):
 
     def _own(self, g, t, a):
         """The net on device tensors; a 3-D ``g`` is a packed map, unpacked on the device."""
-        return self.own(unpack_graphic(g) if g.dim() == 3 else g, t, a)
+        g = unpack_graphic(g) if g.dim() == 3 else g
+        return self.own(g, t, a) if self._fast is None else self._fast(g, t, a)
 
     def _graph_forward(self, g, t, a):
         """One host->device copy (g, t, a rows packed into one pinned byte buffer), the graph replay,
@@ -508,7 +518,10 @@ class NetPolicy(BatchPolicy):
 
         from blackout_env.train.distill.inference import load_net
 
-        return cls(load_net(torch.load(path, map_location="cpu", weights_only=True)["policy_state"]), **kw)
+        ck = torch.load(path, map_location="cpu", weights_only=True)
+        if "precision" in ck:  # QZ fast_checkpoint: the stored precision unless the caller names one
+            kw.setdefault("precision", ck["precision"])
+        return cls(load_net(ck["policy_state"]), **kw)
 
     def forward(self, graphic, team, agents) -> tuple[np.ndarray, np.ndarray | None]:
         """[m, 13, H, W] (or packed int16 [m, H, W]), [m, 4], [m, 10, 12] float32 numpy -> logits,
