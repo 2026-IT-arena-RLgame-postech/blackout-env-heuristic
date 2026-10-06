@@ -67,7 +67,7 @@ from blackout_env.train.accel import adamw, check_amp, pick_device
 from blackout_env.train.distill.collect import CollectorPool, MatchTask, teacher_arg
 from blackout_env.train.distill.inference import INFERENCE
 from blackout_env.train.distill.dataset import (
-    ANGLES, FIELDS, GRAPHIC_SCALE, KIND_INDEX, N_TEAM, DistillDataset, angles_of, new_shards,
+    ANGLES, FIELDS, FOCUS_BIT, GRAPHIC_SCALE, KIND_INDEX, KIND_MASK, N_TEAM, DistillDataset, angles_of, new_shards,
 )
 from blackout_env.train.distill.loss import angle_offset_loss, set_valued_cross_entropy
 from blackout_env.train.distill.metrics import (
@@ -216,6 +216,12 @@ def parse_args(argv=None) -> argparse.Namespace:
                    "Hunter transform at decision 99, where the staged reserve joins or holds); stacks with both; 1 = off")
     p.add_argument("--join-seconds", type=lambda s: tuple(float(x) for x in s.split(",")), default=(3.4, 4.0),
                    help="--join-weight's window 'start,end' in seconds of play (default decisions 85-99)")
+    p.add_argument("--reserve-weight", type=float, default=1.0,
+                   help="P21 (§50): loss weight of the act-teacher's staged reserve unit only (rows flagged with "
+                   "dataset.FOCUS_BIT, i.e. in the policy's 'staged' list: holding or joining) in --reserve-seconds; "
+                   "stacks with the other weights; 1 = off")
+    p.add_argument("--reserve-seconds", type=lambda s: tuple(float(x) for x in s.split(",")), default=(3.4, 4.04),
+                   help="--reserve-weight's window 'start,end' in seconds of play (default decisions 85-100)")
     p.add_argument("--inference", choices=INFERENCE, default="iqn",
                    help="how collection and eval students turn logits into a move (inference.py; arc_mean: circular "
                    "mean of the top contiguous arc, for K bins)")
@@ -394,7 +400,8 @@ class Learner:
         graphic = batch["graphic"].permute(0, 3, 1, 2).float() / GRAPHIC_SCALE
         masks = ((batch["labels"].long().unsqueeze(-1) >> self._bit_index) & 1) == 1  # dataset.unpack_labels
         classes = batch["agent_states"][:, :N_TEAM, CLASS_COLS]
-        kinds = batch["kinds"]
+        focus = (batch["kinds"] & FOCUS_BIT) > 0  # P21: the teacher's staged reserve unit
+        kinds = batch["kinds"] & KIND_MASK
         if self.args.stand_action:  # no label = the teacher stands: target STAND alone
             stand = batch["labels"] == 0
             window = getattr(self.args, "stand_seconds", None)
@@ -405,7 +412,7 @@ class Learner:
             kinds = torch.where(stand, torch.full_like(kinds, KIND_INDEX["stand"]), kinds)
         # P11: the teacher's raw headings (NaN = none) and seconds of play (team_state[2] = time left)
         aux = {"angles": torch.from_numpy(np.ascontiguousarray(angles_of(rows))).to(self.device),
-               "elapsed": (1.0 - batch["team_state"][:, 2].float()) * MATCH_SECONDS}
+               "elapsed": (1.0 - batch["team_state"][:, 2].float()) * MATCH_SECONDS, "focus": focus}
         return graphic, batch["team_state"], batch["agent_states"], masks, classes, kinds, aux
 
     def set_lr(self, step: int) -> None:
@@ -447,7 +454,7 @@ class Learner:
         loss_mask = torch.from_numpy(windows["loss_mask"]).to(self.device)
         masks = seq(masks) & loss_mask[:, :, None, None]
         angles = torch.where(loss_mask[:, :, None], seq(aux["angles"]), torch.full_like(seq(aux["angles"]), float("nan")))
-        aux = {"angles": angles, "elapsed": seq(aux["elapsed"])}
+        aux = {"angles": angles, "elapsed": seq(aux["elapsed"]), "focus": seq(aux["focus"])}
         reset = torch.from_numpy(windows["reset"]).to(self.device)
         return seq(graphic), seq(team_state), seq(agent_states), masks, seq(classes), seq(kinds), reset, aux
 
@@ -466,7 +473,8 @@ class Learner:
         self._fit(q_values.float().reshape(-1, *q_values.shape[2:]), flat(masks), flat(classes), flat(kinds),
                   {k: flat(v) for k, v in aux.items()}, offsets)
 
-    def row_weights(self, valid: torch.Tensor, classes: torch.Tensor, elapsed: torch.Tensor) -> torch.Tensor | None:
+    def row_weights(self, valid: torch.Tensor, classes: torch.Tensor, elapsed: torch.Tensor,
+                    focus: torch.Tensor | None = None) -> torch.Tensor | None:
         """[B, 5] per-unit loss weights: --class-weighting times --opening-weight on the opening rows times
         --window-weight on the --window-seconds rows times --join-weight on the
         --join-seconds rows (None = uniform)."""
@@ -484,13 +492,24 @@ class Learner:
             a, b = self.args.join_seconds
             win = torch.where((elapsed >= a) & (elapsed < b), jw, 1.0)[:, None]
             weights = win.expand_as(valid) if weights is None else weights * win
+        rw = getattr(self.args, "reserve_weight", 1.0)
+        if rw != 1.0 and focus is not None:  # P21: only the staged reserve unit, only in the window
+            a, b = self.args.reserve_seconds
+            sel = focus & ((elapsed >= a) & (elapsed < b))[:, None]
+            win = torch.where(sel, rw, 1.0)
+            weights = win if weights is None else weights * win
         return weights
 
     def _fit(self, logits: torch.Tensor, masks: torch.Tensor, classes: torch.Tensor, kinds: torch.Tensor,
              aux: dict | None = None, offsets: torch.Tensor | None = None) -> None:
         valid = masks.any(dim=-1).float()
         elapsed = aux["elapsed"] if aux is not None else torch.full(valid.shape[:1], MATCH_SECONDS, device=valid.device)
-        weights = self.row_weights(valid, classes, elapsed)
+        focus = aux.get("focus") if aux is not None else None
+        weights = self.row_weights(valid, classes, elapsed, focus)
+        if focus is not None:  # P21: share of labelled unit-rows that are the staged reserve in its window
+            a, b = getattr(self.args, "reserve_seconds", (3.4, 4.04))
+            sel = (focus & ((elapsed >= a) & (elapsed < b))[:, None]).float() * valid
+            self._totals["reserve_rows"] += sel.sum() / valid.sum().clamp_min(1)
         loss, stats = set_valued_cross_entropy(logits, masks, weights, self.args.z_loss)
         if offsets is not None and self.args.angle_loss_weight > 0:
             angle_loss, angle_stats = angle_offset_loss(offsets, aux["angles"], weights, self.args.angle_arc_bins)
@@ -679,6 +698,7 @@ class Run:
                         "opening_weight": self.args.opening_weight, "opening_seconds": self.args.opening_seconds,
                         "window_weight": self.args.window_weight, "stand_seconds": self.args.stand_seconds, "window_seconds": list(self.args.window_seconds),
                         "join_weight": self.args.join_weight, "join_seconds": list(self.args.join_seconds),
+                        "reserve_weight": self.args.reserve_weight, "reserve_seconds": list(self.args.reserve_seconds),
                         "lr_schedule": self.args.lr_schedule, "lr_warmup": self.args.lr_warmup,
                         "lr_final": self.args.lr_final, "steps": self.args.steps},
         }

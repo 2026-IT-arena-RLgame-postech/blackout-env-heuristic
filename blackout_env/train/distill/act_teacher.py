@@ -21,6 +21,9 @@ internal state follows the trajectory that is actually played, whoever drove.
   by at most 22.5 degrees).
 * ``act(obs)`` is the policy's own ``act`` (as an opponent, e.g. ``teacher:act:strategic_v19``).
   Never call both ``teach`` and ``act`` on one tick: each steps the policy's state.
+* ``focus`` (P21): the names the wrapped policy lists in ``staged`` on this ``teach`` call (V27+'s
+  staged reserve walker, holding or joining); collect.py marks those units' rows with
+  ``dataset.FOCUS_BIT`` in ``kinds`` so ``run.py --reserve-weight`` can upweight them.
 * ``reset()`` resets the wrapped policy (a new match).
 * K direction bins (``--action-bins``, P4): the labels here stay 8-way; ``collect.bin_labels``
   relabels each tick from ``last_actions`` -- the raw heading's nearest bin +- ``--act-arc-bins``
@@ -60,16 +63,20 @@ class ActTeacher(BaseModel):
         self.descriptor = descriptor
         self.policy = make_opponent(descriptor, seed)
         self.last_actions: dict[str, np.ndarray] = {}
+        self.focus: set[str] = set()  # P21: units the policy flags as its staged reserve this tick
 
     def reset(self) -> None:
         if hasattr(self.policy, "reset"):
             self.policy.reset()
         self.last_actions = {}
+        self.focus = set()
 
     def teach(self, obs) -> dict[str, TeachLabel]:
         actions = self.policy.act(obs) if obs else {}
         zero = np.zeros(2, dtype=np.float32)
         self.last_actions = {name: np.asarray(actions.get(name, zero), np.float32) for name in obs}
+        # P21 (§50): V27+ heuristics list their staged reserve walker(s) in ``staged`` (reset every call)
+        self.focus = set(getattr(self.policy, "staged", None) or []) if obs else set()
         return {name: act_label(move) for name, move in self.last_actions.items()}
 
     def act(self, obs):

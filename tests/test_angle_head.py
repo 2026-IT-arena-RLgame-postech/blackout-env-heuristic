@@ -283,6 +283,54 @@ def test_window_weight_stacks_with_the_opening_weight():
     assert torch.equal(weights[:, 0], torch.tensor([6.0, 1.0, 6.0, 1.0]))
 
 
+def test_reserve_weight_hits_only_the_flagged_unit_in_its_window():
+    """P21 (§50): dataset.FOCUS_BIT in kinds marks the teacher's staged reserve; the trainer strips it from the
+    kinds and weights only that unit, only in --reserve-seconds."""
+    from blackout_env.train.distill.dataset import FOCUS_BIT
+    from blackout_env.train.distill.run import Learner, parse_args
+
+    rows = _batch()  # rows 0, 2 at 5 s, rows 1, 3 at 210 s
+    rows["kinds"][:, 2] |= FOCUS_BIT
+    argv = ["--build", "x", "--device", "cpu", "--policy-head", "logits", "--action-bins", "32", "--angle-head",
+            "--opening-weight", "3"]
+    learner = Learner(parse_args(argv + ["--reserve-weight", "50", "--reserve-seconds", "4.5,5.5"]))
+    *_, kinds, aux = learner._tensors(rows)
+    assert int(kinds.max()) == 12 and aux["focus"][:, 2].all() and not aux["focus"][:, [0, 1, 3, 4]].any()
+    weights = learner.row_weights(torch.ones(4, 5), torch.zeros(4, 5, 3), aux["elapsed"], aux["focus"])
+    assert torch.equal(weights[:, 2], torch.tensor([150.0, 1.0, 150.0, 1.0]))
+    assert torch.equal(weights[:, 1], torch.tensor([3.0, 1.0, 3.0, 1.0]))
+    learner = Learner(parse_args(argv + ["--reserve-weight", "50"]))  # default window 3.4-4.04 s misses 5 s
+    weights = learner.row_weights(torch.ones(4, 5), torch.zeros(4, 5, 3), aux["elapsed"], aux["focus"])
+    assert torch.equal(weights[:, 2], torch.tensor([3.0, 1.0, 3.0, 1.0]))
+    learner.step(rows)  # trains with the bit set
+    assert "train/reserve_rows" in learner.pop_stats()
+
+
+def test_act_teacher_focus_is_the_v30_staged_reserve():
+    from blackout_env.heuristics import StrategicHeuristicV28
+    from blackout_env.sim.state import SimState, obs_from_raw
+    from blackout_env.train.distill.act_teacher import ActTeacher
+
+    teacher = ActTeacher("strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true")
+    other = StrategicHeuristicV28(reserve_stage=0.5, trade_hold="advance")
+    sim = SimState.from_seed(4_000_003)
+    seen = []
+    for t in range(99):
+        obs = obs_from_raw(sim.raw_state(), sim.raw_map())
+        mv = np.zeros((10, 2), np.float32)
+        teacher.teach({f"unit_{i}": obs[f"unit_{i}"] for i in range(5)})
+        seen.append(set(teacher.focus))
+        for name, act in teacher.last_actions.items():
+            mv[int(name.split("_")[1])] = np.clip(act, -1, 1)
+        for name, act in other.act({f"unit_{i}": obs[f"unit_{i}"] for i in range(5, 10)}).items():
+            mv[int(name.split("_")[1])] = np.clip(np.asarray(act, np.float32), -1, 1)
+        sim.step(mv)
+    assert len(seen[95]) == 1 and seen[95] <= {f"unit_{i}" for i in range(5)}
+    assert not seen[0]
+    teacher.reset()
+    assert not teacher.focus
+
+
 def test_stand_seconds_limits_stand_targets_to_its_window():
     from blackout_env.train.distill.run import Learner, parse_args
 

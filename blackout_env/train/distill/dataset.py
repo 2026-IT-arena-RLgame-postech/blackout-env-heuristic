@@ -60,6 +60,10 @@ KINDS = (
     "act",  # an act-teacher's own move (act_teacher.py); after "stand" so no existing index moves
 )
 KIND_INDEX = {kind: i for i, kind in enumerate(KINDS)}
+# P21 (§50): high bit of ``kinds`` = the act-teacher's staged reserve unit (act_teacher.focus), set
+# whether or not the row has a label; the trainer strips it (``kinds & KIND_MASK``) before use
+FOCUS_BIT = 0x80
+KIND_MASK = 0x7F
 FIELDS = ("graphic", "team_state", "agent_states", "labels", "kinds")
 EXTRA_FIELDS = ("actions", "student", "teacher_drove", "tick", "angles", "student_angles")
 SEQUENCE_FIELDS = ("tick",)  # loaded into the ring beside FIELDS (not fed to the net)
@@ -288,7 +292,7 @@ class DistillDataset:
         if not self.size:
             return {}
         versions = self._version[: self.size]
-        kinds = self._arrays["kinds"][: self.size]
+        kinds = self._arrays["kinds"][: self.size] & KIND_MASK
         labelled = kinds > 0
         out = {
             "ring/rows": self.size,
