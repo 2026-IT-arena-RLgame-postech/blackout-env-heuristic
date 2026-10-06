@@ -1,0 +1,114 @@
+{
+ "p20": {
+  "diff_vs_old": {
+   "margin": 0,
+   "ours": 0,
+   "opp": 0,
+   "ticks": 0,
+   "first_ours": 0,
+   "first_opp": 0,
+   "searches": 0,
+   "chosen": 0,
+   "gain_sum": 0,
+   "lead_at": 0
+  },
+  "diff_vs_ref": {
+   "margin": 0,
+   "ours": 0,
+   "opp": 0,
+   "ticks": 0,
+   "first_ours": 0,
+   "first_opp": 0,
+   "searches": 0,
+   "chosen": 0,
+   "gain_sum": 0,
+   "lead_at": 0
+  },
+  "common": 128,
+  "ref_common": 128,
+  "timing": {
+   "old": {
+    "games": 128,
+    "wall_s": 3514.8093581199646,
+    "search_s": 3273.3382128495723,
+    "roots": 7240,
+    "s_per_game": 27.459448110312223,
+    "search_s_per_game": 25.572954787887284,
+    "games_per_h": 131.10241639008188,
+    "s_per_root": 0.45211853768640503,
+    "proc_wall_s": 3524.64,
+    "cpu_s": 3453.79,
+    "games_per_cpu_h": 133.41865023640696
+   },
+   "new": {
+    "games": 128,
+    "wall_s": 2637.3030030727386,
+    "search_s": 2328.588134227786,
+    "roots": 7240,
+    "s_per_game": 20.60392971150577,
+    "search_s_per_game": 18.19209479865458,
+    "games_per_h": 174.72395074176876,
+    "s_per_root": 0.3216281953353296,
+    "proc_wall_s": 2643.52,
+    "cpu_s": 2607.51,
+    "games_per_cpu_h": 176.72031938516054
+   }
+  }
+ },
+ "v30": {
+  "diff_vs_old": {
+   "margin": 0,
+   "ours": 0,
+   "opp": 0,
+   "ticks": 0,
+   "first_ours": 0,
+   "first_opp": 0,
+   "searches": 0,
+   "chosen": 0,
+   "gain_sum": 0,
+   "lead_at": 0
+  },
+  "diff_vs_ref": {
+   "margin": 0,
+   "ours": 0,
+   "opp": 0,
+   "ticks": 0,
+   "first_ours": 0,
+   "first_opp": 0,
+   "searches": 0,
+   "chosen": 0,
+   "gain_sum": 0,
+   "lead_at": 0
+  },
+  "common": 128,
+  "ref_common": 128,
+  "timing": {
+   "old": {
+    "games": 128,
+    "wall_s": 3839.487778186798,
+    "search_s": 2972.3042920595035,
+    "roots": 7172,
+    "s_per_game": 29.99599826708436,
+    "search_s_per_game": 23.22112728171487,
+    "games_per_h": 120.01600906712959,
+    "s_per_root": 0.41443171947288115,
+    "proc_wall_s": 3846.07,
+    "cpu_s": 3781.15,
+    "games_per_cpu_h": 121.86768575697869
+   },
+   "new": {
+    "games": 128,
+    "wall_s": 3319.5581471920013,
+    "search_s": 2291.291643808363,
+    "roots": 7172,
+    "s_per_game": 25.93404802493751,
+    "search_s_per_game": 17.900715967252836,
+    "games_per_h": 138.8136551817261,
+    "s_per_root": 0.3194773624941945,
+    "proc_wall_s": 3326.04,
+    "cpu_s": 3285.51,
+    "games_per_cpu_h": 140.2521982888501
+   }
+  }
+ }
+}

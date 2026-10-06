@@ -3399,3 +3399,51 @@ Hunter 99·진 경기 수 같음). → STAND 표현력은 V30 이득에 필요 �
 - `reports/distill_why/`: `outcome_{v28,p17}.txt`, `outcome_v28_nostand.txt`, `lost_games.txt`, `second_race.txt`, `deaths_v28.txt`, `join.txt`,
   `agree_student_states_v28.txt`, `agree_teacher_states_v28.txt`, `agree_teacher_states_by_h99.txt`, `probe_v28.txt`, `pool_label_mix.txt`, `scripts/`.
   원시 기록(69 MB + 풀 기록)은 커밋하지 않음(지움). 코드: `examples/d1_why.py`(play/agree/outcome/join, `until:`/`nostand:` 정책), `examples/d1_probe.py`.
+
+## B1: 탐색 평가 가속 — 파이프라인 롤아웃 (2026-10-06, 브랜치 `feat/b1-batched-search`, `blackout_env/sim/pipeline.py`, `examples/b1_profile.py`·`b1_step_profile.py`, `reports/b1_batched_search`)
+
+질문: 탐색 평가(`blind_search_eval.py`, o4f_v28r 19–25초/경기, 70–90%가 탐색)를 한 프로세스가 GPU를 제대로 쓰게 해서 빠르게. **결과는 비트 동일.**
+
+### 1. 진단
+- 전제와 달리 이미 배치였다. `play_matches`가 128경기를 lockstep으로, `Searcher.search` 한 번이 모든 루트 × B8 × 상대 변형 4 = **4096게임(8192뷰)**를 한 `BatchRollout`으로 돌린다.
+  비용은 게임-결정당 오버헤드다(~1만 게임-결정/초, 1스레드).
+- 탐색 한 번(128루트, gpu2 2080 Ti, 1스레드) 47.7초 = GPU 동기 `.cpu()` 12.4 + float 지도 H2D 6.4(결정당 245 MB, pageable) + 렌더 8.3 + numba step 8.1 + numpy `decode_moves` 4.5 + base 행 복사 1.5.
+  `NetPolicy.forward`가 2048뷰 덩어리마다 동기라 GPU와 CPU가 겹치지 않는다.
+
+### 2. 구현 (`PipelinedRollout`, `Searcher(pipeline=True, pipeline_graphs=)`, `blind_search_eval.py --pipeline 1 --pipeline-graphs`)
+- 지도 packed(int16) 렌더 → pinned 버퍼 → 비동기 H2D, 기기에서 `unpack_graphic`.
+- 살아 있는 게임을 **옛 forward와 같은 덩어리**(max_batch 뷰 = 1024게임)로 자르고, 덩어리 c의 forward를 큐에 넣은 뒤 c+1을 렌더한다. 덩어리가 step을 마치면 다음 결정을 바로 큐에 넣는다(roll-over).
+  앞 덩어리에서 게임이 끝나거나 창 행이 남으면 멈춘다.
+- 분기 수정(alt/pair 마스크, samp 잡음은 numpy처럼 float64)과 `decode_moves`의 arg max·오프셋 선택은 기기에서 한다. 삼각함수·stop/rot·카운터는 CPU의 numpy 식 그대로다.
+- 외부 base(P20) overlay: 같은 행(팀별 창 게임 전부)을 기기에서 모아 같은 2048 덩어리로 돌린다. 선택: 덩어리 forward를 CUDA 그래프로(같은 커널·같은 배치).
+- 모든 forward가 옛 경로와 같은 배치(행·순서·크기)를 보므로 **비트 동일**하다. 미지원(추가 상대 망 사용, 비-NetPolicy base, record/trace)은 `BatchRollout`(packed)로 넘긴다.
+- 덤으로 고친 것: `unpack_graphic`의 배터리/15가 CUDA에서 1 ulp 틀렸다(스칼라 나눗셈 = 역수 곱). float32 표로 바꿨다. 서버 packed 경로 값이 1 ulp 수준에서 바뀐다.
+- 테스트 `tests/test_sim_pipeline.py` 19개(CPU + CUDA): 모든 분기 종류, o4f, overlay on/off, 2수, 여러 덩어리, 중간 종료 게임, play_matches 전체, CUDA 그래프, 대체 경로.
+
+### 3. 결과 (`reports/b1_batched_search`)
+- 탐색 1회(128루트): 옛 47.7초 → packed 36.0 → 파이프라인 24.1 → +그래프 **21.5초(2.13×)**, 값 max|dv| = 0.
+  남은 시간: 창 25결정 ~10초는 **P20 forward GPU 한계**(2048뷰당 ~100 ms), 잎 125결정 ~12초는 CPU 한계(numba step ~7.4초).
+- 전체 평가 동일성(base p20, o4f_v28r, 시드 1800000+ 64 × 양 진영): **대 p20·대 v30 각 128/128경기 모든 필드 동일**. 대상은 옛 모드(내 실행 + R3 `sim_p20`)이고,
+  필드는 margin·ticks·chosen·gain_sum·lead_at·첫 Hunter다.
+- 처리량(128경기, gpu2 nice 19, 서버 부하 ~50/28):
+
+| 설정 | 대 p20 s/경기 | 탐색 s/루트 | CPU-코어시간당 경기 | 대 v30 s/경기 |
+|---|---|---|---|---|
+| 옛 모드(GPU 1개 독점에 가까움) | 27.5 | 0.452 | 133 | 30.0 |
+| 새 모드, GPU 0에 2프로세스 | 20.6 (1.33×) | 0.322 | 177 | 25.9 (1.16×) |
+| **새 모드, GPU당 1프로세스** | **14.0 (1.97×)** | **0.221** | **359 (2.69×)** | — |
+
+  GPU 하나에 둘을 올리면 GPU가 100%에 묶여 이득이 사라진다. **프로세스는 GPU마다 하나씩.** 대 v30은 휴리스틱 상대 몫(~7초/경기, O1 담당)이 그대로다.
+  blocking 이벤트라 GPU를 기다리는 동안 코어를 놓는다(0.72코어).
+
+### 4. step·렌더 세분 프로파일과 SIMD 시도 (`b1_step_profile.py`, `step_profile_*.txt`, `simd_trial.txt`)
+- 잎 단계 게임-결정당 step: gpu2 18.5 µs(맥 3.9). 이동 수학 28–30%, 상호작용 탐색 14–22%, world 6–8%, 나머지 ~45%(타일 목록·지역 진입·입금·변신·전투·부활·이벤트). packed 렌더 3.1 µs.
+- 이동 수학을 게임 축 안쪽 SoA·분기 없는 select로 다시 썼다(fastmath 없음). **비트 동일**(495경기 × 125결정 모든 유닛 이동)이지만 빠르지 않다.
+  numba는 벡터화하지 못한다(asm에 packed 연산 0). numpy SoA는 2.3–3.5× 느리다(메모리 한계). 완전히 벡터화해도 탐색 벽시계의 ~10%가 상한이라 더 하지 않는다.
+- GPU 이식 추정(`gpu_port_estimate.txt`): step+render를 게임당 스레드로 짠 CUDA C(--fmad=false)로 옮긴다. ~1100줄, 3–5 에이전트-일이고, 위험은 정확성이다.
+  CPU/탐색이 21.5초에서 ~4–6초로 줄어 **코어당 3–4×**가 되고, GPU당 처리량은 그대로다(P20 창이 벽). QZ의 fp16+compile P20과 같이 써야 벽시계도 준다.
+  gpu2 공용 venv에는 numba-cuda·cupy·nvcc가 없다.
+
+### 5. 권장
+- 탐색 평가는 `--pipeline 1 --pipeline-graphs`, GPU마다 프로세스 하나(`CUDA_VISIBLE_DEVICES`). 결과는 옛 모드와 비트 동일하다.
+- 다음 지렛대: (1) P20 창 forward(QZ fp16c, 비트 동일 아님), (2) step+render GPU 이식(위 추정). CPU SIMD는 하지 않는다.

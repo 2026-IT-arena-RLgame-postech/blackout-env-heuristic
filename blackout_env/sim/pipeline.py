@@ -123,7 +123,7 @@ class _Pending:
             if o is not None:
                 self.ho = torch.empty(o.shape, dtype=o.dtype, pin_memory=True)
                 self.ho.copy_(o, non_blocking=True)
-            self.event = torch.cuda.Event()
+            self.event = torch.cuda.Event(blocking=True)  # the wait sleeps instead of spinning a shared core
             self.event.record()
         else:
             self.hj, self.ho, self.event = j.cpu(), (None if o is None else o.cpu()), None

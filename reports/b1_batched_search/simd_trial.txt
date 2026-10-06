@@ -1,0 +1,20 @@
+B1 SIMD trial: the movement math of core.move_unit (_normalized, _speed, both _clamp_axis), the easy pure hot part
+(25-30 % of core.step_kernel), re-written over the game axis innermost (SoA), branch-free (selects), no fastmath:
+examples/b1_step_profile.py soa_move_math (numba) and np_move_math (whole-array numpy).
+
+bit-exactness: both equal the scalar kernel bit for bit on every unit move of 495 games x 125 leaf decisions
+(asserted in `profile`, and per unit over 4096 lanes in the numpy test).
+
+speed (per unit move, one thread)               Mac M-series        gpu2 i9-9940X (AVX-512, loaded)
+  scalar kernel (probe_move_math, per game)     ~50 ns              ~270 ns
+  numba SoA, all 8 neighbours branch-free       177 ns              -
+  numba SoA, the 3 moving-side neighbours       51-53 ns            ~265 ns (incl. SoA gather)
+  numba SoA kernel alone, 4096 lanes            49 ns/lane          216 ns/lane
+  numpy SoA (SIMD ufuncs), 4096 lanes           113 ns/lane         745 ns/lane
+LLVM does not vectorise the numba SoA loop on either CPU (no packed sqrt/div/gather in the asm, also with unsigned
+flat indices): per-lane gathers from the per-game walk maps, the int<->float conversions and the 2 x 3 dependent
+clamp steps defeat the loop vectoriser.  numpy's one-pass-per-operation SIMD is memory-bound: 2.3-3.5x slower.
+
+Ceiling even if it vectorised perfectly: move math 25-30 % of step; the rest of step is the tile lists, region
+effects, combat and the interaction scan (sequential, data-dependent).  Step + render = ~70 % of the leaf phase's
+CPU, and the window phase is GPU-bound: a perfect SIMD move math would save ~10 % of search wall.  Not pursued.

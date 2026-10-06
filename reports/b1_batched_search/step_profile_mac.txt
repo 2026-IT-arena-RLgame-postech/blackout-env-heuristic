@@ -1,0 +1,11 @@
+495 games x 125 decisions = 56284 game-decisions (leaf phase, rollout net v28d256 both sides)
+phase          us/game-decision  % of step
+step                       3.88      100.0
+move_math                  0.98       25.3
+move_soa                   1.39       35.9
+views                      0.01        0.3
+stat                       0.04        1.0
+interact                   0.85       21.9
+world                      0.30        7.8
+render_raw                 0.44       11.2
+render_pk                  0.71       18.3
