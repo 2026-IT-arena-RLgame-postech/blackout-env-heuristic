@@ -54,7 +54,8 @@ P5A = "checkpoints/distill/frozen/p5a_v22.pt"
 P16 = "checkpoints/distill/frozen/p16_v27.pt"  # the V27 student (docs §35); --base p16 = the next loop step
 P17 = "checkpoints/distill/frozen/p17_v28.pt"  # the V28 student (docs §38)
 P20 = "checkpoints/distill/frozen/p20_v30.pt"  # P18bp2 + 5k V30 distil (v_0005, docs §47)
-BASES = {"p14b": P14B, "p16": P16, "p17": P17, "p20": P20}
+P20C = "checkpoints/distill/frozen/p20_v30_fp16c.pt"  # QZ: P20 + precision "fp16c" (sim/fastnet.fast_checkpoint)
+BASES = {"p14b": P14B, "p16": P16, "p17": P17, "p20": P20, "p20c": P20C}
 V25R = "checkpoints/rollout_net/v25/v25d256.pt"  # the P14b-distilled rollout nets (docs §31; --v25r overrides)
 V25F = "checkpoints/rollout_net/v25/v25f3x.pt"
 V27R = "checkpoints/rollout_net/v27/v27d256.pt"  # distilled from P16 (docs §37)
