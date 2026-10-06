@@ -275,6 +275,12 @@ def test_window_weight_stacks_with_the_opening_weight():
     learner = Learner(parse_args(argv[:-4] + ["--window-weight", "2", "--window-seconds", "100,300"]))
     weights = learner.row_weights(torch.ones(4, 5), torch.zeros(4, 5, 3), aux["elapsed"])
     assert torch.equal(weights[:, 0], torch.tensor([3.0, 2.0, 3.0, 2.0]))
+    learner = Learner(parse_args(argv + ["--join-weight", "10", "--join-seconds", "4.5,5.5"]))  # P20: stacks with both
+    weights = learner.row_weights(torch.ones(4, 5), torch.zeros(4, 5, 3), aux["elapsed"])
+    assert torch.equal(weights[:, 0], torch.tensor([60.0, 1.0, 60.0, 1.0]))
+    learner = Learner(parse_args(argv + ["--join-weight", "10"]))  # default window 3.4-4.0 s misses rows at 5 s
+    weights = learner.row_weights(torch.ones(4, 5), torch.zeros(4, 5, 3), aux["elapsed"])
+    assert torch.equal(weights[:, 0], torch.tensor([6.0, 1.0, 6.0, 1.0]))
 
 
 def test_stand_seconds_limits_stand_targets_to_its_window():

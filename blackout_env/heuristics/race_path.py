@@ -111,7 +111,50 @@ def _blocked_at(blocked, y, x):
 
 @njit(cache=True)
 def seg_clear_exact(blocked, y0, x0, y1, x1, required):
-    """The segment keeps ``required`` (< 1) from every blocked square (off-grid cells blocked)."""
+    """The segment keeps ``required`` (< 1) from every blocked square (off-grid cells blocked).
+
+    Same answer as ``_seg_clear_exact_ref`` (O1), visiting per row of the bounding box only the cells
+    whose square can come within ``required`` (+ 1e-6 slack) of the segment's part in that row band;
+    each visited cell takes the reference's own ``seg_box_distance`` test."""
+    if not (required >= 0.0 and required < 1.0) or not (math.isfinite(y0) and math.isfinite(x0)
+                                                       and math.isfinite(y1) and math.isfinite(x1)):
+        return _seg_clear_exact_ref(blocked, y0, x0, y1, x1, required)
+    lo_y = int(math.floor(min(y0, y1) - required + 0.5)) - 1
+    hi_y = int(math.floor(max(y0, y1) + required + 0.5)) + 1
+    lo_x = int(math.floor(min(x0, x1) - required + 0.5)) - 1
+    hi_x = int(math.floor(max(x0, x1) + required + 0.5)) + 1
+    dy = y1 - y0
+    dx = x1 - x0
+    pad = required + 1e-6
+    for cy in range(lo_y, hi_y + 1):
+        b0 = cy - 0.5 - pad
+        b1 = cy + 0.5 + pad
+        if dy == 0.0:
+            if y0 < b0 or y0 > b1:
+                continue
+            t0, t1 = 0.0, 1.0
+        else:
+            ta = (b0 - y0) / dy
+            tb = (b1 - y0) / dy
+            t0 = max(0.0, min(ta, tb) - 1e-9)
+            t1 = min(1.0, max(ta, tb) + 1e-9)
+            if t0 > t1:
+                continue
+        xa = x0 + dx * t0
+        xb = x0 + dx * t1
+        cx0 = max(lo_x, int(math.floor(min(xa, xb) - pad + 0.5)) - 1)
+        cx1 = min(hi_x, int(math.floor(max(xa, xb) + pad + 0.5)) + 1)
+        for cx in range(cx0, cx1 + 1):
+            if not _blocked_at(blocked, cy, cx):
+                continue
+            if seg_box_distance(y0, x0, y1, x1, float(cy), float(cx), 0.5) < required:
+                return False
+    return True
+
+
+@njit(cache=True)
+def _seg_clear_exact_ref(blocked, y0, x0, y1, x1, required):
+    """Reference for ``seg_clear_exact``: every blocked cell of the bounding box."""
     lo_y = int(math.floor(min(y0, y1) - required + 0.5)) - 1
     hi_y = int(math.floor(max(y0, y1) + required + 0.5)) + 1
     lo_x = int(math.floor(min(x0, x1) - required + 0.5)) - 1
@@ -311,15 +354,26 @@ class RacePlanner:
                     heapq.heappush(heap, (nd, int(u)))
         self.node_g = g
 
+    def _cached_query(self, position):
+        """``_query`` from ``position``, memoised (the planner is immutable; V25-V30 ask the same
+        positions several times a decision)."""
+        key = (float(position[0]), float(position[1]))
+        cache = self.__dict__.setdefault("_query_cache", {})
+        hit = cache.get(key)
+        if hit is None:
+            if len(cache) >= 4096:
+                cache.clear()
+            hit = cache[key] = _query(self.blocked, self.nodes, self.node_g, self.boxes, self.inset,
+                                      key[0], key[1], self.q_required)
+        return hit
+
     def distance(self, position) -> float:
         """Shortest-path length from ``position`` (row, col) to the goal region."""
-        return float(_query(self.blocked, self.nodes, self.node_g, self.boxes, self.inset,
-                            float(position[0]), float(position[1]), self.q_required)[0])
+        return float(self._cached_query(position)[0])
 
     def target(self, position):
         """The point to head for, or None (no visible node / already inside)."""
-        val, ty, tx = _query(self.blocked, self.nodes, self.node_g, self.boxes, self.inset,
-                             float(position[0]), float(position[1]), self.q_required)
+        val, ty, tx = self._cached_query(position)
         if not math.isfinite(val) or val <= 0.0:
             return None
         return ty, tx

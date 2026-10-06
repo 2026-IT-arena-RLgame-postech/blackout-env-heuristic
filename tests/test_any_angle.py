@@ -117,6 +117,7 @@ def test_labels_unchanged_and_moves_are_unit_vectors():
 def test_falls_back_to_the_8_direction_move(monkeypatch):
     o = _observation((0, 0, 1, 0, 2))
     monkeypatch.setattr(aa, "any_angle_heading", lambda *args, **kwargs: None)
+    monkeypatch.setattr(aa, "_waypoint_blocked", lambda *args, **kwargs: None)  # the mixin's path (O1)
     player = StrategicHeuristicV21AnyAngle(exact_hunt=False)
     moves = player.act(_team(o))
     reference = StrategicHeuristicV21().teach(_team(o))

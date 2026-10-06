@@ -1,0 +1,9 @@
+act                18.79s 100.0%   646.2 us/tick calls/tick 1.00
+labels             10.11s  53.8%   347.7 us/tick calls/tick 1.00
+labels_v17base      5.92s  31.5%   203.5 us/tick calls/tick 1.00
+composition         3.64s  19.4%   125.2 us/tick calls/tick 1.00
+context             2.64s  14.1%    90.9 us/tick calls/tick 1.00
+any_angle(all)      2.49s  13.2%    85.6 us/tick calls/tick 3.05
+economy             1.50s   8.0%    51.6 us/tick calls/tick 1.00
+hunters             0.42s   2.2%    14.5 us/tick calls/tick 1.00
+deposit             0.17s   0.9%     5.7 us/tick calls/tick 0.31

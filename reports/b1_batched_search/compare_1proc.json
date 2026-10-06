@@ -1,0 +1,58 @@
+{
+ "p20": {
+  "diff_vs_old": {
+   "margin": 0,
+   "ours": 0,
+   "opp": 0,
+   "ticks": 0,
+   "first_ours": 0,
+   "first_opp": 0,
+   "searches": 0,
+   "chosen": 0,
+   "gain_sum": 0,
+   "lead_at": 0
+  },
+  "diff_vs_ref": {
+   "margin": 0,
+   "ours": 0,
+   "opp": 0,
+   "ticks": 0,
+   "first_ours": 0,
+   "first_opp": 0,
+   "searches": 0,
+   "chosen": 0,
+   "gain_sum": 0,
+   "lead_at": 0
+  },
+  "common": 128,
+  "ref_common": 128,
+  "timing": {
+   "old": {
+    "games": 128,
+    "wall_s": 3514.8093581199646,
+    "search_s": 3273.3382128495723,
+    "roots": 7240,
+    "s_per_game": 27.459448110312223,
+    "search_s_per_game": 25.572954787887284,
+    "games_per_h": 131.10241639008188,
+    "s_per_root": 0.45211853768640503,
+    "proc_wall_s": 3524.64,
+    "cpu_s": 3453.79,
+    "games_per_cpu_h": 133.41865023640696
+   },
+   "new": {
+    "games": 128,
+    "wall_s": 1785.6928210258484,
+    "search_s": 1603.365994866006,
+    "roots": 7240,
+    "s_per_game": 13.95072516426444,
+    "search_s_per_game": 12.526296834890672,
+    "games_per_h": 258.05110183244096,
+    "s_per_root": 0.2214593915560782,
+    "proc_wall_s": 1790.44,
+    "cpu_s": 1284.0,
+    "games_per_cpu_h": 358.8785046728972
+   }
+  }
+ }
+}

@@ -56,7 +56,8 @@ import math
 import numpy as np
 
 from ..env.constants import unit_index
-from .any_angle import AnyAngleMixin, SAMPLE_STEP, point_clearance, segment_clear, pixel_position, world_heading
+from .any_angle import (AnyAngleMixin, SAMPLE_STEP, _point_clearance, _segment_clear, point_clearance,  # noqa: F401
+                        segment_clear, pixel_position, world_heading)
 from .strategic import BATTERY, CARRIER, COLLECTOR, FIRST_SPECIAL, HUNTER, SITE_CARRIER, SITE_HUNTER, STORAGE_ALLY, STORAGE_ENEMY
 from .teach import Goal, TeachLabel
 from .v17_planner import BASE_SPEED, BUFF_SIZE, BUFF_SPEED, DEBUFF_SIZE, DEBUFF_SPEED, MATCH_SECONDS
@@ -75,6 +76,13 @@ SENTRY_MIN_HUNTERS = 2  # a sentry is posted once we have this many Hunters
 SENTRY_OFFSET = 2.5  # tiles from the sanctuary centre toward the enemy spawn (V19)
 SENTRY_RADIUS = 7.0  # the sentry strikes enemy Collectors this close to the sanctuary centre (V19)
 COMMIT_MARGIN = 0.0  # seconds a committed walker must reach the sanctuary ahead of any enemy Hunter
+_ITEM_CHANNELS = (BUFF_SPEED, DEBUFF_SPEED, BUFF_SIZE, DEBUFF_SIZE)
+
+
+
+def _gap(a, b) -> float:
+    """``math.hypot(*np.subtract(a, b))`` for two (row, col) float tuples, without the array."""
+    return math.hypot(a[0] - b[0], a[1] - b[1])
 
 
 class StrategicHeuristicV22Teach(StrategicHeuristicV21Teach):
@@ -130,8 +138,12 @@ class StrategicHeuristicV22Teach(StrategicHeuristicV21Teach):
     def _context(self, obs) -> dict:
         ctx = super()._context(obs)
         g = ctx["graphic"]
-        count = {(s, c): self._storage_items(g, s, c) for s in (STORAGE_ALLY, STORAGE_ENEMY)
-                 for c in (BUFF_SPEED, DEBUFF_SPEED, BUFF_SIZE, DEBUFF_SIZE)}
+        # = {(s, c): self._storage_items(g, s, c) ...}: one gather of each team's storage cells
+        count = {}
+        for s in (STORAGE_ALLY, STORAGE_ENEMY):
+            hits = (g[g[..., s] > 0.5][:, _ITEM_CHANNELS] > 0.5).sum(axis=0).tolist()
+            for c, k in zip(_ITEM_CHANNELS, hits):
+                count[s, c] = int(k)
         own_size = max(0.0, 1.0 + SIZE_BUFF * count[STORAGE_ALLY, BUFF_SIZE] + SIZE_DEBUFF * count[STORAGE_ENEMY, DEBUFF_SIZE])
         enemy_size = max(0.0, 1.0 + SIZE_BUFF * count[STORAGE_ENEMY, BUFF_SIZE] + SIZE_DEBUFF * count[STORAGE_ALLY, DEBUFF_SIZE])
         ctx["own_size"], ctx["enemy_size"] = own_size, enemy_size
@@ -223,7 +235,7 @@ class StrategicHeuristicV22Teach(StrategicHeuristicV21Teach):
             ]
             if not candidates:
                 continue
-            tiles = tuple((int(y), int(x)) for y, x in np.argwhere((graphic[..., channel] > 0.5) & walkable))
+            tiles = self._site_tiles(graphic, channel, walkable)
             ranked = []
             if tiles:
                 distance = self._distance_to(walkable, tiles)
@@ -248,7 +260,7 @@ class StrategicHeuristicV22Teach(StrategicHeuristicV21Teach):
         at it: ``d / v_collector + margin < (gap - contact) / (v_hunter + v_collector)``.  Once a
         Hunter, a contact is a trade instead of a lost unit."""
         shape = graphic.shape[:2]
-        tiles = tuple((int(y), int(x)) for y, x in np.argwhere((graphic[..., SITE_HUNTER] > 0.5) & plain))
+        tiles = self._site_tiles(graphic, SITE_HUNTER, plain)
         if not tiles or not candidates:
             return
         hunters = [e for e in ctx["enemies"] if e.cls == HUNTER and not e.in_base]
@@ -265,7 +277,7 @@ class StrategicHeuristicV22Teach(StrategicHeuristicV21Teach):
             arrive = max(0.0, reach - 0.5) / v_me + self.commit_margin
             here = pixel_position(state, shape)
             caught = min(
-                (math.hypot(*np.subtract(pixel_position(states[e.row], shape), here)) - contact) / (v_them + v_me)
+                (_gap(pixel_position(states[e.row], shape), here) - contact) / (v_them + v_me)
                 for e in hunters) if hunters else math.inf
             if arrive < caught:
                 scored.append((reach, unit_index(name), name))
@@ -411,7 +423,9 @@ class StrategicHeuristicV22(AnyAngleMixin, StrategicHeuristicV22Teach):
             return None
         position = pixel_position(state, shape)
         radius = CONTACT_RADIUS.get(self._class_id(state), 0.325)
-        required = min(radius + self.clearance_margin, point_clearance(walkable, position) - 1e-3) + 0.5 * SAMPLE_STEP
+        blocked = self._blocked(walkable)
+        required = min(radius + self.clearance_margin,
+                       float(_point_clearance(blocked, float(position[0]), float(position[1]))) - 1e-3) + 0.5 * SAMPLE_STEP
         lo = 0.5 - self.region_inset
         points = []
         for ty, tx in tiles:
@@ -422,6 +436,7 @@ class StrategicHeuristicV22(AnyAngleMixin, StrategicHeuristicV22Teach):
         for gap, point in points[:8]:
             if gap < 1e-3:
                 return None
-            if segment_clear(walkable, position, point, max(required, 0.0)):
+            if _segment_clear(blocked, float(position[0]), float(position[1]), float(point[0]), float(point[1]),
+                              float(max(required, 0.0)), float(SAMPLE_STEP)):
                 return world_heading(point[0] - position[0], point[1] - position[1])
         return None

@@ -13,7 +13,7 @@ from collections import OrderedDict
 
 import numpy as np
 
-from . import _native
+from . import _native, _shared
 from .strategic import (
     ABSORPTION_INTERVAL_SECONDS,
     BATTERY,
@@ -209,7 +209,11 @@ class StrategicHeuristicV2(StrategicHeuristic):
         """Reuse maps for pixel positions revisited within one static-map episode."""
         cached = self._distance_cache.get(start)
         if cached is None:
-            cached = self._distance_map(walkable, start)
+            fn = self._distance_map
+            key = (getattr(fn, "__func__", fn), walkable.shape, walkable.tobytes(), tuple(start))
+            cached = _shared.DISTANCE_MAPS.get(key)
+            if cached is None:
+                cached = _shared.DISTANCE_MAPS.put(key, _shared.frozen(fn(walkable, start)))
             self._distance_cache[start] = cached
             bytes_per_map = max(1, walkable.size * np.dtype(np.float32).itemsize)
             max_entries = max(32, min(walkable.size, (16 * 1024 * 1024) // bytes_per_map))

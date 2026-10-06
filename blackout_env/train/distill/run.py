@@ -211,6 +211,11 @@ def parse_args(argv=None) -> argparse.Namespace:
                    "the race-join decisions ~ decision 85-115); stacks with --opening-weight; 1 = off")
     p.add_argument("--window-seconds", type=lambda s: tuple(float(x) for x in s.split(",")), default=(3.4, 4.6),
                    help="--window-weight's window 'start,end' in seconds of play (25 decisions/s)")
+    p.add_argument("--join-weight", type=float, default=1.0,
+                   help="a second, narrow window like --window-weight (P20, §47: the last decisions before the first "
+                   "Hunter transform at decision 99, where the staged reserve joins or holds); stacks with both; 1 = off")
+    p.add_argument("--join-seconds", type=lambda s: tuple(float(x) for x in s.split(",")), default=(3.4, 4.0),
+                   help="--join-weight's window 'start,end' in seconds of play (default decisions 85-99)")
     p.add_argument("--inference", choices=INFERENCE, default="iqn",
                    help="how collection and eval students turn logits into a move (inference.py; arc_mean: circular "
                    "mean of the top contiguous arc, for K bins)")
@@ -463,7 +468,8 @@ class Learner:
 
     def row_weights(self, valid: torch.Tensor, classes: torch.Tensor, elapsed: torch.Tensor) -> torch.Tensor | None:
         """[B, 5] per-unit loss weights: --class-weighting times --opening-weight on the opening rows times
-        --window-weight on the --window-seconds rows (None = uniform)."""
+        --window-weight on the --window-seconds rows times --join-weight on the
+        --join-seconds rows (None = uniform)."""
         weights = class_weights(classes, valid) if self.args.class_weighting == "balanced" else None
         if self.args.opening_weight != 1.0:
             opening = torch.where(elapsed < self.args.opening_seconds, self.args.opening_weight, 1.0)[:, None]
@@ -472,6 +478,11 @@ class Learner:
         if ww != 1.0:
             a, b = self.args.window_seconds
             win = torch.where((elapsed >= a) & (elapsed < b), ww, 1.0)[:, None]
+            weights = win.expand_as(valid) if weights is None else weights * win
+        jw = getattr(self.args, "join_weight", 1.0)
+        if jw != 1.0:
+            a, b = self.args.join_seconds
+            win = torch.where((elapsed >= a) & (elapsed < b), jw, 1.0)[:, None]
             weights = win.expand_as(valid) if weights is None else weights * win
         return weights
 
@@ -667,6 +678,7 @@ class Run:
                         "map_xattn_layers": self.args.map_xattn_layers,
                         "opening_weight": self.args.opening_weight, "opening_seconds": self.args.opening_seconds,
                         "window_weight": self.args.window_weight, "stand_seconds": self.args.stand_seconds, "window_seconds": list(self.args.window_seconds),
+                        "join_weight": self.args.join_weight, "join_seconds": list(self.args.join_seconds),
                         "lr_schedule": self.args.lr_schedule, "lr_warmup": self.args.lr_warmup,
                         "lr_final": self.args.lr_final, "steps": self.args.steps},
         }

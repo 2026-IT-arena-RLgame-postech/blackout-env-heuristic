@@ -36,8 +36,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from . import _shared
 from .strategic import CARRIER, COLLECTOR, HUNTER
-from .teach import DIRECTIONS, TeachLabel, label_action
+from .teach import _BITS, _MASKS, DIRECTIONS, TeachLabel, label_action
 
 # UnitData/*.asset CollisionBound.Width / 2 (circles).
 UNIT_RADIUS = {COLLECTOR: 0.275, CARRIER: 0.225, HUNTER: 0.325}
@@ -82,8 +83,9 @@ def _point_clearance(blocked, y, x):
 
 
 @njit(cache=True)
-def _segment_clear(blocked, y0, x0, y1, x1, required, step):
-    """Every sampled point of the segment keeps ``required`` from the blocked squares."""
+def _segment_clear_ref(blocked, y0, x0, y1, x1, required, step):
+    """Every sampled point of the segment keeps ``required`` from the blocked squares (reference:
+    samples every point; ``_segment_clear`` gives the same answer, faster)."""
     length = math.sqrt((y1 - y0) * (y1 - y0) + (x1 - x0) * (x1 - x0))
     n = int(math.ceil(length / step))
     if n < 1:
@@ -92,6 +94,131 @@ def _segment_clear(blocked, y0, x0, y1, x1, required, step):
         t = i / n
         if _point_clearance(blocked, y0 + (y1 - y0) * t, x0 + (x1 - x0) * t) < required:
             return False
+    return True
+
+
+# ---- exact fast segment test (O1)
+_PAD_R = 1e-6   # distance slack: a sample the reference could fail lies this deep inside a candidate region
+_PAD_T = 1e-9   # parameter slack on the candidate intervals
+_SHORT = 8      # segments with at most this many samples are sampled directly
+
+
+@njit(cache=True, inline="always")
+def _clip_rect(y0, x0, dy, dx, ymin, ymax, xmin, xmax, lo, hi):
+    """Liang-Barsky: [lo, hi] clipped to the t where p(t) lies in the closed rectangle; lo > hi if none."""
+    for k in range(4):
+        if k == 0:
+            p = -dx; q = x0 - xmin
+        elif k == 1:
+            p = dx; q = xmax - x0
+        elif k == 2:
+            p = -dy; q = y0 - ymin
+        else:
+            p = dy; q = ymax - y0
+        if p == 0.0:
+            if q < 0.0:
+                return 1.0, 0.0
+        else:
+            t = q / p
+            if p < 0.0:
+                if t > lo:
+                    lo = t
+            else:
+                if t < hi:
+                    hi = t
+    return lo, hi
+
+
+@njit(cache=True, inline="always")
+def _clip_disc(y0, x0, dy, dx, cy, cx, r, lo, hi):
+    ey = y0 - cy
+    ex = x0 - cx
+    a = dy * dy + dx * dx
+    c = ey * ey + ex * ex - r * r
+    if a == 0.0:
+        return (lo, hi) if c <= 0.0 else (1.0, 0.0)
+    b = 2.0 * (dy * ey + dx * ex)
+    disc = b * b - 4.0 * a * c
+    if disc < 0.0:
+        return 1.0, 0.0
+    s = math.sqrt(disc)
+    t0 = (-b - s) / (2.0 * a)
+    t1 = (-b + s) / (2.0 * a)
+    return max(lo, t0), min(hi, t1)
+
+
+@njit(cache=True)
+def _segment_clear(blocked, y0, x0, y1, x1, required, step):
+    """Every sampled point of the segment keeps ``required`` from the blocked squares.
+
+    Bit-identical to ``_segment_clear_ref`` (O1): a sample can fail only within ``required`` of a blocked
+    square (or an off-grid cell), so for each such square near the segment the parameter interval
+    where the segment comes within ``required + _PAD_R`` of it is solved exactly (the rounded square is
+    the hull of two cross rectangles and four corner discs), and only the samples inside those padded
+    intervals are tested -- with the reference's own sample positions and ``_point_clearance``.  Short
+    segments, ``required`` outside [0, 0.5] and anything non-finite take the reference."""
+    length = math.sqrt((y1 - y0) * (y1 - y0) + (x1 - x0) * (x1 - x0))
+    n = int(math.ceil(length / step))
+    if n < 1:
+        n = 1
+    if n <= _SHORT or not (required <= 0.5) or not (required >= 0.0) or not math.isfinite(length):
+        return _segment_clear_ref(blocked, y0, x0, y1, x1, required, step)
+    h, w = blocked.shape
+    R = required + _PAD_R
+    dy = y1 - y0
+    dx = x1 - x0
+    lo_y = int(math.floor(min(y0, y1) - R + 0.5)) - 1
+    hi_y = int(math.floor(max(y0, y1) + R + 0.5)) + 1
+    for cy in range(lo_y, hi_y + 1):
+        # t where the segment is within the row band of squares at distance < R
+        b0 = cy - 0.5 - R
+        b1 = cy + 0.5 + R
+        if dy == 0.0:
+            if y0 < b0 or y0 > b1:
+                continue
+            ta, tb = 0.0, 1.0
+        else:
+            u = (b0 - y0) / dy
+            v = (b1 - y0) / dy
+            ta = max(0.0, min(u, v) - _PAD_T)
+            tb = min(1.0, max(u, v) + _PAD_T)
+            if ta > tb:
+                continue
+        xa = x0 + dx * ta
+        xb = x0 + dx * tb
+        cx0 = int(math.floor(min(xa, xb) - R + 0.5)) - 1
+        cx1 = int(math.floor(max(xa, xb) + R + 0.5)) + 1
+        for cx in range(cx0, cx1 + 1):
+            if 0 <= cy < h and 0 <= cx < w and not blocked[cy, cx]:
+                continue
+            fy = float(cy)
+            fx = float(cx)
+            # interval where dist(p(t), square) < R: hull of the two cross rectangles and four corner discs
+            lo = 2.0
+            hi = -1.0
+            a, b = _clip_rect(y0, x0, dy, dx, fy - 0.5 - R, fy + 0.5 + R, fx - 0.5, fx + 0.5, 0.0, 1.0)
+            if a <= b:
+                lo = min(lo, a); hi = max(hi, b)
+            a, b = _clip_rect(y0, x0, dy, dx, fy - 0.5, fy + 0.5, fx - 0.5 - R, fx + 0.5 + R, 0.0, 1.0)
+            if a <= b:
+                lo = min(lo, a); hi = max(hi, b)
+            for sy in (-0.5, 0.5):
+                for sx in (-0.5, 0.5):
+                    a, b = _clip_disc(y0, x0, dy, dx, fy + sy, fx + sx, R, 0.0, 1.0)
+                    if a <= b:
+                        lo = min(lo, a); hi = max(hi, b)
+            if lo > hi:
+                continue
+            i0 = int(math.ceil((lo - _PAD_T) * n))
+            i1 = int(math.floor((hi + _PAD_T) * n))
+            if i0 < 1:
+                i0 = 1
+            if i1 > n:
+                i1 = n
+            for i in range(i0, i1 + 1):
+                t = i / n
+                if _point_clearance(blocked, y0 + (y1 - y0) * t, x0 + (x1 - x0) * t) < required:
+                    return False
     return True
 
 
@@ -441,15 +568,84 @@ def anyangle_field_numba(walkable, nodes, adj, sources_y, sources_x, required, s
 
 
 _FIELD_GRAPHS: dict = {}
+_GRAPH_PARENTS: list = []  # recent (walkable, nodes, adjacency, clearance, step) with full adjacency, newest last
+_PARENT_SLOTS = 8
+
+
+@njit(cache=True)
+def _node_adjacency_from(walkable, nodes, required, step, parent_index, parent_adj, added):
+    """``_node_adjacency`` for a mask whose blocked cells include a parent mask's (bit-identical).
+
+    Clearance only shrinks when cells are blocked, so a pair the parent saw blocked stays blocked; a
+    pair it saw clear stays clear unless a newly blocked cell (``added``, 2-D prefix sums) lies within
+    two cells of the segment's bounding box (a sample's 3x3 neighbourhood), and then it is re-tested.
+    ``parent_index[i]``: node i's index in the parent's node list (exact coordinates), -1 if new."""
+    h, w = walkable.shape
+    blocked = np.empty((h, w), dtype=np.bool_)
+    for y in range(h):
+        for x in range(w):
+            blocked[y, x] = not walkable[y, x]
+    k = nodes.shape[0]
+    adj = np.full((k, k), np.inf, dtype=np.float64)
+    for i in range(k):
+        adj[i, i] = 0.0
+        for j in range(i + 1, k):
+            pi = parent_index[i]
+            pj = parent_index[j]
+            if pi >= 0 and pj >= 0:
+                if not math.isfinite(parent_adj[pi, pj]):
+                    continue
+                y0 = max(int(math.floor(min(nodes[i, 0], nodes[j, 0]) + 0.5)) - 2, 0)
+                y1 = min(int(math.floor(max(nodes[i, 0], nodes[j, 0]) + 0.5)) + 2, h - 1)
+                x0 = max(int(math.floor(min(nodes[i, 1], nodes[j, 1]) + 0.5)) - 2, 0)
+                x1 = min(int(math.floor(max(nodes[i, 1], nodes[j, 1]) + 0.5)) + 2, w - 1)
+                if y0 > y1 or x0 > x1 or (added[y1 + 1, x1 + 1] - added[y0, x1 + 1] - added[y1 + 1, x0]
+                                          + added[y0, x0]) == 0:
+                    dy = nodes[i, 0] - nodes[j, 0]
+                    dx = nodes[i, 1] - nodes[j, 1]
+                    d = math.sqrt(dy * dy + dx * dx)
+                    adj[i, j] = d
+                    adj[j, i] = d
+                    continue
+            if _segment_clear(blocked, nodes[i, 0], nodes[i, 1], nodes[j, 0], nodes[j, 1], required, step):
+                dy = nodes[i, 0] - nodes[j, 0]
+                dx = nodes[i, 1] - nodes[j, 1]
+                d = math.sqrt(dy * dy + dx * dx)
+                adj[i, j] = d
+                adj[j, i] = d
+    return adj
 
 
 def _field_graph(walkable: np.ndarray, clearance: float, step: float):
-    """(nodes, adjacency) for a mask, cached by its bytes (static masks hit every tick)."""
+    """(nodes, adjacency) for a mask, cached by its bytes (static masks hit every tick).
+
+    A new mask that only blocks more cells than a recent one (V21's Hunter-free, V20's camp-safe and
+    V22's item-free maps are the planning map minus some cells) derives its adjacency from that one
+    (``_node_adjacency_from``, bit-identical, O1)."""
     key = (walkable.shape, walkable.tobytes(), clearance, step)
     graph = _FIELD_GRAPHS.get(key)
     if graph is None:
         nodes = _corner_nodes(walkable, clearance)
-        graph = (nodes, _node_adjacency(walkable, nodes, clearance - _FIELD_TOLERANCE, step))
+        required = clearance - _FIELD_TOLERANCE
+        parent = None
+        for entry in reversed(_GRAPH_PARENTS):
+            if (entry[3] == clearance and entry[4] == step and entry[0].shape == walkable.shape
+                    and not (walkable & ~entry[0]).any()):
+                parent = entry
+                break
+        if parent is None:
+            adj = _node_adjacency(walkable, nodes, required, step)
+            _GRAPH_PARENTS.append((walkable.copy(), nodes, adj, clearance, step))
+            if len(_GRAPH_PARENTS) > _PARENT_SLOTS:
+                _GRAPH_PARENTS.pop(0)
+        else:
+            where = {(float(y), float(x)): i for i, (y, x) in enumerate(parent[1].tolist())}
+            index = np.array([where.get((float(y), float(x)), -1) for y, x in nodes.tolist()], dtype=np.int64)
+            added = (parent[0] & ~walkable).astype(np.int32)
+            prefix = np.zeros((added.shape[0] + 1, added.shape[1] + 1), dtype=np.int32)
+            prefix[1:, 1:] = added.cumsum(0).cumsum(1)
+            adj = _node_adjacency_from(np.ascontiguousarray(walkable), nodes, required, step, index, parent[2], prefix)
+        graph = (nodes, adj)
         if len(_FIELD_GRAPHS) >= 256:
             _FIELD_GRAPHS.pop(next(iter(_FIELD_GRAPHS)))
         _FIELD_GRAPHS[key] = graph
@@ -526,7 +722,12 @@ def any_angle_waypoint(
     far_bias: float = 0.0,
 ) -> tuple[int, int] | None:
     """The cell to head for from continuous ``position`` (row, col), or None (no visible cell)."""
-    blocked = ~np.ascontiguousarray(walkable, dtype=bool)
+    return _waypoint_blocked(~np.ascontiguousarray(walkable, dtype=bool), distance, position, radius, margin=margin,
+                             step=step, far_bias=far_bias)
+
+
+def _waypoint_blocked(blocked, distance, position, radius, *, margin=CLEARANCE_MARGIN, step=SAMPLE_STEP, far_bias=0.0):
+    """``any_angle_waypoint`` on a precomputed ``blocked`` (= ~walkable, C-contiguous) mask."""
     cy, cx = _best_waypoint(blocked, np.ascontiguousarray(distance, dtype=np.float32),
                             float(position[0]), float(position[1]), float(radius), float(margin), float(step),
                             float(far_bias))
@@ -561,7 +762,13 @@ def field_waypoint(
     """``any_angle_waypoint`` over cell centres *and* the field's corner nodes: the visible point
     minimising |p - q| + D(q).  An exact field's shortest path bends at corner nodes, not at cell
     centres, so without them the controller zigzags between centres near the taut line."""
-    blocked = ~np.ascontiguousarray(walkable, dtype=bool)
+    return _field_waypoint_blocked(~np.ascontiguousarray(walkable, dtype=bool), distance, nodes, node_g, position,
+                                   radius, margin=margin, step=step)
+
+
+def _field_waypoint_blocked(blocked, distance, nodes, node_g, position, radius, *, margin=CLEARANCE_MARGIN,
+                            step=SAMPLE_STEP):
+    """``field_waypoint`` on a precomputed ``blocked`` (= ~walkable, C-contiguous) mask."""
     h, w = distance.shape
     y, x = float(position[0]), float(position[1])
     here = (min(max(int(math.floor(y + 0.5)), 0), h - 1), min(max(int(math.floor(x + 0.5)), 0), w - 1))
@@ -569,7 +776,7 @@ def field_waypoint(
     if not math.isfinite(d_here):
         return None
     best = None  # (value, length, point)
-    cell = any_angle_waypoint(walkable, distance, position, radius, margin=margin, step=step)
+    cell = _waypoint_blocked(blocked, distance, position, radius, margin=margin, step=step)
     if cell is not None:
         e = math.hypot(cell[0] - y, cell[1] - x)
         best = (e + float(distance[cell]), e, (float(cell[0]), float(cell[1])))
@@ -601,6 +808,14 @@ class AnyAngleLabel(TeachLabel):
     """A TeachLabel (the 8-direction mask is unchanged) plus the continuous heading to play."""
 
     heading: np.ndarray | None = None
+
+
+# ``_any_angle``'s label direction ``base`` for every mask (the expression in ``_any_angle``, tabulated)
+_BASE = [None] * 256
+for _bits in range(1, 256):
+    _b = DIRECTIONS[_MASKS[_bits]].mean(axis=0)
+    _BASE[_bits] = _b / max(float(np.linalg.norm(_b)), 1e-6)
+    _BASE[_bits].flags.writeable = False
 
 
 class AnyAngleMixin:
@@ -652,8 +867,12 @@ class AnyAngleMixin:
         position = pixel_position(state, shape)
         cls = self._class_id(state)
         radius = UNIT_RADIUS.get(cls, 0.325)
-        base = DIRECTIONS[label.mask].mean(axis=0)
-        base = base / max(float(np.linalg.norm(base)), 1e-6)
+        bits = _BITS.get(label.mask.tobytes()) if label.mask.dtype == np.bool_ and label.mask.shape == (8,) else None
+        if bits:
+            base = _BASE[bits]
+        else:
+            base = DIRECTIONS[label.mask].mean(axis=0)
+            base = base / max(float(np.linalg.norm(base)), 1e-6)
 
         if label.evading:
             vector = self._evasion_vector(state, states, base)
@@ -681,16 +900,29 @@ class AnyAngleMixin:
         self._count("path")
         return heading
 
+    def _blocked(self, walkable: np.ndarray) -> np.ndarray:
+        """``~np.ascontiguousarray(walkable, dtype=bool)``, memoised per tick and array."""
+        memo = self._tick_memo()
+        hit = memo.get(("blocked", id(walkable)))
+        if hit is not None and hit[0] is walkable:
+            return hit[1]
+        blocked = ~np.ascontiguousarray(walkable, dtype=bool)
+        memo[("blocked", id(walkable))] = (walkable, blocked)
+        return blocked
+
     def _path_heading(self, walkable, tiles, position, radius) -> np.ndarray | None:
         """Heading along the goal cluster's distance field (None: no visible waypoint)."""
         distance = self._distance_to(walkable, tiles)
-        return any_angle_heading(walkable, distance, position, radius, margin=self.clearance_margin)
+        waypoint = _waypoint_blocked(self._blocked(walkable), distance, position, radius, margin=self.clearance_margin)
+        return None if waypoint is None else world_heading(waypoint[0] - position[0], waypoint[1] - position[1])
 
     def _hunt_heading(self, state, states, goals, walkable, shape, position, radius) -> np.ndarray | None:
         targets = {tile for tiles, kind in goals if kind == "hunt" for tile in tiles}
         if not targets:
             return None
-        required = min(radius + self.clearance_margin, point_clearance(walkable, position) - 1e-3) + 0.5 * SAMPLE_STEP
+        blocked = self._blocked(walkable)
+        required = min(radius + self.clearance_margin,
+                       float(_point_clearance(blocked, float(position[0]), float(position[1]))) - 1e-3) + 0.5 * SAMPLE_STEP
         best = None
         for enemy in states[states[:, 2] < 0]:
             if self._to_pixel(enemy[:2], shape) not in targets:
@@ -699,7 +931,8 @@ class AnyAngleMixin:
             gap = math.hypot(where[0] - position[0], where[1] - position[1])
             if best is not None and gap >= best[0]:
                 continue
-            if segment_clear(walkable, position, where, max(required, 0.0)):
+            if _segment_clear(blocked, float(position[0]), float(position[1]), float(where[0]), float(where[1]),
+                              float(max(required, 0.0)), float(SAMPLE_STEP)):
                 best = (gap, where)
         if best is None:
             return None
@@ -751,7 +984,7 @@ class AnyAngleFieldMixin:
         """Any-angle path length from one cell (``StrategicHeuristicV2._distance_map``'s contract)."""
         return anyangle_distance_field(walkable, (tuple(start),))
 
-    def _distance_to(self, walkable: np.ndarray, tiles) -> np.ndarray:
+    def _teach_distance_to(self, walkable: np.ndarray, tiles) -> np.ndarray:
         if not self.field_goals:  # TeachLabeller._distance_to on the octile map
             if tiles and isinstance(tiles[0], (int, np.integer)):
                 tiles = (tuple(tiles),)
@@ -759,7 +992,11 @@ class AnyAngleFieldMixin:
             cached = self._teach_distance_cache.get(key)
             if cached is None:
                 octile = super(AnyAngleFieldMixin, self)._distance_map
-                cached = np.minimum.reduce([octile(walkable, tile) for tile in key[2]])
+                shared_key = ("octile_goal", getattr(octile, "__func__", octile), walkable.shape, key[1], key[2])
+                cached = _shared.GOAL_FIELDS.get(shared_key)
+                if cached is None:
+                    cached = _shared.GOAL_FIELDS.put(shared_key, _shared.frozen(
+                        np.minimum.reduce([octile(walkable, tile) for tile in key[2]])))
                 if len(self._teach_distance_cache) > 4096:
                     self._teach_distance_cache.clear()
                 self._teach_distance_cache[key] = cached
@@ -769,7 +1006,13 @@ class AnyAngleFieldMixin:
         key = (walkable.tobytes(), tuple(sorted(tiles)))
         cached = self._teach_distance_cache.get(key)
         if cached is None:
-            cached, nodes, node_g = anyangle_distance_field(walkable, key[1], with_nodes=True)  # one sweep
+            shared_key = ("field_goal", walkable.shape, key[0], key[1])
+            entry = _shared.GOAL_FIELDS.get(shared_key)
+            if entry is None:
+                field, nodes, node_g = anyangle_distance_field(walkable, key[1], with_nodes=True)  # one sweep
+                entry = _shared.GOAL_FIELDS.put(shared_key, (_shared.frozen(field), _shared.frozen(nodes),
+                                                             _shared.frozen(node_g)))
+            cached, nodes, node_g = entry
             if len(self._teach_distance_cache) > 4096:
                 self._teach_distance_cache.clear()
             self._teach_distance_cache[key] = cached
@@ -786,7 +1029,8 @@ class AnyAngleFieldMixin:
         entry = self._field_nodes.get(id(distance))
         if entry is None or entry[0] is not distance:
             entry = (distance, *anyangle_distance_field(walkable, tiles, with_nodes=True)[1:])
-        waypoint = field_waypoint(walkable, distance, entry[1], entry[2], position, radius, margin=self.clearance_margin)
+        waypoint = _field_waypoint_blocked(self._blocked(walkable), distance, entry[1], entry[2], position, radius,
+                                           margin=self.clearance_margin)
         return None if waypoint is None else world_heading(waypoint[0] - position[0], waypoint[1] - position[1])
 
 

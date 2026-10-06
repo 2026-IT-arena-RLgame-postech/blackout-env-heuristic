@@ -27,12 +27,22 @@ class StrategicHeuristicV21Teach(StrategicHeuristicV20Teach):
     """V20-teach whose Hunter transformations take only routes clear of every enemy Hunter."""
 
     def _hunter_free(self, ctx, walkable: np.ndarray) -> np.ndarray:
-        """``walkable`` minus the cells near any enemy Hunter outside its base (our base stays)."""
+        """``walkable`` minus the cells near any enemy Hunter outside its base (our base stays).
+
+        Memoised per tick (ctx and walkable held by reference): the layers ask it several times."""
+        memo = self._tick_memo()
+        key = ("hunter_free", id(ctx), id(walkable))
+        hit = memo.get(key)
+        if hit is not None and hit[0] is ctx and hit[1] is walkable:
+            return hit[2]
         hunters = [e.pos for e in ctx["enemies"] if e.cls == HUNTER and not e.in_base]
         if not hunters:
-            return walkable
-        base = self._cached_base_mask(ctx["ally_spawn"], ctx["shape"])
-        return walkable & ~(self._near(ctx["shape"], hunters, self.danger_tiles) & ~base)
+            free = walkable
+        else:
+            base = self._cached_base_mask(ctx["ally_spawn"], ctx["shape"])
+            free = walkable & ~(self._near(ctx["shape"], hunters, self.danger_tiles) & ~base)
+        memo[key] = (ctx, walkable, free)
+        return free
 
     def _composition_goals(self, controlled, row_for, states, graphic, walkable) -> dict[str, tuple[Goal, ...]]:
         # Candidates are ranked by path length on the Hunter-free map: no clear route, no candidate.
