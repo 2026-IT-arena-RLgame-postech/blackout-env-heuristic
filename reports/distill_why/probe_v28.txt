@@ -1,0 +1,28 @@
+staged-reserve output distribution, ticks 80-99, vs v28 (32 seeds x 2 sides)
+== p19: 4 Hunters at 99 14/64
+  t80-90 teacher move  joining=0 n= 108  P(stand) 0.00  P(teacher arc) 0.94  P(back) 0.04  argmax arc 0.98 back 0.02
+  t80-90 teacher move  joining=1 n= 457  P(stand) 0.00  P(teacher arc) 0.95  P(back) 0.04  argmax arc 0.99 back 0.01
+  t90-95 teacher move  joining=0 n=  65  P(stand) 0.00  P(teacher arc) 0.83  P(back) 0.08  argmax arc 0.88 side 0.08 back 0.05
+  t90-95 teacher move  joining=1 n= 214  P(stand) 0.00  P(teacher arc) 0.80  P(back) 0.16  argmax arc 0.86 side 0.03 back 0.11
+  t95-100 teacher move  joining=0 n=  25  P(stand) 0.00  P(teacher arc) 0.67  P(back) 0.17  argmax arc 0.68 side 0.12 back 0.20
+  t95-100 teacher move  joining=1 n= 172  P(stand) 0.01  P(teacher arc) 0.62  P(back) 0.22  argmax arc 0.68 side 0.12 back 0.20
+  t95-100 teacher STAND joining=0 n=  30  P(stand) 0.20  P(teacher arc) nan  P(back) nan  argmax stand 0.20 move 0.80
+  teacher joining at 95-99 in 44 games; of them not 4 Hunters at 99: 33
+== p18bp2: 4 Hunters at 99 44/64
+  t80-90 teacher move  joining=0 n= 108  P(stand) 0.00  P(teacher arc) 0.99  P(back) 0.01  argmax arc 1.00
+  t80-90 teacher move  joining=1 n= 473  P(stand) 0.00  P(teacher arc) 0.99  P(back) 0.01  argmax arc 1.00 side 0.00
+  t90-95 teacher move  joining=0 n=  65  P(stand) 0.00  P(teacher arc) 1.00  P(back) 0.00  argmax arc 1.00
+  t90-95 teacher move  joining=1 n= 215  P(stand) 0.00  P(teacher arc) 1.00  P(back) 0.00  argmax arc 1.00
+  t95-100 teacher move  joining=0 n=  12  P(stand) 0.00  P(teacher arc) 1.00  P(back) 0.00  argmax arc 1.00
+  t95-100 teacher move  joining=1 n= 173  P(stand) 0.03  P(teacher arc) 0.96  P(back) 0.00  argmax arc 0.99 side 0.01
+  t95-100 teacher STAND joining=0 n=  43  P(stand) 0.52  P(teacher arc) nan  P(back) nan  argmax stand 0.65 move 0.35
+  teacher joining at 95-99 in 44 games; of them not 4 Hunters at 99: 3
+== p17: 4 Hunters at 99 53/64
+  t80-90 teacher move  joining=0 n= 108  P(stand) 0.00  P(teacher arc) 1.00  P(back) 0.00  argmax arc 1.00
+  t80-90 teacher move  joining=1 n= 434  P(stand) 0.00  P(teacher arc) 1.00  P(back) 0.00  argmax arc 1.00
+  t90-95 teacher move  joining=0 n=  57  P(stand) 0.00  P(teacher arc) 1.00  P(back) 0.00  argmax arc 1.00
+  t90-95 teacher move  joining=1 n= 200  P(stand) 0.00  P(teacher arc) 1.00  P(back) 0.00  argmax arc 1.00
+  t95-100 teacher move  joining=0 n=  11  P(stand) 0.00  P(teacher arc) 1.00  P(back) 0.00  argmax arc 1.00
+  t95-100 teacher move  joining=1 n= 165  P(stand) 0.00  P(teacher arc) 0.99  P(back) 0.00  argmax arc 1.00
+  t95-100 teacher STAND joining=0 n=  36  P(stand) 0.00  P(teacher arc) nan  P(back) nan  argmax move 1.00
+  teacher joining at 95-99 in 42 games; of them not 4 Hunters at 99: 3
