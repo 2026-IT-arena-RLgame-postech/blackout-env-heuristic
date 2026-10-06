@@ -10,6 +10,9 @@
 # collection workers are CPU (nice 19); register their process group in ~/cpu_extra.pgids while Q12 runs (GUARD=1).
 # usage: setsid nohup nice -n 39 bash reports/r3_rollout/scripts/run.sh > ~/r3runs/logs/run.log 2>&1 < /dev/null &
 set -e
+# NOTE (§49): as in §39, stage 1 run *inside* this chain went NaN from step 500 (fp16 loss scale -> 0) while the
+# same command run on its own was fine; the first chain also went on to DAgger with the NaN net.  Stages now abort
+# the chain on NaN; the final r20d256 was trained with standalone stage commands.
 cd ~/blackout-env-r3
 PY=.venv/bin/python
 export PYTHONPATH=. OMP_NUM_THREADS=1 NUMBA_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=${GPU:-0}
@@ -46,11 +49,11 @@ echo "$(date +%T) val done"
                          && mv $R/s1train/train.npz $D/train.npz; }
 echo "$(date +%T) s1 data done"
 [ -f $CK/r20d256_s1.pt.done ] || { $PY $TR --out $CK/r20d256_s1.pt --init $V28D --steps ${S1:-30000} --lr 2e-3 --p11-kl 1.0 \
-     > $L/r20d256_s1.log 2>&1 && ok r20d256_s1 && touch $CK/r20d256_s1.pt.done; }
+     > $L/r20d256_s1.log 2>&1 && ok r20d256_s1 && touch $CK/r20d256_s1.pt.done; } || { echo "stage 1 failed (NaN?)"; exit 1; }
 echo "$(date +%T) s1 done"
 [ -f $R/dagger/train.npz ] || collect $R/dagger dagger --net $CK/r20d256_s1.pt --pool "$POOL2" --games 1536 \
      --teacher-frac 0.1 --seed0 5610000
 echo "$(date +%T) dagger done"
 [ -f $CK/r20d256.pt.done ] || { $PY $TR --out $CK/r20d256.pt --init $CK/r20d256_s1.pt --steps ${S2:-20000} --lr 1e-3 --p11-kl 0.5 \
-     --extra $R/dagger/train.npz --extra-frac 0.5 > $L/r20d256_s2.log 2>&1 && ok r20d256_s2 && touch $CK/r20d256.pt.done; }
+     --extra $R/dagger/train.npz --extra-frac 0.5 > $L/r20d256_s2.log 2>&1 && ok r20d256_s2 && touch $CK/r20d256.pt.done; } || { echo "stage 2 failed (NaN?)"; exit 1; }
 echo "$(date +%T) CHAIN DONE"
