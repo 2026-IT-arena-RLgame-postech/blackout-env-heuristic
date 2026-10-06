@@ -53,11 +53,13 @@ P11 = "checkpoints/distill/frozen/p11_v22.pt"
 P5A = "checkpoints/distill/frozen/p5a_v22.pt"
 P16 = "checkpoints/distill/frozen/p16_v27.pt"  # the V27 student (docs §35); --base p16 = the next loop step
 P17 = "checkpoints/distill/frozen/p17_v28.pt"  # the V28 student (docs §38)
-BASES = {"p14b": P14B, "p16": P16, "p17": P17}
+P20 = "checkpoints/distill/frozen/p20_v30.pt"  # P18bp2 + 5k V30 distil (v_0005, docs §47)
+BASES = {"p14b": P14B, "p16": P16, "p17": P17, "p20": P20}
 V25R = "checkpoints/rollout_net/v25/v25d256.pt"  # the P14b-distilled rollout nets (docs §31; --v25r overrides)
 V25F = "checkpoints/rollout_net/v25/v25f3x.pt"
 V27R = "checkpoints/rollout_net/v27/v27d256.pt"  # distilled from P16 (docs §37)
 V28R = "checkpoints/rollout_net/v28/v28d256.pt"  # distilled from P17 (Q9, docs §39)
+R20 = "checkpoints/rollout_net/r3/r20d256.pt"  # distilled from P20 (R3, docs §49)
 TRACE_S = (5, 10, 30, 60)
 SEARCH_FROM = 125  # decisions (5 s, docs §32)
 
@@ -80,8 +82,10 @@ PERTURBED = {
 # strategic_v27 (docs §33: V25 + a staged reserve walker for the second race; the strongest opponent)
 V27 = {"v27": ("strategic_v27", {"reserve_stage": 1.5}), "v27s1": ("strategic_v27", {"reserve_stage": 1.0}),
        "v27s05": ("strategic_v27", {"reserve_stage": 0.5}),
-       "v28": ("strategic_v28", {"reserve_stage": 0.5, "trade_hold": "advance"})}  # docs §36
-OPPONENTS = ("p14b", "p16", "p17", "v28", "v25", "v27", "v27s1", "v27s05", "v23", "v19", "p5a", "p11", "d256", "f3", "v23pA", "v23pB", "v25pA", "v25pB")
+       "v28": ("strategic_v28", {"reserve_stage": 0.5, "trade_hold": "advance"}),  # docs §36
+       "v30": ("strategic_v30", {"reserve_stage": 0.5, "trade_hold": "advance", "reserve_join": "reserve",
+                                 "solo_sentry": True})}  # docs §44
+OPPONENTS = ("p14b", "p16", "p17", "p20", "v28", "v30", "v25", "v27", "v27s1", "v27s05", "v23", "v19", "p5a", "p11", "d256", "f3", "v23pA", "v23pB", "v25pA", "v25pB")
 
 O4 = {"opp_branches": "samp:1.0x3", "opp_left": 150}
 # tag -> search options (None = plain P14b); "net": rollout net override ("v25r"), "deep": Searcher S4 options
@@ -102,6 +106,9 @@ VARIANTS = {
     # leaf V refit on v28d256 continuations (Q9, docs §39) -- "value": a per-tag leaf V override
     "o4f_v28r_V1": {"net": V28R, "value": "checkpoints/value/s2v_v28d256/iter1.pt", "deep": {**O4, "opp_agg": "mean"}},
     "o4f_v28r_V2": {"net": V28R, "value": "checkpoints/value/s2v_v28d256/iter2.pt", "deep": {**O4, "opp_agg": "mean"}},
+    # rollout / opponent model distilled from P20 (R3, docs §49); _V = leaf V refit on r20d256 continuations
+    "o4f_r20": {"net": R20, "deep": {**O4, "opp_agg": "mean"}},
+    "o4f_r20_V": {"net": R20, "value": "checkpoints/value/s2v_r20d256/iter1.pt", "deep": {**O4, "opp_agg": "mean"}},
     # rollout v27d256 (our continuation), opponent model = v28d256 {base, s0, s1, s2}: separates the two roles
     "o4f_v27r_opp28": {"net": V27R, "deep": {**O4, "opp_agg": "mean", "opp_net_idx": [1, 1, 1, 1], "opp_nets": [V28R]}},
     "o4f_v25f": {"net": V25F, "deep": {**O4, "opp_agg": "mean"}},
@@ -174,8 +181,11 @@ def build_searcher(tag: str, base, device: str, args):
     opp = [rollout_policy(res(p), device) for p in deep_opp_nets(deep)]
     net = rollout_policy(net_path, device)
     value = v.get("value", args.value)
+    pipe = int(getattr(args, "pipeline", 0) or 0)  # B1: PipelinedRollout (1 = bit-identical chunks)
     s = Searcher(ModNetPolicy(net, opp_nets=opp), ValueNetLeaf(str(REPO / value), device), parse_branches(args.branches),
-                 window=args.window, margin=args.margin, base_policy=base, overlay=True, **searcher_kwargs(deep))
+                 window=args.window, margin=args.margin, base_policy=base, overlay=True,
+                 pipeline=(pipe == 1) or pipe, pipeline_graphs=bool(getattr(args, "pipeline_graphs", False)),
+                 **searcher_kwargs(deep))
     meta = {"net": net_path, "value": value, "opp_nets": [res(p) for p in deep_opp_nets(deep)],
             **{k: x for k, x in deep.items() if k != "opp_nets"}}
     return s, net, meta
@@ -337,6 +347,9 @@ def main():
     q.add_argument("--threads", type=int, default=1)
     q.add_argument("--device", default="")
     q.add_argument("--verbose", action="store_true")
+    q.add_argument("--pipeline", type=int, default=0,
+                   help="B1: 1 = pipelined search rollouts (GPU/CPU overlap, bit-identical); n > 1 = chunk_games n")
+    q.add_argument("--pipeline-graphs", action="store_true", help="B1: the pipeline's full-chunk forwards as CUDA graphs")
     q.add_argument("--out", default=str(REPO / "reports/blind_search/sim"))
     q = sub.add_parser("report")
     q.add_argument("--out", default=str(REPO / "reports/blind_search/sim"))

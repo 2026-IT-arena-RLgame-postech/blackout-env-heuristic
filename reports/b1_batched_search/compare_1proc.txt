@@ -1,0 +1,10 @@
+B1 old vs new (o4f_v28r): per-game identity and throughput
+
+[p20] games new 128, common with old 128, with ref 128
+  differing fields vs old: {'margin': 0, 'ours': 0, 'opp': 0, 'ticks': 0, 'first_ours': 0, 'first_opp': 0, 'searches': 0, 'chosen': 0, 'gain_sum': 0, 'lead_at': 0}
+  differing fields vs ref: {'margin': 0, 'ours': 0, 'opp': 0, 'ticks': 0, 'first_ours': 0, 'first_opp': 0, 'searches': 0, 'chosen': 0, 'gain_sum': 0, 'lead_at': 0}
+  margin mean old -8.28 new -8.28  identical games 128/128
+  old: 128 games, wall 3515 s (27.5 s/game, search 25.6 s/game, 0.452 s/root) = 131 games/h/process; process CPU 3454 s (0.98 cores) = 133 games per CPU-core-hour
+  new: 128 games, wall 1786 s (14.0 s/game, search 12.5 s/game, 0.221 s/root) = 258 games/h/process; process CPU 1284 s (0.72 cores) = 359 games per CPU-core-hour
+  speed-up: wall 1.97x, search 2.04x, per CPU core 2.69x
+

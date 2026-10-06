@@ -156,16 +156,20 @@ def _net_policy(spec: str, device: str):
 def teacher_labels(q: np.ndarray, off: np.ndarray):
     """[m, 5, K] canonical logits + offsets of the teacher -> (labels uint64 [m, 5]: arg max bin +- 1,
     angles f32 [m, 5]: the executed heading 2 pi j / K + off_j, canonical frame) -- what
-    ``label_rows`` gives for the teacher's own move (decode_moves = the same heading, mirrored for B)."""
-    k = q.shape[-1]
+    ``label_rows`` gives for the teacher's own move (decode_moves = the same heading, mirrored for B).
+    A STAND teacher (odd width K + 1, P18b §43 / P20): a STAND arg max is a standing move = no label, NaN angle."""
+    k = q.shape[-1] - q.shape[-1] % 2
     j = q.argmax(-1)
-    o = np.take_along_axis(off, j[..., None], -1)[..., 0].astype(np.float64)
+    stand = j == k
+    j = np.where(stand, 0, j)
+    o = np.take_along_axis(off[..., :k], j[..., None], -1)[..., 0].astype(np.float64)
     ang = 2 * math.pi * j / k + o
-    ang = np.arctan2(np.sin(ang), np.cos(ang)).astype(np.float32)
+    ang = np.where(stand, np.nan, np.arctan2(np.sin(ang), np.cos(ang))).astype(np.float32)
     one = np.uint64(1)
     labels = np.zeros(j.shape, np.uint64)
     for s in (-1, 0, 1):
         labels |= one << ((j + s) % k).astype(np.uint64)
+    labels[stand] = 0
     return labels, ang
 
 
@@ -199,6 +203,7 @@ def worker_net(job):
     moves = np.zeros((n, 10, 2), np.float32)
     out = {k: [] for k in ("map", "team_state", "agent_states", "labels", "angles", "tick", "p11_q", "p11_off")}
     t_net = 0.0
+    width = ow = 32
     for t in range(job["cap"]):
         live = np.nonzero(~bs.over)[0]
         if not len(live):
@@ -213,10 +218,15 @@ def worker_net(job):
         rows_t.sort()
         c0 = time.perf_counter()
         g2, t2, a2 = views[:m].reshape(2 * m, 24, 24), team[:m].reshape(2 * m, 4), agents[:m].reshape(2 * m, 10, N_AGENT_COLS)
-        qt = np.zeros((2 * m, 5, 32), np.float32)
-        ot = np.zeros((2 * m, 5, 32), np.float32)
+        qt = np.zeros((2 * m, 5, width), np.float32)  # width 33 = a STAND teacher (P20); the KL targets keep the 32 bins
+        ot = np.zeros((2 * m, 5, ow), np.float32)
         if len(rows_t):
-            qt[rows_t], ot[rows_t] = teacher.forward(g2[rows_t], t2[rows_t], a2[rows_t])
+            qa, oa = teacher.forward(g2[rows_t], t2[rows_t], a2[rows_t])
+            if qa.shape[-1] != width or oa.shape[-1] != ow:
+                width, ow = qa.shape[-1], oa.shape[-1]
+                qt = np.zeros((2 * m, 5, width), np.float32)
+                ot = np.zeros((2 * m, 5, ow), np.float32)
+            qt[rows_t], ot[rows_t] = qa, oa
         team_b = np.tile(np.array([False, True]), m)
         mv_t = decode_moves(qt, ot, team_b).reshape(m, 2, 5, 2)
         # the student: team A where it drives, team B in self-play
@@ -243,8 +253,8 @@ def worker_net(job):
             out["labels"].append(lab)
             out["angles"].append(ang)
             out["tick"].append(np.full(2 * m, t, np.int32))
-            out["p11_q"].append(qt.astype(np.float16))
-            out["p11_off"].append(ot.astype(np.float16))
+            out["p11_q"].append(qt[..., :32].astype(np.float16))
+            out["p11_off"].append(ot[..., :32].astype(np.float16))
         bs.step(moves, live)
     data = {k: np.concatenate(v) for k, v in out.items()}
     np.savez(job["path"], **data)

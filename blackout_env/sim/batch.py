@@ -195,8 +195,22 @@ def unpack_graphic(p):
     ar = torch.arange(13, device=p.device).view(1, 13, 1, 1)
     g = (base.unsqueeze(1) == ar).float()                       # channels 0-7 (8-12 never match base)
     g = g + ((item.unsqueeze(1) + 8 == ar) & (ar >= 9)).float()  # items 1-4 -> channels 9-12
-    g[:, 8] = bat.float() / 15.0
+    # battery / 15 as numba's float32 division: a table, not ``bat / 15.0`` (CUDA divides by a scalar as a
+    # multiply by its reciprocal: 1 ulp off for some values -- B1, docs "B1")
+    g[:, 8] = _bat_table(p.device)[bat]
     return g
+
+
+_BAT: dict = {}
+
+
+def _bat_table(device):
+    import torch
+
+    key = str(device)
+    if key not in _BAT:
+        _BAT[key] = torch.from_numpy(np.arange(16, dtype=np.float32) / np.float32(15.0)).to(device)
+    return _BAT[key]
 
 
 @njit(cache=True, parallel=True)

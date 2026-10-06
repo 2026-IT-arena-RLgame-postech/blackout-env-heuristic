@@ -1,0 +1,37 @@
+B1: step + render on the GPU vs more CPU SIMD -- estimate (for the decision; nothing ported)
+
+Now (pipelined, CUDA graphs, one process, 2080 Ti, gpu2 loaded): one o4f search over 128 roots = 21.5 s wall
+  window (25 decisions)  ~10 s  GPU-bound: P20 base 2 x 2048 views per decision (~100 ms / 2048, fp32 eager)
+  leaf (125 decisions)   ~12 s  CPU-bound: numba step ~7.4 s, packed render ~1.8 s, launches / masks / trig ~2.6 s
+  full eval, 1 process per GPU: 14.0 s/game vs p20, 1284 CPU-s per 128 games (0.72 cores; the rest is GPU waits)
+
+Step profile (leaf phase, per game-decision, 1 thread): gpu2 step 18.5-19.2 us + packed render 3.1 us
+(Mac 3.9 + 0.7 us).  Of step: movement math 28-30 %, interaction scan 14-22 %, world update 6-8 %, the rest
+(tile lists, region enter / deposit / transform, combat, respawn, events, control) ~45 %.
+
+Option A, more CPU SIMD: tried (simd_trial.txt) -- bit-exact but no speed-up (numba does not vectorise it,
+numpy SoA is 2.3-3.5x slower).  Ceiling with perfect vectorisation of the movement math ~10 % of search wall.
+Everything else in step is sequential and data-dependent.  Effort to reach even that: hand-written AVX-512
+(C extension), ~2 days.  Not recommended.
+
+Option B, port step_kernel + render_packed (+ render for the leaf V) to the GPU, one thread per game, 4096 games:
+  * how: CUDA C compiled with --fmad=false (NVRTC via cuda-python, or a torch C++/CUDA extension) is the cleanest
+    route to bit-exactness: IEEE float32 / float64 arithmetic in the same order, correctly rounded div / sqrt,
+    no FTZ.  numba-cuda contracts to FMA unless fastmath is off and fma=0 is forced through NVVM options;
+    torch (vectorised masked ops) is unsuitable -- per-unit sequential logic would be ~10^3 launches per decision.
+    gpu2's shared venv has neither numba-cuda nor cupy nor nvcc: needs a private venv / wheels (cuda-python, nvrtc).
+  * size: core.py ~800 lines + batch render ~150 lines -> ~1100 lines of CUDA C; per-game state stays in the
+    existing [n, ...] layout on the device; np.empty scratch -> fixed local arrays (MAXK 16, storage tiles);
+    xorshift Unity RNG and the event log as they are; take_games / state() / leaf-V render as device copies.
+  * validation: tests/test_sim_batch.py, test_sim_replay.py, test_sim_rules.py against the CPU kernel on
+    policy + random trajectories, the Unity trace replays (docs S2 / §13), and per-game eval margins as here.
+    The risk is in exactness, not speed (float64 sqrt in _normalized / _sq64; float32 rounding of Mono's
+    double-precision locals; event ordering).  Effort ~3-5 agent-days.
+  * expected: step + render ~11 us/game-decision of CPU -> ~0 (GPU, divergent but 4096 threads: est. 1-3 ms per
+    decision for 4096 games = 0.2-0.5 s per search on the GPU).  No H2D of the maps, no device decode copies.
+    CPU per search 21.5 s -> ~4-6 s (Python control, launches, the leaf-V step); with the P20 window GPU-bound the
+    wall per search drops only to ~the GPU time: ~18-20 s fp32 (10-20 %), ~8-10 s with QZ's fp16+compile P20.
+    So: per CPU core ~3-4x more games than now (~8-10x the old mode), per GPU roughly unchanged -- worth it
+    exactly when CPU is the scarce resource and GPUs idle (gpu2: 4 GPUs, 1 process each).
+
+Recommendation: B, after QZ's fp16c lands (otherwise the GPU is the wall either way); A is not worth doing.
