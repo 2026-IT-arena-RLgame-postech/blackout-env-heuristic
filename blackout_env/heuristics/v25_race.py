@@ -28,10 +28,17 @@ import math
 import numpy as np
 
 from .any_angle import UNIT_RADIUS, pixel_position
+from . import _shared
 from .race_path import RacePlanner
 from .strategic import COLLECTOR, HUNTER, SITE_HUNTER
 from .v22_teacher import CONTACT_RADIUS
 from .v23_opening import StrategicHeuristicV23
+
+
+
+def _gap(a, b) -> float:
+    """``math.hypot(*np.subtract(a, b))`` for two (row, col) float tuples, without the array."""
+    return math.hypot(a[0] - b[0], a[1] - b[1])
 
 
 class StrategicHeuristicV25(StrategicHeuristicV23):
@@ -50,12 +57,26 @@ class StrategicHeuristicV25(StrategicHeuristicV23):
         self._planners: dict = {}
 
     def _planner(self, walkable: np.ndarray, tiles, radius: float) -> RacePlanner:
+        memo = self._tick_memo()
+        mkey = ("planner", id(walkable), tiles, radius)
+        hit = memo.get(mkey)
+        if hit is not None and hit[0] is walkable:
+            return hit[1]
+        pl = self._planner_for(walkable, tiles, radius)
+        memo[mkey] = (walkable, pl)
+        return pl
+
+    def _planner_for(self, walkable: np.ndarray, tiles, radius: float) -> RacePlanner:
         key = (walkable.shape, walkable.tobytes(), tiles, radius)
         pl = self._planners.get(key)
         if pl is None:
             if len(self._planners) > 16:
                 self._planners.clear()
-            pl = self._planners[key] = RacePlanner(walkable, tiles, radius, delta=self.race_delta)
+            shared_key = key + (self.race_delta,)
+            pl = _shared.RACE_PLANNERS.get(shared_key)
+            if pl is None:  # immutable once built: one per map, goal and radius for the whole process
+                pl = _shared.RACE_PLANNERS.put(shared_key, RacePlanner(walkable, tiles, radius, delta=self.race_delta))
+            self._planners[key] = pl
         return pl
 
     def _any_angle(self, label, state, states, goals, walkable, shape) -> np.ndarray | None:
@@ -82,7 +103,7 @@ class StrategicHeuristicV25(StrategicHeuristicV23):
         hunters = [e for e in ctx["enemies"] if e.cls == HUNTER and not e.in_base]
         if not hunters:
             return goals
-        tiles = tuple(sorted((int(y), int(x)) for y, x in np.argwhere((graphic[..., SITE_HUNTER] > 0.5) & walkable)))
+        tiles = self._site_tiles(graphic, SITE_HUNTER, walkable)  # sorted (row-major)
         if not tiles:
             return goals
         shape = graphic.shape[:2]
@@ -99,7 +120,7 @@ class StrategicHeuristicV25(StrategicHeuristicV23):
             if not (0.0 < d <= self.commit_reach):
                 continue
             arrive = d / v_me + self.commit_margin
-            caught = min((math.hypot(*np.subtract(pixel_position(states[e.row], shape), here)) - contact) / (v_them + v_me)
+            caught = min((_gap(pixel_position(states[e.row], shape), here) - contact) / (v_them + v_me)
                          for e in hunters)
             if arrive < caught:
                 goals[name] = ((tiles, "transform"),)

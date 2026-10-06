@@ -1,0 +1,9 @@
+80 seqs 161928 ticks, 0 diverging; act 87.31s -> 48.17s (1.81x), 539 -> 297 us/tick
+per opponent family (V30 sequences; v30 = self-play, both sides):
+  vs p17: 17167 decisions, 567 -> 311 us/decision (1.82x)
+  vs p20: 27072 decisions, 696 -> 366 us/decision (1.90x)
+  vs v25: 8762 decisions, 462 -> 279 us/decision (1.66x)
+  vs v27: 7745 decisions, 593 -> 328 us/decision (1.81x)
+  vs v28: 26798 decisions, 453 -> 276 us/decision (1.64x)
+  vs v29: 18484 decisions, 417 -> 261 us/decision (1.60x)
+  vs v30: 55900 decisions, 541 -> 282 us/decision (1.92x)

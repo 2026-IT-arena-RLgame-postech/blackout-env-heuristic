@@ -160,13 +160,16 @@ class StrategicHeuristic(BaseModel):
     @staticmethod
     def _class_id(state: np.ndarray) -> int:
         # np.argmax setup dominates the comparison for a fixed three-element one-hot.
-        a, b, c = float(state[-3]), float(state[-2]), float(state[-1])
+        a, b, c = state[-3:].tolist()  # = float(state[-3]), float(state[-2]), float(state[-1])
         return 0 if a >= b and a >= c else 1 if b >= c else 2
 
     @staticmethod
     def _is_holding(state: np.ndarray) -> bool:
         # item encoding begins at 3: slot 0=none, slot 1=battery, 2+=specials.
-        return any(float(state[i]) > 1e-5 for i in range(4, 9))
+        for value in state[4:9].tolist():  # = any(float(state[i]) > 1e-5 for i in range(4, 9))
+            if value > 1e-5:
+                return True
+        return False
 
     def _choose_target(
         self,
@@ -437,6 +440,14 @@ class StrategicHeuristic(BaseModel):
     def _to_pixel(cls, position: np.ndarray, shape: tuple[int, int]) -> tuple[int, int]:
         # Same float32 rounding as _to_pixel_float, without building the array.
         h, w = shape
+        y = (1.0 - float(position[1])) * 0.5 * h - 0.5
+        x = (float(position[0]) + 1.0) * 0.5 * w - 0.5
+        # Fast path: rounding to float32 moves a value below 100 by < 1e-5, which changes round() only
+        # within 1e-5 of a half-integer; everything else (and NaN) takes the float32 path below.
+        if abs(y) < 100.0 and abs(x) < 100.0:
+            ry, rx = round(y), round(x)
+            if abs(abs(y - ry) - 0.5) > 1e-5 and abs(abs(x - rx) - 0.5) > 1e-5:
+                return (min(h - 1, max(0, ry)), min(w - 1, max(0, rx)))
         y = float(np.float32((1.0 - float(position[1])) * 0.5 * h - 0.5))
         x = float(np.float32((float(position[0]) + 1.0) * 0.5 * w - 0.5))
         return (min(h - 1, max(0, int(round(y)))), min(w - 1, max(0, int(round(x)))))

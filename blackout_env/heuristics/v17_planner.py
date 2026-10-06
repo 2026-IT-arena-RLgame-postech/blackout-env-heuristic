@@ -41,6 +41,95 @@ BASE_SPEED = {COLLECTOR: 4.0, HUNTER: 6.0, CARRIER: 6.0}
 BUFF_SPEED, DEBUFF_SPEED, BUFF_SIZE, DEBUFF_SIZE = 9, 10, 11, 12
 
 
+_KIND_CODE = {"battery": 0, "steal": 1, "special": 2}
+
+try:
+    from numba import njit as _njit
+except ImportError:  # pragma: no cover
+    _njit = None
+
+
+def _economy_kernel_py(task_y, task_x, kind, value, extra, home, has_home, hy, hx, cy, cx, c_speed,
+                       dist, speed, carrier, absorb, remaining, steal_weight, special_weights, buff_speed, interval):
+    """``StrategicHeuristicV17._economy_pairs_py``'s arithmetic over arrays: (scores, pickup times, kept)
+    [units, tasks].  ``math.dist`` between grid cells is ``sqrt(dy * dy + dx * dx)`` exactly."""
+    n = task_y.shape[0]
+    hunter_danger = np.zeros(n)
+    carrier_danger = np.zeros(n)
+    contest = np.empty(n)
+    for i in range(n):
+        danger = 0.0
+        for j in range(hy.shape[0]):
+            ddy = float(task_y[i] - hy[j])
+            ddx = float(task_x[i] - hx[j])
+            separation = math.sqrt(ddy * ddy + ddx * ddx)
+            if separation < 4.0:
+                danger = max(danger, (4.0 - separation) / 4.0)
+        hunter_danger[i] = danger
+        for j in range(cy.shape[0]):
+            ddy = float(task_y[i] - cy[j])
+            ddx = float(task_x[i] - cx[j])
+            separation = math.sqrt(ddy * ddy + ddx * ddx)
+            if separation < 2.5:
+                danger = max(danger, (2.5 - separation) / 2.5)
+        carrier_danger[i] = danger
+        fastest = math.inf
+        if kind[i] == 0:
+            for j in range(cy.shape[0]):
+                ddy = float(task_y[i] - cy[j])
+                ddx = float(task_x[i] - cx[j])
+                fastest = min(fastest, math.sqrt(ddy * ddy + ddx * ddx) / c_speed[j])
+        contest[i] = fastest
+    horizon = min(absorb, remaining)
+    units = dist.shape[0]
+    scores = np.zeros((units, n))
+    picks = np.zeros((units, n))
+    keep = np.zeros((units, n), dtype=np.bool_)
+    for u in range(units):
+        for i in range(n):
+            distance = dist[u, i]
+            if not math.isfinite(distance):
+                continue
+            t_pick = distance / speed[u]
+            t_home = home[i] / speed[u] if has_home else 10.0
+            if not math.isfinite(t_home):
+                t_home = 10.0
+            if kind[i] == 0:
+                gain = value[i]
+            elif kind[i] == 1:
+                if t_pick + 0.3 >= horizon:
+                    continue
+                gain = value[i] * steal_weight
+            else:
+                channel = int(value[i])
+                weight = special_weights[channel - buff_speed]
+                arrival = t_pick + t_home  # _next_absorption_exposure
+                if arrival >= remaining:
+                    duration = 0.0
+                else:
+                    end = absorb
+                    while end <= arrival:
+                        end += interval
+                    duration = max(0.0, min(end, remaining) - arrival)
+                gain = weight * duration
+                if extra[i] != 0.0:
+                    if t_pick + 0.3 >= horizon:
+                        continue
+                    gain += weight * max(0.0, absorb - t_pick)
+                if carrier[u]:
+                    gain *= 0.8
+            gain *= 1.0 - 0.6 * (carrier_danger[i] if carrier[u] else hunter_danger[i])
+            if contest[i] + 1.0 < t_pick:
+                gain *= 0.75
+            scores[u, i] = gain / (t_pick + t_home + 1.0)
+            picks[u, i] = t_pick
+            keep[u, i] = True
+    return scores, picks, keep
+
+
+_economy_kernel = _njit(cache=True)(_economy_kernel_py) if _njit is not None else None
+
+
 @dataclass
 class _Unit:
     name: str | None
@@ -145,8 +234,38 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         return self._per_tick(
             "special", graphic, lambda g: np.any(g[..., FIRST_SPECIAL:] > 0.5, axis=-1))
 
+    def _spawn_pixel(self, graphic, channel) -> tuple[int, int] | None:
+        """``self._nearest_pixel(graphic[..., channel] > 0.5, (0, 0))``, cached by the mask's bytes."""
+        mask = graphic[..., channel] > 0.5
+        key = (channel, mask.shape, mask.tobytes())
+        cache = self.__dict__.setdefault("_spawn_cache", {})
+        if key not in cache:
+            if len(cache) >= 64:
+                cache.clear()
+            cache[key] = self._nearest_pixel(mask, (0, 0))
+        return cache[key]
+
     def _stores(self, graphic, channel, protected_mask) -> list[_Store]:
-        components = self._cached_components(graphic[..., channel] > 0.5)
+        """Storage components with their contents.  Memoised on the storage mask, the gathered storage
+        cells (all channels) and the protected mask: the stores are read-only downstream, and storages
+        change only on deposits, steals and absorptions."""
+        mask = graphic[..., channel] > 0.5
+        components = self._cached_components(mask)
+        if components:
+            ys, xs, _, _ = self._components_index(components)
+            key = (channel, id(components), graphic[ys, xs].tobytes(), id(protected_mask))
+            cache = self.__dict__.setdefault("_stores_cache", {})
+            hit = cache.get(channel)
+            if hit is not None and hit[0] == key and hit[1] is components and hit[2] is protected_mask:
+                self._store_flags[channel] = hit[4]
+                return hit[3]
+            stores = self._stores_uncached(graphic, channel, protected_mask, mask)
+            cache[channel] = (key, components, protected_mask, stores, self._store_flags[channel])
+            return stores
+        return self._stores_uncached(graphic, channel, protected_mask, mask)
+
+    def _stores_uncached(self, graphic, channel, protected_mask, mask=None) -> list[_Store]:
+        components = self._cached_components(graphic[..., channel] > 0.5 if mask is None else mask)
         if not components:
             self._store_flags[channel] = (False, False)
             return []
@@ -229,8 +348,8 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             row_for = {name: own_rows[j] for j, name in enumerate(controlled)}
         walkable = graphic[..., WALL] < 0.5
 
-        ally_spawn = self._nearest_pixel(graphic[..., SPAWN_ALLY] > 0.5, (0, 0))
-        enemy_spawn = self._nearest_pixel(graphic[..., SPAWN_ENEMY] > 0.5, (0, 0))
+        ally_spawn = self._spawn_pixel(graphic, SPAWN_ALLY)
+        enemy_spawn = self._spawn_pixel(graphic, SPAWN_ENEMY)
         pixels = self._state_pixels(states, shape)
         own = [self._parse_unit(n, row_for[n], states[row_for[n]], shape, pixels[row_for[n]])
                for n in controlled]
@@ -521,7 +640,72 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
 
     def _economy_pairs(self, ctx, units):
         """Every (score, unit name, task index) worth doing, the task list, and each pair's
-        pickup time in seconds.  Scores include the 1.12 bonus for a unit's remembered target."""
+        pickup time in seconds.  Scores include the 1.12 bonus for a unit's remembered target.
+
+        ``_economy_pairs_py`` with the (unit, task) arithmetic in one numba kernel (``_economy_kernel``:
+        the same float64 operations in the same order; bit-identical, O1).  Units with a remembered
+        target take the reference."""
+        if _economy_kernel is None or not units or any(self._memory.get(u.name) is not None for u in units):
+            return self._economy_pairs_py(ctx, units)
+        graphic = ctx["graphic"]
+        walkable = ctx["walkable"]
+        ally_stores = ctx["ally_stores"]
+        depot = None
+        for index, store in enumerate(ally_stores):
+            field = self._store_field(walkable, "ally", index, store)
+            depot = field if depot is None else np.minimum(depot, field)
+        enemy_hunters = [e for e in ctx["enemies"] if e.cls == HUNTER and not e.in_base]
+        enemy_collectors = [e for e in ctx["enemies"] if e.cls != HUNTER and not e.holding]
+
+        tasks: list[tuple[tuple[int, int], str, float, float]] = []  # target, kind, value, extra
+        protected_enemy = self._cached_protected_enemy_storage_mask(graphic)
+        for y, x, amount in self._battery_pixels(graphic):
+            if graphic[y, x, STORAGE_ALLY] > 0.5 or protected_enemy[y, x]:
+                continue
+            kind = "steal" if graphic[y, x, STORAGE_ENEMY] > 0.5 else "battery"
+            tasks.append(((y, x), kind, amount, 0.0))
+        for channel, y, x in self._special_pixels(graphic):
+            if graphic[y, x, STORAGE_ALLY] > 0.5 or protected_enemy[y, x]:
+                continue
+            tasks.append(((y, x), "special", float(channel), 1.0 if graphic[y, x, STORAGE_ENEMY] > 0.5 else 0.0))
+        pairs = []
+        pickup: dict[tuple[str, int], float] = {}
+        if not tasks:
+            for unit in units:  # (the reference fetches each unit's map even without tasks)
+                self._cached_distance_map(walkable, unit.pos)
+            return tasks, pairs, pickup
+        task_ys = [target[0] for target, _, _, _ in tasks]
+        task_xs = [target[1] for target, _, _, _ in tasks]
+        home = depot[task_ys, task_xs].astype(np.float64) if depot is not None else np.zeros(len(tasks))
+        kinds = np.array([_KIND_CODE[kind] for _, kind, _, _ in tasks], dtype=np.int64)
+        values = np.array([value for _, _, value, _ in tasks], dtype=np.float64)
+        extras = np.array([extra for _, _, _, extra in tasks], dtype=np.float64)
+        dist = np.empty((len(units), len(tasks)), dtype=np.float64)
+        for k, unit in enumerate(units):
+            dist[k] = self._cached_distance_map(walkable, unit.pos)[task_ys, task_xs]
+        scores, picks, keep = _economy_kernel(
+            np.array(task_ys, dtype=np.int64), np.array(task_xs, dtype=np.int64), kinds, values, extras, home,
+            depot is not None,
+            np.array([e.pos[0] for e in enemy_hunters], dtype=np.int64),
+            np.array([e.pos[1] for e in enemy_hunters], dtype=np.int64),
+            np.array([e.pos[0] for e in enemy_collectors], dtype=np.int64),
+            np.array([e.pos[1] for e in enemy_collectors], dtype=np.int64),
+            np.array([self._speed(ctx, e.cls, enemy=True) for e in enemy_collectors], dtype=np.float64),
+            dist, np.array([self._speed(ctx, u.cls) for u in units], dtype=np.float64),
+            np.array([u.cls == CARRIER for u in units], dtype=np.bool_),
+            float(ctx["absorb"]), float(ctx["remaining"]), float(self.steal_weight),
+            np.array(self.special_weights, dtype=np.float64), BUFF_SPEED, float(ABSORPTION_INTERVAL_SECONDS))
+        scores, picks, keep = scores.tolist(), picks.tolist(), keep.tolist()
+        for k, unit in enumerate(units):
+            name = unit.name
+            for i, ok in enumerate(keep[k]):
+                if ok:
+                    pairs.append((scores[k][i], name, i))
+                    pickup[(name, i)] = picks[k][i]
+        return tasks, pairs, pickup
+
+    def _economy_pairs_py(self, ctx, units):
+        """Reference for ``_economy_pairs`` (the original pure-Python loop)."""
         graphic = ctx["graphic"]
         walkable = ctx["walkable"]
         ally_stores = ctx["ally_stores"]

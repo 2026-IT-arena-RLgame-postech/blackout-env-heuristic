@@ -215,9 +215,9 @@ class StrategicHeuristicV17Teach(TeachLabeller, StrategicHeuristicV17):
 
         speed = self._speed(ctx, HUNTER)
         choices = {hunter.name: self._chase_choice(ctx, hunter, claimed) for hunter in chasers}
-        arrival = {
-            hunter.name: self._cached_distance_map(ctx["walkable"], hunter.pos) / speed for hunter in chasers
-        }
+        # arrival[name][target] = (field / speed)[target]: the same float32 division, per looked-up cell
+        fields = {hunter.name: self._cached_distance_map(ctx["walkable"], hunter.pos) for hunter in chasers}
+        speed32 = np.float32(speed)
         for hunter in chasers:
             chosen, kind = choices[hunter.name]
             if kind == "hunt":
@@ -226,7 +226,8 @@ class StrategicHeuristicV17Teach(TeachLabeller, StrategicHeuristicV17):
                     for other in chasers if other.name != hunter.name and choices[other.name][1] == "hunt"
                     for target in choices[other.name][0]
                     if target in chosen
-                    and float(arrival[other.name][target]) + EXCLUSION_MARGIN <= float(arrival[hunter.name][target])
+                    and float(fields[other.name][target] / speed32) + EXCLUSION_MARGIN
+                    <= float(fields[hunter.name][target] / speed32)
                 }
                 if faster:
                     chosen, kind = self._chase_choice(ctx, hunter, claimed | faster)
