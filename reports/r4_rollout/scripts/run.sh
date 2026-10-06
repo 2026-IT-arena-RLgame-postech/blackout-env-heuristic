@@ -30,8 +30,10 @@ collect() {  # out-dir log args...
   $PY examples/rollout_net_collect.py "$@" --teacher net:$T --per-job ${PERJOB:-128} --workers $W --device cuda \
       --out $out > $L/$log.log 2>&1
 }
-ok() { ! grep -q '"loss": NaN' $L/$1.log; }
-TR="examples/rollout_net_train.py train --data $D --amp fp16 --compile --eval-every 10000"
+# NaN check + divergence check: R4's first stage 1 blew up at step 16k without a NaN loss (fp16 loss scale -> 1e-4,
+# loss 1e4, acc 0.15), so the last logged train acc must also stay >= 0.8
+ok() { ! grep -q '"loss": NaN' $L/$1.log && grep -o '"acc": [0-9.]*' $L/$1.log | tail -1 | awk '{exit !($2 >= 0.8)}'; }
+TR="examples/rollout_net_train.py train --data $D --amp fp16 --compile --eval-every 10000 --seed ${SEED:-0}"
 [ -f $D/val.npz ] || { PERJOB=64 collect $R/s1val s1val --net none --pool "$POOL1" --games 512 --every 8 --seed0 5790000 \
                        && mv $R/s1val/train.npz $D/val.npz; }
 echo "$(date +%T) val done"
