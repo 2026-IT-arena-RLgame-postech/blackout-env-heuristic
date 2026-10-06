@@ -379,7 +379,11 @@ class Searcher:
                  leaf_decisions: int = 125, margin: float = 0.0, packed: bool = False,
                  opp_branches: list[Branch] | None = None, opp_agg: str = "min", opp_left: int | None = None,
                  children: list[Branch] | None = None, child_window: int | None = None, expand: int = 0,
-                 base_policy: BatchPolicy | None = None, overlay: bool = True, opp_net_idx: list[int] | None = None):
+                 base_policy: BatchPolicy | None = None, overlay: bool = True, opp_net_idx: list[int] | None = None,
+                 pipeline: bool | int = False, pipeline_graphs: bool = False):
+        """``pipeline`` (B1): rollouts by ``pipeline.PipelinedRollout`` (GPU / CPU overlapped, packed maps,
+        device-side decode; bit-identical); an int = its ``chunk_games`` (finer chunks: not bit-exact).
+        ``pipeline_graphs``: its full-chunk forwards as CUDA graphs."""
         assert branches[0].kind == K_BASE
         assert opp_branches is None or opp_branches[0].kind == K_BASE
         assert children is None or children[0].kind == K_BASE
@@ -397,6 +401,10 @@ class Searcher:
         self.base_policy, self.overlay = base_policy, bool(overlay)
         rp = policy if base_policy is None else ExternalBasePolicy(policy, base_policy, overlay)
         self.roll = BatchRollout(rp, rp, repeat=1, packed=packed)
+        if pipeline:
+            from .pipeline import PipelinedRollout
+
+            self.roll = PipelinedRollout(rp, chunk_games=None if pipeline is True else int(pipeline), graphs=pipeline_graphs)
 
     def _configure(self, n_games, gteam, br: list[Branch], left):
         self.policy.configure(n_games, team=gteam, kind=[b.kind for b in br], unit=[b.unit for b in br],

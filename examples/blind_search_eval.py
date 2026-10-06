@@ -181,8 +181,11 @@ def build_searcher(tag: str, base, device: str, args):
     opp = [rollout_policy(res(p), device) for p in deep_opp_nets(deep)]
     net = rollout_policy(net_path, device)
     value = v.get("value", args.value)
+    pipe = int(getattr(args, "pipeline", 0) or 0)  # B1: PipelinedRollout (1 = bit-identical chunks)
     s = Searcher(ModNetPolicy(net, opp_nets=opp), ValueNetLeaf(str(REPO / value), device), parse_branches(args.branches),
-                 window=args.window, margin=args.margin, base_policy=base, overlay=True, **searcher_kwargs(deep))
+                 window=args.window, margin=args.margin, base_policy=base, overlay=True,
+                 pipeline=(pipe == 1) or pipe, pipeline_graphs=bool(getattr(args, "pipeline_graphs", False)),
+                 **searcher_kwargs(deep))
     meta = {"net": net_path, "value": value, "opp_nets": [res(p) for p in deep_opp_nets(deep)],
             **{k: x for k, x in deep.items() if k != "opp_nets"}}
     return s, net, meta
@@ -344,6 +347,9 @@ def main():
     q.add_argument("--threads", type=int, default=1)
     q.add_argument("--device", default="")
     q.add_argument("--verbose", action="store_true")
+    q.add_argument("--pipeline", type=int, default=0,
+                   help="B1: 1 = pipelined search rollouts (GPU/CPU overlap, bit-identical); n > 1 = chunk_games n")
+    q.add_argument("--pipeline-graphs", action="store_true", help="B1: the pipeline's full-chunk forwards as CUDA graphs")
     q.add_argument("--out", default=str(REPO / "reports/blind_search/sim"))
     q = sub.add_parser("report")
     q.add_argument("--out", default=str(REPO / "reports/blind_search/sim"))
