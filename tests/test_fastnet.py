@@ -64,3 +64,22 @@ def test_checkpoint_precision_key(tmp_path):
     assert pol.precision == "fp16" and pol._fast is not None and not pol.fp16
     assert NetPolicy.from_checkpoint(str(tmp_path / "f.pt"), device="cpu", precision="fp32")._fast is None
     assert NetPolicy.from_checkpoint(str(src), device="cpu").precision == "fp32"
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA graphs need CUDA")
+def test_student_cuda_graph_is_exact(monkeypatch):
+    from blackout_env.sim.batch import unpack_graphic
+    from blackout_env.train.distill.inference import _FastNet
+
+    net = _student().to("cuda")
+    g, t, a = _inputs(2)
+    eager = _FastNet(net)
+    monkeypatch.setenv("BLACKOUT_STUDENT_CUDA_GRAPH", "1")
+    graphed = _FastNet(net)
+    assert graphed.cuda_graph and not eager.cuda_graph
+    for i in range(4):  # several replays with new inputs
+        x = (unpack_graphic(torch.from_numpy(g[i:i + 1]).cuda()), torch.from_numpy(t[i:i + 1]).cuda(),
+             torch.from_numpy(a[i:i + 1]).cuda())
+        ref, got = eager(*x), graphed(*x)
+        for r, o in zip(ref, got):
+            assert torch.equal(r, o)

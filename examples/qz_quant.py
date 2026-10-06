@@ -177,6 +177,76 @@ def cmd_collect(args):
         np.savez_compressed(path, **{k: np.asarray(v) for k, v in rec.items()})
 
 
+def cmd_bench1(args):
+    """Batch-1 student forward as the Unity collectors run it (inference._OwnQ on one view, host in/out): CPU jit
+    trace fp32, CUDA eager fp32 / fp16, CUDA graphs fp32 / fp16, fp16 + torch.compile."""
+    import torch
+
+    from blackout_env.sim.batch import unpack_graphic
+    from blackout_env.train.distill.inference import _OwnQ, load_net
+
+    torch.set_num_threads(args.threads)
+    net = load_net(torch.load(str(REPO / args.ckpt), map_location="cpu", weights_only=True)["policy_state"]).eval()
+    g, t, a = fake_inputs(1, "cpu", data=args.data)
+    g = unpack_graphic(g).contiguous()
+    rows = []
+    for mode in args.modes.split(","):
+        dev = "cpu" if mode.startswith("cpu") else "cuda"
+        own = _OwnQ(net).to(dev).eval()
+        amp = "fp16" in mode
+        hin = [x.pin_memory() if dev == "cuda" else x for x in (g, t, a)]
+
+        def run(f):
+            def call():
+                with torch.inference_mode():
+                    xs = [x.to(dev, non_blocking=True) for x in hin]
+                    with torch.autocast(device_type=dev, dtype=torch.float16, enabled=amp):
+                        out = f(*xs)
+                    return [o.float().cpu() for o in out]
+            return call
+
+        if mode == "cpu_jit":
+            with torch.inference_mode():
+                f = run(torch.jit.trace(own, (g, t, a), check_trace=False))
+        elif mode.startswith("cuda_graph"):
+            sg, st, sa = (x.to(dev) for x in (g, t, a))
+            s = torch.cuda.Stream()
+            s.wait_stream(torch.cuda.current_stream())
+            with torch.cuda.stream(s), torch.inference_mode(), torch.autocast("cuda", torch.float16, enabled=amp):
+                for _ in range(3):
+                    own(sg, st, sa)
+            torch.cuda.current_stream().wait_stream(s)
+            graph = torch.cuda.CUDAGraph()
+            with torch.inference_mode(), torch.cuda.graph(graph), torch.autocast("cuda", torch.float16, enabled=amp):
+                outs = own(sg, st, sa)
+
+            def f():
+                with torch.inference_mode():
+                    for d, x in zip((sg, st, sa), hin):
+                        d.copy_(x, non_blocking=True)
+                    graph.replay()
+                    return [o.float().cpu() for o in outs]
+        elif mode.endswith("_compile"):
+            f = run(torch.compile(own, mode="reduce-overhead", dynamic=False))
+        else:
+            f = run(own)
+        for _ in range(args.warmup):
+            f()
+        ts = []
+        for _ in range(args.iters):
+            t0 = time.perf_counter()
+            f()
+            ts.append(time.perf_counter() - t0)
+        row = {"mode": mode, "ms_median": round(1e3 * float(np.median(ts)), 3), "ms_p90": round(1e3 * float(np.quantile(ts, 0.9)), 3),
+               "threads": args.threads}
+        rows.append(row)
+        print(json.dumps(row), flush=True)
+    if args.out:
+        with open(args.out, "a") as fh:
+            for r in rows:
+                fh.write(json.dumps(r) + "\n")
+
+
 def load_views(paths) -> dict:
     zs = [np.load(p) for p in paths]
     return {k: np.concatenate([z[k] for z in zs]) for k in zs[0].files}
@@ -286,6 +356,15 @@ def main():
     c.add_argument("--dense", default="60,110", help="decisions where every view is kept")
     c.add_argument("--out", default=str(REPO / "datasets/qz/heldout"))
     c.set_defaults(fn=cmd_collect)
+    b1 = sub.add_parser("bench1")
+    b1.add_argument("--ckpt", default=P20)
+    b1.add_argument("--modes", default="cpu_jit,cuda_fp32,cuda_fp16,cuda_graph_fp32,cuda_graph_fp16,cuda_fp16_compile")
+    b1.add_argument("--threads", type=int, default=1)
+    b1.add_argument("--iters", type=int, default=200)
+    b1.add_argument("--warmup", type=int, default=20)
+    b1.add_argument("--data", default=None)
+    b1.add_argument("--out", default=None)
+    b1.set_defaults(fn=cmd_bench1)
     f = sub.add_parser("fidelity")
     f.add_argument("--data", default=str(REPO / "datasets/qz/heldout"))
     f.add_argument("--ref", default=P20)
