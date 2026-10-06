@@ -7,6 +7,7 @@ while [ -n "$WAIT_PID" ] && kill -0 $WAIT_PID 2>/dev/null; do sleep 20; done
 R=$HOME/blackout-env-p22; B=$HOME/p14runs/p22_$1; OUT=$R/reports/p22_train/screen_$1
 cd $R; mkdir -p $OUT; export PYTHONPATH=$R NUMBA_NUM_THREADS=1 OMP_NUM_THREADS=1
 NETS=p17=$HOME/p14frozen/p17.pt,p21e=$HOME/p14frozen/p21e.pt; OURS="p21e"
+ls $B/v_0005.pt >/dev/null || { echo "no snapshots in $B" >> $OUT/stdout.log; exit 1; }
 for f in $B/v_000[2-5].pt; do n=$1$(basename $f .pt | sed 's/v_0*/v/'); NETS=$NETS,$n=$f; OURS="$OURS;$n"; done
 export BLACKOUT_NETS=$NETS
 V28="strategic_v28:reserve_stage=0.5,trade_hold=advance"

@@ -10,7 +10,7 @@ V29="strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve"
 V30="strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true"
 V31="$V30,threat_radius=0.13,camp_engage_radius=6.5"
 case ${TEACHER_V:-v30} in v30) T=$V30;; v31) T=$V31;; *) echo "bad TEACHER_V"; exit 1;; esac
-V28S="$V28 $V28 $V28 $V28"
+V28S="$V28 $V28 $V28 $V28 "
 P17=ckpt:$HOME/p14frozen/p17.pt
 export R INIT=${INIT:-$HOME/p14frozen/p21e.pt} TEACHER=act:$T STEPS=${STEPS:-2000} WORKERS=${WORKERS:-4}
 export OPPONENTS="mixture=0.3 checkpoints=0.1 extra=0.6"
