@@ -1,0 +1,77 @@
+== strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,camp_engage_radius=3.0  - strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true
+   vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true   +1.78 ±  2.80  (32 seeds, z  +0.6) 
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve   -3.36 ±  2.96  (32 seeds, z  -1.1) REGRESS>1SE
+   vs p17                                                    -4.62 ±  3.77  (32 seeds, z  -1.2) REGRESS>1SE
+   vs strategic_v25                                          -1.48 ±  1.95  (32 seeds, z  -0.8) 
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance     -3.88 ±  2.31  (32 seeds, z  -1.7) REGRESS>1SE
+   POOL (5 opponents, 32 seeds): -2.31 ± 1.21; worst p17 -4.62 ± 3.77; rule -> more seeds
+== strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,camp_engage_radius=6.5  - strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true
+   vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true   +0.58 ±  2.45  (32 seeds, z  +0.2) 
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve   +4.61 ±  3.60  (32 seeds, z  +1.3) 
+   vs p17                                                    +1.27 ±  3.43  (32 seeds, z  +0.4) 
+   vs strategic_v25                                          -0.12 ±  1.98  (32 seeds, z  -0.1) 
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance     +1.14 ±  2.43  (32 seeds, z  +0.5) 
+   POOL (5 opponents, 32 seeds): +1.49 ± 1.64; worst strategic_v25 -0.12 ± 1.98; rule -> more seeds
+== strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,carrier_quota=0  - strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true
+   vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true  -11.64 ±  8.14  (32 seeds, z  -1.4) REGRESS>1SE
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve   +4.27 ±  8.56  (32 seeds, z  +0.5) 
+   vs p17                                                   -36.77 ±  9.96  (32 seeds, z  -3.7) REGRESS>1SE
+   vs strategic_v25                                         -11.56 ±  5.06  (32 seeds, z  -2.3) REGRESS>1SE
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance    -39.84 ±  9.77  (32 seeds, z  -4.1) REGRESS>1SE
+   POOL (5 opponents, 32 seeds): -19.11 ± 6.63; worst strategic_v28:reserve_stage=0.5,trade_hold=advance -39.84 ± 9.77; rule -> more seeds
+== strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,carrier_quota=2  - strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true
+   vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true   +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve   +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs p17                                                    +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs strategic_v25                                          +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance     +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   POOL (5 opponents, 32 seeds): +0.00 ± 0.00; worst strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true +0.00 ± 0.00; rule -> adopt
+== strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,danger_tiles=2.0  - strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true
+   vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true   +1.77 ±  2.50  (32 seeds, z  +0.7) 
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve   -4.97 ±  3.35  (32 seeds, z  -1.5) REGRESS>1SE
+   vs p17                                                    -0.86 ±  2.61  (32 seeds, z  -0.3) 
+   vs strategic_v25                                          +1.59 ±  1.51  (32 seeds, z  +1.1) 
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance     -0.47 ±  1.86  (32 seeds, z  -0.3) 
+   POOL (5 opponents, 32 seeds): -0.59 ± 1.14; worst strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve -4.97 ± 3.35; rule -> more seeds
+== strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,danger_tiles=4.5  - strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true
+   vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true   -1.31 ±  1.52  (32 seeds, z  -0.9) 
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve   -0.80 ±  3.10  (32 seeds, z  -0.3) 
+   vs p17                                                    -1.72 ±  2.01  (32 seeds, z  -0.9) 
+   vs strategic_v25                                          +0.41 ±  1.96  (32 seeds, z  +0.2) 
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance     +1.81 ±  1.52  (32 seeds, z  +1.2) 
+   POOL (5 opponents, 32 seeds): -0.32 ± 0.81; worst p17 -1.72 ± 2.01; rule -> more seeds
+== strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,exposure_cost=0.5  - strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true
+   vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true   +4.88 ±  2.42  (32 seeds, z  +2.0) 
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve   -6.48 ±  4.71  (32 seeds, z  -1.4) REGRESS>1SE
+   vs p17                                                    -0.45 ±  3.90  (32 seeds, z  -0.1) 
+   vs strategic_v25                                          +1.00 ±  2.03  (32 seeds, z  +0.5) 
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance     +0.81 ±  1.73  (32 seeds, z  +0.5) 
+   POOL (5 opponents, 32 seeds): -0.05 ± 1.50; worst strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve -6.48 ± 4.71; rule -> more seeds
+== strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,exposure_cost=1.4  - strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true
+   vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true   -5.53 ±  3.11  (32 seeds, z  -1.8) REGRESS>1SE
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve   +4.77 ±  3.67  (32 seeds, z  +1.3) 
+   vs p17                                                    -2.64 ±  2.32  (32 seeds, z  -1.1) REGRESS>1SE
+   vs strategic_v25                                          -3.89 ±  2.73  (32 seeds, z  -1.4) REGRESS>1SE
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance     -0.80 ±  2.58  (32 seeds, z  -0.3) 
+   POOL (5 opponents, 32 seeds): -1.62 ± 1.35; worst strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true -5.53 ± 3.11; rule -> more seeds
+== strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,risk_weight=5.0  - strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true
+   vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true   +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve   +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs p17                                                    +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs strategic_v25                                          +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance     +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   POOL (5 opponents, 32 seeds): +0.00 ± 0.00; worst strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true +0.00 ± 0.00; rule -> adopt
+== strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,sentry_offset=1.5  - strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true
+   vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true   +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve   +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs p17                                                    +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs strategic_v25                                          +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance     +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   POOL (5 opponents, 32 seeds): +0.00 ± 0.00; worst strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true +0.00 ± 0.00; rule -> adopt
+== strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,sentry_offset=3.5  - strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true
+   vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true   -1.44 ±  5.18  (32 seeds, z  -0.3) 
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve  -11.81 ±  5.91  (32 seeds, z  -2.0) REGRESS>1SE
+   vs p17                                                    -9.34 ±  6.07  (32 seeds, z  -1.5) REGRESS>1SE
+   vs strategic_v25                                          -1.89 ±  4.84  (32 seeds, z  -0.4) 
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance     +3.28 ±  2.26  (32 seeds, z  +1.5) 
+   POOL (5 opponents, 32 seeds): -4.24 ± 2.62; worst strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve -11.81 ± 5.91; rule -> more seeds

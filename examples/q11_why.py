@@ -49,12 +49,18 @@ import late_search_why as lsw  # noqa: E402
 F32 = np.float32
 P17 = bse.P17
 V29 = ("strategic_v29", {"reserve_stage": 0.5, "trade_hold": "advance", "reserve_join": "reserve"})
+V30 = ("strategic_v30", {"reserve_stage": 0.5, "trade_hold": "advance", "reserve_join": "reserve", "solo_sentry": True})
+HBASES = {"v29": V29, "v30": V30}  # heuristic acting bases (--base); tags get the suffix _b29 / _b30
+
+
+def base_suffix(base: str) -> str:
+    return "" if base == "p17" else "_b" + base[1:]
 SANCT_C = np.array([12.0, 12.0], F32)
 
 
 def make_opp(name: str, device: str):
-    if name == "v29":
-        return bse.FixedHeuristicPolicy(*V29)
+    if name in HBASES:
+        return bse.FixedHeuristicPolicy(*HBASES[name])
     return bse.make_opponent(name, device)
 
 
@@ -186,18 +192,19 @@ def cmd_play(args):
     torch.set_num_threads(args.threads)
     out = Path(args.out) / "raw"
     out.mkdir(parents=True, exist_ok=True)
-    if args.base == "v29":  # a heuristic base: the acting instances and the search's own (reset per search) apart
-        base, sbase = bse.FixedHeuristicPolicy(*V29), bse.FixedHeuristicPolicy(*V29)
+    if args.base in HBASES:  # a heuristic base: the acting instances and the search's own (reset per search) apart
+        base, sbase = bse.FixedHeuristicPolicy(*HBASES[args.base]), bse.FixedHeuristicPolicy(*HBASES[args.base])
     else:
         base = sbase = NetPolicy.from_checkpoint(str(REPO / P17), device=args.device)
     if args.tag == "plain":
         searcher, net = None, bse.rollout_policy(bse.V28R, args.device)
     else:
         searcher, net, _ = bse.build_searcher(args.variant, sbase, args.device, search_args(args))
-    tag = args.tag + ("" if args.base == "p17" else "_b29")
+    tag = args.tag + base_suffix(args.base)
     tasks = [(s, side) for s in range(args.seed0, args.seed0 + args.seeds) for side in (0, 1)]
     for c in range(0, len(tasks), args.chunk):
-        path = out / f"{tag}_{args.opponent}_{c:04d}.npz"
+        # file index = global task index from seed 2100000, so lanes with other --seed0 never collide
+        path = out / f"{tag}_{args.opponent}_{c + 2 * (args.seed0 - 2_100_000):04d}.npz"
         if path.exists():
             print("exists", path, flush=True)
             continue
@@ -234,7 +241,7 @@ def cmd_cf(args):
 
     torch.set_num_threads(args.threads)
     out = Path(args.out)
-    S = load_tag(out, "search" + ("" if args.base == "p17" else "_b29"), args.opponent)
+    S = load_tag(out, "search" + base_suffix(args.base), args.opponent)
     rng = np.random.default_rng(args.select_seed)
     ch, tk = S["root_choice"].astype(np.int64), S["root_tick"].astype(np.int64)
     dev = np.nonzero((ch > 0) & (tk >= args.min_tick)
@@ -243,10 +250,10 @@ def cmd_cf(args):
     if args.part is not None:
         k, m = map(int, args.part.split("/"))
         sel = sel[k::m]
-    path = out / f"cf_{args.opponent}{'' if args.base == 'p17' else '_b29'}{args.suffix}.npz"
+    path = out / f"cf_{args.opponent}{base_suffix(args.base)}{args.suffix}.npz"
     print(f"{len(sel)} of {len(dev)} deviation roots -> {path}", flush=True)
     # our continuation: P17, or fresh V29 instances at the root (as inside the search)
-    base = (bse.FixedHeuristicPolicy(*V29) if args.base == "v29"
+    base = (bse.FixedHeuristicPolicy(*HBASES[args.base]) if args.base in HBASES
             else NetPolicy.from_checkpoint(str(REPO / P17), device=args.device))
     leaf = ValueNetLeaf(str(REPO / bse.VALUE), args.device)
     K, Wd = args.reseeds, args.window
@@ -414,10 +421,11 @@ def deviation_dir(S, f):
 def cmd_report(args):
     out = Path(args.out)
     opps = args.opponents.split(",")
-    lines = lsw.match_report(out, opps, ["search"])
+    sfx = base_suffix(args.base)
+    lines = lsw.match_report(out, opps, ["search" + sfx], plain="plain" + sfx)
     for opp in opps:
         try:
-            S = load_tag(out, "search", opp)
+            S = load_tag(out, "search" + sfx, opp)
         except FileNotFoundError:
             continue
         f = lsw.root_features(S)
@@ -432,7 +440,7 @@ def cmd_report(args):
             m = (tsec >= lo) & (tsec < hi)
             lines.append(f"   {lo:3d}-{hi:3d}s: roots {int(m.sum()):6d} dev rate {devm[m].mean() if m.any() else 0:.2f}")
         C = None
-        cpath = out / f"cf_{opp}.npz"
+        cpath = out / f"cf_{opp}{sfx}.npz"
         if cpath.exists():
             C = dict(np.load(cpath))
             gains = lsw.cf_gains(C)
@@ -482,7 +490,7 @@ def main():
     q = sub.add_parser("play")
     q.add_argument("--tag", required=True, choices=("plain", "search"))
     q.add_argument("--variant", default="o4f_v28r", help="blind_search_eval VARIANTS tag for --tag search")
-    q.add_argument("--base", default="p17", choices=("p17", "v29"), help="our acting policy (v29: tags get _b29)")
+    q.add_argument("--base", default="p17", choices=("p17", "v29", "v30"), help="our acting policy (v29/v30: tags get _b29/_b30)")
     q.add_argument("--opponent", required=True)
     q.add_argument("--seeds", type=int, default=64)
     q.add_argument("--seed0", type=int, default=2_100_000)
@@ -496,7 +504,7 @@ def main():
     q = sub.add_parser("cf")
     q.add_argument("--opponent", required=True)
     q.add_argument("--n-roots", type=int, default=600)
-    q.add_argument("--base", default="p17", choices=("p17", "v29"))
+    q.add_argument("--base", default="p17", choices=("p17", "v29", "v30"))
     q.add_argument("--chunk0", type=int, default=-1, help="only roots of this play chunk (its first task index)")
     q.add_argument("--min-tick", type=int, default=0)
     q.add_argument("--select-seed", type=int, default=0)
@@ -511,6 +519,7 @@ def main():
     q.add_argument("--out", default=str(REPO / "reports/q11_v30"))
     q = sub.add_parser("report")
     q.add_argument("--opponents", default="v29,v28,v25")
+    q.add_argument("--base", default="p17", choices=("p17", "v29", "v30"))
     q.add_argument("--out", default=str(REPO / "reports/q11_v30"))
     args = p.parse_args()
     if getattr(args, "device", None) == "":
