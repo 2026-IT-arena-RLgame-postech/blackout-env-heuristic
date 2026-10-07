@@ -1,0 +1,13 @@
+== 09:36:39 p20 plain,o4f_v28r
+[plain vs p20] 128/128 margin -33.7 wall 196s (search 0s, 0 roots)
+[o4f_v28r vs p20] 128/128 margin -19.1 wall 2907s (search 2697s, 5954 roots)
+== 10:28:31 p17 plain,o4f_v28r
+[plain vs p17] 128/128 margin +0.0 wall 209s (search 0s, 0 roots)
+[o4f_v28r vs p17] 128/128 margin +29.0 wall 2857s (search 2607s, 5692 roots)
+== 11:19:41 v30 plain,o4f_v28r
+[plain vs v30] 128/128 margin -36.5 wall 720s (search 0s, 0 roots)
+[o4f_v28r vs v30] 128/128 margin -21.4 wall 4269s (search 3330s, 7191 roots)
+== 12:42:56 v28 plain,o4f_v28r
+[plain vs v28] 128/128 margin +41.1 wall 1215s (search 0s, 0 roots)
+[o4f_v28r vs v28] 128/128 margin +62.4 wall 3402s (search 2428s, 4596 roots)
+== 14:00:02 lane c done
