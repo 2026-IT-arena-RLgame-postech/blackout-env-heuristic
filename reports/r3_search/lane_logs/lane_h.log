@@ -1,0 +1,16 @@
+== 17:07:35 p20 o4f_r20,plain
+[o4f_r20 vs p20] 128/384 margin +15.1 wall 1837s (search 1663s, 7773 roots)
+[o4f_r20 vs p20] 256/384 margin +16.8 wall 2272s (search 2056s, 8034 roots)
+[o4f_r20 vs p20] 384/384 margin +15.5 wall 1464s (search 1294s, 5358 roots)
+[plain vs p20] 128/384 margin +0.0 wall 153s (search 0s, 0 roots)
+[plain vs p20] 256/384 margin +0.0 wall 145s (search 0s, 0 roots)
+[plain vs p20] 384/384 margin +0.0 wall 142s (search 0s, 0 roots)
+== 18:47:51 p17 o4f_r20,plain
+[o4f_r20 vs p17] 128/384 margin +36.7 wall 1784s (search 1618s, 6587 roots)
+[o4f_r20 vs p17] 256/384 margin +39.3 wall 1407s (search 1245s, 5364 roots)
+[o4f_r20 vs p17] 384/384 margin +48.4 wall 1550s (search 1387s, 5780 roots)
+[plain vs p17] 128/384 margin +33.9 wall 145s (search 0s, 0 roots)
+[plain vs p17] 256/384 margin +33.7 wall 150s (search 0s, 0 roots)
+[plain vs p17] 384/384 margin +44.6 wall 156s (search 0s, 0 roots)
+== 20:14:28 lane h done
+sed: can't read /home/cucumbersaurus/cpu_extra.pgids: No such file or directory

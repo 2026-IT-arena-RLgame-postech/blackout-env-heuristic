@@ -1,0 +1,9 @@
+== 19:14:53 v30 o4f_r20,plain
+[o4f_r20 vs v30] 128/384 margin +20.1 wall 1914s (search 1489s, 7250 roots)
+[o4f_r20 vs v30] 256/384 margin +26.4 wall 1820s (search 1407s, 6800 roots)
+[o4f_r20 vs v30] 384/384 margin +24.6 wall 1614s (search 1155s, 5420 roots)
+[plain vs v30] 128/384 margin +17.2 wall 391s (search 0s, 0 roots)
+[plain vs v30] 256/384 margin +17.2 wall 407s (search 0s, 0 roots)
+[plain vs v30] 384/384 margin +19.6 wall 382s (search 0s, 0 roots)
+== 21:03:46 lane k done
+sed: can't read /home/cucumbersaurus/cpu_extra.pgids: No such file or directory
