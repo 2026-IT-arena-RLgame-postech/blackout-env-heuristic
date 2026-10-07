@@ -44,6 +44,14 @@ from .v17_planner import MATCH_SECONDS
 from .v31_carrier_evade import StrategicHeuristicV31
 
 
+# The adopted V32 (§58, "B"): V31's parameters + four Hunters in V19's role order with the exit guard and the
+# sanctuary sweep.  ``cargo_transform`` measured as a no-op (-0.9 +- 0.9) but is part of the gated configuration.
+V31_PARAMS = ("reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,"
+              "threat_radius=0.13,camp_engage_radius=6.5")
+V32 = ("strategic_v32:" + V31_PARAMS + ",hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,"
+       "exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true")
+
+
 class StrategicHeuristicV32(StrategicHeuristicV31):
     """V31 + V18's exit guard and V19's sanctuary sweep for a four-Hunter team."""
 

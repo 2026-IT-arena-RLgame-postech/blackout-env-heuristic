@@ -58,3 +58,14 @@ def test_roles_fire_and_stay_observation_only():
         seen_sweep |= bool(a.sweepers)
         assert not (set(a.guards) & set(a.sweepers)) and not (set(a.guards) & set(a.sentries))
     assert seen_guard and seen_sweep
+
+
+def test_adopted_v32_descriptor():
+    from blackout_env.heuristics.v32_four_hunters import V32
+    from blackout_env.train.distill.opponents import make_opponent
+
+    p = make_opponent(V32, 0)
+    assert isinstance(p, StrategicHeuristicV32)
+    assert (p.hunter_quota, p.exit_guards, p.guard_min_hunters, p.sentry_min_hunters) == (4, 1, 2, 3)
+    assert p.sweep and p.sweep_radius == 9.0 and p.cargo_transform and not p.solo_sentry
+    assert p.threat_radius == 0.13 and p.camp_engage_radius == 6.5 and p.reserve_join == "reserve"
