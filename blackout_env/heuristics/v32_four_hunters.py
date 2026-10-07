@@ -14,7 +14,13 @@ roles as knobs on the V22-teach goal labeller; ``hunter_quota`` itself is V17's 
   traded off the moment it arrives instead of killing our respawns;
 * ``sweep`` (off): every Hunter except the sentry first strikes the enemy Collector nearest it that is outside its
   base, within ``sweep_radius`` tiles of the sanctuary centre and of this Hunter -- V19's sanctuary sweep
-  (``StrategicHeuristicV19._sweep_target``), which catches the enemy's replacement walkers in the second race.
+  (``StrategicHeuristicV19._sweep_target``), which catches the enemy's replacement walkers in the second race;
+* ``cargo_transform`` (off): a Collector holding a battery stays a Hunter candidate all match (V19's
+  ``transform_with_cargo``), not only during the opening race (V22's ``race_cargo``) -- a lost Hunter is
+  replaced by the nearest Collector even if it carries a battery.
+
+V19's late-game role order (camper, then exit guard, then sentry from the third Hunter) is a parameter set:
+``solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2`` (V30's is sentry first).
 
 Observation-only, as the rest of the V22-teach goals; no per-tick Python beyond a few distance lookups.
 """
@@ -35,13 +41,15 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
     """V31 + V18's exit guard and V19's sanctuary sweep for a four-Hunter team."""
 
     def __init__(self, *, exit_guards: int = 0, guard_min_hunters: int = 4, guard_radius: float = 7.0,
-                 sweep: bool = False, sweep_radius: float = 9.0, **kwargs):
+                 sweep: bool = False, sweep_radius: float = 9.0, cargo_transform: bool = False, **kwargs):
         super().__init__(**kwargs)
         self.exit_guards = int(exit_guards)
         self.guard_min_hunters = int(guard_min_hunters)
         self.guard_radius = float(guard_radius)
         self.sweep = bool(sweep)
         self.sweep_radius = float(sweep_radius)
+        self.cargo_transform = bool(cargo_transform)
+        self._composing = False
         self.guards: list[str] = []  # for inspection: this tick's exit guards
         self.sweepers: list[str] = []  # for inspection: Hunters sweeping the sanctuary this tick
 
@@ -64,6 +72,19 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
 
     def _guard_slots(self, ctx):
         return self._camp_slots(dict(ctx, enemy_spawn=ctx["ally_spawn"]))
+
+    # ------------------------------------------------------------------ composition
+
+    def _racing(self, ctx) -> bool:
+        # V22's composition lets a battery-holding Collector walk to the sanctuary while racing (race_cargo)
+        return (self._composing and self.cargo_transform) or super()._racing(ctx)
+
+    def _composition_goals(self, controlled, row_for, states, graphic, walkable):
+        self._composing = True
+        try:
+            return super()._composition_goals(controlled, row_for, states, graphic, walkable)
+        finally:
+            self._composing = False
 
     # ------------------------------------------------------------------ Hunters
 
