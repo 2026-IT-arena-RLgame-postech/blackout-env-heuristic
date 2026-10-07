@@ -27,9 +27,11 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from blackout_env.train.distill.ood_suite import OOD26, TEACHER_OF, V30, V31, short  # noqa: E402
+from blackout_env.train.distill.ood_suite import C3_NOOP, FOLLOWUP, OOD26, REFERENCE, TEACHER_OF, V30, V31, short  # noqa: E402
 
-GROUP = {d: g for _, d, g, _ in OOD26}
+GROUP = {d: g for _, d, g, _ in OOD26}  # the suite proper (per-candidate summary and R1-R4)
+EXTRA_ORDER = [d for _, d, _, _ in REFERENCE + FOLLOWUP]
+GROUP_ALL = {d: g for _, d, g, _ in OOD26 + REFERENCE + FOLLOWUP}
 CAND = {V30: "V30", V31: "V31", TEACHER_OF["p17"]: "V28", "strategic_v25": "V25", TEACHER_OF["p16"]: "V27"}
 
 
@@ -73,9 +75,11 @@ def main():
         for line in path.read_text().splitlines():
             if line.strip():
                 r = json.loads(line)
+                if r["opponent"] == C3_NOOP:  # bit-identical to V30 (ood_suite.C3_NOOP)
+                    r["opponent"] = V30
                 by[(r["ours"], r["opponent"])][(r["seed"], r["side"])] = r
     cands = sorted({c for c, _ in by}, key=lambda c: (c not in teacher_of, c))
-    opps = [d for _, d, _, _ in OOD26 if any((c, d) in by for c in cands)]
+    opps = [d for d in [d for _, d, _, _ in OOD26] + EXTRA_ORDER if any((c, d) in by for c in cands)]
     opps += sorted({o for _, o in by} - set(opps))
 
     stat = {}
@@ -111,7 +115,7 @@ def main():
             s = stat.get((c, o))
             if not s:
                 continue
-            line = (f"{cn(c)[:10]:10s} {short(o)[:14]:14s} {GROUP.get(o, '-'):6s} {s['n']:4d} {s['m']:+6.1f}±{s['se']:4.1f} {s['win']:5.2f} "
+            line = (f"{cn(c)[:10]:10s} {short(o)[:14]:14s} {GROUP_ALL.get(o, '-'):6s} {s['n']:4d} {s['m']:+6.1f}±{s['se']:4.1f} {s['win']:5.2f} "
                     f"{s['cat']:5.2f} {s['catT_num']:3d}/{s['catT_den']:<4d} {s['h99']:5.2f}")
             line += f" {s['gT']:+6.1f}±{s['gTse']:4.1f}" if "gT" in s else f" {'':13s}"
             if "gB" in s:

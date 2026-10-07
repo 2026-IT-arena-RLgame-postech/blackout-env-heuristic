@@ -45,7 +45,7 @@ OOD26: list[tuple[str, str, str, str]] = [
     ("v30_stage3", _v30("reserve_stage=3.0"), "param", "reserve staged far later (0.5 s trained)"),
     ("v30_nostage", _v30("reserve_stage=0.0"), "param", "no staged reserve at all"),
     ("v30_c0", _v30("carrier_quota=0"), "param", "no Carrier (default 1)"),
-    ("v30_c3", _v30("carrier_quota=3"), "param", "3 Carriers, economy rush"),
+    ("v30_hunt", _v30("hunter_mode=hunt"), "param", "Hunters chase instead of mixed camp/hunt (h4hunt split)"),
     ("v30_reckless", _v30("exposure_cost=0.2,steal_weight=3.5"), "param", "reckless stealing, ignores exposure"),
     # (a') style policies: defaults are near-distribution controls (in the extra pool), one extreme
     ("early_rush", "strategic_early_rush", "style", "control: in extra pool at default"),
@@ -72,8 +72,17 @@ OOD26: list[tuple[str, str, str, str]] = [
     ("v31", V31, "mirror", "V31 (§46), never in pool"),
 ]
 
-NAMES = {d: n for n, d, _, _ in OOD26}
-GROUPS = sorted({g for _, _, g, _ in OOD26})
+# in-distribution reference rows (the teacher itself), reported next to the suite but not part of it.
+# ``carrier_quota=3`` was in the first screen as "v30_c3" but is a no-op (V17 planner fields one Carrier at most:
+# V30 vs it = 0 margin in 64/64 matches), so those rows are read as V30 (examples/ood_report.py).
+C3_NOOP = _v30("carrier_quota=3")
+REFERENCE: list[tuple[str, str, str, str]] = [("V30(ref)", V30, "ref", "teacher of P20/P21e, in pool")]
+FOLLOWUP: list[tuple[str, str, str, str]] = [
+    ("v30_h4", _v30("hunter_quota=4"), "param", "4 Hunters, mixed (h4hunt split)"),
+]
+
+NAMES = {d: n for n, d, _, _ in OOD26 + REFERENCE + FOLLOWUP}
+GROUPS = sorted({g for _, _, g, _ in OOD26 + REFERENCE + FOLLOWUP})
 
 # teacher of each candidate (for student - teacher gaps and the catastrophic-loss condition)
 TEACHER_OF = {"p21e": V30, "p20": V30, "p19": V30, "p17": "strategic_v28:reserve_stage=0.5,trade_hold=advance",
@@ -90,9 +99,9 @@ def expand(entry: str) -> list[str]:
         unknown = groups - set(GROUPS)
         if unknown:
             raise ValueError(f"unknown OOD-26 groups {sorted(unknown)} (have {GROUPS})")
-        return [d for _, d, g, _ in OOD26 if g in groups]
+        return [d for _, d, g, _ in OOD26 + REFERENCE + FOLLOWUP if g in groups]
     if entry.startswith("ood26="):
-        by = {n: d for n, d, _, _ in OOD26}
+        by = {n: d for n, d, _, _ in OOD26 + REFERENCE + FOLLOWUP}
         return [by[n] for n in entry[6:].split(",")]
     return [entry]
 
