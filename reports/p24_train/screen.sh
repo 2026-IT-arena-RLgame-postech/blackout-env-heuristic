@@ -2,13 +2,13 @@
 # P24 (docs §60) snapshot screen on wsl_gpu (= reports/p21_train/screen.sh with base P22, V31, V32 and OOD1 h4 added):
 # (1) Hunters at decision 99 (cap 5 s) vs V28 / P17 / V30 / V31 / V32 / h4, 32 seeds from 1700000 x both sides;
 # (2) short full matches vs V28 / P17 / V25 / V31 / V32 / h4, 16 seeds from 1800000 (not the gate seeds), paired with P22.
-# Usage: screen.sh <run name>; out reports/p24_train/screen_<name>; waits for $WAIT_PID.  Snapshot v_0001 = the init (skipped).
+# Usage: screen.sh <run name>; out reports/p24_train/screen_<name>; waits for $WAIT_PID.  Snapshot v_0001 = the init (skipped); SNAPS = glob of snapshot digits (default [2-9]).
 while [ -n "$WAIT_PID" ] && kill -0 $WAIT_PID 2>/dev/null; do sleep 20; done
 R=$HOME/blackout-env-p24; B=$HOME/p14runs/p24_$1; OUT=$R/reports/p24_train/screen_$1
 cd $R; mkdir -p $OUT; export PYTHONPATH=$R NUMBA_NUM_THREADS=1 OMP_NUM_THREADS=1
 NETS=p17=$HOME/p14frozen/p17.pt,p22=$HOME/p14frozen/p22.pt; OURS="p22"
 ls $B/v_0002.pt >/dev/null || { echo "no snapshots in $B" >> $OUT/stdout.log; exit 1; }
-for f in $B/v_000[2-9].pt; do n=$1$(basename $f .pt | sed 's/v_0*/v/'); NETS=$NETS,$n=$f; OURS="$OURS;$n"; done
+for f in $B/v_000${SNAPS:-[2-9]}.pt; do n=$1$(basename $f .pt | sed 's/v_0*/v/'); NETS=$NETS,$n=$f; OURS="$OURS;$n"; done
 export BLACKOUT_NETS=$NETS
 V28="strategic_v28:reserve_stage=0.5,trade_hold=advance"
 V31="strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5"
