@@ -43,6 +43,7 @@ import math
 import numpy as np
 
 from ..env.constants import unit_index
+from .any_angle import UNIT_RADIUS, pixel_position
 from .strategic import COLLECTOR, HUNTER, SITE_HUNTER
 from .teach import Goal
 from .v17_planner import MATCH_SECONDS
@@ -65,7 +66,8 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
                  sweep_camper: bool = True,
                  cargo_transform: bool = False,
                  late_hunter_quota: int = -1, late_after: float = 10.0,
-                 adapt_k: int = 0, adapt_at: float = 6.0, **kwargs):
+                 adapt_k: int = 0, adapt_at: float = 6.0, adapt_quota: int = -1, quota_tie: bool = False,
+                 **kwargs):
         super().__init__(**kwargs)
         self.exit_guards = int(exit_guards)
         self.guard_min_hunters = int(guard_min_hunters)
@@ -80,6 +82,9 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
         self.late_after = float(late_after)
         self.adapt_k = int(adapt_k)
         self.adapt_at = float(adapt_at)
+        self.adapt_quota = int(adapt_quota)
+        self.quota_tie = bool(quota_tie)
+        self.quota_dropped: list[str] = []  # for inspection: a would-be 4th walker held back this tick
         self._seen_hunters = 0
         self._last_elapsed = -1.0
         self.fallback = False  # for inspection: V30 roles against a Hunter-poor enemy this tick
@@ -114,6 +119,8 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
         if self.late_hunter_quota >= 0 and MATCH_SECONDS - ctx["remaining"] >= self.late_after:
             enemy = sum(e.cls == HUNTER for e in ctx["enemies"])
             hunters = min(hunters, max(self.late_hunter_quota, enemy))
+        if self.fallback and self.adapt_quota >= 0:
+            hunters = min(hunters, self.adapt_quota)
         return hunters, carriers
 
     def _racing(self, ctx) -> bool:
@@ -121,11 +128,43 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
         return (self._composing and self.cargo_transform) or super()._racing(ctx)
 
     def _composition_goals(self, controlled, row_for, states, graphic, walkable):
+        self.fallback = self.adapt_k > 0 and self._adapt(self._teach_ctx)
         self._composing = True
         try:
-            return super()._composition_goals(controlled, row_for, states, graphic, walkable)
+            goals = super()._composition_goals(controlled, row_for, states, graphic, walkable)
         finally:
             self._composing = False
+        self.quota_dropped = []
+        if self.quota_tie and self._race_now:
+            self._hold_untied_walker(goals, controlled, row_for, states, graphic, walkable)
+        return goals
+
+    def _hold_untied_walker(self, goals, controlled, row_for, states, graphic, walkable) -> None:
+        """``quota_tie``: while racing, the last of ``hunter_quota`` walkers only walks when the race looks tied
+        (V29's test: the enemy's nearest Collector outside its base within ``join_margin`` tiles of our lead walker);
+        against an enemy already behind, the team races with ``hunter_quota - 1``.  Single-frame observable."""
+        ctx = self._teach_ctx
+        if any(u.cls == HUNTER for u in ctx["own"]):
+            return
+        tiles = self._site_tiles(graphic, SITE_HUNTER, walkable)
+        if not tiles:
+            return
+        shape = graphic.shape[:2]
+        planner = self._planner(np.ascontiguousarray(walkable, dtype=bool), tiles, UNIT_RADIUS[COLLECTOR])
+        tile_set = set(tiles)
+        walkers = sorted((planner.distance(pixel_position(states[row_for[n]], shape)), unit_index(n), n)
+                         for n in controlled if n in goals and n not in self.staged
+                         and any(kind == "transform" and set(t) & tile_set for t, kind in goals[n]))
+        if len(walkers) < self.hunter_quota or not np.isfinite(walkers[0][0]):
+            return
+        theirs = [planner.distance(pixel_position(states[e.row], shape)) for e in ctx["enemies"]
+                  if e.cls == COLLECTOR and not e.in_base]
+        theirs = [d for d in theirs if np.isfinite(d)]
+        if theirs and min(theirs) <= walkers[0][0] + self.join_margin:
+            return  # tied (or behind): all four walk
+        name = walkers[-1][2]
+        del goals[name]
+        self.quota_dropped.append(name)
 
     # ------------------------------------------------------------------ Hunters
 
@@ -145,7 +184,6 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
         return self._seen_hunters < self.adapt_k
 
     def _hunter_goals(self, ctx, hunters, move_walkable) -> dict[str, tuple[Goal, ...]]:
-        self.fallback = self.adapt_k > 0 and self._adapt(ctx)
         if self.fallback:
             saved = self.exit_guards, self.sweep, self.sentry_min_hunters
             self.exit_guards, self.sweep, self.sentry_min_hunters = 0, False, 1
