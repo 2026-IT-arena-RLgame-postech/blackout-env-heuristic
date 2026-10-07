@@ -15,7 +15,8 @@ roles as knobs on the V22-teach goal labeller; ``hunter_quota`` itself is V17's 
 * ``sweep`` (off): every Hunter except the sentry first strikes the enemy Collector nearest it that is outside its
   base, within ``sweep_radius`` tiles of the sanctuary centre and of this Hunter -- V19's sanctuary sweep
   (``StrategicHeuristicV19._sweep_target``), which catches the enemy's replacement walkers in the second race;
-  only during the first ``sweep_until`` seconds of play (default: all match);
+  only during the first ``sweep_until`` seconds of play (default: all match); ``sweep_camper=false`` leaves the
+  Hunter nearest the enemy camp slot (V17's camper) on its post;
 * ``cargo_transform`` (off): a Collector holding a battery stays a Hunter candidate all match (V19's
   ``transform_with_cargo``), not only during the opening race (V22's ``race_cargo``) -- a lost Hunter is
   replaced by the nearest Collector even if it carries a battery.
@@ -48,6 +49,7 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
 
     def __init__(self, *, exit_guards: int = 0, guard_min_hunters: int = 4, guard_radius: float = 7.0,
                  sweep: bool = False, sweep_radius: float = 9.0, sweep_until: float = math.inf,
+                 sweep_camper: bool = True,
                  cargo_transform: bool = False,
                  late_hunter_quota: int = -1, late_after: float = 10.0, **kwargs):
         super().__init__(**kwargs)
@@ -57,6 +59,7 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
         self.sweep = bool(sweep)
         self.sweep_radius = float(sweep_radius)
         self.sweep_until = float(sweep_until)
+        self.sweep_camper = bool(sweep_camper)
         self.cargo_transform = bool(cargo_transform)
         self._composing = False
         self.late_hunter_quota = int(late_hunter_quota)
@@ -119,8 +122,15 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
             prey = [] if centre is None else [
                 e for e in ctx["enemies"]
                 if e.cls == COLLECTOR and not e.in_base and math.dist(e.pos, centre) <= self.sweep_radius]
+            camper = None
+            if not self.sweep_camper and prey:
+                slots = self._camp_slots(ctx)
+                others = [h for h in hunters if h.name != sentry]
+                if slots and others and self.hunter_mode in ("camp", "mixed"):
+                    to_camp = self._distance_to(move_walkable, (slots[0],))
+                    camper = min(others, key=lambda h: (float(to_camp[h.pos]), unit_index(h.name))).name
             for hunter in hunters:
-                if hunter.name == sentry or not prey:
+                if hunter.name in (sentry, camper) or not prey:
                     continue
                 near = [(math.dist(e.pos, hunter.pos), e.pos) for e in prey]
                 near = [x for x in near if x[0] <= self.sweep_radius]
