@@ -10,6 +10,7 @@ declare -A N=(
   [V25]="strategic_v25" [V23]="strategic_v23"
   [H4]="strategic_v30:$P,hunter_quota=4" [H4HUNT]="strategic_v30:$P,hunter_quota=4,hunter_mode=hunt"
   [A]="strategic_v32:$P,$T31,hunter_quota=4" [A0]="strategic_v32:$P,hunter_quota=4"
+  [B]="strategic_v32:$P,$T31,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true"
 )
 expand() {
   local out=() x
