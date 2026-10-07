@@ -1,9 +1,9 @@
 #!/bin/bash
 # P22 (docs §55) gate on wsl_gpu: candidates (NAME=PATH,...) and the base P21e on fresh seeds (default 64 from 2000000)
 # vs V31, V30, V29, V28(0.5, advance), P17, P20, P21e (= h2h), V27(1.5), P14b, V25, V23; report --base p21e.
-# Usage: eval.sh <out dir under reports/> "<n1>=<p1>,<n2>=<p2>"; env SEEDS, SEED0, EW, DEV, OPPS; waits for $WAIT_PID.
+# Usage: eval.sh <out dir under reports/> "<n1>=<p1>,<n2>=<p2>"; env SEEDS, SEED0, EW, DEV, OPPS, NETDIR (dir with p21e/p20/p17/p14b.pt); waits for $WAIT_PID.
 while [ -n "$WAIT_PID" ] && kill -0 $WAIT_PID 2>/dev/null; do sleep 20; done
-R=${R:-$HOME/blackout-env-p22}; OUT=$R/reports/$1; C=$2; F=$HOME/p14frozen; DEV=${DEV:-cuda}
+R=${R:-$HOME/blackout-env-p22}; OUT=$R/reports/$1; C=$2; F=${NETDIR:-$HOME/p14frozen}; DEV=${DEV:-cuda}
 cd $R; mkdir -p $OUT
 export PYTHONPATH=$R NUMBA_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
 [ "$DEV" = cpu ] && export CUDA_VISIBLE_DEVICES=
