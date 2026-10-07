@@ -1,0 +1,20 @@
+bv2  vs V28  n=64 margin   +0.1 ticks   252 | H@99 {(3, 3): 41, (4, 3): 22, (2, 3): 1}
+bv3  vs V28  n=64 margin   +0.6 ticks   252 | H@99 {(4, 3): 40, (3, 3): 23, (2, 3): 1}
+bv4  vs V28  n=64 margin   +0.7 ticks   252 | H@99 {(4, 3): 41, (3, 3): 21, (2, 3): 2}
+bv5  vs V28  n=64 margin   +0.8 ticks   252 | H@99 {(4, 3): 41, (3, 3): 22, (2, 3): 1}
+p21e vs V28  n=64 margin   -0.2 ticks   252 | H@99 {(4, 3): 45, (3, 3): 18, (2, 3): 1}
+bv2  vs V30  n=64 margin   +0.2 ticks   252 | H@99 {(3, 4): 23, (4, 4): 22, (3, 3): 18, (2, 3): 1}
+bv3  vs V30  n=64 margin   +0.8 ticks   252 | H@99 {(4, 4): 40, (3, 3): 19, (3, 4): 4, (2, 3): 1}
+bv4  vs V30  n=64 margin   +0.9 ticks   252 | H@99 {(4, 4): 41, (3, 3): 21, (2, 3): 2}
+bv5  vs V30  n=64 margin   +1.0 ticks   252 | H@99 {(4, 4): 41, (3, 3): 22, (2, 3): 1}
+p21e vs V30  n=64 margin   -0.2 ticks   252 | H@99 {(4, 4): 44, (3, 3): 18, (2, 3): 1, (4, 3): 1}
+bv2  vs p17  n=64 margin   +0.3 ticks   252 | H@99 {(3, 4): 31, (4, 4): 22, (3, 3): 9, (2, 4): 1}
+bv3  vs p17  n=64 margin   +0.7 ticks   252 | H@99 {(4, 4): 41, (3, 4): 11, (3, 3): 9, (2, 4): 2}
+bv4  vs p17  n=64 margin   +0.8 ticks   252 | H@99 {(4, 4): 42, (3, 4): 11, (3, 3): 9, (2, 4): 1}
+bv5  vs p17  n=64 margin   +0.9 ticks   252 | H@99 {(4, 4): 43, (3, 4): 10, (3, 3): 9, (2, 4): 1}
+p21e vs p17  n=64 margin   -0.3 ticks   252 | H@99 {(4, 4): 45, (3, 4): 8, (3, 3): 8, (2, 4): 1}
+bv2  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 n=64 margin   +0.2 ticks   252 | H@99 {(3, 4): 23, (4, 4): 22, (3, 3): 18, (2, 3): 1}
+bv3  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 n=64 margin   +0.8 ticks   252 | H@99 {(4, 4): 40, (3, 3): 19, (3, 4): 4, (2, 3): 1}
+bv4  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 n=64 margin   +0.9 ticks   252 | H@99 {(4, 4): 41, (3, 3): 21, (2, 3): 2}
+bv5  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 n=64 margin   +1.0 ticks   252 | H@99 {(4, 4): 41, (3, 3): 22, (2, 3): 1}
+p21e vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 n=64 margin   -0.2 ticks   252 | H@99 {(4, 4): 44, (3, 3): 18, (4, 3): 1, (2, 3): 1}
