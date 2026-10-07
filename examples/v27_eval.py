@@ -149,6 +149,7 @@ def play_chunk(job):
     second = np.full((n, 2), -1, np.int64)
     hsec = np.zeros((n, 2))
     reserve = np.full(n, np.nan)
+    h99 = np.full((n, 2), -1, np.int64)  # Hunters of each team after decision 99 (OOD1 / V32, docs §56 / §58)
     stopped = np.zeros(n, bool)
     for t in range(cap_s * 25):
         live = np.nonzero(~bs.over & ~stopped)[0]
@@ -186,6 +187,8 @@ def play_chunk(job):
         for team in (0, 1):
             h = (bs.ui[live, 5 * team:5 * team + 5, core.U_CLS] == HUNTER)
             hsec[live, team] += h.sum(1) / 25.0
+            if t + 1 == 99:
+                h99[live, team] = h.sum(1)
             hit = (first[live, team] < 0) & h.any(axis=1)
             first[live[hit], team] = t + 1
     sc = bs.scores
@@ -198,7 +201,8 @@ def play_chunk(job):
                      "first_ours": int(first[j, sd]), "first_opp": int(first[j, 1 - sd]),
                      "second_ours": int(second[j, sd]), "second_opp": int(second[j, 1 - sd]),
                      "hunter_s": float(hsec[j, sd]), "opp_hunter_s": float(hsec[j, 1 - sd]),
-                     "reserve100": float(reserve[j]), "chunk_wall_s": time.time() - t0, "chunk_n": n})
+                     "reserve100": float(reserve[j]),
+                     "h99_ours": int(h99[j, sd]), "h99_opp": int(h99[j, 1 - sd]), "chunk_wall_s": time.time() - t0, "chunk_n": n})
     return rows
 
 
@@ -270,6 +274,10 @@ def cmd_report(args):
                 f"H-s {np.mean([r['hunter_s'] for r in v]):.0f}/{np.mean([r['opp_hunter_s'] for r in v]):.0f} "
                 f"res100 {np.nanmedian([r['reserve100'] for r in v]):.1f} "
                 f"(p10 {np.nanquantile([r['reserve100'] for r in v], 0.1):.1f}) first {first_hist(v)}")
+        if all("h99_ours" in r for r in v):
+            h = np.array([[r["h99_ours"], r["h99_opp"]] for r in v])
+            line += (f" H@99 {h[:, 0].mean():.2f}/{h[:, 1].mean():.2f} (ours=4 {np.mean(h[:, 0] == 4):.2f}, "
+                     f"<4 {np.mean(h[:, 0] < 4):.2f})")
         if keys and ours != args.base:
             per = defaultdict(list)
             tied = defaultdict(list)
