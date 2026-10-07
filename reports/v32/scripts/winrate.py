@@ -3,7 +3,7 @@ from every matches.jsonl under reports/v32/* and reports/ood1/* (a (ours, oppone
 win = 1 / 0.5 / 0 for margin > / = / < 0; cat = margin < -20.  SE over seeds (both sides averaged first).
 Weak-opponent rule (§58.6): an opponent both arms beat at win >= 0.9 counts as a regression only if the paired
 win-rate drop is > 2 SE and > 2 %p, or the cat rate rises by > 2 SE.
-    python reports/v32/scripts/winrate.py [--cand V32] [--base V31] [--min-n 128]"""
+    python reports/v32/scripts/winrate.py [--cand V32] [--base V31] [--min-n 128] [--glob reports/p24_sim/matches.jsonl ...]"""
 import argparse
 import glob
 import json
@@ -36,10 +36,13 @@ def main():
     ap.add_argument("--cand", default="V32")
     ap.add_argument("--base", default="V31")
     ap.add_argument("--min-n", type=int, default=128)
+    ap.add_argument("--glob", action="append", default=None,
+                    help="matches.jsonl globs relative to the repo (default reports/v32/* + reports/ood1/*; P24 §60)")
     a = ap.parse_args()
     cand, base = NAMES.get(a.cand, a.cand), NAMES.get(a.base, a.base)
     rows = {}
-    for f in sorted(glob.glob(str(REPO / "reports/v32/*/matches.jsonl")) + glob.glob(str(REPO / "reports/ood1/*/matches.jsonl"))):
+    globs = a.glob or ["reports/v32/*/matches.jsonl", "reports/ood1/*/matches.jsonl"]
+    for f in sorted(f for g in globs for f in glob.glob(str(REPO / g))):
         for line in open(f):
             try:
                 r = json.loads(line)
