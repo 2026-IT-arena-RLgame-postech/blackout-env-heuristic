@@ -2603,7 +2603,6 @@ P14b arg max 일치 / P14b 실행 방향과 각도 오차):
 - 첫 Hunter 결정 99 900/900, 경주 전부 동률. 비결정 경기 2/1800.
 - **P16이 Unity에서도 교사 V27을 +37.3±3.6으로 이긴다**(시뮬 +35.1). 차이는 모두 시뮬과 2 SE 안(V25 +9.9는 1.8 SE). → P16 = 확인된 학생 챔피언.
 
-
 ## 36. Q7: P16이 V27을 이기는 이유 / V28 (2026-10-05, 브랜치 `feat/v28-rule`, `examples/q7_why.py`, `examples/q7_gate_report.py`, `strategic_v28`, `reports/q7_v28`)
 
 질문: V27(`reserve_stage=1.5`)을 증류한 학생 P16(`frozen/p16_v27.pt`)이 시뮬레이터에서 **자기 교사 V27을 +35점**(부분 평가 256경기) 이긴다.
@@ -2722,7 +2721,6 @@ gpu1이 접속 불가가 되어(ssh 배너 시간 초과) 맥에서 돌렸다. �
 - 첫 Hunter 결정 99 1200/1200, 경주 전부 동률, 비결정 경기 2/1800. 맥 빌드도 셰도 시뮬레이터와 비트 단위로 맞는다.
 - 시뮬과 일치(대 P16 차이 −19는 64시드 시뮬의 SE 8.0을 감안하면 2 SE 안). **V28 = Unity 확인된 교사 챔피언**(P16을 +16.2로 이김).
 
-
 ## 37. Q8: P16 교사 롤아웃 망 (2026-10-05, 브랜치 `feat/rollout-v27`, `wsl_gpu` + 맥 CPU, `reports/rollout_v27`)
 
 질문: §31(Q2)의 작은 롤아웃 망 `v25d256` / `v25f3x`는 P14b처럼 둔다. 새 학생 챔피언 P16(§35, V27 증류, P14b에 +63)을 기본 정책으로 하는 다음 탐색에는
@@ -2836,7 +2834,6 @@ P16 arg max 일치 / P16 실행 방향과의 각도 오차):
   대 V23 −1.9는 그 상대 점수차의 2.5%이고 천장 상대라 실용적 손해는 작지만, 기준 위반으로 기록하고 다음 규칙화(두 번째 경주를 서두르는 조건)의 과제로 넘긴다.
 - 다음: (1) P17에서 롤아웃 망 재증류(§37 레시피), (2) P17 기반 탐색 소규모 확인, (3) Unity 확인(P17 대 V28·P16·V25, 이정표), (4) 대 V23 두 번째 경주 원인 분석.
 
-
 ## 39. Q9: P17 교사 롤아웃 망 (2026-10-05, 브랜치 `feat/rollout-v28`, `wsl_gpu` + 맥 CPU, `reports/rollout_v28`)
 
 질문: 새 학생 챔피언 P17(§38, V28 증류, P16에 직접 +38)을 기본 정책으로 하는 탐색용 롤아웃·상대 망. §37 레시피에서 교사만 P17로 바꾸고 `v27d256` / `v27f3x`에서 시작해
@@ -2928,7 +2925,6 @@ P17 일치(`agree.json`; 보류 시뮬 상태 = 시드 7400000+ P17 자기 대�
   가르므로 5초 뒤 상태에서의 최종 점수 분산이 훨씬 크다. 리프 품질 검사(S1.5 루트 재생)는 CPU 작업이라 생략, **탐색 A/B는 R2가 iter1(md5 `a4a11f9b…`)과 iter2로**.
   위치: gpu2 `~/blackout-env/checkpoints/value/s2v_v28d256/iter{1..4}.pt`, 맥 `checkpoints/value/s2v_v28d256/`(커밋 안 함).
 
-
 ## 40. R2: P17 기반 탐색 + P17 Unity (2026-10-05, 브랜치 `feat/search-p17`, `examples/unity_race_rule_eval.py`, `examples/blind_search_eval.py --base p17`, `reports/p17_unity`, `reports/blind_search/sim_p17`)
 
 질문: (1) §38의 P17(V28 증류)이 Unity에서도 챔피언인가, (2) §34의 상대를 모르는 탐색(5초부터 o4fmean)이 P17 위에서도 남나, 그리고 롤아웃 망·잎 V를 P17 쪽으로 바꾸면(v28d256, s2v_v28d256) 나아지나.
@@ -2976,7 +2972,6 @@ det_v28r − o4f_v28r +1.5±3.7(P17·V28만), opp28 − o4f_v27r +2.4±3.9.
 - 대회 설정 갱신: **행동 = P17, 롤아웃·상대 모델 = v28d256, 잎 V = s2v_f3xd2 iter2(재적합 불필요)**, 5초부터 o4fmean, B8·1초·창 25·margin 3·overlay.
   시뮬 풀 평균 +17.6±1.5(6개 상대), 최악 +10.1. 서버: `search_server serve --rollout checkpoints/rollout_net/v28/v28d256.pt --base checkpoints/distill/frozen/p17_v28.pt --deep '{"opp_branches": "samp:1.0x3", "opp_agg": "mean", "opp_left": 150}'`.
 - 다음: (1) P17 + o4f_v28r Unity 300경기/상대(P17·V28·V25·P16) — §34에서 시뮬 → Unity가 SE 안에서 옮겨졌으므로 같은 크기 예상, (2) §34의 넓은 풀(V23·V19·P11·섭동)로 P17 기반 천장 확인.
-
 
 ## 41. Q10: P17이 V28을 이기는 이유 / V29 (2026-10-05, 브랜치 `feat/v29-rule`, `examples/q7_why.py`, `examples/q7_gate_report.py`, `strategic_v29`, `reports/q10_v29`)
 
@@ -3072,7 +3067,6 @@ V29 = `strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve`,
 - 첫 Hunter 결정 99 1800/1800, 경주 전부 동률, 비결정 경기 6/1800. 시뮬과 SE 안에서 같다(직접 대결 −3.5, 대 P17 −6.3, 각 ~1 SE).
 - **V29 = Unity 확인된 교사 챔피언**: Unity에서 P17을 +26.8로 이기는 첫 휴리스틱(V28은 −35.6, §40.1 P17 − V28 +35.6과 일치).
 
-
 ## 42. P18: V29 증류 학생 — 채택 안 함 (2026-10-05, `scripts/p16_wsl_launch.sh`(교사·시작점만 바꿈), `examples/v27_eval.py`, `reports/p18_sim`, `reports/p18_train`)
 
 질문: 새 교사 V29(§41, 예비 합류)를 P17에서 시작해 증류하면 학생이 P17을 넘나. Q10 64시드 게이트 통과 직후 wsl_gpu가 비어 있어 256 게이트 전에 미리 시작했다.
@@ -3103,7 +3097,6 @@ V29 = `strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve`,
 - 교사 V29는 P17을 +19.1로 이기지만 학생 P18은 교사에게 −24.7로 진다 — §35·§38과 달리 학생이 교사를 넘지 못했다. V29의 이득은 "적 예비가 선두 보행자 1칸 안 + 경주 동률"이라는
   좁은 조건에서만 생기는데(§41.3), 학생은 0.1칸 경주 차와 적 예비 거리를 구분해야 한다(§41 위험 메모).
 - 다음 후보: (a) 합류 결정(결정 95–99) 상태에 가중치·DAgger 집중, (b) P16(합류 안 함)에서 시작하는 P18b, (c) 탐색 이득(P17 + 탐색 +17.6, §40)의 다른 규칙화.
-
 
 ## 43. P18b: V29 증류 다시 — 채택 안 함, 레시피는 다음 증류 기본값 (2026-10-06, 브랜치 `feat/p18b`, `scripts/p18b_wsl_launch.sh`, `run.py --stand-seconds/--window-weight`, `reports/p18b_*`)
 
@@ -3168,7 +3161,6 @@ V29 = `strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve`,
 - 산출물: `reports/p18b_diag/`(h99·full 요약, `scripts/diag.py`), `reports/p18b_pilot/h99`, `reports/p18b_pilot2/`(matches.jsonl, report.txt, h99), `reports/p18b_switch/`, `reports/p18b_teacher/`,
   `reports/p18b_train/`(pilot1·pilot2·멈춘 20k의 metrics/run_info/log 요약, `launch_cmds.sh`). 코드: `run.py --stand-seconds/--window-weight`, `sim/batch.py decode_moves` STAND,
   `opponents.py switch:/joinswitch:`, `v27_eval.py switch:`(테스트 `tests/test_switch_opponent.py`, `test_angle_head.py`, `test_sim_batch.py`).
-
 
 ## 44. Q11: 탐색이 P17 위에서 더하는 것 / V30 (2026-10-06, 브랜치 `feat/v30-rule`, `examples/q11_why.py`, `strategic_v30`, `reports/q11_v30`)
 
@@ -3263,7 +3255,6 @@ V30 = `strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,s
 - **V30 = Unity 확인된 교사 챔피언**: V29를 +15.9, P17을 +38.5로 이긴다. 다음: V30 증류(P19, P17 시작 — P18처럼 좁은 조건이 아니라 "Hunter 하나면 성소를 지킨다"는 단순한 규칙이라
   학생이 배우기 쉬울 것으로 기대), V30 위 탐색으로 남은 몫(Carrier·표본) 찾기.
 
-
 ## 45. P19: V30 증류 학생 — 채택 안 함 (2026-10-06, `scripts/p18b_wsl_launch.sh`(교사·시작점만 바꿈), `examples/v27_eval.py`, `reports/p19_sim`, `reports/p19_train`)
 
 질문: §43 레시피(2.5–6초 STAND, 합류 구간 가중 3, 가까운 예비 상대 추가)로 새 교사 V30(§44)을 증류하면 P17을 넘나.
@@ -3294,8 +3285,6 @@ V30 = `strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,s
 - 공통 패턴: V29/V30 교사로 증류한 학생 셋(P18, P18bp2, P19) 모두 대 V28에서 P17보다 10–21 낮다. 교사 V30 자체는 대 V28에서 P17과 비슷한데(V30 − V29 +23.0, V29 − P17 −24.5 → 약 −1.5)
   학생은 V30의 V28 대응(홀로 남은 Hunter 성소 수비, §44)을 따라 하지 못한다. 20k 학습은 5k(P18bp2)가 얻은 P17 직접 대결 이득도 지웠다 — P17 행동에서 멀어질수록 P17 상대 이득이 사라진다.
 - 다음 후보: (a) 대 V28·성소 수비 상태 집중(그 상태 DAgger·가중), (b) P18bp2에서 짧게(≤5k) V30 미세 증류, (c) 학습 상대에 V28 비중 확대.
-
-
 
 ## 46. Q12: 탐색이 V30 위에서 더하는 것 / V31 (2026-10-06, 브랜치 `feat/v31-rule`, `examples/q11_why.py --base v30`, `strategic_v31`(실험), `reports/q12_v31`)
 
@@ -3450,7 +3439,6 @@ P20과 P17(기준)을 V30·V28(0.5, advance)·P17·V25와 300경기/짝(150시�
 | V25 | +60.4±2.2 | +63.1±1.9 (0.95) | +2.7±2.6 | +4.4 |
 - 경주 전부 동률, 첫 Hunter 결정 99 300/300(모든 짝), 비동기 경기 0–2/300. 시뮬과 SE 안팎에서 일치(직접은 6.5 낮지만 1.7 SE).
 - **P20 = Unity 확인된 학생 챔피언**: P17을 +36.6, 교사 V30을 +17.1로 이긴다. 퇴보 없음.
-
 
 ## 48. D1: 증류가 실패하는 이유 (2026-10-06, 브랜치 `feat/distill-why`, `examples/d1_why.py`, `examples/d1_probe.py`, `reports/distill_why`)
 
@@ -3616,7 +3604,6 @@ Hunter 99·진 경기 수 같음). → STAND 표현력은 V30 이득에 필요 �
   서버: `search_server serve --rollout checkpoints/rollout_net/r3/r20d256.pt --base checkpoints/distill/frozen/p20_v30.pt --deep '{"opp_branches": "samp:1.0x3", "opp_agg": "mean", "opp_left": 150}'`.
 - 잎 V 재적합(`reports/r3_rollout/scripts/value.sh`)은 돌리지 않았다 — §39.6·§40에서 재적합 V가 강도 0(−0.1±0.8)이었고 CPU 12스레드가 필요해서. 탐색 몫이 줄어든 지금 V가 병목인지는 미확인.
 - 다음: (1) P20 + r20d256 Unity 확인(§40 다음 항목과 같은 형식), (2) 학생을 바꿀 때마다 롤아웃 망을 다시 증류할 것(옛 망은 탐색을 해롭게 만듦), (3) STAND 출력이 있는 롤아웃 망.
-
 
 ## 50. P21: 예비 유닛 집중 가중 + 짧은 미세 증류 — P21e 채택 (2026-10-07, 브랜치 `feat/p21`, `run.py --reserve-weight/--reserve-seconds`, `reports/p21_train`, `reports/p21_sim`, `reports/p21e_sim`)
 
@@ -3961,3 +3948,102 @@ wsl의 Unity + 교사 틱 대비 몫은 측정하지 않았다.
   - `reports/p22_train/`: `launch.sh`, `screen.sh`, `eval.sh`, `run_{a,b}/`(run_info, train_summary), `screen_{a,b}/`(h99.txt, full.txt).
   - `reports/p22_sim/`: 64시드 matches, report.
   - `reports/p22b_sim/`: 256시드 병합 matches(P21e·P22b 행), report, `merge.sh`. 원격 부분 파일과 wsl·gpu1 클론은 지웠다.
+
+## 56. OOD1: 분포 밖 강건성 묶음 OOD-26 — 계보는 무너지지 않는다, 약점은 V30 계열의 Hunter 수 (2026-10-07, 브랜치 `feat/ood1`, `blackout_env/train/distill/ood_suite.py`, `examples/v27_eval.py --opponent ood26`, `examples/ood_report.py`, `reports/ood1`)
+
+질문: P14b…P21e 관문(§38–§50)은 강한 전략 휴리스틱과 우리 망만 상대했다. 학생이 학습하지 않은 상대(분포 밖, OOD)에서 무너지나, 무너지면 교사 탓인가 학생 탓인가, 앞으로 관문에 넣을 OOD 비퇴행 규칙은 무엇인가.
+모두 시뮬(§13 Unity와 비트 동일), 시드 2600000+, 상한 425초, `--stop-exhausted`, 양 진영 짝. poscat_gpu2 CPU 8–16워커(nice 19) + gpu1 CPU 4워커. GPU는 쓰지 않았다.
+
+### 1. OOD-26 묶음 (`ood_suite.py`, `--opponent ood26` / `ood26:<group>` / `ood26=<이름,...>`)
+학생이 실제로 학습한 상대(P21e의 E 풀, §50 + §43): mixture v1–v19 + v4_near(매 흡수 매개변수 구름, V17–V19는 hunter_quota·mode도),
+오프라인 QMIX 09-17/18 런, extra = 스타일 5종 기본값, perturb v17/v19/v21(eps 0.05·lag 2·sticky 3·dither 0.1), v21-teach 섭동, d3b·d4, V28 ×4, V29, V30 ×2, V27(1.0), P17 ×2, P16, self, V25 ×2, V23(모두 섭동 없음).
+그래서 스타일 기본값은 **분포 근처 대조군**(각 ~2%)이고 나머지는 밖이다. V30 계열 매개변수는 학습에서 한 번도 흔들지 않았다.
+
+| 군 | 상대 (짧은 이름) | 왜 OOD인가 |
+|---|---|---|
+| param (9) | v30_h4hunt(Hunter 4 + hunt), v30_h2, v30_camp(+engage 9), v30_stage3, v30_nostage, v30_c0(Carrier 0), v30_hunt, v30_reckless(exposure 0.2, steal 3.5), rush_all(early_rush 5 Hunter 120초, Carrier 0) | V30 계열은 섭동 없이만 만남 |
+| style (5) | early_rush, fortress, raider, duelist, cargo_hunter | 대조군(풀에 기본값) |
+| old (7) | v4, v19, v21, v26, run16_final(RUN16, 어느 풀에도 없음 — wsl 풀은 09-17/18 런만), random, idle | 섭동 없는 옛 규칙·학습 안 한 RL·비정상 |
+| noise (4) | V31 eps 0.1, V30 lag 4, V30 freeze 0.1, P20 T=1 표집(`temp:1.0:p20`, argmax 일치 77%) | 강한 정책의 실행 잡음(학습은 v17–v21만 섭동) |
+| mirror (1) | V31(§46) | 어느 풀에도 없음 |
+
+- 참조 행 `V30(ref)` = 교사 자신(분포 안). 처음 넣었던 `v30_c3`(carrier_quota=3)은 **무효 매개변수**였다(V17 계획기는 Carrier를 최대 1명만 둔다; V30 대 c3 64/64 경기 점수차 0). 그 행은 V30으로 읽고 묶음에서는 v30_hunt로 바꿨다(`C3_NOOP`).
+- `temp:<T>:<net>`: 유닛별 칸을 softmax(logits/T)에서 뽑는다(Gumbel-max, 각도 오프셋은 뽑힌 칸 것). P20 logits는 유닛당 표준편차 4.5, 1·2위 차 1.8이라 T=0.5는 일치 89%, T=1은 77%다.
+
+### 2. 지표 (`examples/ood_report.py`)
+(후보, 상대)마다 점수차 ± SE(시드 단위), 승률, **cat**(점수차 < −20 비율), **catT**(교사가 같은 (시드, 진영)을 이긴 경기 중 cat), h99(첫 Hunter 결정 99 비율), 학생 − 교사 짝 차, 후보 − 기준 짝 차.
+후보별로 최악 상대 점수차, 묶음 평균, 합친 catT, "교사보다 5점 넘게(2 SE) 나쁜" 상대 목록, 그리고 아래 4절의 R1–R4 판정을 낸다.
+
+### 3. 결과 (`reports/ood1/ood_report.txt`; 32시드 선별 + 약한 상대 12개는 128시드)
+| 후보 | 묶음 평균 | 최악 상대 (128시드) | cat | catT | 교사보다 나쁜 상대 (>5, 2 SE) |
+|---|---|---|---|---|---|
+| **P21e** | **+59.7** | v30_h4 −8.1±3.8, h4hunt −2.2±3.8 | 0.112 | 211/2373 (8.9%) | 없음 |
+| P20 | +59.3 | v30_h4 −8.6±4.1, h4hunt −7.2±3.6 | 0.116 | 203/2373 | 없음 |
+| V31 | +56.3 | v30_h4 −17.7±2.8 | 0.144 | — | — |
+| V30 (교사) | +55.4 | v30_h4 −19.2±2.7 | 0.144 | — | — |
+| P17 | +44.3 | h4hunt −45.1 (32시드) | 0.223 | 53/1257 | v26 −8.0±3.3 |
+| V28 | +44.4 | h4hunt −47.9 | 0.229 | — | — |
+| P14b | +28.7 | P20 T=1 −67.5 | 0.335 | 69/1071 | v30_nostage −14.1±7.0 |
+| V25 | +29.0 | V31 −67.8 | 0.336 | — | — |
+
+- **학생은 OOD에서 교사보다 무너지지 않는다.** P20·P21e는 26상대 어디에서도 V30보다 2 SE 넘게 나쁘지 않다(V30 계열 변형에서 교사 대비 +0~+24, 128시드). P17·P14b도 교사 대비 2 SE 넘게 나쁜 곳이 각 1곳(−8, −14)뿐이다.
+- 약한·스타일·잡음 상대(스타일 5종, rush_all, v4/v19/v21/v26, RUN16, random, idle, V31 eps, V30 lag/freeze)는 모든 후보가 +60–+100, cat ≈ 0(freeze 0.1만 5–9%). V25는 v26(+12)·freeze(−7)에서만 약하다.
+- 남는 약점은 **V30 계열 매개변수 변형**이다. 그중 v30_h4hunt·v30_h4가 모든 후보의 최악 상대다. 나머지(stage3, c0, reckless, camp, V31, P20 T=1)는 학생이 +12–+24로 이기지만 cat 26–39%로 분산이 크다.
+- P21e − P20(128시드): 모든 상대에서 |차| < 5, 2 SE 넘는 퇴보 없음. 32시드에서 보였던 stage3 −11.8±7.3은 128시드에서 +0.6±3.4로 사라졌다(선별 잡음). 직접 대결은 +9.2±4.6(32시드, §50 +6.6).
+- h99는 모든 행에서 1.00이라 OOD 판별력이 없다(규칙 R4는 퇴화 감시용으로만 남긴다).
+- 망 대 망 이상(§50.5 Unity 직접 대결 −2.6 대 시뮬 +6.6 관련): P20 T=1 표집 상대는 동급 상대처럼 행동했다(P21e +21.2, P20 +16.8, V30 −3.1, V31 −1.1; 128시드). 이상 징후는 없었다.
+
+### 4. 원인 (`reports/ood1/scripts/diag2.py`, `reports/ood1/diag2/summary.txt`; P21e·P20·V30 × 9상대 × 64경기)
+국면 0–10/10–20/20–30/30–60/60–120/120+초의 점수 증감, 클래스별 사망, 훔치기, 잃은 운반물, Hunter 초, 1·2차 경주, 결정 99 Hunter 수를 경기마다 기록했다.
+- **v30_h4 / h4hunt (Hunter quota 4)**: 상대는 결정 99에 **항상 Hunter 4명**(64/64)이다. V30 계열은 3명 + 대기 예비 유닛이고, 합류 조건이 맞을 때만 4명이 된다(대 V30 32/64).
+  우리 4번째가 합류하지 않은 (3,4) 경기는 P21e 21/64, P20 27/64, V30 18/64이고 2차 경주를 21/21·23/27·18/18 진다(점수차 −48~−66, cat 85–100%). (4,4) 경기는 P21e +12, P20 +26(h4)/+10(h4hunt), V30 −3이다.
+  진 경기는 10초에 +3~+8로 앞서다가 20초 −20, 60초 −50 이하로 간다. 상대 Hunter 초 150–225 대 우리 10–100, 우리 Collector 사망 40–60 대 1–2, Carrier 8–12 대 0이고, 훔치기는 무관하다.
+  **hunt 모드만으로는 약점이 아니다**(v30_hunt: P21e +16.9, P20 +15.8, V30 +8.0). 원인은 Hunter quota 4다.
+- **v30_c0 (Carrier 없음)**: 경기가 길고(90–140초) 2차 경주에 동률이 거의 없다(W/T/L 26/3/35). 상대 Hunter 초 240–480 대 우리 120이다. 진 경기는 Collector 100+, Carrier 20을 잃는다. 10초에 +12로 앞서다가 20초부터 뒤집힌다.
+- **stage3, reckless, camp, V31**: 진 경기의 모양이 V30 거울전의 2차 경주 패배와 같다(20초 −25, 60초 −60, 상대 사망 ≈ 0). 학생은 V30보다 +8–+17 낫다. 동급 상대의 분산이지 약점이 아니다.
+- **공통 원인**: 모든 큰 패배는 개막·2차 Hunter 경주와 그 뒤 10–60초 Hunter 시간 우위에서 나온다. V29/V30의 대기 예비 유닛 규칙은 상대가 Hunter 수를 바꾸면(결정 99의 4번째, Carrier 대신 재Hunter) 진다.
+  **학생은 이 약점을 교사에게서 물려받았고 키우지 않았다**(같은 변형에서 학생 ≥ 교사).
+
+### 5. 최선 응답·순환 검사 (`reports/ood1/br.sh`, `reports/ood1/scripts/matrix.py`, 32시드 × 양 진영 + 1·3절 행)
+h4hunt·hunt·h4를 후보로 관문 풀(V31, V30, V29, V28, V27(1.5), V25, V23, P14b, P17, P20, P21e) + 스타일 5종 + v19 + 서로와 붙였다.
+
+| 행 대 열 | V31 | V30 | h4hunt | hunt | h4 | P20 | P21e | V25 | P17 |
+|---|---|---|---|---|---|---|---|---|---|
+| V31 | | −1.0±1.7 | −6.6±3.1 | +8.5±2.3 | −17.7±2.8 | −10.3±3.3 | −12.0±3.3 | +67.8 | +34.9 |
+| h4hunt | +6.6±3.1 | +8.3±2.8 | | +7.7±5.2 | −1.7±4.9 | +7.2±3.6 | +2.2±3.8 | +44.5 | +45.1 |
+| h4 | **+17.7±2.8** | **+19.2±2.7** | +1.7±4.9 | +17.5±5.5 | | **+8.6±4.1** | **+8.1±3.8** | +60.6 | +59.1 |
+| P21e | +12.0±3.3 | +13.9±3.2 | −2.2±3.8 | +16.9±3.1 | −8.1±3.8 | +9.2±4.6 | | +68.0 | +34.9 |
+
+- **3-순환(A>B>C>A, 각 2 SE 초과)은 없다.** 순서는 거의 추이적이다: h4 ≈ h4hunt > P21e ≥ P20 > V31 ≈ V30 > hunt > P17 > V25.
+- **h4는 반격(가위바위보)이 아니라 그냥 더 강한 정책이다.** h4는 h4hunt(+1.7)를 뺀 모든 상대를 2 SE 넘게 이긴다: V29 +23.0, P17 +59, V25 +61, P14b +63, V27·V28 +66–67, V23 +72, 스타일 5종·v19 +69–+80.
+  h4를 이기는 정책은 없다. 최선 응답은 h4hunt −1.7, P21e −8.1, P20 −8.6이다. h4hunt의 최선 응답은 h4 +1.7, V29 −0.2±5.6, P21e −2.2이고, 스타일 정책 중 h4hunt를 이기는 것은 없다.
+- 이유: 결정 99의 4번째 Hunter는 V30 계열 예비 유닛이 뒤에 남는 시드에서 2차 경주를 이기고, (4,4)에서는 동등하다. 대기 예비가 벌어 오는 경제는 그 손실을 메우지 못한다.
+- **조기 식별 신호**(`reports/ood1/scripts/id_probe.py`): 순환이 없으니 반응형 전환은 필요 없다. 실제로 결정 99 전에는 구별할 수도 없다.
+  두 팀 모두 결정 ~90–96에 성소 문 앞(0.5칸 안)에서 기다린다. 결정 96에 문 앞 적 유닛 4명은 h4 64/64, V30 46/64(V30의 예비도 문 앞에 선다)다. 성소 안에는 결정 99 전까지 아무도 없다.
+  4번째 적 Hunter는 결정 99, 경주가 이미 정해진 뒤에야 보인다. 그러니 고침은 반응이 아니라 구조여야 한다(예비 유닛이 언제나 합류할 수 있거나, 처음부터 4명).
+
+### 6. OOD 비퇴행 규칙 (관문에 추가 제안; `ood_report.py --base <챔피언>`이 판정)
+후보와 챔피언을 OOD-26 × 32시드 × 양 진영(시드 2600000+, 같은 짝)으로 돌린다. 망 둘이면 gpu2 CPU 12워커로 ~1.5시간이다.
+- **R1** 최악 상대 점수차 ≥ 챔피언의 최악 − 5(최악 상대가 같으면 짝 차로 본다).
+- **R2** 합친 catT(교사가 이긴 경기에서 −20 넘게 진 비율) ≤ 챔피언 + 2%p.
+- **R3** 후보 − 챔피언 < −5이고 2 SE를 넘는 상대가 없다. 걸린 상대는 128시드로 다시 돌리고, 거기서도 2 SE를 넘을 때만 탈락이다.
+  32시드 선별의 잡음(P21e stage3 −11.8±7.3 → 128시드 +0.6)을 이 단계가 거른다.
+- **R4** 상대별 h99 비율 ≥ 챔피언 − 0.10. 지금은 모두 1.00이라 판별력은 없고, 개막 합류 붕괴(§47 P19) 감시용이다.
+- **붕괴 검출(학생)**: OOD 상대 중 학생 − 교사 < −10이고 2 SE를 넘는 곳이 없어야 한다.
+- 현재 판정: **P21e는 P20 기준 PASS**(R1 −2.2 대 −7.2, R2 8.9% 대 8.6%, R3·R4 문제 없음). 이 규칙을 기준선으로 고정한다.
+
+### 7. 고칠 것 (우선순위)
+1. **교사 후보 h4 = V30 + `hunter_quota=4`**: 시뮬에서 V30 +19.2, V31 +17.7, P21e +8.1, P20 +8.6, 그 밖의 모든 풀 상대를 이긴다.
+   새 규칙 코드 없이 매개변수 하나다. 다만 휴리스틱 개발 보류 결정과 겹치므로 결정은 사용자에게 맡긴다. 채택하면 (a) Unity 확인, (b) h4 교사로 P21e 미세 증류(§50 레시피) 순서다.
+2. **증류 풀**: extra에 v30_h4 ×2, h4hunt, c0를 넣는다(`--opponent-extra`). 학생이 (3,4) 개막 상태를 보게 하는 것이 목적이다.
+   단 V30 라벨 자체가 그 상태에서 약하므로, 교사를 h4로 바꾸거나 (3) 없이는 효과가 제한적이다. 풀 이동은 "추가"로 해야 한다(§50 교훈).
+3. **탐색 라벨 DAgger**: (3,4)·c0 상태(결정 99–1500)를 o4f 탐색으로 라벨링한다. 탐색 상대 풀에 h4·c0를 섞고, P20 + o4f_r20 대 h4·h4hunt·c0 32시드를 돌린다(GPU 허락 뒤, 이번에는 돌리지 않음).
+4. 관문: 6절 규칙을 P22 이후 관문에 넣는다. 탐색 후보는 롤아웃 망/상대 모델 불일치 위험(§49: 낡은 v28d256으로 −27)이 있으므로 OOD-26의 param·noise 군에서 꼭 확인한다.
+
+### 8. 비용·산출물
+- 선별 1(4후보 × 26 × 64) ~1.3시간(gpu2 12워커), 선별 2(4후보) gpu1 4워커 + gpu2 8워커 ~3.5시간, 128시드 추적(4후보 × 12상대) ~4시간, diag2 1728경기 ~4시간(gpu1), br 3840 + mx 576경기 ~2.5시간(gpu2).
+- 코드: `blackout_env/train/distill/ood_suite.py`, `examples/v27_eval.py`(`ood26` 펼치기, `temp:` 표집), `examples/ood_report.py`.
+- 보고서: `reports/ood1/`
+  - `screen{,2,2b,_fu2}/matches.jsonl`, `br/matches.jsonl`, `ood_report.txt`
+  - `diag/`(옛 diag.py), `diag2/`(diag2.jsonl, summary.txt)
+  - 스크립트: `screen.sh`, `br.sh`, `scripts/{diag.py, diag2.py, id_probe.py, matrix.py}`

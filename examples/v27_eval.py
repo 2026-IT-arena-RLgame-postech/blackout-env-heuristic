@@ -12,6 +12,9 @@ non-walker's distance to the Hunter sanctuary at decision 100.  Rows append to
 Policies: heuristic descriptors, distill students (``p11`` / ``p14b`` / BLACKOUT_NETS names / ``net:<path>``),
 small rollout nets (BLACKOUT_SMALL names / ``small:<path>``).
 
+``--opponent ood26`` (or ``ood26:<group>``, ``ood26=<name>,...``) plays the OOD-26 suite (docs §56,
+blackout_env/train/distill/ood_suite.py; metrics: examples/ood_report.py); ``temp:<T>:<net>`` samples a net's bins.
+
 ``report``: per (ours, opponent) margin minus ``--base``'s on the same (seed, side), SE over seeds
 (both sides averaged first), race and second-race win/tie/loss.
 
@@ -63,8 +66,39 @@ class SwitchPolicy:
         return {tm: np.where(late, mb[tm], ma[tm]) for tm in teams}
 
 
+class TempNetPolicy:
+    """``temp:<T>:<net>`` (OOD-26, docs §56): the net's per-unit bin sampled from softmax(logits / T) instead of its
+    argmax (Gumbel-max: argmax(logits + T * Gumbel)); the angle offset of the sampled bin is kept.  A fixed RNG per
+    chunk, so reruns repeat."""
+
+    def __init__(self, t: float, net, seed: int = 0):
+        self.t, self.net, self.rng = float(t), net, np.random.default_rng(seed)
+        self.needs_inputs = True
+
+    def reset(self, n: int) -> None:
+        self.net.reset(n)
+
+    def moves(self, bsim, idx, teams, inputs):
+        from blackout_env.sim.batch import N_AGENT_COLS, decode_moves
+
+        graphic, team, agents = inputs
+        n, sel = len(idx), list(teams)
+        cut = slice(None) if sel == [0, 1] else sel
+        g = graphic[:n][:, cut].reshape(n * len(sel), *graphic.shape[2:])
+        t = team[:n][:, cut].reshape(n * len(sel), 4)
+        a = agents[:n][:, cut].reshape(n * len(sel), 10, N_AGENT_COLS)
+        q, off = self.net.forward(g, t, a)
+        q = q + self.t * self.rng.gumbel(size=q.shape).astype(q.dtype)
+        mv = decode_moves(q, off, np.tile(np.asarray(sel) == 1, n)).reshape(n, len(sel), 5, 2)
+        return {tm: mv[:, i] for i, tm in enumerate(sel)}
+
+
 def _policy(name: str):
     from blackout_env.sim.batch import HeuristicPolicy, NetPolicy
+
+    if name.startswith("temp:"):
+        _, t, rest = name.split(":", 2)
+        return TempNetPolicy(float(t), _policy(rest))
 
     if name.startswith("switch:"):
         _, sec, rest = name.split(":", 2)
@@ -182,7 +216,10 @@ def cmd_play(args):
     out.mkdir(parents=True, exist_ok=True)
     done = {(r["ours"], r["opponent"], r["seed"], r["side"]) for r in load_rows(out)}
     jobs = []
-    for opp in args.opponent.split(";"):
+    from blackout_env.train.distill.ood_suite import expand  # ``ood26`` / ``ood26:<group>`` = the OOD-26 suite (§56)
+
+    opps = list(dict.fromkeys(d for e in args.opponent.split(";") for d in expand(e)))
+    for opp in opps:
         for ours in args.ours.split(";"):
             todo = [(s, sd) for s in range(args.seed0, args.seed0 + args.seeds) for sd in (0, 1)
                     if (ours, opp, s, sd) not in done]
