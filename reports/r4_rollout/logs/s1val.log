@@ -1,0 +1,10 @@
+8 jobs (8 to do): {'teacher': 0, 'net:/home/cucumbersaurus/blackout-env-r4/checkpoints/distill/frozen/p17_v28.pt': 1, 'net:/home/cucumbersaurus/blackout-env-r4/checkpoints/distill/frozen/p16_v27.pt': 1, 'net:/home/cucumbersaurus/blackout-env-r4/checkpoints/distill/frozen/p14_v25.pt': 1, 'heur:strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true': 1, 'heur:strategic_v28:reserve_stage=0.5,trade_hold=advance': 1, 'heur:strategic_v27:reserve_stage=1.5': 1, 'heur:strategic_v25': 1, 'heur:strategic_v23': 1}
+/home/cucumbersaurus/r4runs/s1val/part_003.npz 20310 over 0.91 net 55s 303s
+/home/cucumbersaurus/r4runs/s1val/part_004.npz 15930 over 0.98 net 54s 303s
+/home/cucumbersaurus/r4runs/s1val/part_005.npz 18396 over 0.92 net 54s 313s
+/home/cucumbersaurus/r4runs/s1val/part_006.npz 17546 over 0.94 net 54s 313s
+/home/cucumbersaurus/r4runs/s1val/part_007.npz 15880 over 0.97 net 55s 313s
+/home/cucumbersaurus/r4runs/s1val/part_000.npz 21320 over 0.91 net 63s 313s
+/home/cucumbersaurus/r4runs/s1val/part_001.npz 19300 over 0.92 net 62s 313s
+/home/cucumbersaurus/r4runs/s1val/part_002.npz 17932 over 0.94 net 63s 313s
+rows 146614 316s

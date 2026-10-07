@@ -1,0 +1,14 @@
+12 jobs (12 to do): {'self': 2, 'teacher': 2, 'net:/home/cucumbersaurus/blackout-env-r4/checkpoints/distill/frozen/p17_v28.pt': 1, 'net:/home/cucumbersaurus/blackout-env-r4/checkpoints/distill/frozen/p16_v27.pt': 1, 'net:/home/cucumbersaurus/blackout-env-r4/checkpoints/distill/frozen/p14_v25.pt': 1, 'heur:strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true': 1, 'heur:strategic_v28:reserve_stage=0.5,trade_hold=advance': 1, 'heur:strategic_v27:reserve_stage=1.5': 1, 'heur:strategic_v25': 1, 'heur:strategic_v23': 1}
+/home/cucumbersaurus/r4runs/dagger/part_007.npz 186608 over 0.87 net 169s 586s
+/home/cucumbersaurus/r4runs/dagger/part_008.npz 196288 over 0.84 net 157s 626s
+/home/cucumbersaurus/r4runs/dagger/part_009.npz 165786 over 0.93 net 150s 626s
+/home/cucumbersaurus/r4runs/dagger/part_010.npz 202640 over 0.83 net 135s 626s
+/home/cucumbersaurus/r4runs/dagger/part_011.npz 151704 over 0.95 net 157s 626s
+/home/cucumbersaurus/r4runs/dagger/part_000.npz 227652 over 0.78 net 186s 626s
+/home/cucumbersaurus/r4runs/dagger/part_001.npz 222394 over 0.80 net 156s 626s
+/home/cucumbersaurus/r4runs/dagger/part_002.npz 198128 over 0.84 net 196s 626s
+/home/cucumbersaurus/r4runs/dagger/part_003.npz 207906 over 0.82 net 194s 626s
+/home/cucumbersaurus/r4runs/dagger/part_004.npz 208888 over 0.81 net 174s 626s
+/home/cucumbersaurus/r4runs/dagger/part_005.npz 191498 over 0.84 net 174s 626s
+/home/cucumbersaurus/r4runs/dagger/part_006.npz 180928 over 0.88 net 109s 626s
+rows 2340420 661s
