@@ -1,0 +1,117 @@
+== vs v30_h4hunt
+ p21e
+  all        n  64 margin  -10.1 len  82s | cum diff @10/20/30/60/120/end +3/-8/-8/-10/-10/-10 | gain 87/94 stolen-from 20/17 | deaths ours C40.2 H9.0 Ca4.9 (<60s C23.6 Ca4.8) theirs C36.3 H9.0 Ca3.1 | steals 2.2/2.5 lost 26/17 | H-s 138/142 | race1 0/64/0 race2 9/27/28 H@99 3.7/4.0
+  lost       n  35 margin  -53.3 len  81s | cum diff @10/20/30/60/120/end +6/-17/-29/-50/-53/-53 | gain 66/112 stolen-from 22/15 | deaths ours C59.3 H6.9 Ca8.0 (<60s C37.9 Ca7.9) theirs C22.7 H6.9 Ca0.4 | steals 2.0/2.7 lost 37/10 | H-s 101/195 | race1 0/35/0 race2 0/10/25 H@99 3.4/4.0
+  cat<-20    n  32 margin  -57.0 len  81s | cum diff @10/20/30/60/120/end +7/-21/-33/-54/-57/-57 | gain 65/112 stolen-from 23/13 | deaths ours C57.0 H6.9 Ca8.2 (<60s C36.7 Ca8.2) theirs C24.7 H6.9 Ca0.5 | steals 1.8/2.8 lost 36/10 | H-s 110/188 | race1 0/32/0 race2 0/9/23 H@99 3.4/4.0
+ p20
+  all        n  64 margin  -11.1 len  73s | cum diff @10/20/30/60/120/end +2/-5/-8/-10/-11/-11 | gain 85/94 stolen-from 19/17 | deaths ours C38.2 H10.1 Ca6.3 (<60s C23.1 Ca5.8) theirs C30.6 H10.1 Ca3.1 | steals 2.2/2.3 lost 29/15 | H-s 103/141 | race1 0/64/0 race2 6/32/26 H@99 3.5/4.0
+  lost       n  37 margin  -56.1 len  80s | cum diff @10/20/30/60/120/end +4/-18/-31/-53/-56/-56 | gain 62/112 stolen-from 21/15 | deaths ours C58.0 H7.9 Ca10.4 (<60s C37.5 Ca9.6) theirs C16.1 H7.9 Ca0.5 | steals 1.9/2.5 lost 42/10 | H-s 73/222 | race1 0/37/0 race2 0/13/24 H@99 3.4/4.0
+  cat<-20    n  36 margin  -57.2 len  79s | cum diff @10/20/30/60/120/end +4/-19/-32/-54/-57/-57 | gain 62/112 stolen-from 21/14 | deaths ours C58.8 H7.8 Ca10.5 (<60s C37.7 Ca9.7) theirs C14.4 H7.8 Ca0.5 | steals 1.9/2.5 lost 43/10 | H-s 71/225 | race1 0/36/0 race2 0/12/24 H@99 3.4/4.0
+ V30
+  all        n  64 margin  -16.0 len  72s | cum diff @10/20/30/60/120/end +2/-5/-9/-16/-16/-16 | gain 86/99 stolen-from 21/18 | deaths ours C38.5 H11.0 Ca5.2 (<60s C27.5 Ca5.1) theirs C31.6 H11.0 Ca2.3 | steals 2.2/2.6 lost 29/14 | H-s 87/137 | race1 0/64/0 race2 4/35/25 H@99 3.7/4.0
+  lost       n  41 margin  -49.5 len  64s | cum diff @10/20/30/60/120/end +1/-11/-23/-47/-50/-50 | gain 69/114 stolen-from 22/17 | deaths ours C49.6 H9.3 Ca7.4 (<60s C38.3 Ca7.2) theirs C7.0 H9.3 Ca0.3 | steals 2.1/2.8 lost 37/9 | H-s 26/176 | race1 0/41/0 race2 0/19/22 H@99 3.6/4.0
+  cat<-20    n  37 margin  -53.8 len  62s | cum diff @10/20/30/60/120/end +1/-12/-24/-51/-54/-54 | gain 66/115 stolen-from 21/16 | deaths ours C51.4 H9.1 Ca7.9 (<60s C39.3 Ca7.8) theirs C3.0 H9.1 Ca0.1 | steals 1.9/2.5 lost 37/8 | H-s 16/184 | race1 0/37/0 race2 0/17/20 H@99 3.6/4.0
+== vs V30(ref)
+ p21e
+  all        n  64 margin   +8.3 len  40s | cum diff @10/20/30/60/120/end -1/+3/+5/+9/+8/+8 | gain 91/85 stolen-from 18/20 | deaths ours C12.9 H8.5 Ca2.6 (<60s C11.8 Ca2.6) theirs C16.1 H8.5 Ca3.4 | steals 2.3/2.2 lost 16/18 | H-s 51/45 | race1 0/64/0 race2 18/30/16 H@99 3.5/3.5
+  lost       n  27 margin  -64.4 len  43s | cum diff @10/20/30/60/120/end +5/-27/-47/-63/-64/-64 | gain 62/117 stolen-from 26/16 | deaths ours C29.9 H8.3 Ca6.3 (<60s C27.4 Ca6.1) theirs C1.4 H8.3 Ca0.1 | steals 1.7/3.3 lost 30/8 | H-s 8/102 | race1 0/27/0 race2 0/12/15 H@99 3.5/3.5
+  cat<-20    n  27 margin  -64.4 len  43s | cum diff @10/20/30/60/120/end +5/-27/-47/-63/-64/-64 | gain 62/117 stolen-from 26/16 | deaths ours C29.9 H8.3 Ca6.3 (<60s C27.4 Ca6.1) theirs C1.4 H8.3 Ca0.1 | steals 1.7/3.3 lost 30/8 | H-s 8/102 | race1 0/27/0 race2 0/12/15 H@99 3.5/3.5
+ p20
+  all        n  64 margin  +17.3 len  43s | cum diff @10/20/30/60/120/end -1/+2/+7/+16/+17/+17 | gain 97/81 stolen-from 17/19 | deaths ours C11.7 H9.6 Ca2.7 (<60s C10.5 Ca2.7) theirs C20.6 H9.6 Ca4.7 | steals 2.2/2.0 lost 13/18 | H-s 63/38 | race1 0/64/0 race2 18/29/17 H@99 3.4/3.5
+  lost       n  21 margin  -67.2 len  41s | cum diff @10/20/30/60/120/end +7/-34/-52/-66/-67/-67 | gain 60/110 stolen-from 26/8 | deaths ours C32.9 H6.2 Ca8.1 (<60s C29.8 Ca8.1) theirs C0.6 H6.2 Ca0.0 | steals 0.9/3.0 lost 27/7 | H-s 9/107 | race1 0/21/0 race2 0/5/16 H@99 3.2/3.2
+  cat<-20    n  21 margin  -67.2 len  41s | cum diff @10/20/30/60/120/end +7/-34/-52/-66/-67/-67 | gain 60/110 stolen-from 26/8 | deaths ours C32.9 H6.2 Ca8.1 (<60s C29.8 Ca8.1) theirs C0.6 H6.2 Ca0.0 | steals 0.9/3.0 lost 27/7 | H-s 9/107 | race1 0/21/0 race2 0/5/16 H@99 3.2/3.2
+ V30
+  all        n  64 margin   +0.0 len  39s | cum diff @10/20/30/60/120/end +0/+0/+0/+0/+0/+0 | gain 87/87 stolen-from 16/16 | deaths ours C13.2 H10.1 Ca3.1 (<60s C13.0 Ca3.0) theirs C13.2 H10.1 Ca3.1 | steals 1.9/1.9 lost 15/15 | H-s 44/44 | race1 0/64/0 race2 19/26/19 H@99 3.4/3.4
+  lost       n  32 margin  -62.2 len  39s | cum diff @10/20/30/60/120/end +2/-24/-43/-62/-62/-62 | gain 60/114 stolen-from 21/12 | deaths ours C26.0 H10.1 Ca6.1 (<60s C25.4 Ca6.1) theirs C0.5 H10.1 Ca0.0 | steals 1.4/2.5 lost 24/6 | H-s 3/85 | race1 0/32/0 race2 1/13/18 H@99 3.4/3.4
+  cat<-20    n  32 margin  -62.2 len  39s | cum diff @10/20/30/60/120/end +2/-24/-43/-62/-62/-62 | gain 60/114 stolen-from 21/12 | deaths ours C26.0 H10.1 Ca6.1 (<60s C25.4 Ca6.1) theirs C0.5 H10.1 Ca0.0 | steals 1.4/2.5 lost 24/6 | H-s 3/85 | race1 0/32/0 race2 1/13/18 H@99 3.4/3.4
+== vs v30_hunt
+ p21e
+  all        n  64 margin  +17.1 len  71s | cum diff @10/20/30/60/120/end -2/+5/+12/+16/+17/+17 | gain 96/83 stolen-from 17/21 | deaths ours C33.5 H7.0 Ca3.0 (<60s C14.2 Ca2.7) theirs C38.1 H7.0 Ca5.0 | steals 2.6/2.2 lost 19/23 | H-s 124/101 | race1 0/64/0 race2 25/20/19 H@99 3.5/3.5
+  lost       n  27 margin  -45.0 len  90s | cum diff @10/20/30/60/120/end +2/-24/-31/-46/-46/-45 | gain 76/113 stolen-from 25/17 | deaths ours C53.0 H6.4 Ca6.6 (<60s C28.7 Ca6.0) theirs C38.8 H6.4 Ca2.0 | steals 2.4/3.4 lost 33/14 | H-s 137/172 | race1 0/27/0 race2 2/7/18 H@99 3.5/3.5
+  cat<-20    n  21 margin  -55.0 len  51s | cum diff @10/20/30/60/120/end +4/-28/-38/-54/-55/-55 | gain 67/112 stolen-from 24/14 | deaths ours C32.2 H5.3 Ca6.9 (<60s C29.6 Ca6.9) theirs C7.0 H5.3 Ca0.8 | steals 1.9/3.1 lost 36/12 | H-s 35/120 | race1 0/21/0 race2 0/4/17 H@99 3.4/3.4
+ p20
+  all        n  64 margin  +13.4 len  54s | cum diff @10/20/30/60/120/end -1/+5/+8/+13/+13/+13 | gain 93/82 stolen-from 17/20 | deaths ours C22.6 H8.5 Ca2.7 (<60s C12.4 Ca2.7) theirs C24.0 H8.5 Ca5.8 | steals 2.3/2.0 lost 18/18 | H-s 80/69 | race1 0/64/0 race2 22/25/17 H@99 3.4/3.5
+  lost       n  25 margin  -61.7 len  59s | cum diff @10/20/30/60/120/end +2/-27/-46/-61/-62/-62 | gain 60/114 stolen-from 22/15 | deaths ours C49.8 H7.2 Ca6.6 (<60s C28.2 Ca6.4) theirs C1.3 H7.2 Ca0.2 | steals 1.8/2.7 lost 33/8 | H-s 29/149 | race1 0/25/0 race2 0/9/16 H@99 3.4/3.4
+  cat<-20    n  24 margin  -63.5 len  59s | cum diff @10/20/30/60/120/end +2/-30/-48/-63/-63/-63 | gain 60/115 stolen-from 22/14 | deaths ours C49.9 H7.3 Ca6.4 (<60s C27.4 Ca6.3) theirs C1.3 H7.3 Ca0.2 | steals 1.7/2.8 lost 32/8 | H-s 29/147 | race1 0/24/0 race2 0/9/15 H@99 3.4/3.4
+ V30
+  all        n  64 margin   +4.7 len  47s | cum diff @10/20/30/60/120/end -0/+2/+3/+5/+5/+5 | gain 91/87 stolen-from 17/19 | deaths ours C15.5 H8.8 Ca3.0 (<60s C13.2 Ca2.9) theirs C20.0 H8.8 Ca4.0 | steals 2.4/2.2 lost 21/18 | H-s 66/55 | race1 0/64/0 race2 21/22/21 H@99 3.4/3.4
+  lost       n  29 margin  -58.6 len  48s | cum diff @10/20/30/60/120/end -1/-25/-41/-59/-59/-59 | gain 63/114 stolen-from 21/15 | deaths ours C30.8 H8.9 Ca6.4 (<60s C27.2 Ca6.4) theirs C6.9 H8.9 Ca0.6 | steals 1.8/2.7 lost 34/8 | H-s 23/105 | race1 0/29/0 race2 0/12/17 H@99 3.4/3.4
+  cat<-20    n  28 margin  -60.4 len  47s | cum diff @10/20/30/60/120/end +0/-24/-41/-61/-60/-60 | gain 61/115 stolen-from 21/15 | deaths ours C31.3 H8.7 Ca6.4 (<60s C27.6 Ca6.4) theirs C4.8 H8.7 Ca0.4 | steals 1.9/2.6 lost 34/7 | H-s 19/106 | race1 0/28/0 race2 0/11/17 H@99 3.4/3.4
+== vs v30_h4
+ p21e
+  all        n  64 margin  -14.0 len  54s | cum diff @10/20/30/60/120/end +3/-8/-9/-13/-14/-14 | gain 85/96 stolen-from 19/16 | deaths ours C28.9 H11.0 Ca5.7 (<60s C22.2 Ca5.6) theirs C14.2 H11.0 Ca2.3 | steals 1.9/2.4 lost 18/13 | H-s 50/108 | race1 0/64/0 race2 1/40/23 H@99 3.7/4.0
+  lost       n  36 margin  -61.9 len  52s | cum diff @10/20/30/60/120/end +7/-19/-33/-59/-62/-62 | gain 60/113 stolen-from 22/13 | deaths ours C42.1 H7.8 Ca9.9 (<60s C37.5 Ca9.8) theirs C1.9 H7.8 Ca0.0 | steals 1.6/2.6 lost 28/8 | H-s 11/153 | race1 0/36/0 race2 0/14/22 H@99 3.4/4.0
+  cat<-20    n  35 margin  -63.2 len  51s | cum diff @10/20/30/60/120/end +8/-19/-34/-61/-63/-63 | gain 59/113 stolen-from 21/12 | deaths ours C42.7 H7.5 Ca10.2 (<60s C38.0 Ca10.1) theirs C0.5 H7.5 Ca0.0 | steals 1.5/2.6 lost 28/8 | H-s 8/156 | race1 0/35/0 race2 0/13/22 H@99 3.4/4.0
+ p20
+  all        n  64 margin   -6.5 len  54s | cum diff @10/20/30/60/120/end +3/-7/-7/-7/-7/-7 | gain 86/89 stolen-from 17/14 | deaths ours C20.1 H10.3 Ca5.8 (<60s C19.2 Ca5.8) theirs C26.9 H10.3 Ca6.0 | steals 1.7/2.0 lost 18/16 | H-s 73/81 | race1 0/64/0 race2 1/38/25 H@99 3.5/4.0
+  lost       n  32 margin  -66.0 len  49s | cum diff @10/20/30/60/120/end +7/-23/-40/-65/-66/-66 | gain 54/109 stolen-from 19/8 | deaths ours C39.3 H4.5 Ca11.7 (<60s C37.6 Ca11.6) theirs C0.2 H4.5 Ca0.0 | steals 0.9/2.2 lost 30/9 | H-s 6/161 | race1 0/32/0 race2 0/8/24 H@99 3.2/4.0
+  cat<-20    n  32 margin  -66.0 len  49s | cum diff @10/20/30/60/120/end +7/-23/-40/-65/-66/-66 | gain 54/109 stolen-from 19/8 | deaths ours C39.3 H4.5 Ca11.7 (<60s C37.6 Ca11.6) theirs C0.2 H4.5 Ca0.0 | steals 0.9/2.2 lost 30/9 | H-s 6/161 | race1 0/32/0 race2 0/8/24 H@99 3.2/4.0
+ V30
+  all        n  64 margin  -19.8 len  56s | cum diff @10/20/30/60/120/end +2/-7/-11/-19/-20/-20 | gain 86/101 stolen-from 20/15 | deaths ours C27.0 H15.2 Ca5.6 (<60s C23.5 Ca5.5) theirs C11.4 H15.2 Ca1.9 | steals 1.9/2.5 lost 19/12 | H-s 37/105 | race1 0/64/0 race2 1/43/20 H@99 3.7/4.0
+  lost       n  42 margin  -53.1 len  59s | cum diff @10/20/30/60/120/end +3/-10/-22/-51/-54/-53 | gain 69/114 stolen-from 22/14 | deaths ours C40.4 H12.7 Ca8.5 (<60s C35.1 Ca8.3) theirs C2.7 H12.7 Ca0.1 | steals 1.7/2.8 lost 27/8 | H-s 12/159 | race1 0/42/0 race2 1/23/18 H@99 3.6/4.0
+  cat<-20    n  39 margin  -56.3 len  54s | cum diff @10/20/30/60/120/end +3/-11/-23/-53/-56/-56 | gain 67/115 stolen-from 22/14 | deaths ours C38.5 H12.5 Ca8.7 (<60s C34.6 Ca8.5) theirs C0.4 H12.5 Ca0.0 | steals 1.6/2.7 lost 27/7 | H-s 4/151 | race1 0/39/0 race2 1/21/17 H@99 3.6/4.0
+== vs v30_stage3
+ p21e
+  all        n  64 margin  +15.9 len  41s | cum diff @10/20/30/60/120/end -2/+6/+11/+16/+16/+16 | gain 95/82 stolen-from 17/21 | deaths ours C12.8 H8.5 Ca2.3 (<60s C11.0 Ca2.3) theirs C17.4 H8.5 Ca3.6 | steals 2.4/2.1 lost 14/19 | H-s 55/41 | race1 0/64/0 race2 20/30/14 H@99 3.5/3.5
+  lost       n  24 margin  -61.8 len  47s | cum diff @10/20/30/60/120/end +0/-29/-47/-60/-62/-62 | gain 65/118 stolen-from 28/19 | deaths ours C33.1 H8.0 Ca6.2 (<60s C28.2 Ca6.2) theirs C3.2 H8.0 Ca0.2 | steals 2.3/3.5 lost 27/10 | H-s 14/107 | race1 0/24/0 race2 0/11/13 H@99 3.5/3.5
+  cat<-20    n  23 margin  -64.4 len  45s | cum diff @10/20/30/60/120/end +2/-30/-49/-63/-64/-64 | gain 63/117 stolen-from 27/17 | deaths ours C33.6 H7.6 Ca6.5 (<60s C28.7 Ca6.4) theirs C2.0 H7.6 Ca0.1 | steals 2.1/3.4 lost 29/9 | H-s 9/106 | race1 0/23/0 race2 0/10/13 H@99 3.5/3.5
+ p20
+  all        n  64 margin  +27.7 len  43s | cum diff @10/20/30/60/120/end -1/+6/+14/+26/+28/+28 | gain 100/77 stolen-from 16/20 | deaths ours C7.7 H9.5 Ca1.8 (<60s C7.1 Ca1.8) theirs C24.7 H9.5 Ca5.3 | steals 2.4/1.9 lost 12/20 | H-s 74/24 | race1 0/64/0 race2 21/29/14 H@99 3.4/3.5
+  lost       n  16 margin  -67.6 len  36s | cum diff @10/20/30/60/120/end +4/-38/-57/-68/-68/-68 | gain 57/112 stolen-from 24/12 | deaths ours C26.5 H6.6 Ca6.9 (<60s C24.6 Ca6.9) theirs C0.6 H6.6 Ca0.1 | steals 1.3/2.9 lost 27/7 | H-s 4/79 | race1 0/16/0 race2 0/4/12 H@99 3.2/3.2
+  cat<-20    n  16 margin  -67.6 len  36s | cum diff @10/20/30/60/120/end +4/-38/-57/-68/-68/-68 | gain 57/112 stolen-from 24/12 | deaths ours C26.5 H6.6 Ca6.9 (<60s C24.6 Ca6.9) theirs C0.6 H6.6 Ca0.1 | steals 1.3/2.9 lost 27/7 | H-s 4/79 | race1 0/16/0 race2 0/4/12 H@99 3.2/3.2
+ V30
+  all        n  64 margin   +5.4 len  40s | cum diff @10/20/30/60/120/end +0/+1/+3/+6/+5/+5 | gain 91/85 stolen-from 17/17 | deaths ours C12.8 H9.8 Ca3.0 (<60s C12.1 Ca3.0) theirs C15.1 H9.8 Ca3.4 | steals 2.0/2.0 lost 14/16 | H-s 48/42 | race1 0/64/0 race2 20/26/18 H@99 3.4/3.4
+  lost       n  30 margin  -60.0 len  41s | cum diff @10/20/30/60/120/end +1/-25/-43/-59/-60/-60 | gain 64/114 stolen-from 22/12 | deaths ours C26.5 H10.3 Ca6.5 (<60s C25.1 Ca6.3) theirs C0.8 H10.3 Ca0.0 | steals 1.4/2.6 lost 22/6 | H-s 3/86 | race1 0/30/0 race2 0/13/17 H@99 3.4/3.4
+  cat<-20    n  29 margin  -61.4 len  40s | cum diff @10/20/30/60/120/end +0/-26/-45/-60/-61/-61 | gain 63/114 stolen-from 22/12 | deaths ours C25.5 H9.9 Ca6.7 (<60s C24.6 Ca6.5) theirs C0.8 H9.9 Ca0.0 | steals 1.4/2.6 lost 22/6 | H-s 3/84 | race1 0/29/0 race2 0/12/17 H@99 3.4/3.4
+== vs v30_c0
+ p21e
+  all        n  64 margin   +9.4 len  94s | cum diff @10/20/30/60/120/end +12/+14/+14/+11/+10/+9 | gain 82/71 stolen-from 11/9 | deaths ours C62.1 H4.3 Ca11.8 (<60s C22.6 Ca6.0) theirs C37.0 H4.3 Ca0.4 | steals 1.2/1.5 lost 24/20 | H-s 118/239 | race1 0/64/0 race2 26/3/35 H@99 3.4/3.1
+  lost       n  30 margin  -56.7 len 113s | cum diff @10/20/30/60/120/end +12/-18/-34/-53/-55/-57 | gain 57/103 stolen-from 18/6 | deaths ours C102.2 H5.1 Ca20.5 (<60s C39.5 Ca11.1) theirs C9.1 H5.1 Ca0.1 | steals 0.8/2.3 lost 37/13 | H-s 54/402 | race1 0/30/0 race2 0/2/28 H@99 3.7/3.6
+  cat<-20    n  28 margin  -60.1 len 114s | cum diff @10/20/30/60/120/end +13/-16/-34/-55/-58/-60 | gain 56/103 stolen-from 18/6 | deaths ours C108.2 H4.5 Ca21.6 (<60s C41.2 Ca11.5) theirs C5.3 H4.5 Ca0.0 | steals 0.7/2.3 lost 38/12 | H-s 43/425 | race1 0/28/0 race2 0/1/27 H@99 3.6/3.5
+ p20
+  all        n  64 margin  +13.9 len 113s | cum diff @10/20/30/60/120/end +14/+16/+17/+13/+13/+14 | gain 84/68 stolen-from 12/10 | deaths ours C75.3 H4.5 Ca13.9 (<60s C23.3 Ca6.5) theirs C36.6 H4.5 Ca0.3 | steals 1.3/1.5 lost 23/19 | H-s 133/334 | race1 0/64/0 race2 25/3/36 H@99 3.3/3.1
+  lost       n  28 margin  -56.9 len 140s | cum diff @10/20/30/60/120/end +14/-20/-35/-56/-58/-57 | gain 58/101 stolen-from 20/6 | deaths ours C112.8 H4.5 Ca22.2 (<60s C42.2 Ca12.4) theirs C23.5 H4.5 Ca0.1 | steals 0.9/2.5 lost 36/12 | H-s 113/483 | race1 0/28/0 race2 0/1/27 H@99 3.4/3.5
+  cat<-20    n  26 margin  -60.7 len 124s | cum diff @10/20/30/60/120/end +14/-20/-35/-58/-60/-61 | gain 57/104 stolen-from 20/6 | deaths ours C97.7 H4.5 Ca17.5 (<60s C41.1 Ca11.7) theirs C17.9 H4.5 Ca0.1 | steals 0.9/2.5 lost 35/11 | H-s 99/425 | race1 0/26/0 race2 0/1/25 H@99 3.4/3.5
+ V30
+  all        n  64 margin   +3.7 len  83s | cum diff @10/20/30/60/120/end +13/+12/+10/+6/+4/+4 | gain 79/70 stolen-from 13/8 | deaths ours C65.6 H4.0 Ca7.9 (<60s C22.5 Ca5.8) theirs C20.7 H4.0 Ca0.2 | steals 1.0/1.5 lost 22/20 | H-s 59/244 | race1 0/64/0 race2 27/2/35 H@99 3.3/3.1
+  lost       n  32 margin  -66.6 len 114s | cum diff @10/20/30/60/120/end +12/-23/-40/-61/-64/-67 | gain 52/103 stolen-from 21/5 | deaths ours C111.0 H4.2 Ca14.5 (<60s C41.6 Ca10.5) theirs C4.1 H4.2 Ca0.0 | steals 0.6/2.4 lost 33/13 | H-s 20/410 | race1 0/32/0 race2 0/1/31 H@99 3.6/3.5
+  cat<-20    n  32 margin  -66.6 len 114s | cum diff @10/20/30/60/120/end +12/-23/-40/-61/-64/-67 | gain 52/103 stolen-from 21/5 | deaths ours C111.0 H4.2 Ca14.5 (<60s C41.6 Ca10.5) theirs C4.1 H4.2 Ca0.0 | steals 0.6/2.4 lost 33/13 | H-s 20/410 | race1 0/32/0 race2 0/1/31 H@99 3.6/3.5
+== vs v30_reckless
+ p21e
+  all        n  64 margin  +12.1 len  46s | cum diff @10/20/30/60/120/end -4/-1/+2/+11/+12/+12 | gain 98/93 stolen-from 23/30 | deaths ours C13.7 H9.4 Ca2.3 (<60s C9.0 Ca2.3) theirs C21.8 H9.4 Ca5.2 | steals 3.6/2.9 lost 14/17 | H-s 72/45 | race1 0/64/0 race2 18/31/15 H@99 3.5/3.5
+  lost       n  25 margin  -68.0 len  36s | cum diff @10/20/30/60/120/end +0/-35/-53/-68/-68/-68 | gain 66/122 stolen-from 32/21 | deaths ours C21.6 H7.8 Ca5.7 (<60s C21.4 Ca5.7) theirs C2.6 H7.8 Ca0.3 | steals 2.4/4.0 lost 24/6 | H-s 9/73 | race1 0/25/0 race2 0/10/15 H@99 3.4/3.4
+  cat<-20    n  24 margin  -70.0 len  34s | cum diff @10/20/30/60/120/end +1/-37/-56/-70/-70/-70 | gain 64/120 stolen-from 32/19 | deaths ours C21.7 H7.5 Ca6.0 (<60s C21.6 Ca6.0) theirs C1.8 H7.5 Ca0.2 | steals 2.2/3.9 lost 25/6 | H-s 6/73 | race1 0/24/0 race2 0/9/15 H@99 3.4/3.4
+ p20
+  all        n  64 margin   +9.5 len  55s | cum diff @10/20/30/60/120/end -2/+0/+1/+9/+10/+10 | gain 98/93 stolen-from 24/28 | deaths ours C20.4 H9.2 Ca2.7 (<60s C12.4 Ca2.6) theirs C24.1 H9.2 Ca4.4 | steals 3.5/3.0 lost 16/18 | H-s 87/68 | race1 0/64/0 race2 16/30/18 H@99 3.4/3.5
+  lost       n  25 margin  -66.2 len  41s | cum diff @10/20/30/60/120/end +2/-24/-52/-65/-66/-66 | gain 61/122 stolen-from 26/21 | deaths ours C31.5 H7.1 Ca6.7 (<60s C29.4 Ca6.6) theirs C0.4 H7.1 Ca0.0 | steals 2.6/3.5 lost 31/7 | H-s 3/107 | race1 0/25/0 race2 0/7/18 H@99 3.3/3.4
+  cat<-20    n  25 margin  -66.2 len  41s | cum diff @10/20/30/60/120/end +2/-24/-52/-65/-66/-66 | gain 61/122 stolen-from 26/21 | deaths ours C31.5 H7.1 Ca6.7 (<60s C29.4 Ca6.6) theirs C0.4 H7.1 Ca0.0 | steals 2.6/3.5 lost 31/7 | H-s 3/107 | race1 0/25/0 race2 0/7/18 H@99 3.3/3.4
+ V30
+  all        n  64 margin   -7.2 len  48s | cum diff @10/20/30/60/120/end -3/-2/-8/-6/-7/-7 | gain 86/101 stolen-from 21/29 | deaths ours C20.1 H10.5 Ca3.7 (<60s C13.7 Ca3.6) theirs C15.0 H10.5 Ca3.1 | steals 3.5/2.9 lost 19/15 | H-s 53/68 | race1 0/64/0 race2 18/28/18 H@99 3.5/3.5
+  lost       n  34 margin  -67.1 len  42s | cum diff @10/20/30/60/120/end -2/-25/-48/-65/-67/-67 | gain 58/124 stolen-from 24/23 | deaths ours C26.6 H11.6 Ca6.8 (<60s C24.1 Ca6.6) theirs C1.0 H11.6 Ca0.0 | steals 2.7/3.3 lost 28/7 | H-s 3/86 | race1 0/34/0 race2 1/15/18 H@99 3.5/3.5
+  cat<-20    n  34 margin  -67.1 len  42s | cum diff @10/20/30/60/120/end -2/-25/-48/-65/-67/-67 | gain 58/124 stolen-from 24/23 | deaths ours C26.6 H11.6 Ca6.8 (<60s C24.1 Ca6.6) theirs C1.0 H11.6 Ca0.0 | steals 2.7/3.3 lost 28/7 | H-s 3/86 | race1 0/34/0 race2 1/15/18 H@99 3.5/3.5
+== vs v30_camp
+ p21e
+  all        n  64 margin  +22.3 len  71s | cum diff @10/20/30/60/120/end -1/+10/+15/+21/+22/+22 | gain 100/80 stolen-from 18/21 | deaths ours C18.4 H8.6 Ca1.7 (<60s C9.8 Ca1.6) theirs C21.3 H8.6 Ca4.7 | steals 2.5/2.1 lost 15/19 | H-s 112/137 | race1 0/64/0 race2 18/31/15 H@99 3.5/3.5
+  lost       n  23 margin  -47.7 len 105s | cum diff @10/20/30/60/120/end -1/-14/-29/-48/-48/-48 | gain 73/115 stolen-from 24/18 | deaths ours C47.1 H9.1 Ca4.4 (<60s C23.9 Ca4.2) theirs C10.7 H9.1 Ca0.8 | steals 2.2/3.0 lost 29/9 | H-s 153/283 | race1 0/23/0 race2 0/11/12 H@99 3.5/3.5
+  cat<-20    n  20 margin  -52.1 len 107s | cum diff @10/20/30/60/120/end -2/-18/-32/-53/-52/-52 | gain 68/113 stolen-from 22/15 | deaths ours C48.9 H9.4 Ca4.8 (<60s C23.1 Ca4.5) theirs C8.9 H9.4 Ca0.8 | steals 1.9/2.8 lost 30/7 | H-s 166/292 | race1 0/20/0 race2 0/10/10 H@99 3.5/3.5
+ p20
+  all        n  64 margin  +23.1 len  72s | cum diff @10/20/30/60/120/end -1/+8/+14/+22/+23/+23 | gain 104/83 stolen-from 19/21 | deaths ours C17.9 H10.0 Ca2.7 (<60s C8.5 Ca1.5) theirs C35.9 H10.0 Ca5.9 | steals 2.7/2.3 lost 14/20 | H-s 133/109 | race1 0/64/0 race2 18/30/16 H@99 3.4/3.5
+  lost       n  21 margin  -44.5 len 119s | cum diff @10/20/30/60/120/end +2/-15/-28/-45/-44/-44 | gain 79/112 stolen-from 27/16 | deaths ours C44.6 H7.7 Ca5.1 (<60s C22.0 Ca4.5) theirs C42.8 H7.7 Ca2.2 | steals 2.3/3.5 lost 26/11 | H-s 207/280 | race1 0/21/0 race2 1/7/13 H@99 3.4/3.4
+  cat<-20    n  18 margin  -50.1 len  88s | cum diff @10/20/30/60/120/end +4/-14/-29/-48/-49/-50 | gain 77/115 stolen-from 27/14 | deaths ours C28.4 H7.5 Ca4.4 (<60s C21.4 Ca4.3) theirs C16.8 H7.5 Ca0.9 | steals 2.1/3.5 lost 24/9 | H-s 97/247 | race1 0/18/0 race2 1/6/11 H@99 3.4/3.4
+ V30
+  all        n  64 margin  +16.3 len 115s | cum diff @10/20/30/60/120/end -0/+9/+10/+15/+16/+16 | gain 100/87 stolen-from 19/23 | deaths ours C28.2 H10.0 Ca1.2 (<60s C10.3 Ca1.1) theirs C67.0 H10.0 Ca10.2 | steals 2.8/2.4 lost 16/18 | H-s 249/215 | race1 0/64/0 race2 20/26/18 H@99 3.4/3.4
+  lost       n  25 margin  -41.1 len 156s | cum diff @10/20/30/60/120/end -1/-9/-27/-40/-41/-41 | gain 75/115 stolen-from 22/21 | deaths ours C51.2 H11.3 Ca2.7 (<60s C20.7 Ca2.5) theirs C81.5 H11.3 Ca2.2 | steals 2.6/3.0 lost 24/10 | H-s 313/346 | race1 0/25/0 race2 0/11/14 H@99 3.5/3.5
+  cat<-20    n  20 margin  -47.1 len 121s | cum diff @10/20/30/60/120/end -4/-13/-32/-47/-47/-47 | gain 72/117 stolen-from 22/20 | deaths ours C51.2 H12.2 Ca2.7 (<60s C19.9 Ca2.6) theirs C45.0 H12.2 Ca1.8 | steals 2.4/3.0 lost 22/9 | H-s 182/292 | race1 0/20/0 race2 0/9/11 H@99 3.5/3.5
+== vs V31
+ p21e
+  all        n  64 margin  +10.4 len  44s | cum diff @10/20/30/60/120/end -2/+1/+6/+10/+10/+10 | gain 93/86 stolen-from 19/22 | deaths ours C13.8 H8.1 Ca2.6 (<60s C12.1 Ca2.5) theirs C23.2 H8.1 Ca4.8 | steals 2.5/2.3 lost 16/17 | H-s 66/45 | race1 0/64/0 race2 18/29/17 H@99 3.5/3.5
+  lost       n  26 margin  -63.7 len  42s | cum diff @10/20/30/60/120/end +1/-30/-48/-63/-64/-64 | gain 62/114 stolen-from 25/13 | deaths ours C30.3 H7.5 Ca6.1 (<60s C27.9 Ca6.1) theirs C2.0 H7.5 Ca0.1 | steals 1.5/3.1 lost 30/7 | H-s 9/96 | race1 0/26/0 race2 1/10/15 H@99 3.4/3.4
+  cat<-20    n  26 margin  -63.7 len  42s | cum diff @10/20/30/60/120/end +1/-30/-48/-63/-64/-64 | gain 62/114 stolen-from 25/13 | deaths ours C30.3 H7.5 Ca6.1 (<60s C27.9 Ca6.1) theirs C2.0 H7.5 Ca0.1 | steals 1.5/3.1 lost 30/7 | H-s 9/96 | race1 0/26/0 race2 1/10/15 H@99 3.4/3.4
+ p20
+  all        n  64 margin  +12.9 len  49s | cum diff @10/20/30/60/120/end -2/+2/+5/+11/+13/+13 | gain 95/84 stolen-from 19/21 | deaths ours C13.9 H8.8 Ca2.9 (<60s C11.5 Ca2.9) theirs C29.9 H8.8 Ca5.8 | steals 2.4/2.3 lost 15/19 | H-s 86/46 | race1 0/64/0 race2 18/29/17 H@99 3.4/3.5
+  lost       n  24 margin  -65.7 len  40s | cum diff @10/20/30/60/120/end +3/-31/-50/-66/-66/-66 | gain 61/115 stolen-from 25/14 | deaths ours C30.5 H7.2 Ca7.6 (<60s C29.0 Ca7.6) theirs C0.4 H7.2 Ca0.1 | steals 1.5/3.1 lost 29/7 | H-s 4/96 | race1 0/24/0 race2 0/7/17 H@99 3.3/3.3
+  cat<-20    n  24 margin  -65.7 len  40s | cum diff @10/20/30/60/120/end +3/-31/-50/-66/-66/-66 | gain 61/115 stolen-from 25/14 | deaths ours C30.5 H7.2 Ca7.6 (<60s C29.0 Ca7.6) theirs C0.4 H7.2 Ca0.1 | steals 1.5/3.1 lost 29/7 | H-s 4/96 | race1 0/24/0 race2 0/7/17 H@99 3.3/3.3
+ V30
+  all        n  64 margin   -1.9 len  42s | cum diff @10/20/30/60/120/end -1/-3/-4/-3/-2/-2 | gain 90/90 stolen-from 20/18 | deaths ours C14.8 H9.7 Ca3.3 (<60s C14.6 Ca3.3) theirs C18.5 H9.7 Ca4.0 | steals 2.3/2.4 lost 18/15 | H-s 50/44 | race1 0/64/0 race2 19/25/20 H@99 3.4/3.4
+  lost       n  32 margin  -63.5 len  40s | cum diff @10/20/30/60/120/end +0/-26/-47/-63/-63/-63 | gain 61/115 stolen-from 23/14 | deaths ours C29.2 H9.6 Ca6.6 (<60s C28.9 Ca6.6) theirs C0.3 H9.6 Ca0.0 | steals 1.8/2.9 lost 28/6 | H-s 1/87 | race1 0/32/0 race2 1/12/19 H@99 3.4/3.4
+  cat<-20    n  32 margin  -63.5 len  40s | cum diff @10/20/30/60/120/end +0/-26/-47/-63/-63/-63 | gain 61/115 stolen-from 23/14 | deaths ours C29.2 H9.6 Ca6.6 (<60s C28.9 Ca6.6) theirs C0.3 H9.6 Ca0.0 | steals 1.8/2.9 lost 28/6 | H-s 1/87 | race1 0/32/0 race2 1/12/19 H@99 3.4/3.4
