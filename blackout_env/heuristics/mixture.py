@@ -37,6 +37,7 @@ from .v28_trade_hold import StrategicHeuristicV28
 from .v29_reserve_join import StrategicHeuristicV29
 from .v30_solo_sentry import StrategicHeuristicV30
 from .v31_carrier_evade import StrategicHeuristicV31
+from .v32_four_hunters import StrategicHeuristicV32
 from .v24_late import StrategicHeuristicV24
 from .raider import StrategicRaider
 from .cargo_hunter import StrategicCargoHunter
@@ -89,6 +90,7 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
     "strategic_v29": StrategicHeuristicV29,  # V28 + the staged reserve joins a tied race (Q10); reserve_join default off = V28; not in the default weights
     "strategic_v30": StrategicHeuristicV30,  # V29 + a lone Hunter already keeps the sanctuary (Q11); solo_sentry default off = V29; not in the default weights
     "strategic_v31": StrategicHeuristicV31,  # V30 + a Carrier that flees only nearer enemies (Q12); scales default 1 = V30; not in the default weights
+    "strategic_v32": StrategicHeuristicV32,  # V31 + V18 exit guard / V19 sanctuary sweep for 4 Hunters (V32, §58); defaults = V31; not in the default weights
     # Named strategies on the V17 planner, each on a strategic axis the V-series lacks (held-out
     # opponents for distillation; not in the mixture's default weights):
     "strategic_raider": StrategicRaider,  # steal-first economy, Hunter escorts the thieves

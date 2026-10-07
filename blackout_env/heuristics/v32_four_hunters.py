@@ -1,0 +1,243 @@
+"""V31 with V19's four-Hunter allocation (V32, docs/policy_v2_design_ko.md §58).
+
+OOD1 (§56) found the V30 lineage's one real weakness: ``hunter_quota=4`` on V30 ("h4") beats V31 by ~+18, P21e
+by ~+8 and every older policy by +20..+80.  h4 always has four Hunters at decision 99; when our V30-family reserve
+stays back -- the state (3 Hunters ours, 4 theirs) -- we lose the second Hunter race every time and the match ends
+around -60 by 60 s; at (4, 4) it is even.  The enemy's fourth Hunter cannot be seen before decision 99, so the
+answer is structural: field four Hunters ourselves.  V18/V19 did (``hunter_quota=4``) with a role mix around it
+(camper + exit guard + sanctuary sentry + chaser, every Hunter sweeping the sanctuary first).  V32 = V31 + those
+roles as knobs on the V22-teach goal labeller; ``hunter_quota`` itself is V17's parameter.  Defaults = V31 exactly:
+
+* ``exit_guards`` (0): with at least ``guard_min_hunters`` Hunters, that many Hunters (nearest our base exit's
+  first slot, after the sentry is set aside) hold our base exit and strike any enemy Hunter within
+  ``guard_radius`` tiles of it -- V18's guard (``StrategicHeuristicV18._guard_plan``): a camping enemy Hunter is
+  traded off the moment it arrives instead of killing our respawns;
+* ``sweep`` (off): every Hunter except the sentry first strikes the enemy Collector nearest it that is outside its
+  base, within ``sweep_radius`` tiles of the sanctuary centre and of this Hunter -- V19's sanctuary sweep
+  (``StrategicHeuristicV19._sweep_target``), which catches the enemy's replacement walkers in the second race;
+  only during the first ``sweep_until`` seconds of play (default: all match); ``sweep_camper=false`` leaves the
+  Hunter nearest the enemy camp slot (V17's camper) on its post;
+* ``cargo_transform`` (off): a Collector holding a battery stays a Hunter candidate all match (V19's
+  ``transform_with_cargo``), not only during the opening race (V22's ``race_cargo``) -- a lost Hunter is
+  replaced by the nearest Collector even if it carries a battery.
+
+* ``late_hunter_quota`` (-1 = off): after ``late_after`` seconds the team refills to
+  ``min(hunter_quota, max(late_hunter_quota, enemy Hunters out))`` Hunters -- four against a four-Hunter enemy, fewer
+  (more economy) against one that fields fewer.  Hunters above the target are kept (a class only reverts by dying).
+
+* ``adapt_k`` (0 = off; V32.1): the most enemy Hunters seen in the first ``adapt_at`` seconds (the race reveals
+  them at decision 99) is latched; when it is below ``adapt_k`` the enemy is Hunter-poor and, from ``adapt_at`` on,
+  the Hunters play V30's roles instead (lone sentry, no exit guard, no sweep): against such an enemy the sweep
+  only costs margin (§58).  **Stateful** (a per-match running max): a single-frame student cannot see it.
+
+V19's late-game role order (camper, then exit guard, then sentry from the third Hunter) is a parameter set:
+``solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2`` (V30's is sentry first).
+
+Observation-only, as the rest of the V22-teach goals; no per-tick Python beyond a few distance lookups.
+"""
+
+from __future__ import annotations
+
+import math
+
+import numpy as np
+
+from ..env.constants import unit_index
+from .any_angle import UNIT_RADIUS, pixel_position
+from .strategic import COLLECTOR, HUNTER, SITE_HUNTER
+from .teach import Goal
+from .v17_planner import MATCH_SECONDS
+from .v31_carrier_evade import StrategicHeuristicV31
+
+
+# The adopted V32 (§58, "B"): V31's parameters + four Hunters in V19's role order with the exit guard and the
+# sanctuary sweep.  ``cargo_transform`` measured as a no-op (-0.9 +- 0.9) but is part of the gated configuration.
+V31_PARAMS = ("reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,"
+              "threat_radius=0.13,camp_engage_radius=6.5")
+V32 = ("strategic_v32:" + V31_PARAMS + ",hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,"
+       "exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true")
+
+
+class StrategicHeuristicV32(StrategicHeuristicV31):
+    """V31 + V18's exit guard and V19's sanctuary sweep for a four-Hunter team."""
+
+    def __init__(self, *, exit_guards: int = 0, guard_min_hunters: int = 4, guard_radius: float = 7.0,
+                 sweep: bool = False, sweep_radius: float = 9.0, sweep_until: float = math.inf,
+                 sweep_camper: bool = True,
+                 cargo_transform: bool = False,
+                 late_hunter_quota: int = -1, late_after: float = 10.0,
+                 adapt_k: int = 0, adapt_at: float = 6.0, adapt_quota: int = -1, quota_tie: bool = False,
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.exit_guards = int(exit_guards)
+        self.guard_min_hunters = int(guard_min_hunters)
+        self.guard_radius = float(guard_radius)
+        self.sweep = bool(sweep)
+        self.sweep_radius = float(sweep_radius)
+        self.sweep_until = float(sweep_until)
+        self.sweep_camper = bool(sweep_camper)
+        self.cargo_transform = bool(cargo_transform)
+        self._composing = False
+        self.late_hunter_quota = int(late_hunter_quota)
+        self.late_after = float(late_after)
+        self.adapt_k = int(adapt_k)
+        self.adapt_at = float(adapt_at)
+        self.adapt_quota = int(adapt_quota)
+        self.quota_tie = bool(quota_tie)
+        self.quota_dropped: list[str] = []  # for inspection: a would-be 4th walker held back this tick
+        self._seen_hunters = 0
+        self._last_elapsed = -1.0
+        self.fallback = False  # for inspection: V30 roles against a Hunter-poor enemy this tick
+        self.guards: list[str] = []  # for inspection: this tick's exit guards
+        self.sweepers: list[str] = []  # for inspection: Hunters sweeping the sanctuary this tick
+
+    # ------------------------------------------------------------------ helpers
+
+    def _sanctuary_centre(self, ctx):
+        tiles = np.argwhere(ctx["graphic"][..., SITE_HUNTER] > 0.5)
+        return None if not len(tiles) else (float(tiles[:, 0].mean()), float(tiles[:, 1].mean()))
+
+    def _sentry_name(self, ctx, hunters, move_walkable):
+        """The Hunter V22's ``_hunter_goals`` will post as the sentry (None if it posts none)."""
+        if not self.sentry or len(hunters) < self.sentry_min_hunters:
+            return None
+        spawn, centre = ctx["enemy_spawn"], self._sanctuary_centre(ctx)
+        if spawn is None or centre is None:
+            return None
+        post = self._sentry_post(move_walkable, centre, spawn)
+        to_post = self._distance_to(move_walkable, (post,))
+        return min(hunters, key=lambda h: (float(to_post[h.pos]), unit_index(h.name))).name
+
+    def _guard_slots(self, ctx):
+        return self._camp_slots(dict(ctx, enemy_spawn=ctx["ally_spawn"]))
+
+    # ------------------------------------------------------------------ composition
+
+    def _composition_targets(self, graphic, states, row_for):
+        hunters, carriers = super()._composition_targets(graphic, states, row_for)
+        ctx = self._teach_ctx
+        if self.late_hunter_quota >= 0 and MATCH_SECONDS - ctx["remaining"] >= self.late_after:
+            enemy = sum(e.cls == HUNTER for e in ctx["enemies"])
+            hunters = min(hunters, max(self.late_hunter_quota, enemy))
+        if self.fallback and self.adapt_quota >= 0:
+            hunters = min(hunters, self.adapt_quota)
+        return hunters, carriers
+
+    def _racing(self, ctx) -> bool:
+        # V22's composition lets a battery-holding Collector walk to the sanctuary while racing (race_cargo)
+        return (self._composing and self.cargo_transform) or super()._racing(ctx)
+
+    def _composition_goals(self, controlled, row_for, states, graphic, walkable):
+        self.fallback = self.adapt_k > 0 and self._adapt(self._teach_ctx)
+        self._composing = True
+        try:
+            goals = super()._composition_goals(controlled, row_for, states, graphic, walkable)
+        finally:
+            self._composing = False
+        self.quota_dropped = []
+        if self.quota_tie and self._race_now:
+            self._hold_untied_walker(goals, controlled, row_for, states, graphic, walkable)
+        return goals
+
+    def _hold_untied_walker(self, goals, controlled, row_for, states, graphic, walkable) -> None:
+        """``quota_tie``: while racing, the last of ``hunter_quota`` walkers only walks when the race looks tied
+        (V29's test: the enemy's nearest Collector outside its base within ``join_margin`` tiles of our lead walker);
+        against an enemy already behind, the team races with ``hunter_quota - 1``.  Single-frame observable."""
+        ctx = self._teach_ctx
+        if any(u.cls == HUNTER for u in ctx["own"]):
+            return
+        tiles = self._site_tiles(graphic, SITE_HUNTER, walkable)
+        if not tiles:
+            return
+        shape = graphic.shape[:2]
+        planner = self._planner(np.ascontiguousarray(walkable, dtype=bool), tiles, UNIT_RADIUS[COLLECTOR])
+        tile_set = set(tiles)
+        walkers = sorted((planner.distance(pixel_position(states[row_for[n]], shape)), unit_index(n), n)
+                         for n in controlled if n in goals and n not in self.staged
+                         and any(kind == "transform" and set(t) & tile_set for t, kind in goals[n]))
+        if len(walkers) < self.hunter_quota or not np.isfinite(walkers[0][0]):
+            return
+        theirs = [planner.distance(pixel_position(states[e.row], shape)) for e in ctx["enemies"]
+                  if e.cls == COLLECTOR and not e.in_base]
+        theirs = [d for d in theirs if np.isfinite(d)]
+        if theirs and min(theirs) <= walkers[0][0] + self.join_margin:
+            return  # tied (or behind): all four walk
+        name = walkers[-1][2]
+        del goals[name]
+        self.quota_dropped.append(name)
+
+    # ------------------------------------------------------------------ Hunters
+
+    def reset(self) -> None:
+        super().reset()
+        self._seen_hunters, self._last_elapsed = 0, -1.0
+
+    def _adapt(self, ctx) -> bool:
+        """True from ``adapt_at`` on when fewer than ``adapt_k`` enemy Hunters were ever out before it."""
+        elapsed = MATCH_SECONDS - ctx["remaining"]
+        if elapsed < self._last_elapsed:  # a new match without reset()
+            self._seen_hunters = 0
+        self._last_elapsed = elapsed
+        if elapsed < self.adapt_at:
+            self._seen_hunters = max(self._seen_hunters, sum(e.cls == HUNTER for e in ctx["enemies"]))
+            return False
+        return self._seen_hunters < self.adapt_k
+
+    def _hunter_goals(self, ctx, hunters, move_walkable) -> dict[str, tuple[Goal, ...]]:
+        if self.fallback:
+            saved = self.exit_guards, self.sweep, self.sentry_min_hunters
+            self.exit_guards, self.sweep, self.sentry_min_hunters = 0, False, 1
+            try:
+                return self._hunter_goals_v32(ctx, hunters, move_walkable)
+            finally:
+                self.exit_guards, self.sweep, self.sentry_min_hunters = saved
+        return self._hunter_goals_v32(ctx, hunters, move_walkable)
+
+    def _hunter_goals_v32(self, ctx, hunters, move_walkable) -> dict[str, tuple[Goal, ...]]:
+        self.guards, self.sweepers = [], []
+        if not hunters or (self.exit_guards <= 0 and not self.sweep):
+            return super()._hunter_goals(ctx, hunters, move_walkable)
+        sentry = self._sentry_name(ctx, hunters, move_walkable)
+        goals: dict[str, tuple[Goal, ...]] = {}
+        rest = list(hunters)
+        if self.sweep and MATCH_SECONDS - ctx["remaining"] < self.sweep_until:
+            centre = self._sanctuary_centre(ctx)
+            prey = [] if centre is None else [
+                e for e in ctx["enemies"]
+                if e.cls == COLLECTOR and not e.in_base and math.dist(e.pos, centre) <= self.sweep_radius]
+            camper = None
+            if not self.sweep_camper and prey:
+                slots = self._camp_slots(ctx)
+                others = [h for h in hunters if h.name != sentry]
+                if slots and others and self.hunter_mode in ("camp", "mixed"):
+                    to_camp = self._distance_to(move_walkable, (slots[0],))
+                    camper = min(others, key=lambda h: (float(to_camp[h.pos]), unit_index(h.name))).name
+            for hunter in hunters:
+                if hunter.name in (sentry, camper) or not prey:
+                    continue
+                near = [(math.dist(e.pos, hunter.pos), e.pos) for e in prey]
+                near = [x for x in near if x[0] <= self.sweep_radius]
+                if near:
+                    goals[hunter.name] = (((tuple(min(near)[1]),), "hunt"),)
+                    rest.remove(hunter)
+                    self.sweepers.append(hunter.name)
+        if self.exit_guards > 0 and len(hunters) >= self.guard_min_hunters:
+            slots = self._guard_slots(ctx)
+            cands = [h for h in rest if h.name != sentry]
+            if slots and cands:
+                to_slot = self._distance_to(move_walkable, (slots[0],))
+                cands.sort(key=lambda h: (float(to_slot[h.pos]), unit_index(h.name)))
+                threats = [e for e in ctx["enemies"] if e.cls == HUNTER and not e.in_base
+                           and math.dist(e.pos, slots[0]) <= self.guard_radius]
+                for index, hunter in enumerate(cands[:self.exit_guards]):
+                    if threats:
+                        target = min(threats, key=lambda e: (math.dist(e.pos, hunter.pos), e.pos)).pos
+                        goals[hunter.name] = (((tuple(target),), "hunt"),)
+                    else:
+                        goals[hunter.name] = (((slots[min(index, len(slots) - 1)],), "patrol_defend"),)
+                    rest.remove(hunter)
+                    self.guards.append(hunter.name)
+        self.sentries = []
+        if rest:
+            goals.update(super()._hunter_goals(ctx, rest, move_walkable))
+        return goals

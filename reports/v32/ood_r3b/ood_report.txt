@@ -1,0 +1,22 @@
+OOD-26 report: reports/v32/ood_r3b  (cat = margin < -20; catT = cat on a (seed, side) the teacher won)
+
+candidate  opponent       grp       n       margin   win   cat      catT   h99     - teacher - strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5
+V31        v30_h2         param   256  +67.0± 1.7  0.96  0.02   0/0     1.00              
+V31        duelist        style   256  +75.8± 0.5  1.00  0.00   0/0     1.00              
+V31        v21            old     256  +76.1± 0.7  1.00  0.00   0/0     1.00              
+V31        v31_eps10      noise   256  +80.1± 0.4  1.00  0.00   0/0     1.00              
+
+candidate  opponent       grp       n       margin   win   cat      catT   h99     - teacher - strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5
+strategic_ v30_h2         param   256  +56.6± 1.5  0.96  0.02   0/0     1.00                -10.4± 2.1
+strategic_ duelist        style   256  +69.1± 0.8  1.00  0.00   0/0     1.00                 -6.7± 0.7
+strategic_ v21            old     256  +65.6± 1.1  0.99  0.00   0/0     1.00                -10.5± 1.1
+strategic_ v31_eps10      noise   256  +73.4± 0.8  1.00  0.00   0/0     1.00                 -6.8± 0.9
+
+per candidate (over the OOD-26 opponents it played):
+candidate  opps   mean                  worst   cat       catT collapse vs teacher (gap < -5 at 2 SE)
+V31           4  +74.7         v30_h2  +67.0  0.006    0/0     -
+strategic_    4  +66.2         v30_h2  +56.6  0.007    0/0     -
+
+OOD non-regression rule vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 (§56): R1 worst >= base-5, R2 catT <= base+2 %, R3 no opponent < -5 at 2 SE, R4 h99 >= base-0.10 everywhere
+  strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true FAIL  R1 worst +56.6 (v30_h2) vs +67.0 X | R2 catT nan% vs nan% ok | R3 v30_h2 -10.4±2.1; duelist -6.7±0.7; v21 -10.5±1.1; v31_eps10 -6.8±0.9 | R4 ok
+
