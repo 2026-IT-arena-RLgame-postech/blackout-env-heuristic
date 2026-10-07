@@ -27,9 +27,14 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from blackout_env.train.distill.ood_suite import OOD26, TEACHER_OF, short  # noqa: E402
+from blackout_env.train.distill.ood_suite import OOD26, TEACHER_OF, V30, V31, short  # noqa: E402
 
 GROUP = {d: g for _, d, g, _ in OOD26}
+CAND = {V30: "V30", V31: "V31", TEACHER_OF["p17"]: "V28", "strategic_v25": "V25", TEACHER_OF["p16"]: "V27"}
+
+
+def cn(c: str) -> str:
+    return CAND.get(c, c)
 
 
 def se(x) -> float:
@@ -106,7 +111,7 @@ def main():
             s = stat.get((c, o))
             if not s:
                 continue
-            line = (f"{c[:10]:10s} {short(o)[:14]:14s} {GROUP.get(o, '-'):6s} {s['n']:4d} {s['m']:+6.1f}±{s['se']:4.1f} {s['win']:5.2f} "
+            line = (f"{cn(c)[:10]:10s} {short(o)[:14]:14s} {GROUP.get(o, '-'):6s} {s['n']:4d} {s['m']:+6.1f}±{s['se']:4.1f} {s['win']:5.2f} "
                     f"{s['cat']:5.2f} {s['catT_num']:3d}/{s['catT_den']:<4d} {s['h99']:5.2f}")
             line += f" {s['gT']:+6.1f}±{s['gTse']:4.1f}" if "gT" in s else f" {'':13s}"
             if "gB" in s:
@@ -128,7 +133,7 @@ def main():
         col = [f"{short(o)} {s['gT']:+.1f}" for o, s in sorted(ss.items(), key=lambda kv: kv[1].get("gT", 0))
                if "gT" in s and s["gT"] < -5 and s["gT"] < -2 * s["gTse"]]
         summ[c] = {"worst": ss[worst]["m"], "worst_o": worst, "catT": num / den if den else float("nan"), "ss": ss}
-        L.append(f"{c[:10]:10s} {len(ss):4d} {np.mean([s['m'] for s in ss.values()]):+6.1f} "
+        L.append(f"{cn(c)[:10]:10s} {len(ss):4d} {np.mean([s['m'] for s in ss.values()]):+6.1f} "
                  f"{short(worst)[:14]:>14s} {ss[worst]['m']:+6.1f}  {cat:5.3f} {num:4d}/{den:<5d} {'; '.join(col) or '-'}")
     L.append("")
 
@@ -147,7 +152,7 @@ def main():
             h99 = [f"{short(o)} {s['ss'][o]['h99']:.2f}<{b['ss'][o]['h99']:.2f}" for o in common
                    if s["ss"][o]["h99"] < b["ss"][o]["h99"] - 0.10]
             ok = r1 and r2 and not bad and not h99
-            L.append(f"  {c:10s} {'PASS' if ok else 'FAIL'}  R1 worst {s['worst']:+.1f} ({short(s['worst_o'])}) vs {b['worst']:+.1f} "
+            L.append(f"  {cn(c):10s} {'PASS' if ok else 'FAIL'}  R1 worst {s['worst']:+.1f} ({short(s['worst_o'])}) vs {b['worst']:+.1f} "
                      f"{'ok' if r1 else 'X'} | R2 catT {100 * s['catT']:.1f}% vs {100 * b['catT']:.1f}% {'ok' if r2 else 'X'} | "
                      f"R3 {'; '.join(bad) or 'ok'} | R4 {'; '.join(h99) or 'ok'}")
         L.append("")
@@ -157,7 +162,7 @@ def main():
         L.append("ranked student - teacher gaps (worst first, |gap| > 2 SE):")
         for c, o, s in sorted(rows, key=lambda x: x[2]["gT"]):
             if s["gT"] < -2 * s["gTse"]:
-                L.append(f"  {c:10s} vs {short(o):14s} {s['gT']:+6.1f}±{s['gTse']:4.1f}  (margin {s['m']:+.1f}, "
+                L.append(f"  {cn(c):10s} vs {short(o):14s} {s['gT']:+6.1f}±{s['gTse']:4.1f}  (margin {s['m']:+.1f}, "
                          f"catT {s['catT_num']}/{s['catT_den']}, h99 {s['h99']:.2f})")
     txt = "\n".join(L)
     print(txt)
