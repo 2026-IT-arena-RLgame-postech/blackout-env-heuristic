@@ -56,6 +56,8 @@ V31_PARAMS = ("reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_se
               "threat_radius=0.13,camp_engage_radius=6.5")
 V32 = ("strategic_v32:" + V31_PARAMS + ",hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,"
        "exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true")
+# V32.1 (§58.7): V32 + the 6 s latch -- against an enemy that showed < 3 Hunters, V30 roles (stateful).
+V32_1 = V32 + ",adapt_k=3"
 
 
 class StrategicHeuristicV32(StrategicHeuristicV31):
