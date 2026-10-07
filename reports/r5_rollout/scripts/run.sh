@@ -7,6 +7,7 @@
 #   DAgger : the stage-1 net drives (teacher-frac 0.1), P22 labels both teams' views (GPU), seeds 5810000+
 #   stage 2: 20k steps from stage 1, 50 % DAgger rows, lr 1e-3, KL 0.5
 # Each stage aborts the chain on a NaN loss (fp16 loss scale, §39/§49); rerun the stage standalone then.
+# R5: fp16 stage 1 diverged on seeds 0 and 1, so the adopted run used AMP=none (fp32) for both stages.
 # usage (gpu2, clone ~/blackout-env-r5): GPU=2 setsid nohup nice -n 39 bash reports/r5_rollout/scripts/run.sh \
 #            > ~/r5runs/logs/run.log 2>&1 < /dev/null &
 set -e
@@ -31,9 +32,12 @@ collect() {  # out-dir log args...
       --out $out > $L/$log.log 2>&1
 }
 # NaN check + divergence check: R4's first stage 1 blew up at step 16k without a NaN loss (fp16 loss scale -> 1e-4,
-# loss 1e4, acc 0.15), so the last logged train acc must also stay >= 0.8
-ok() { ! grep -q '"loss": NaN' $L/$1.log && grep -o '"acc": [0-9.]*' $L/$1.log | tail -1 | awk '{exit !($2 >= 0.8)}'; }
-TR="examples/rollout_net_train.py train --data $D --amp fp16 --compile --eval-every 10000 --seed ${SEED:-0}"
+# loss 1e4, acc 0.15), so the last logged train acc must also stay >= 0.8.  R5: seed 1's stage 1 kept acc 0.92 but its
+# KL term blew up at step 23.5k (loss 0.65 -> 9-17, loss scale 128 -> 2e-4, val agreement 0.80 -> 0.74), so the last
+# logged loss must also stay <= 2x the lowest one.
+ok() { ! grep -q '"loss": NaN' $L/$1.log && grep -o '"acc": [0-9.]*' $L/$1.log | tail -1 | awk '{exit !($2 >= 0.8)}' &&
+       grep -o '"loss": [0-9.e+-]*' $L/$1.log | awk '{v=$2+0; if (NR==1||v<m) m=v; l=v} END {exit !(l <= 2*m)}'; }
+TR="examples/rollout_net_train.py train --data $D --amp ${AMP:-fp16} --compile --eval-every 10000 --seed ${SEED:-0}"
 [ -f $D/val.npz ] || { PERJOB=64 collect $R/s1val s1val --net none --pool "$POOL1" --games 512 --every 8 --seed0 5890000 \
                        && mv $R/s1val/train.npz $D/val.npz; }
 echo "$(date +%T) val done"
