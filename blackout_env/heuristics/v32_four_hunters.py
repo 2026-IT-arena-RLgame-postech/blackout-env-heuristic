@@ -25,6 +25,11 @@ roles as knobs on the V22-teach goal labeller; ``hunter_quota`` itself is V17's 
   ``min(hunter_quota, max(late_hunter_quota, enemy Hunters out))`` Hunters -- four against a four-Hunter enemy, fewer
   (more economy) against one that fields fewer.  Hunters above the target are kept (a class only reverts by dying).
 
+* ``adapt_k`` (0 = off; V32.1): the most enemy Hunters seen in the first ``adapt_at`` seconds (the race reveals
+  them at decision 99) is latched; when it is below ``adapt_k`` the enemy is Hunter-poor and, from ``adapt_at`` on,
+  the Hunters play V30's roles instead (lone sentry, no exit guard, no sweep): against such an enemy the sweep
+  only costs margin (§58).  **Stateful** (a per-match running max): a single-frame student cannot see it.
+
 V19's late-game role order (camper, then exit guard, then sentry from the third Hunter) is a parameter set:
 ``solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2`` (V30's is sentry first).
 
@@ -38,6 +43,7 @@ import math
 import numpy as np
 
 from ..env.constants import unit_index
+from .any_angle import UNIT_RADIUS, pixel_position
 from .strategic import COLLECTOR, HUNTER, SITE_HUNTER
 from .teach import Goal
 from .v17_planner import MATCH_SECONDS
@@ -59,7 +65,9 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
                  sweep: bool = False, sweep_radius: float = 9.0, sweep_until: float = math.inf,
                  sweep_camper: bool = True,
                  cargo_transform: bool = False,
-                 late_hunter_quota: int = -1, late_after: float = 10.0, **kwargs):
+                 late_hunter_quota: int = -1, late_after: float = 10.0,
+                 adapt_k: int = 0, adapt_at: float = 6.0, adapt_quota: int = -1, quota_tie: bool = False,
+                 **kwargs):
         super().__init__(**kwargs)
         self.exit_guards = int(exit_guards)
         self.guard_min_hunters = int(guard_min_hunters)
@@ -72,6 +80,14 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
         self._composing = False
         self.late_hunter_quota = int(late_hunter_quota)
         self.late_after = float(late_after)
+        self.adapt_k = int(adapt_k)
+        self.adapt_at = float(adapt_at)
+        self.adapt_quota = int(adapt_quota)
+        self.quota_tie = bool(quota_tie)
+        self.quota_dropped: list[str] = []  # for inspection: a would-be 4th walker held back this tick
+        self._seen_hunters = 0
+        self._last_elapsed = -1.0
+        self.fallback = False  # for inspection: V30 roles against a Hunter-poor enemy this tick
         self.guards: list[str] = []  # for inspection: this tick's exit guards
         self.sweepers: list[str] = []  # for inspection: Hunters sweeping the sanctuary this tick
 
@@ -103,6 +119,8 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
         if self.late_hunter_quota >= 0 and MATCH_SECONDS - ctx["remaining"] >= self.late_after:
             enemy = sum(e.cls == HUNTER for e in ctx["enemies"])
             hunters = min(hunters, max(self.late_hunter_quota, enemy))
+        if self.fallback and self.adapt_quota >= 0:
+            hunters = min(hunters, self.adapt_quota)
         return hunters, carriers
 
     def _racing(self, ctx) -> bool:
@@ -110,15 +128,72 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
         return (self._composing and self.cargo_transform) or super()._racing(ctx)
 
     def _composition_goals(self, controlled, row_for, states, graphic, walkable):
+        self.fallback = self.adapt_k > 0 and self._adapt(self._teach_ctx)
         self._composing = True
         try:
-            return super()._composition_goals(controlled, row_for, states, graphic, walkable)
+            goals = super()._composition_goals(controlled, row_for, states, graphic, walkable)
         finally:
             self._composing = False
+        self.quota_dropped = []
+        if self.quota_tie and self._race_now:
+            self._hold_untied_walker(goals, controlled, row_for, states, graphic, walkable)
+        return goals
+
+    def _hold_untied_walker(self, goals, controlled, row_for, states, graphic, walkable) -> None:
+        """``quota_tie``: while racing, the last of ``hunter_quota`` walkers only walks when the race looks tied
+        (V29's test: the enemy's nearest Collector outside its base within ``join_margin`` tiles of our lead walker);
+        against an enemy already behind, the team races with ``hunter_quota - 1``.  Single-frame observable."""
+        ctx = self._teach_ctx
+        if any(u.cls == HUNTER for u in ctx["own"]):
+            return
+        tiles = self._site_tiles(graphic, SITE_HUNTER, walkable)
+        if not tiles:
+            return
+        shape = graphic.shape[:2]
+        planner = self._planner(np.ascontiguousarray(walkable, dtype=bool), tiles, UNIT_RADIUS[COLLECTOR])
+        tile_set = set(tiles)
+        walkers = sorted((planner.distance(pixel_position(states[row_for[n]], shape)), unit_index(n), n)
+                         for n in controlled if n in goals and n not in self.staged
+                         and any(kind == "transform" and set(t) & tile_set for t, kind in goals[n]))
+        if len(walkers) < self.hunter_quota or not np.isfinite(walkers[0][0]):
+            return
+        theirs = [planner.distance(pixel_position(states[e.row], shape)) for e in ctx["enemies"]
+                  if e.cls == COLLECTOR and not e.in_base]
+        theirs = [d for d in theirs if np.isfinite(d)]
+        if theirs and min(theirs) <= walkers[0][0] + self.join_margin:
+            return  # tied (or behind): all four walk
+        name = walkers[-1][2]
+        del goals[name]
+        self.quota_dropped.append(name)
 
     # ------------------------------------------------------------------ Hunters
 
+    def reset(self) -> None:
+        super().reset()
+        self._seen_hunters, self._last_elapsed = 0, -1.0
+
+    def _adapt(self, ctx) -> bool:
+        """True from ``adapt_at`` on when fewer than ``adapt_k`` enemy Hunters were ever out before it."""
+        elapsed = MATCH_SECONDS - ctx["remaining"]
+        if elapsed < self._last_elapsed:  # a new match without reset()
+            self._seen_hunters = 0
+        self._last_elapsed = elapsed
+        if elapsed < self.adapt_at:
+            self._seen_hunters = max(self._seen_hunters, sum(e.cls == HUNTER for e in ctx["enemies"]))
+            return False
+        return self._seen_hunters < self.adapt_k
+
     def _hunter_goals(self, ctx, hunters, move_walkable) -> dict[str, tuple[Goal, ...]]:
+        if self.fallback:
+            saved = self.exit_guards, self.sweep, self.sentry_min_hunters
+            self.exit_guards, self.sweep, self.sentry_min_hunters = 0, False, 1
+            try:
+                return self._hunter_goals_v32(ctx, hunters, move_walkable)
+            finally:
+                self.exit_guards, self.sweep, self.sentry_min_hunters = saved
+        return self._hunter_goals_v32(ctx, hunters, move_walkable)
+
+    def _hunter_goals_v32(self, ctx, hunters, move_walkable) -> dict[str, tuple[Goal, ...]]:
         self.guards, self.sweepers = [], []
         if not hunters or (self.exit_guards <= 0 and not self.sweep):
             return super()._hunter_goals(ctx, hunters, move_walkable)
