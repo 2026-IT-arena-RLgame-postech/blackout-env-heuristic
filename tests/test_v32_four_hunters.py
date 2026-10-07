@@ -11,7 +11,7 @@ from .test_v27_reserve import _play
 V28_KW = dict(reserve_stage=0.5, trade_hold="advance")
 V31_KW = dict(reserve_stage=0.5, trade_hold="advance", reserve_join="reserve", solo_sentry=True,
               threat_radius=0.13, camp_engage_radius=6.5)
-ROLES = dict(hunter_quota=4, exit_guards=1, guard_min_hunters=3, sweep=True, cargo_transform=True)
+ROLES = dict(hunter_quota=4, exit_guards=1, guard_min_hunters=3, sweep=True, cargo_transform=True, late_hunter_quota=3)
 
 
 def test_v32_is_registered_and_off_by_default():

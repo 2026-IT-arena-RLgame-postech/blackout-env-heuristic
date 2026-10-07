@@ -19,6 +19,10 @@ roles as knobs on the V22-teach goal labeller; ``hunter_quota`` itself is V17's 
   ``transform_with_cargo``), not only during the opening race (V22's ``race_cargo``) -- a lost Hunter is
   replaced by the nearest Collector even if it carries a battery.
 
+* ``late_hunter_quota`` (-1 = off): after ``late_after`` seconds the team refills to
+  ``min(hunter_quota, max(late_hunter_quota, enemy Hunters out))`` Hunters -- four against a four-Hunter enemy, fewer
+  (more economy) against one that fields fewer.  Hunters above the target are kept (a class only reverts by dying).
+
 V19's late-game role order (camper, then exit guard, then sentry from the third Hunter) is a parameter set:
 ``solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2`` (V30's is sentry first).
 
@@ -34,6 +38,7 @@ import numpy as np
 from ..env.constants import unit_index
 from .strategic import COLLECTOR, HUNTER, SITE_HUNTER
 from .teach import Goal
+from .v17_planner import MATCH_SECONDS
 from .v31_carrier_evade import StrategicHeuristicV31
 
 
@@ -41,7 +46,8 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
     """V31 + V18's exit guard and V19's sanctuary sweep for a four-Hunter team."""
 
     def __init__(self, *, exit_guards: int = 0, guard_min_hunters: int = 4, guard_radius: float = 7.0,
-                 sweep: bool = False, sweep_radius: float = 9.0, cargo_transform: bool = False, **kwargs):
+                 sweep: bool = False, sweep_radius: float = 9.0, cargo_transform: bool = False,
+                 late_hunter_quota: int = -1, late_after: float = 10.0, **kwargs):
         super().__init__(**kwargs)
         self.exit_guards = int(exit_guards)
         self.guard_min_hunters = int(guard_min_hunters)
@@ -50,6 +56,8 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
         self.sweep_radius = float(sweep_radius)
         self.cargo_transform = bool(cargo_transform)
         self._composing = False
+        self.late_hunter_quota = int(late_hunter_quota)
+        self.late_after = float(late_after)
         self.guards: list[str] = []  # for inspection: this tick's exit guards
         self.sweepers: list[str] = []  # for inspection: Hunters sweeping the sanctuary this tick
 
@@ -74,6 +82,14 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
         return self._camp_slots(dict(ctx, enemy_spawn=ctx["ally_spawn"]))
 
     # ------------------------------------------------------------------ composition
+
+    def _composition_targets(self, graphic, states, row_for):
+        hunters, carriers = super()._composition_targets(graphic, states, row_for)
+        ctx = self._teach_ctx
+        if self.late_hunter_quota >= 0 and MATCH_SECONDS - ctx["remaining"] >= self.late_after:
+            enemy = sum(e.cls == HUNTER for e in ctx["enemies"])
+            hunters = min(hunters, max(self.late_hunter_quota, enemy))
+        return hunters, carriers
 
     def _racing(self, ctx) -> bool:
         # V22's composition lets a battery-holding Collector walk to the sanctuary while racing (race_cargo)
