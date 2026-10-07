@@ -7,7 +7,7 @@ while [ -n "$WAIT_PID" ] && kill -0 $WAIT_PID 2>/dev/null; do sleep 20; done
 R=$HOME/blackout-env-p24; B=${RUNDIR:-$HOME/p14runs}/p24_$1; F=${NETDIR:-$HOME/p14frozen}; DEV=${DEV:-cuda}; OUT=$R/reports/p24_train/screen_$1
 cd $R; mkdir -p $OUT; export PYTHONPATH=$R NUMBA_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1; [ "$DEV" = cpu ] && export CUDA_VISIBLE_DEVICES=
 NETS=p17=$F/p17.pt,p22=$F/p22.pt; OURS="p22"
-ls $B/v_0002.pt >/dev/null || { echo "no snapshots in $B" >> $OUT/stdout.log; exit 1; }
+ls $B/v_000${SNAPS:-[2-9]}.pt >/dev/null || { echo "no snapshots in $B" >> $OUT/stdout.log; exit 1; }
 for f in $B/v_000${SNAPS:-[2-9]}.pt; do n=$1$(basename $f .pt | sed 's/v_0*/v/'); NETS=$NETS,$n=$f; OURS="$OURS;$n"; done
 export BLACKOUT_NETS=$NETS
 V28="strategic_v28:reserve_stage=0.5,trade_hold=advance"
