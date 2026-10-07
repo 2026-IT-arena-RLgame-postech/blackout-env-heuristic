@@ -69,3 +69,18 @@ def test_adopted_v32_descriptor():
     assert (p.hunter_quota, p.exit_guards, p.guard_min_hunters, p.sentry_min_hunters) == (4, 1, 2, 3)
     assert p.sweep and p.sweep_radius == 9.0 and p.cargo_transform and not p.solo_sentry
     assert p.threat_radius == 0.13 and p.camp_engage_radius == 6.5 and p.reserve_join == "reserve"
+
+
+def test_adapt_latches_on_a_hunter_poor_enemy():
+    """V32.1: against V23 (loses the race, ~no Hunters by 6 s) the latch falls back to V30 roles; against V31 it
+    does not.  Off (adapt_k=0) never falls back."""
+    from blackout_env.heuristics import StrategicHeuristicV23
+    from blackout_env.sim.state import SimState
+
+    for opp, expect in ((StrategicHeuristicV23(), True), (StrategicHeuristicV31(**V31_KW), False)):
+        sim = SimState.from_seed(5_200_000)
+        a = StrategicHeuristicV32(**V31_KW, **ROLES, adapt_k=2, adapt_at=6.0)
+        for _ in range(400):  # 8 s
+            _play(sim, a, opp)
+        assert a.fallback is expect
+    assert not StrategicHeuristicV32(**V31_KW, **ROLES).fallback
