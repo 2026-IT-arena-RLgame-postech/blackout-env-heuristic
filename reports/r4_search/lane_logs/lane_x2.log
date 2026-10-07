@@ -1,0 +1,14 @@
+== 04:33:51 v31 o4f_r21,plain
+[o4f_r21 vs v31] 128/768 margin +26.2 wall 2133s (search 1435s, 5977 roots)
+[o4f_r21 vs v31] 256/768 margin +17.3 wall 2255s (search 1582s, 6102 roots)
+[o4f_r21 vs v31] 384/768 margin +25.1 wall 1966s (search 1391s, 5763 roots)
+[o4f_r21 vs v31] 512/768 margin +15.1 wall 2037s (search 1479s, 6116 roots)
+[o4f_r21 vs v31] 640/768 margin +20.6 wall 2294s (search 1618s, 6412 roots)
+[o4f_r21 vs v31] 768/768 margin +20.0 wall 2339s (search 1694s, 6297 roots)
+[plain vs v31] 128/768 margin +21.3 wall 602s (search 0s, 0 roots)
+[plain vs v31] 256/768 margin +18.3 wall 557s (search 0s, 0 roots)
+[plain vs v31] 384/768 margin +19.3 wall 578s (search 0s, 0 roots)
+[plain vs v31] 512/768 margin +10.1 wall 637s (search 0s, 0 roots)
+[plain vs v31] 640/768 margin +20.3 wall 700s (search 0s, 0 roots)
+[plain vs v31] 768/768 margin +16.0 wall 618s (search 0s, 0 roots)
+== 09:12:38 lane x2 done

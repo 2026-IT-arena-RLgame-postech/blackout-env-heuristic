@@ -1,0 +1,28 @@
+== 21:37:03 v31 plain,o4f_r20
+[plain vs v31] 128/128 margin +23.0 wall 512s (search 0s, 0 roots)
+[o4f_r20 vs v31] 128/128 margin +33.2 wall 2792s (search 2327s, 6065 roots)
+== 22:32:12 v30 plain,o4f_r20
+[plain vs v30] 128/128 margin +29.2 wall 422s (search 0s, 0 roots)
+[o4f_r20 vs v30] 128/128 margin +31.3 wall 1826s (search 1367s, 5881 roots)
+== 23:09:44 p21e plain,o4f_r20
+[plain vs p21e] 128/128 margin +0.0 wall 134s (search 0s, 0 roots)
+[o4f_r20 vs p21e] 128/128 margin +11.4 wall 1713s (search 1509s, 6864 roots)
+== 23:40:34 p20 plain,o4f_r20
+[plain vs p20] 128/128 margin -1.0 wall 208s (search 0s, 0 roots)
+[o4f_r20 vs p20] 128/128 margin +25.1 wall 1321s (search 1172s, 5824 roots)
+== 00:06:07 p17 plain,o4f_r20
+[plain vs p17] 128/128 margin +43.3 wall 133s (search 0s, 0 roots)
+[o4f_r20 vs p17] 128/128 margin +44.4 wall 1196s (search 1050s, 5365 roots)
+== 00:28:20 v28 plain,o4f_r20
+[plain vs v28] 128/128 margin +59.8 wall 349s (search 0s, 0 roots)
+[o4f_r20 vs v28] 128/128 margin +65.5 wall 1307s (search 918s, 4259 roots)
+== 00:56:00 v27 plain,o4f_r20
+[plain vs v27] 128/128 margin +64.2 wall 468s (search 0s, 0 roots)
+[o4f_r20 vs v27] 128/128 margin +70.5 wall 1343s (search 908s, 4088 roots)
+== 01:26:16 v25 plain,o4f_r20
+[plain vs v25] 128/128 margin +62.1 wall 452s (search 0s, 0 roots)
+[o4f_r20 vs v25] 128/128 margin +72.3 wall 1442s (search 1005s, 4498 roots)
+== 01:57:55 p14b plain,o4f_r20
+[plain vs p14b] 128/128 margin +69.9 wall 187s (search 0s, 0 roots)
+[o4f_r20 vs p14b] 128/128 margin +73.1 wall 1266s (search 1042s, 4454 roots)
+== 02:22:14 lane a done
