@@ -1,0 +1,10 @@
+[distill] step 200 v1 beta 0.30 rows 26569 ratio 1.7 | ce 0.032 acc 0.986 fresh 0.943 angle 5.30 deg (<=2 0.78, 10 s 1.53) | 2.5 step/s, workers 375% | 420s
+[distill] step 400 v1 beta 0.30 rows 41326 ratio 2.2 | ce 0.023 acc 0.992 fresh 0.954 angle 5.18 deg (<=2 0.79, 10 s 1.62) | 2.8 step/s, workers 62% | 491s
+[distill] step 600 v2 beta 0.27 rows 62688 ratio 2.3 | ce 0.021 acc 0.989 fresh 0.961 angle 4.36 deg (<=2 0.79, 10 s 1.95) | 1.0 step/s, workers 94% | 700s
+[distill] step 800 v2 beta 0.27 rows 84998 ratio 2.3 | ce 0.028 acc 0.985 fresh 0.942 angle 6.28 deg (<=2 0.76, 10 s 2.04) | 0.8 step/s, workers 93% | 948s
+[distill] step 1000 v3 beta 0.24 rows 107583 ratio 2.3 | ce 0.028 acc 0.986 fresh 0.960 angle 4.76 deg (<=2 0.79, 10 s 2.69) | 0.9 step/s, workers 91% | 1173s
+[distill] step 1200 v3 beta 0.24 rows 130100 ratio 2.3 | ce 0.032 acc 0.985 fresh 0.955 angle 5.14 deg (<=2 0.79, 10 s 2.14) | 0.7 step/s, workers 70% | 1481s
+[distill] step 1400 v3 beta 0.24 rows 152102 ratio 2.3 | ce 0.030 acc 0.985 fresh 0.954 angle 4.85 deg (<=2 0.79, 10 s 3.41) | 1.6 step/s, workers 84% | 1606s
+[distill] step 1600 v4 beta 0.22 rows 173854 ratio 2.3 | ce 0.047 acc 0.984 fresh 0.952 angle 5.03 deg (<=2 0.78, 10 s 2.41) | 0.9 step/s, workers 88% | 1835s
+[distill] step 1800 v4 beta 0.22 rows 196107 ratio 2.3 | ce 0.044 acc 0.981 fresh 0.948 angle 5.44 deg (<=2 0.78, 10 s 2.43) | 0.7 step/s, workers 72% | 2122s
+[distill] step 2000 v5 beta 0.20 rows 218846 ratio 2.3 | ce 0.045 acc 0.978 fresh 0.948 angle 7.08 deg (<=2 0.79, 10 s 2.31) | 0.9 step/s, workers 78% | 2343s
