@@ -57,7 +57,8 @@ P20 = "checkpoints/distill/frozen/p20_v30.pt"  # P18bp2 + 5k V30 distil (v_0005,
 P20C = "checkpoints/distill/frozen/p20_v30_fp16c.pt"  # QZ: P20 + precision "fp16c" (sim/fastnet.fast_checkpoint)
 P21E = "checkpoints/distill/frozen/p21e_v30.pt"  # P21e: staged-reserve upweight + short V30 fine-tune (docs §50)
 P22 = "checkpoints/distill/frozen/p22_v31.pt"  # P22 = P22b: P21e + 2k V31 fine-tune (docs §55)
-BASES = {"p14b": P14B, "p16": P16, "p17": P17, "p20": P20, "p20c": P20C, "p21e": P21E, "p22": P22}
+P24C = "checkpoints/distill/frozen/p24c_v321.pt"  # P24c v9: P22 + V32.1 teacher (P24 agent; gpu1 ~/p24nets/p24c9.pt)
+BASES = {"p14b": P14B, "p16": P16, "p17": P17, "p20": P20, "p20c": P20C, "p21e": P21E, "p22": P22, "p24c": P24C}
 V25R = "checkpoints/rollout_net/v25/v25d256.pt"  # the P14b-distilled rollout nets (docs §31; --v25r overrides)
 V25F = "checkpoints/rollout_net/v25/v25f3x.pt"
 V27R = "checkpoints/rollout_net/v27/v27d256.pt"  # distilled from P16 (docs §37)
@@ -65,6 +66,7 @@ V28R = "checkpoints/rollout_net/v28/v28d256.pt"  # distilled from P17 (Q9, docs 
 R20 = "checkpoints/rollout_net/r3/r20d256.pt"  # distilled from P20 (R3, docs §49)
 R21 = "checkpoints/rollout_net/r4/r21d256.pt"  # distilled from P21e, init r20d256 (R4, docs §54)
 R22 = "checkpoints/rollout_net/r5/r22d256.pt"  # distilled from P22, init r21d256 (R5, docs §59)
+R24C = "checkpoints/rollout_net/r6/r24cd256.pt"  # distilled from P24c, init r22d256, V32/V32.1/h4 in the pools (R6, docs §61)
 TRACE_S = (5, 10, 30, 60)
 SEARCH_FROM = 125  # decisions (5 s, docs §32)
 
@@ -92,7 +94,7 @@ V27 = {"v27": ("strategic_v27", {"reserve_stage": 1.5}), "v27s1": ("strategic_v2
                                  "solo_sentry": True}),  # docs §44
        "v31": ("strategic_v30", {"reserve_stage": 0.5, "trade_hold": "advance", "reserve_join": "reserve",
                                  "solo_sentry": True, "threat_radius": 0.13, "camp_engage_radius": 6.5})}  # V31, docs §46
-OPPONENTS = ("p14b", "p16", "p17", "p20", "p21e", "p22", "v32b", "v28", "v30", "v31", "v25", "v27", "v27s1", "v27s05", "v23", "v19", "p5a", "p11", "d256", "f3", "v23pA", "v23pB", "v25pA", "v25pB")
+OPPONENTS = ("p14b", "p16", "p17", "p20", "p21e", "p22", "p24c", "v32b", "v321", "v28", "v30", "v31", "v25", "v27", "v27s1", "v27s05", "v23", "v19", "p5a", "p11", "d256", "f3", "v23pA", "v23pB", "v25pA", "v25pB")
 
 # V32 B (docs §58, branch feat/v32): V31 + four Hunters, exit guard, sanctuary sweep, cargo transform
 V32B = ("strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,"
@@ -106,6 +108,7 @@ def _extra_heuristics() -> dict:
 
     out = {n: d for n, d, _, _ in OOD26 + FOLLOWUP if not d.startswith(("ckpt:", "temp:")) and n != "v31"}
     out["v32b"] = V32B
+    out["v321"] = V32B + ",adapt_k=3"  # V32.1 (docs §58.7), the champion heuristic
     return out
 
 
@@ -136,6 +139,8 @@ VARIANTS = {
     "o4f_r21": {"net": R21, "deep": {**O4, "opp_agg": "mean"}},
     # rollout / opponent model distilled from P22 (R5, docs §59)
     "o4f_r22": {"net": R22, "deep": {**O4, "opp_agg": "mean"}},
+    # rollout / opponent model distilled from P24c (R6, docs §61)
+    "o4f_r24c": {"net": R24C, "deep": {**O4, "opp_agg": "mean"}},
     "o4f_r20_V": {"net": R20, "value": "checkpoints/value/s2v_r20d256/iter1.pt", "deep": {**O4, "opp_agg": "mean"}},
     # rollout v27d256 (our continuation), opponent model = v28d256 {base, s0, s1, s2}: separates the two roles
     "o4f_v27r_opp28": {"net": V27R, "deep": {**O4, "opp_agg": "mean", "opp_net_idx": [1, 1, 1, 1], "opp_nets": [V28R]}},
