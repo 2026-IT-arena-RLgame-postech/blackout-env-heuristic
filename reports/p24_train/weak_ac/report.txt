@@ -1,0 +1,33 @@
+av9                                                  vs p14b           n=  64 margin  +58.0± 2.6 win 0.98 race (0, 64, 0) 2nd (51, 1, 12) H-s 220/20 res100 7.9 (p10 5.7) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/2.42 (ours=4 1.00, <4 0.00)
+                                                        - p22:  -13.4 ±  2.5 (32 seeds); both race-tied 64:  -13.4 ±  2.5; identical 0.00
+cv3                                                  vs p14b           n=  64 margin  +66.0± 2.9 win 0.95 race (0, 64, 0) 2nd (53, 1, 10) H-s 257/23 res100 8.1 (p10 5.2) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/2.42 (ours=4 1.00, <4 0.00)
+                                                        - p22:   -5.4 ±  2.9 (32 seeds); both race-tied 64:   -5.4 ±  2.9; identical 0.00
+cv5                                                  vs p14b           n=  64 margin  +68.1± 2.3 win 0.98 race (0, 64, 0) 2nd (51, 1, 12) H-s 167/56 res100 7.8 (p10 5.6) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/2.42 (ours=4 1.00, <4 0.00)
+                                                        - p22:   -3.3 ±  2.6 (32 seeds); both race-tied 64:   -3.3 ±  2.6; identical 0.00
+cv7                                                  vs p14b           n=  64 margin  +60.2± 3.5 win 0.95 race (0, 64, 0) 2nd (49, 0, 15) H-s 225/53 res100 7.8 (p10 5.6) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/2.42 (ours=4 1.00, <4 0.00)
+                                                        - p22:  -11.2 ±  4.2 (32 seeds); both race-tied 64:  -11.2 ±  4.2; identical 0.00
+cv9                                                  vs p14b           n=  64 margin  +60.6± 3.8 win 0.95 race (0, 64, 0) 2nd (48, 1, 15) H-s 252/31 res100 7.9 (p10 5.6) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/2.42 (ours=4 1.00, <4 0.00)
+                                                        - p22:  -10.8 ±  4.7 (32 seeds); both race-tied 64:  -10.8 ±  4.7; identical 0.00
+p22                                                  vs p14b           n=  64 margin  +71.4± 1.7 win 1.00 race (0, 64, 0) 2nd (58, 2, 4) H-s 196/24 res100 7.5 (p10 4.2) first 98-:0 99:64 100:0 101+:0 none:0 H@99 3.03/2.42 (ours=4 0.03, <4 0.97)
+av9                                                  vs strategic_v23  n=  64 margin  +59.3± 3.2 win 0.94 race (62, 2, 0) 2nd (16, 34, 14) H-s 190/8 res100 7.9 (p10 5.5) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/0.06 (ours=4 1.00, <4 0.00)
+                                                        - p22:  -17.0 ±  2.9 (32 seeds); both race-tied 2:  -77.5 ± 41.5; identical 0.00
+cv3                                                  vs strategic_v23  n=  64 margin  +65.1± 2.3 win 1.00 race (62, 2, 0) 2nd (22, 34, 8) H-s 210/4 res100 8.0 (p10 5.3) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/0.06 (ours=4 1.00, <4 0.00)
+                                                        - p22:  -11.2 ±  2.7 (32 seeds); both race-tied 2:  -20.0 ± 22.0; identical 0.00
+cv5                                                  vs strategic_v23  n=  64 margin  +67.1± 2.2 win 0.98 race (62, 2, 0) 2nd (15, 47, 2) H-s 216/4 res100 7.8 (p10 5.5) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/0.06 (ours=4 1.00, <4 0.00)
+                                                        - p22:   -9.2 ±  2.3 (32 seeds); both race-tied 2:  -18.5 ± 17.5; identical 0.00
+cv7                                                  vs strategic_v23  n=  64 margin  +68.3± 1.7 win 1.00 race (62, 2, 0) 2nd (16, 41, 7) H-s 234/50 res100 7.9 (p10 5.7) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/0.06 (ours=4 1.00, <4 0.00)
+                                                        - p22:   -8.0 ±  1.9 (32 seeds); both race-tied 2:   -2.5 ±  7.5; identical 0.00
+cv9                                                  vs strategic_v23  n=  64 margin  +68.8± 1.9 win 1.00 race (62, 2, 0) 2nd (17, 45, 2) H-s 244/12 res100 7.9 (p10 5.6) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/0.06 (ours=4 1.00, <4 0.00)
+                                                        - p22:   -7.5 ±  2.2 (32 seeds); both race-tied 2:   -4.0 ±  4.0; identical 0.00
+p22                                                  vs strategic_v23  n=  64 margin  +76.3± 1.3 win 1.00 race (62, 2, 0) 2nd (12, 51, 1) H-s 124/1 res100 7.6 (p10 4.2) first 98-:0 99:64 100:0 101+:0 none:0 H@99 3.00/0.06 (ours=4 0.00, <4 1.00)
+av9                                                  vs strategic_v25  n=  64 margin  +63.2± 1.9 win 1.00 race (0, 64, 0) 2nd (54, 0, 10) H-s 224/5 res100 7.9 (p10 5.6) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/2.45 (ours=4 1.00, <4 0.00)
+                                                        - p22:   -6.2 ±  3.8 (32 seeds); both race-tied 64:   -6.2 ±  3.8; identical 0.00
+cv3                                                  vs strategic_v25  n=  64 margin  +59.5± 3.4 win 0.95 race (0, 64, 0) 2nd (54, 0, 10) H-s 183/18 res100 7.9 (p10 5.3) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/2.45 (ours=4 1.00, <4 0.00)
+                                                        - p22:   -9.9 ±  5.2 (32 seeds); both race-tied 64:   -9.9 ±  5.2; identical 0.00
+cv5                                                  vs strategic_v25  n=  64 margin  +66.3± 1.8 win 1.00 race (0, 64, 0) 2nd (58, 1, 5) H-s 179/3 res100 7.8 (p10 5.5) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/2.45 (ours=4 1.00, <4 0.00)
+                                                        - p22:   -3.1 ±  3.5 (32 seeds); both race-tied 64:   -3.1 ±  3.5; identical 0.00
+cv7                                                  vs strategic_v25  n=  64 margin  +65.8± 2.9 win 0.97 race (0, 64, 0) 2nd (54, 0, 10) H-s 238/7 res100 7.8 (p10 5.7) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/2.45 (ours=4 1.00, <4 0.00)
+                                                        - p22:   -3.7 ±  4.6 (32 seeds); both race-tied 64:   -3.7 ±  4.6; identical 0.00
+cv9                                                  vs strategic_v25  n=  64 margin  +67.5± 1.8 win 1.00 race (0, 64, 0) 2nd (56, 0, 8) H-s 194/1 res100 8.0 (p10 5.6) first 98-:0 99:64 100:0 101+:0 none:0 H@99 4.00/2.45 (ours=4 1.00, <4 0.00)
+                                                        - p22:   -2.0 ±  3.8 (32 seeds); both race-tied 64:   -2.0 ±  3.8; identical 0.00
+p22                                                  vs strategic_v25  n=  64 margin  +69.5± 3.2 win 0.97 race (0, 64, 0) 2nd (60, 0, 4) H-s 125/14 res100 7.5 (p10 4.2) first 98-:0 99:64 100:0 101+:0 none:0 H@99 3.05/2.45 (ours=4 0.05, <4 0.95)
