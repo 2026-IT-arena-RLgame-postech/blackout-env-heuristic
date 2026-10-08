@@ -1,0 +1,9 @@
+candidate                                  inference opponent                                       n  margin   ±se   win H<30s H<60s H<120 Ca<60 end_s  agree deliv/1k  rev/1k die/1k @base camped
+frozen/p10_v22.pt                          arc_mean  strategic_v21_anyangle                        24   +26.8  12.4  0.75   1.7   2.9   3.4   1.0    50   0.80      2.9     310   2.06  0.63   0.18
+frozen/p10_v22.pt                          arc_mean  strategic_v22                                 24   -53.3  10.7  0.17   0.5   1.4   2.0   0.8    53   0.82      1.6     236   5.85  0.58   0.47
+teacher:act:strategic_v22                  -         strategic_v21_anyangle                        24   +61.0   6.6  0.96   2.3   3.1   3.3   1.0    58    nan      2.6      31   2.68  0.89   0.37
+teacher:act:strategic_v22                  -         strategic_v22                                 24    +0.0  14.2  0.50   1.4   1.8   1.9   0.9    75    nan      1.5      84   4.43  0.72   0.47
+
+paired gap (candidate - teacher)           inference opponent                                     seeds     gap   ±se
+frozen/p10_v22.pt                          arc_mean  strategic_v21_anyangle                          12   -34.1   7.7
+frozen/p10_v22.pt                          arc_mean  strategic_v22                                   12   -53.3   9.8

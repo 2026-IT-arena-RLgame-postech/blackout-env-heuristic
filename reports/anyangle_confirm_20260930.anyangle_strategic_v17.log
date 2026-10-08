@@ -1,0 +1,236 @@
+48 games, seeds=[950000, 950001, 950002, 950003, 950004, 950005, 950006, 950007, 950008, 950009, 950010, 950011, 950012, 950013, 950014, 950015, 950016, 950017, 950018, 950019, 950020, 950021, 950022, 950023]
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[ 1/48] seed=950000 swap=1 93-19 steps=544 dlv 18-5
+[ 2/48] seed=950002 swap=1 97-21 steps=773 dlv 16-7
+[ 3/48] seed=950001 swap=1 99-46 steps=1075 dlv 22-8
+[ 4/48] seed=950000 swap=0 99-37 steps=1164 dlv 22-9
+[ 5/48] seed=950001 swap=0 99-20 steps=1325 dlv 17-5
+[ 6/48] seed=950003 swap=0 96-17 steps=884 dlv 22-5
+[ 7/48] seed=950003 swap=1 98-33 steps=1185 dlv 14-14
+[ 8/48] seed=950004 swap=0 99-31 steps=895 dlv 21-5
+[ 9/48] seed=950004 swap=1 97-45 steps=1262 dlv 22-9
+[10/48] seed=950005 swap=0 97-59 steps=1213 dlv 22-16
+[11/48] seed=950006 swap=0 94-31 steps=744 dlv 18-10
+[12/48] seed=950007 swap=0 97-30 steps=490 dlv 17-7
+[13/48] seed=950006 swap=1 96-40 steps=900 dlv 25-10
+[14/48] seed=950008 swap=0 98-15 steps=612 dlv 15-7
+[15/48] seed=950008 swap=1 92-13 steps=464 dlv 14-3
+[16/48] seed=950007 swap=1 96-20 steps=817 dlv 19-4
+[17/48] seed=950010 swap=0 97-23 steps=388 dlv 16-5
+[18/48] seed=950009 swap=0 98-21 steps=713 dlv 18-6
+[19/48] seed=950009 swap=1 94-46 steps=1112 dlv 17-10
+[20/48] seed=950011 swap=0 96-21 steps=1226 dlv 20-8
+[21/48] seed=950011 swap=1 97-19 steps=1423 dlv 21-7
+[22/48] seed=950012 swap=0 20-94 steps=620 dlv 11-15
+[23/48] seed=950012 swap=1 95-76 steps=887 dlv 21-17
+[24/48] seed=950013 swap=1 95-73 steps=1200 dlv 23-15
+[25/48] seed=950002 swap=0 88-79 steps=10502 dlv 21-13
+[26/48] seed=950005 swap=1 92-80 steps=10501 dlv 31-16
+[27/48] seed=950015 swap=0 96-48 steps=1840 dlv 20-13
+[28/48] seed=950015 swap=1 96-17 steps=607 dlv 18-5
+[29/48] seed=950016 swap=0 95-25 steps=1324 dlv 18-8
+[30/48] seed=950010 swap=1 86-26 steps=10501 dlv 13-8
+[31/48] seed=950017 swap=0 94-37 steps=1638 dlv 21-6
+[32/48] seed=950013 swap=0 91-70 steps=10501 dlv 35-17
+[33/48] seed=950018 swap=0 95-41 steps=691 dlv 22-13
+[34/48] seed=950014 swap=1 62-56 steps=10501 dlv 21-17
+[35/48] seed=950014 swap=0 67-51 steps=10501 dlv 20-10
+[36/48] seed=950019 swap=0 93-42 steps=1442 dlv 28-10
+[37/48] seed=950019 swap=1 93-25 steps=1127 dlv 18-8
+[38/48] seed=950020 swap=1 99-31 steps=824 dlv 20-11
+[39/48] seed=950020 swap=0 98-75 steps=970 dlv 30-16
+[40/48] seed=950021 swap=0 39-95 steps=1047 dlv 11-14
+[41/48] seed=950021 swap=1 99-22 steps=992 dlv 17-7
+[42/48] seed=950022 swap=0 97-45 steps=1771 dlv 20-11
+[43/48] seed=950022 swap=1 99-70 steps=1435 dlv 26-11
+[44/48] seed=950016 swap=1 68-75 steps=10501 dlv 15-16
+[45/48] seed=950017 swap=1 63-31 steps=10501 dlv 9-6
+[46/48] seed=950018 swap=1 97-42 steps=10501 dlv 22-10
+[47/48] seed=950023 swap=0 91-78 steps=10501 dlv 30-13
+[48/48] seed=950023 swap=1 96-41 steps=10501 dlv 17-8
+
+strategic_v21_anyangle vs strategic_v17: 48 games
+W-L-D 45-3-0  margin +47.5 +- 4.9 (SE)
+seed-paired margin +47.5 +- 5.3 (SE over 24 seeds)
+  strategic_v21_anyangle   deliveries/game 19.9+-0.8  /1000 steps 16.84+-1.51  first 40+-2  tiles/dlv 30.3+-4.3  deaths 6.6+-0.9  speed eff collector 0.988 hunter 1.011 carrier 0.963
+  strategic_v17            deliveries/game 9.9+-0.6  /1000 steps 7.80+-0.79  first 45+-2  tiles/dlv 240.6+-45.0  deaths 419.8+-86.4  speed eff collector 0.972 hunter 0.997 carrier 1.000
+  any-angle moves: approach 3.2%, evade_8dir 8.9%, fallback 1.2%, hunt 5.3%, path 81.4%

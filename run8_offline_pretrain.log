@@ -1,0 +1,2195 @@
+[compile] net/target_net/ema_net wrapped with torch.compile
+[offline] checkpoint_dir=checkpoints/offline/20260916-221417_24670
+[offline] tb_log_dir=runs/offline/20260916-221417_24670
+[offline] amp_dtype=float16, compile=True
+[offline] reset_interval=40000
+[offline] batch_source_fracs (dataset, self_vs_heuristic, self_play)=(0.7, 0.3, 0.0), self_vs_heuristic FIFO buffer 262144 rows/stream
+[offline] loading dataset from datasets/heuristic_mixv4_20260916 ...
+[offline] loaded buffer_a=1000000, buffer_b=1000000 transitions (blocked_penalty=0.02)
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+Mono path[0] = '/Users/mac/project/26rl/blackout-env/build/mac/BlackOut.app/Contents/Resources/Data/Managed'
+Mono config path = '/Users/mac/project/26rl/blackout-env/build/mac/BlackOut.app/Contents/MonoBleedingEdge/etc'
+CodeReloadManager initialized
+Input System module state changed to: Initialized.
+[Physics::Module] Initialized fallback backend.
+[Physics::Module] Id: 0xdecafbad
+Initialize engine version: 6000.4.11f1 (b0a1d6caadd2)
+[Subsystems] Discovering subsystems at path /Users/mac/project/26rl/blackout-env/build/mac/BlackOut.app/Contents/Resources/Data/UnitySubsystems
+Forcing GfxDevice: Null
+GfxDevice: creating device client; kGfxThreadingModeNonThreaded
+NullGfxDevice:
+    Version:  NULL 1.0 [1.0]
+    Renderer: Null Device
+    Vendor:   Unity Technologies
+Begin MonoManager ReloadAssembly
+- Finished resetting the current domain, in  0.002 seconds
+[Physics::Module] Selected backend.
+[Physics::Module] Name: PhysX
+[Physics::Module] Id: 0xf2b8ea05
+[Physics::Module] SDK Version: 4.1.2
+[Physics::Module] Integration Version: 1.0.0
+[Physics::Module] Threading Mode: Multi-Threaded
+UnloadTime: 0.850084 ms
+[MapObsAgent] Removing RenderTextureSensorComponent — sensor is now created by DynamicRTSensorComponent.
+Registered Communicator in Academy.
+[offline] periodic eval enabled: every 10000 steps, 6 matches vs StrategicHeuristicV4
+[offline] on-policy data collection enabled: ~15000 self-vs-heuristic + ~0 self-play ticks per eval window (20 windows), blocked_penalty=0.02
+[RewardConfig] Loaded from /Users/mac/project/26rl/blackout-env/build/mac/BlackOut.app/Contents/Resources/Data/StreamingAssets/reward_config.json
+DontDestroyOnLoad only works for root GameObjects or components on root GameObjects.
+W0916 22:15:10.008000 24670 .venv/lib/python3.10/site-packages/torch/_inductor/utils.py:1806] [0/0] Not enough SMs to use max_autotune_gemm mode
+Special Item Spawned: DebuffSize at (14, 5)
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (4) dead
+Unit (2) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (2, 5)
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (17, 20)
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (10, 17)
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (7) dead
+Unit (6) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (7) dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (7) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Special Item Spawned: BuffSize at (22, 12)
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (4) dead
+Unit (2) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (4) dead
+Unit (2) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Special Item Spawned: BuffSize at (4, 3)
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (7) dead
+Unit (6) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (7) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] eval @ step 0: win_rate=0.00 loss_rate=1.00 draw_rate=0.00 mean_margin=-64.67 candidate_idle/1k=0.0 candidate_blocked/1k=2.5
+           objectives (candidate vs opponent): approach_battery=+0.0046/+0.0462 pickups/1k=0.0/9.1 deliveries/1k=0.0/8.1 cargo_lost/1k=0.0/0.0 | by side: margin=-64.3/-65.0 blocked/1k=2.3/2.7
+[offline] step 0: BBF reset (shrink-and-perturb + re-anneal n_step/gamma)
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] Graph break from `Tensor.item()`, consider setting:
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     torch._dynamo.config.capture_scalar_outputs = True
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] or:
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     env TORCHDYNAMO_CAPTURE_SCALAR_OUTPUTS=1
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] to include these operations in the captured graph.
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] 
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] Graph break: from user code at:
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/my_model.py", line 243, in forward
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     tokens_out = self.attention(tokens_in, rope=(rope_cos, rope_sin))
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/modules/attention_block.py", line 195, in forward
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     x = layer(x, attn_mask, is_causal, rope)
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/modules/attention_block.py", line 168, in forward
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     x = x + self.gqa(x, attn_mask, is_causal, rope)
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/modules/attention_block.py", line 93, in forward
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     self.last_logit_norm = self._compute_logit_rms(q, k)
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/.venv/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     return func(*args, **kwargs)
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/modules/attention_block.py", line 123, in _compute_logit_rms
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     return logits.pow(2).mean().sqrt().item()
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] 
+W0916 22:15:38.071000 24670 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] 
+/Users/mac/project/26rl/blackout-env/.venv/lib/python3.10/site-packages/torch/_dynamo/utils.py:4415: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /Users/runner/work/pytorch/pytorch/aten/src/ATen/native/layer_norm.cpp:350.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[offline] step 1000/200000 (9.3 steps/s) avg_loss=0.1123
+[offline] step 2000/200000 (12.7 steps/s) avg_loss=0.0132
+[offline] step 3000/200000 (14.7 steps/s) avg_loss=0.0077
+[offline] step 4000/200000 (15.9 steps/s) avg_loss=0.0067
+[offline] step 5000/200000 (16.7 steps/s) avg_loss=0.0051
+[checkpoint] saved checkpoints/offline/20260916-221417_24670/step_5000.pt
+[offline] step 6000/200000 (17.3 steps/s) avg_loss=0.0048
+[offline] step 7000/200000 (17.7 steps/s) avg_loss=0.0161
+[offline] step 8000/200000 (18.0 steps/s) avg_loss=0.0629
+[offline] step 9000/200000 (18.3 steps/s) avg_loss=0.0519
+[offline] step 10000/200000 (18.5 steps/s) avg_loss=0.0380
+[checkpoint] saved checkpoints/offline/20260916-221417_24670/step_10000.pt
+Special Item Spawned: BuffSize at (6, 7)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (17, 7)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (21, 5)
+Unit (2) dead
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (11, 2)
+Unit (1) dead
+Unit (8) dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (7) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (20, 19)
+Unit (2) dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Special Item Spawned: BuffSize at (22, 20)
+Unit (6) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] eval @ step 10000: win_rate=0.00 loss_rate=1.00 draw_rate=0.00 mean_margin=-72.33 candidate_idle/1k=0.0 candidate_blocked/1k=1.5
+           objectives (candidate vs opponent): approach_battery=+0.0206/+0.0397 pickups/1k=2.0/9.1 deliveries/1k=0.7/8.0 cargo_lost/1k=0.5/0.0 | by side: margin=-55.0/-89.7 blocked/1k=1.3/1.7
+Special Item Spawned: DebuffSize at (5, 4)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (12, 4)
+Unit (5) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (20, 13)
+Unit (3) dead
+Unit (2) dead
+Unit (2) dead
+Unit (3) dead
+Unit (2) dead
+Unit (3) dead
+Unit (6) dead
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (7) dead
+Unit (6) dead
+Special Item Spawned: DebuffSize at (21, 22)
+Unit (5) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit dead
+Special Item Spawned: DebuffSpeed at (9, 4)
+Unit (4) dead
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (6) dead
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Special Item Spawned: DebuffSize at (6, 12)
+Unit (5) dead
+Unit (6) dead
+Unit (5) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Special Item Spawned: DebuffSpeed at (10, 10)
+Unit (3) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (7) dead
+Unit (7) dead
+Unit (9) dead
+Special Item Spawned: DebuffSize at (7, 3)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Special Item Spawned: BuffSpeed at (3, 9)
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Unit (7) dead
+Special Item Spawned: DebuffSize at (21, 22)
+Unit (1) dead
+Unit (7) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (19, 13)
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (7) dead
+Special Item Spawned: BuffSpeed at (14, 19)
+Unit (8) dead
+Unit (5) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (3) dead
+Unit dead
+Unit dead
+Special Item Spawned: BuffSize at (10, 16)
+Unit (3) dead
+Unit (6) dead
+Unit (2) dead
+Unit (6) dead
+Unit (1) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (2) dead
+Unit (6) dead
+Special Item Spawned: DebuffSpeed at (10, 17)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (1) dead
+Unit (1) dead
+Unit (8) dead
+Special Item Spawned: BuffSpeed at (10, 20)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSpeed at (16, 8)
+Unit (3) dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Special Item Spawned: BuffSize at (7, 20)
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit dead
+Unit dead
+Special Item Spawned: BuffSpeed at (12, 3)
+Unit (6) dead
+Unit (1) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (8, 8)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Special Item Spawned: BuffSize at (15, 19)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (6, 16)
+Unit (6) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (15, 5)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit (6) dead
+Special Item Spawned: BuffSize at (19, 16)
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (5, 22)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit (2) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (4) dead
+Unit dead
+Special Item Spawned: DebuffSize at (15, 2)
+Unit dead
+Unit (2) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (4) dead
+Unit dead
+Unit dead
+Unit dead
+Unit dead
+Unit (2) dead
+Unit (6) dead
+Unit (4) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (12, 20)
+Unit (1) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Special Item Spawned: DebuffSpeed at (4, 11)
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit (6) dead
+Unit (1) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Unit (2) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (5) dead
+Unit (5) dead
+Special Item Spawned: BuffSize at (3, 7)
+Unit (5) dead
+Unit (5) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (9) dead
+Special Item Spawned: DebuffSpeed at (8, 6)
+Unit (3) dead
+Unit (2) dead
+Unit dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Unit (6) dead
+Unit (1) dead
+Unit (8) dead
+Special Item Spawned: DebuffSpeed at (10, 8)
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSize at (6, 15)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (7) dead
+Unit (6) dead
+Special Item Spawned: DebuffSize at (15, 1)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (4) dead
+Unit (1) dead
+Unit (6) dead
+Unit (4) dead
+Special Item Spawned: BuffSpeed at (17, 11)
+Unit (2) dead
+Unit (6) dead
+Unit (1) dead
+Unit (7) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (6) dead
+Unit (6) dead
+Special Item Spawned: BuffSpeed at (20, 18)
+Unit (1) dead
+Unit (7) dead
+Unit (1) dead
+Unit (8) dead
+Unit (1) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (8) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (18, 6)
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+[offline] onpolicy collect @ step 10000: self_vs_heuristic=15410 ticks/35 matches, self_play=0 ticks/0 matches (onpolicy buffer rows a/b: self_vs_heuristic=15410/15410) | svh W/L/D=0.00/1.00/0.00 margin=-74.9 env_r/tick=-0.01411 penalty/tick=-0.01256 psi_saturated=0.41 approach_battery=+0.0143/+0.0365 cargo_lost/1k=0.6/0.0
+[offline] step 11000/200000 (15.5 steps/s) avg_loss=0.0416
+[offline] step 12000/200000 (15.9 steps/s) avg_loss=0.0609
+[offline] step 13000/200000 (16.2 steps/s) avg_loss=0.0786
+[offline] step 14000/200000 (16.4 steps/s) avg_loss=0.0873
+[offline] step 15000/200000 (16.7 steps/s) avg_loss=0.0964
+[checkpoint] saved checkpoints/offline/20260916-221417_24670/step_15000.pt
+[offline] step 16000/200000 (16.9 steps/s) avg_loss=0.0888
+[offline] step 17000/200000 (17.1 steps/s) avg_loss=0.0884
+[offline] step 18000/200000 (17.2 steps/s) avg_loss=0.0900
+[offline] step 19000/200000 (17.4 steps/s) avg_loss=0.0909
+[offline] step 20000/200000 (17.6 steps/s) avg_loss=0.0957
+[checkpoint] saved checkpoints/offline/20260916-221417_24670/step_20000.pt
+Special Item Spawned: BuffSize at (7, 8)
+Unit (2) dead
+Unit dead
+Unit (2) dead
+Unit dead
+Unit (2) dead
+Unit dead
+Unit dead
+Unit (2) dead
+Unit dead
+Unit (2) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (5) dead
+Special Item Spawned: BuffSize at (14, 5)
+Unit (5) dead
+Unit (7) dead
+Unit (5) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (17, 5)
+Unit dead
+Unit dead
+Unit (5) dead
+Unit dead
+Unit dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Special Item Spawned: DebuffSpeed at (14, 1)
+Unit (1) dead
+Unit (1) dead
+Unit (1) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (17, 13)
+Unit (9) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (7) dead
+Special Item Spawned: BuffSize at (4, 10)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] eval @ step 20000: win_rate=0.00 loss_rate=1.00 draw_rate=0.00 mean_margin=-82.83 candidate_idle/1k=0.0 candidate_blocked/1k=0.8
+           objectives (candidate vs opponent): approach_battery=+0.0144/+0.0388 pickups/1k=2.8/9.0 deliveries/1k=2.1/7.6 cargo_lost/1k=0.4/0.1 | by side: margin=-83.3/-82.3 blocked/1k=0.7/0.9
+Unit (1) dead
+Unit (4) dead
+Unit (2) dead
+Unit (4) dead
+Unit (3) dead
+Special Item Spawned: BuffSize at (4, 15)
+Unit dead
+Unit (4) dead
+Unit (3) dead
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Unit (3) dead
+Unit (2) dead
+Unit dead
+Unit dead
+Unit dead
+Unit dead
+Unit dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (2) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (6, 7)
+Unit (1) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit (1) dead
+Unit (2) dead
+Special Item Spawned: BuffSpeed at (8, 11)
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (6) dead
+Unit (7) dead
+Unit (6) dead
+Special Item Spawned: BuffSpeed at (17, 4)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (2) dead
+Unit (3) dead
+Special Item Spawned: BuffSize at (9, 9)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (6) dead
+Unit (6) dead
+Special Item Spawned: BuffSpeed at (20, 17)
+Unit (5) dead
+Unit (7) dead
+Unit (8) dead
+Unit (7) dead
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Unit (6) dead
+Special Item Spawned: BuffSize at (2, 10)
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (2) dead
+Unit (1) dead
+Special Item Spawned: BuffSpeed at (9, 22)
+Unit (2) dead
+Unit (1) dead
+Unit (1) dead
+Unit (2) dead
+Unit (1) dead
+Unit (1) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (15, 2)
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Unit (1) dead
+Special Item Spawned: DebuffSpeed at (3, 1)
+Unit (5) dead
+Unit (5) dead
+Unit (1) dead
+Unit (1) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Special Item Spawned: BuffSize at (9, 6)
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (8) dead
+Unit (6) dead
+Unit (8) dead
+Unit (6) dead
+Unit (8) dead
+Unit (7) dead
+Unit (6) dead
+Unit (7) dead
+Unit (6) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Unit (1) dead
+Special Item Spawned: BuffSize at (15, 13)
+Unit (1) dead
+Unit (1) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (3) dead
+Unit dead
+Unit dead
+Unit dead
+Special Item Spawned: DebuffSpeed at (15, 7)
+Unit dead
+Unit dead
+Unit dead
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (6) dead
+Special Item Spawned: DebuffSpeed at (14, 8)
+Unit (5) dead
+Unit (8) dead
+Unit (5) dead
+Unit (7) dead
+Unit (6) dead
+Unit (5) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Special Item Spawned: BuffSize at (6, 4)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Special Item Spawned: DebuffSpeed at (3, 15)
+Unit (6) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (1) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (14, 5)
+Unit (3) dead
+Unit (2) dead
+Unit dead
+Unit dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (13, 12)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit (3) dead
+Unit (4) dead
+Special Item Spawned: BuffSize at (14, 8)
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Special Item Spawned: BuffSize at (11, 21)
+Unit (8) dead
+Unit (9) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Special Item Spawned: DebuffSize at (13, 17)
+Unit dead
+Unit (4) dead
+Unit (4) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Unit (1) dead
+Special Item Spawned: BuffSpeed at (12, 13)
+Unit (1) dead
+Unit (1) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (2, 2)
+Unit dead
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (2, 12)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Special Item Spawned: BuffSpeed at (19, 5)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (6) dead
+Unit (7) dead
+Unit (9) dead
+Special Item Spawned: DebuffSize at (10, 10)
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (7) dead
+Unit (9) dead
+Unit (5) dead
+Unit (7) dead
+Unit (9) dead
+Unit (5) dead
+Unit (7) dead
+Unit (9) dead
+Unit (5) dead
+Unit (7) dead
+Unit (9) dead
+Unit (5) dead
+Unit (7) dead
+Unit (9) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (9) dead
+Unit (6) dead
+Special Item Spawned: BuffSize at (11, 2)
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (6) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (13, 15)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Unit dead
+Unit (6) dead
+Special Item Spawned: BuffSpeed at (2, 10)
+Unit (6) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (15, 9)
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] onpolicy collect @ step 20000: self_vs_heuristic=15408 ticks/30 matches, self_play=0 ticks/0 matches (onpolicy buffer rows a/b: self_vs_heuristic=30818/30818) | svh W/L/D=0.00/1.00/0.00 margin=-67.1 env_r/tick=-0.01207 penalty/tick=-0.00924 psi_saturated=0.35 approach_battery=+0.0139/+0.0293 cargo_lost/1k=0.5/0.1
+[offline] step 21000/200000 (15.9 steps/s) avg_loss=0.1107
+[offline] step 22000/200000 (16.1 steps/s) avg_loss=0.1107
+[offline] step 23000/200000 (16.2 steps/s) avg_loss=0.1104
+[offline] step 24000/200000 (16.4 steps/s) avg_loss=0.1079
+[offline] step 25000/200000 (16.5 steps/s) avg_loss=0.1003
+[checkpoint] saved checkpoints/offline/20260916-221417_24670/step_25000.pt
+[offline] step 26000/200000 (16.7 steps/s) avg_loss=0.0967
+[offline] step 27000/200000 (16.8 steps/s) avg_loss=0.0965
+[offline] step 28000/200000 (16.9 steps/s) avg_loss=0.0916
+[offline] step 29000/200000 (17.0 steps/s) avg_loss=0.0898
+[offline] step 30000/200000 (17.1 steps/s) avg_loss=0.0867
+[checkpoint] saved checkpoints/offline/20260916-221417_24670/step_30000.pt
+Special Item Spawned: BuffSize at (6, 7)
+Unit dead
+Unit (2) dead
+Unit (6) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (7, 7)
+Unit (9) dead
+Unit (8) dead
+Unit (1) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (6, 11)
+Unit (4) dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (17, 5)
+Unit (6) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (5) dead
+Unit (6) dead
+Unit (9) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (20, 19)
+Unit (6) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (22, 20)
+Unit (8) dead
+Unit (5) dead
+Unit (7) dead
+Unit (8) dead
+Unit (1) dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] eval @ step 30000: win_rate=0.00 loss_rate=1.00 draw_rate=0.00 mean_margin=-71.00 candidate_idle/1k=0.0 candidate_blocked/1k=0.4
+           objectives (candidate vs opponent): approach_battery=+0.0117/+0.0372 pickups/1k=3.0/8.3 deliveries/1k=2.0/7.3 cargo_lost/1k=0.6/0.0 | by side: margin=-60.0/-82.0 blocked/1k=0.4/0.4
+Unit (8) dead
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Special Item Spawned: BuffSize at (4, 17)
+Unit dead
+Unit (6) dead
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (11, 20)
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSpeed at (3, 11)
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (8) dead
+Special Item Spawned: BuffSize at (19, 22)
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSize at (18, 19)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Special Item Spawned: BuffSpeed at (10, 20)
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (2, 4)
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (2, 2)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (11, 3)
+Unit (6) dead
+Unit (6) dead
+Unit (9) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (8) dead
+Unit (1) dead
+Unit (7) dead
+Special Item Spawned: DebuffSize at (12, 2)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (3) dead
+Special Item Spawned: DebuffSize at (6, 19)
+Unit (6) dead
+Unit (1) dead
+Unit (6) dead
+Unit (4) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (6) dead
+Unit (7) dead
+Special Item Spawned: BuffSpeed at (16, 20)
+Unit (8) dead
+Unit (7) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Special Item Spawned: DebuffSpeed at (13, 19)
+Unit (6) dead
+Unit dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (10, 15)
+Unit (6) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (19, 10)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (1) dead
+Unit (1) dead
+Unit (6) dead
+Special Item Spawned: DebuffSize at (19, 18)
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (12, 7)
+Unit (2) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (7) dead
+Special Item Spawned: BuffSize at (12, 3)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (7) dead
+Unit (2) dead
+Unit (3) dead
+Special Item Spawned: BuffSpeed at (17, 6)
+Unit dead
+Unit dead
+Unit (6) dead
+Unit (1) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (6, 11)
+Unit (5) dead
+Unit (6) dead
+Unit (2) dead
+Unit (6) dead
+Unit (8) dead
+Unit (7) dead
+Unit (1) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit dead
+Special Item Spawned: BuffSize at (16, 10)
+Unit (7) dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSpeed at (4, 10)
+Unit (5) dead
+Unit (3) dead
+Unit (9) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (8) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (2) dead
+Unit (3) dead
+Special Item Spawned: DebuffSize at (13, 5)
+Unit dead
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (6) dead
+Unit (9) dead
+Special Item Spawned: DebuffSize at (10, 8)
+Unit (7) dead
+Unit (9) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Special Item Spawned: BuffSpeed at (14, 19)
+Unit (4) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Unit (2) dead
+Unit dead
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Unit (2) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (4, 14)
+Unit (9) dead
+Unit (7) dead
+Unit (1) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Unit (6) dead
+Special Item Spawned: DebuffSize at (3, 1)
+Unit (6) dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Special Item Spawned: BuffSize at (20, 22)
+Unit (7) dead
+Unit (6) dead
+Unit (8) dead
+Unit (9) dead
+Unit (7) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSpeed at (19, 9)
+Unit (6) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (1) dead
+Unit (6) dead
+Special Item Spawned: DebuffSize at (21, 11)
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSpeed at (16, 11)
+Unit dead
+Unit (2) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (2) dead
+Special Item Spawned: DebuffSpeed at (5, 3)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Special Item Spawned: BuffSpeed at (11, 10)
+Unit (6) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (8) dead
+Unit (9) dead
+Unit (3) dead
+Special Item Spawned: DebuffSpeed at (11, 7)
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (6) dead
+Unit (3) dead
+Unit (1) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (3) dead
+Unit (1) dead
+Unit (4) dead
+Special Item Spawned: BuffSpeed at (12, 3)
+Unit dead
+Unit dead
+Unit (4) dead
+Unit (6) dead
+Unit (1) dead
+Unit (3) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+[offline] onpolicy collect @ step 30000: self_vs_heuristic=15468 ticks/35 matches, self_play=0 ticks/0 matches (onpolicy buffer rows a/b: self_vs_heuristic=46286/46286) | svh W/L/D=0.00/1.00/0.00 margin=-77.2 env_r/tick=-0.01405 penalty/tick=-0.00728 psi_saturated=0.40 approach_battery=+0.0136/+0.0330 cargo_lost/1k=0.6/0.0
+[offline] step 31000/200000 (16.2 steps/s) avg_loss=0.1031
+[offline] step 32000/200000 (16.3 steps/s) avg_loss=0.0928
+[offline] step 33000/200000 (16.4 steps/s) avg_loss=0.0951
+[offline] step 34000/200000 (16.5 steps/s) avg_loss=0.0903
+[offline] step 35000/200000 (16.6 steps/s) avg_loss=0.0905
+[checkpoint] saved checkpoints/offline/20260916-221417_24670/step_35000.pt
+[offline] step 36000/200000 (16.7 steps/s) avg_loss=0.0877
+[offline] step 37000/200000 (16.8 steps/s) avg_loss=0.0864
+[offline] step 38000/200000 (16.8 steps/s) avg_loss=0.0839
+[offline] step 39000/200000 (16.9 steps/s) avg_loss=0.0828
+[offline] step 40000/200000 (17.0 steps/s) avg_loss=0.0824
+[checkpoint] saved checkpoints/offline/20260916-221417_24670/step_40000.pt
+Unit (3) dead
+Special Item Spawned: BuffSize at (6, 7)
+Unit dead
+Unit (1) dead
+Unit (6) dead
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Special Item Spawned: BuffSize at (12, 16)
+Unit (5) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (6, 5)
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (14, 1)
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (15, 19)
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (8) dead
+Special Item Spawned: BuffSize at (16, 13)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] eval @ step 40000: win_rate=0.00 loss_rate=1.00 draw_rate=0.00 mean_margin=-69.83 candidate_idle/1k=0.0 candidate_blocked/1k=0.5
+           objectives (candidate vs opponent): approach_battery=+0.0164/+0.0345 pickups/1k=3.2/8.4 deliveries/1k=2.6/7.6 cargo_lost/1k=0.5/0.0 | by side: margin=-84.3/-55.3 blocked/1k=0.4/0.6
+Unit dead
+Special Item Spawned: DebuffSize at (20, 12)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (7) dead
+Unit (1) dead
+Special Item Spawned: BuffSize at (7, 12)
+Unit (1) dead
+Unit (7) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit dead
+Unit (6) dead
+Unit (1) dead
+Special Item Spawned: BuffSpeed at (6, 5)
+Unit dead
+Unit dead
+Unit (6) dead
+Unit (1) dead
+Unit dead
+Unit (6) dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (7) dead
+Unit (8) dead
+Unit (6) dead
+Special Item Spawned: BuffSize at (19, 22)
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (7) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Unit (1) dead
+Unit (6) dead
+Unit (1) dead
+Special Item Spawned: BuffSize at (15, 13)
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (13, 2)
+Unit (5) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSize at (5, 6)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (22, 12)
+Unit (5) dead
+Unit (5) dead
+Unit (5) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Unit (5) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (4) dead
+Unit (6) dead
+Unit (2) dead
+Special Item Spawned: DebuffSpeed at (16, 11)
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSpeed at (3, 12)
+Unit (7) dead
+Unit (1) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit dead
+Special Item Spawned: BuffSize at (15, 2)
+Unit dead
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (13, 19)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Unit (8) dead
+Unit (5) dead
+Unit (1) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Unit (6) dead
+Special Item Spawned: BuffSpeed at (20, 8)
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (5) dead
+Unit (8) dead
+Unit (6) dead
+Special Item Spawned: BuffSpeed at (15, 4)
+Unit (1) dead
+Unit (7) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Unit (2) dead
+Special Item Spawned: BuffSize at (6, 7)
+Unit (1) dead
+Unit (6) dead
+Unit (6) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Unit (6) dead
+Special Item Spawned: BuffSpeed at (22, 5)
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Unit (1) dead
+Special Item Spawned: DebuffSize at (20, 19)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Unit (8) dead
+Special Item Spawned: DebuffSpeed at (4, 11)
+Unit (7) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (4) dead
+Special Item Spawned: DebuffSize at (6, 6)
+Unit dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (2) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (15, 5)
+Unit (4) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit dead
+Unit dead
+Special Item Spawned: BuffSize at (21, 12)
+Unit (7) dead
+Unit (6) dead
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (5) dead
+Unit (8) dead
+Special Item Spawned: BuffSize at (2, 12)
+Unit (1) dead
+Unit (6) dead
+Unit (1) dead
+Unit (9) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (4) dead
+Special Item Spawned: DebuffSpeed at (13, 3)
+Unit (4) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (5) dead
+Unit (6) dead
+Unit (1) dead
+Special Item Spawned: DebuffSize at (13, 19)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (1, 14)
+Unit (9) dead
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (12, 3)
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit (6) dead
+Special Item Spawned: DebuffSize at (15, 5)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (13, 7)
+Unit (6) dead
+Unit (8) dead
+Unit (9) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (11, 2)
+Unit dead
+Unit (8) dead
+Unit (1) dead
+Unit (1) dead
+Unit (3) dead
+Unit (1) dead
+Unit (3) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (1) dead
+Unit (3) dead
+Unit (1) dead
+Unit (3) dead
+Unit (1) dead
+Unit (3) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (6) dead
+Special Item Spawned: BuffSpeed at (22, 19)
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (16, 11)
+Unit dead
+Unit (8) dead
+Unit (1) dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Special Item Spawned: BuffSpeed at (10, 17)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] onpolicy collect @ step 40000: self_vs_heuristic=15567 ticks/32 matches, self_play=0 ticks/0 matches (onpolicy buffer rows a/b: self_vs_heuristic=61853/61853) | svh W/L/D=0.00/1.00/0.00 margin=-63.0 env_r/tick=-0.01278 penalty/tick=-0.00825 psi_saturated=0.35 approach_battery=+0.0137/+0.0317 cargo_lost/1k=0.3/0.0
+[offline] step 40000: BBF reset (shrink-and-perturb + re-anneal n_step/gamma)
+[offline] step 41000/200000 (16.3 steps/s) avg_loss=0.0907
+[offline] step 42000/200000 (16.4 steps/s) avg_loss=0.0910
+[offline] step 43000/200000 (16.5 steps/s) avg_loss=0.0901
+[offline] step 44000/200000 (16.5 steps/s) avg_loss=0.0893
+[offline] step 45000/200000 (16.4 steps/s) avg_loss=0.0876
+[checkpoint] saved checkpoints/offline/20260916-221417_24670/step_45000.pt
+[offline] step 46000/200000 (16.4 steps/s) avg_loss=0.0882
+[offline] step 47000/200000 (16.5 steps/s) avg_loss=0.0806
+[offline] step 48000/200000 (16.6 steps/s) avg_loss=0.0869
+[offline] step 49000/200000 (16.6 steps/s) avg_loss=0.0876
+[offline] step 50000/200000 (16.7 steps/s) avg_loss=0.0861
+[checkpoint] saved checkpoints/offline/20260916-221417_24670/step_50000.pt
+Unit (2) dead
+Unit dead
+Special Item Spawned: BuffSize at (8, 8)
+Unit dead
+Unit dead
+Unit dead
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (4) dead
+Unit (3) dead
+Special Item Spawned: BuffSize at (9, 8)
+Unit (1) dead
+Unit (6) dead
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (21, 5)
+Unit (2) dead
+Unit (1) dead
+Unit (4) dead
+Unit dead
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (5) dead
+Unit (5) dead
+Special Item Spawned: DebuffSpeed at (14, 1)
+Unit (7) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (15, 19)
+Unit (6) dead
+Unit (2) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (8) dead
+Unit (7) dead
+Special Item Spawned: BuffSize at (4, 10)
+Unit (5) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] eval @ step 50000: win_rate=0.00 loss_rate=1.00 draw_rate=0.00 mean_margin=-81.17 candidate_idle/1k=0.0 candidate_blocked/1k=0.6
+           objectives (candidate vs opponent): approach_battery=+0.0157/+0.0357 pickups/1k=3.0/8.2 deliveries/1k=2.5/7.1 cargo_lost/1k=0.4/0.0 | by side: margin=-85.7/-76.7 blocked/1k=0.6/0.6
+Unit dead
+Special Item Spawned: BuffSpeed at (17, 15)
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (5) dead
+Special Item Spawned: BuffSpeed at (18, 19)
+Unit (6) dead
+Unit (5) dead
+Unit (7) dead
+Unit (1) dead
+Unit (1) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSize at (19, 9)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (12, 19)
+Unit (6) dead
+Unit (1) dead
+Unit (1) dead
+Unit (6) dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Unit (1) dead
+Unit (7) dead
+Unit (9) dead
+Special Item Spawned: BuffSpeed at (5, 15)
+Unit (7) dead
+Unit (6) dead
+Unit (1) dead
+Unit (9) dead
+Unit (6) dead
+Unit (1) dead
+Unit (6) dead
+Unit (7) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (1) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Special Item Spawned: BuffSize at (15, 6)
+Unit (6) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit (4) dead
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Special Item Spawned: DebuffSpeed at (2, 12)
+Unit dead
+Unit dead
+Unit dead
+Unit (6) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (6) dead
+Unit (5) dead
+Unit (5) dead
+Special Item Spawned: BuffSpeed at (11, 4)
+Unit (7) dead
+Unit (5) dead
+Unit (5) dead
+Unit (5) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (2) dead
+Unit (3) dead
+Unit (2) dead
+Unit (3) dead
+Special Item Spawned: BuffSpeed at (16, 11)
+Unit (2) dead
+Unit (3) dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (5) dead
+Special Item Spawned: DebuffSpeed at (21, 20)
+Unit (1) dead
+Unit (6) dead
+Unit (1) dead
+Unit (1) dead
+Unit (8) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (1) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (4) dead
+Unit dead
+Unit (1) dead
+Unit (3) dead
+Special Item Spawned: DebuffSize at (12, 21)
+Unit dead
+Unit dead
+Unit dead
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSpeed at (22, 20)
+Unit (9) dead
+Unit (5) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Special Item Spawned: BuffSpeed at (15, 6)
+Unit dead
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (2) dead
+Unit (6) dead
+Unit (8) dead
+Unit (5) dead
+Special Item Spawned: BuffSize at (12, 16)
+Unit (5) dead
+Unit (1) dead
+Unit (6) dead
+Unit (3) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (8, 9)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Unit (6) dead
+Special Item Spawned: DebuffSize at (4, 15)
+Unit (1) dead
+Unit (9) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Unit (2) dead
+Special Item Spawned: DebuffSpeed at (21, 20)
+Unit (3) dead
+Unit dead
+Unit (4) dead
+Unit (6) dead
+Unit (1) dead
+Unit dead
+Unit dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (9) dead
+Unit (9) dead
+Special Item Spawned: DebuffSize at (2, 14)
+Unit (1) dead
+Unit (6) dead
+Unit (1) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (2) dead
+Unit (4) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (1) dead
+Special Item Spawned: DebuffSpeed at (3, 6)
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (19, 17)
+Unit (6) dead
+Unit (8) dead
+Unit (6) dead
+Unit (8) dead
+Unit (6) dead
+Unit (8) dead
+Unit (6) dead
+Unit (8) dead
+Unit (6) dead
+Unit (8) dead
+Unit (6) dead
+Unit (8) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (8) dead
+Unit (6) dead
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (3) dead
+Unit (3) dead
+Unit (3) dead
+Unit (8) dead
+Unit (3) dead
+Special Item Spawned: BuffSize at (6, 13)
+Unit (6) dead
+Unit (2) dead
+Unit (3) dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (3) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (6) dead
+Unit (1) dead
+Special Item Spawned: BuffSize at (10, 11)
+Unit (1) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Unit (1) dead
+Special Item Spawned: BuffSize at (22, 18)
+Unit (1) dead
+Unit (6) dead
+Unit (6) dead
+Unit (1) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (7) dead
+Special Item Spawned: DebuffSize at (21, 5)
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (3) dead
+Unit (2) dead
+Special Item Spawned: BuffSpeed at (12, 16)
+Unit dead
+Unit (3) dead
+Unit dead
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (15, 20)
+Unit (5) dead
+Unit (1) dead
+Unit (8) dead
+Unit (5) dead
+Unit (1) dead
+Unit (8) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (1) dead
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Unit (1) dead
+Unit (6) dead
+Unit (1) dead
+Special Item Spawned: BuffSize at (3, 17)
+Unit dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (6) dead
+Unit (5) dead
+Special Item Spawned: DebuffSpeed at (5, 4)
+Unit (7) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit dead
+Special Item Spawned: DebuffSize at (7, 20)
+Unit (4) dead
+Unit (3) dead
+Unit (6) dead
+Unit (1) dead
+Unit (6) dead
+Unit (1) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (3) dead
+Unit dead
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (7) dead
+Special Item Spawned: BuffSize at (17, 11)
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit dead
+Special Item Spawned: DebuffSize at (10, 9)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (22, 22)
+Unit (1) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] onpolicy collect @ step 50000: self_vs_heuristic=15331 ticks/32 matches, self_play=0 ticks/0 matches (onpolicy buffer rows a/b: self_vs_heuristic=77184/77184) | svh W/L/D=0.00/1.00/0.00 margin=-68.9 env_r/tick=-0.01297 penalty/tick=-0.00266 psi_saturated=0.31 approach_battery=+0.0132/+0.0348 cargo_lost/1k=0.5/0.0
+[offline] step 51000/200000 (16.1 steps/s) avg_loss=0.1040
+/Users/mac/.local/share/uv/python/cpython-3.10.12-macos-aarch64-none/lib/python3.10/multiprocessing/resource_tracker.py:224: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+Thread 0x16e21f000 may have been prematurely finalized
+[Physics::Module] Cleanup current backend.
+[Physics::Module] Id: 0xf2b8ea05
+Input System module state changed to: ShutdownInProgress.
+Input Polling Thread exited.
+Input System module state changed to: Shutdown.
+Thread 0x16cadb000 may have been prematurely finalized
+Thread 0x16ca4f000 may have been prematurely finalized
+Thread 0x16cb67000 may have been prematurely finalized
+Thread 0x16cc7f000 may have been prematurely finalized
+Thread 0x16cbf3000 may have been prematurely finalized
+CodeReloadManager destroyed
+GarbageCollector disposing of ComputeBuffer. Please use ComputeBuffer.Release() or .Dispose() to manually release the buffer.

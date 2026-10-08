@@ -1,0 +1,114 @@
+{
+ "strategic_v1": {
+  "wins": 10,
+  "losses": 0,
+  "draws": 0,
+  "win_rate": 1.0,
+  "mean_margin": 47.0
+ },
+ "strategic_v2": {
+  "wins": 7,
+  "losses": 3,
+  "draws": 0,
+  "win_rate": 0.7,
+  "mean_margin": 31.8
+ },
+ "strategic_v3": {
+  "wins": 10,
+  "losses": 0,
+  "draws": 0,
+  "win_rate": 1.0,
+  "mean_margin": 55.2
+ },
+ "strategic_v4": {
+  "wins": 10,
+  "losses": 0,
+  "draws": 0,
+  "win_rate": 1.0,
+  "mean_margin": 50.3
+ },
+ "strategic_v5": {
+  "wins": 10,
+  "losses": 0,
+  "draws": 0,
+  "win_rate": 1.0,
+  "mean_margin": 39.8
+ },
+ "strategic_v6": {
+  "wins": 10,
+  "losses": 0,
+  "draws": 0,
+  "win_rate": 1.0,
+  "mean_margin": 48.8
+ },
+ "strategic_v7": {
+  "wins": 9,
+  "losses": 1,
+  "draws": 0,
+  "win_rate": 0.9,
+  "mean_margin": 39.3
+ },
+ "strategic_v8": {
+  "wins": 9,
+  "losses": 1,
+  "draws": 0,
+  "win_rate": 0.9,
+  "mean_margin": 39.3
+ },
+ "strategic_v9": {
+  "wins": 9,
+  "losses": 1,
+  "draws": 0,
+  "win_rate": 0.9,
+  "mean_margin": 43.7
+ },
+ "strategic_v10": {
+  "wins": 10,
+  "losses": 0,
+  "draws": 0,
+  "win_rate": 1.0,
+  "mean_margin": 54.1
+ },
+ "strategic_v11": {
+  "wins": 9,
+  "losses": 1,
+  "draws": 0,
+  "win_rate": 0.9,
+  "mean_margin": 49.4
+ },
+ "strategic_v12": {
+  "wins": 9,
+  "losses": 1,
+  "draws": 0,
+  "win_rate": 0.9,
+  "mean_margin": 39.3
+ },
+ "strategic_v13": {
+  "wins": 10,
+  "losses": 0,
+  "draws": 0,
+  "win_rate": 1.0,
+  "mean_margin": 50.1
+ },
+ "strategic_v14": {
+  "wins": 10,
+  "losses": 0,
+  "draws": 0,
+  "win_rate": 1.0,
+  "mean_margin": 51.6
+ },
+ "strategic_v15": {
+  "wins": 9,
+  "losses": 1,
+  "draws": 0,
+  "win_rate": 0.9,
+  "mean_margin": 45.3
+ },
+ "strategic_v16": {
+  "wins": 10,
+  "losses": 0,
+  "draws": 0,
+  "win_rate": 1.0,
+  "mean_margin": 59.9
+ }
+}

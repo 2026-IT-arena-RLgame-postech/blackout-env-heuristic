@@ -1,0 +1,8 @@
+candidate                                  inference opponent                                       n  margin   ±se   win H<30s H<60s H<120 Ca<60 end_s  agree deliv/1k  rev/1k die/1k @base camped
+teacher:act:strategic_v21_anyangle_ed      -         strategic_v17                                 48   +54.3   4.9  0.92   2.0   2.9   3.0   1.0    98    nan      1.6      28   0.76  0.31   0.07
+teacher:act:strategic_v21_anyangle_ed      -         strategic_v19                                 48   +40.9   5.9  0.79   1.5   1.2   1.8   0.9   103    nan      1.5      44   2.02  0.41   0.17
+teacher:act:strategic_v21_anyangle_ed      -         strategic_v21                                 48   +39.3   5.8  0.81   1.8   1.9   1.4   0.9    77    nan      1.9      77   3.79  0.67   0.46
+teacher:act:strategic_v21_anyangle_ed      -         strategic_v21_anyangle                        48    +2.4   9.2  0.58   1.2   1.7   2.0   0.9    48    nan      2.5      34   4.88  0.65   0.39
+teacher:act:strategic_v21_anyangle_ed      -         strategic_v4                                  48   +59.4   3.0  0.98   2.3   3.0   2.9   0.9    48    nan      3.4      30   1.18  0.19   0.03
+
+paired gap (candidate - teacher)           inference opponent                                     seeds     gap   ±se

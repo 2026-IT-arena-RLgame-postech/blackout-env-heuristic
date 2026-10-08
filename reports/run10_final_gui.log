@@ -1,0 +1,58 @@
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+seed=101 TeamA: ticks=509 margin=-3 blocked=0.000
+seed=101 TeamB: ticks=439 margin=-69 blocked=0.180
+seed=202 TeamA: ticks=600 margin=-78 blocked=0.024
+seed=202 TeamB: ticks=889 margin=-70 blocked=0.009
+seed=303 TeamA: ticks=501 margin=-73 blocked=0.000
+seed=303 TeamB: ticks=540 margin=-85 blocked=0.000
+
+=== scoring pipeline (model vs the heuristic it is playing) ===
+metric                                  model     opponent
+carry_frac                             0.2292       0.3285
+pickups_per_1000_ticks                 3.5653       7.2455
+deliveries_per_1000_ticks              2.7602       6.6130
+cargo_lost_per_1000_ticks              0.6325       0.0000
+delivery_rate                          0.7742       0.9127
+approach_battery                       0.0166       0.0350
+approach_storage                       0.0349       0.0776
+
+=== by side (the canonical team frame should make these match) ===
+TeamA: margin=  -51.3  blocked=0.009  approach_battery=+0.0099  pickups/1k=3.23
+TeamB: margin=  -74.7  blocked=0.047  approach_battery=+0.0224  pickups/1k=3.85
+
+=== why a unit is standing still (see train/stall_monitor.py) ===
+  empty-handed, parked on a storage tile              0.000
+  carrying, at a storage that cannot take it         34.100
+    ...of those, at the spawn storage                 1.000
+    ...of those, another storage had room             1.000
+  failed moves into a wall                           29.155
+    ...of those, a sidestep would have cleared it     0.483

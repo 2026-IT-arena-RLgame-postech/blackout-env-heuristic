@@ -1,0 +1,118 @@
+indexing shards ...
+  17926 shards; 2887 chosen, 11 classes: ['checkpoint', 'v1', 'v14', 'v15', 'v16', 'v17', 'v18', 'v19', 'v2', 'v4fam', 'v5']
+  train 2305 / test 582 matches; forward-filled grid points 0.2%
+probe stateless ...
+    [stateless] step 100/1500 loss 2.213  5s
+    [stateless] step 200/1500 loss 1.751  10s
+    [stateless] step 300/1500 loss 1.567  14s
+    [stateless] step 400/1500 loss 1.476  19s
+    [stateless] step 500/1500 loss 1.416  23s
+    [stateless] step 600/1500 loss 1.341  28s
+    [stateless] step 700/1500 loss 1.327  32s
+    [stateless] step 800/1500 loss 1.278  37s
+    [stateless] step 900/1500 loss 1.227  41s
+    [stateless] step 1000/1500 loss 1.183  45s
+    [stateless] step 1100/1500 loss 1.170  49s
+    [stateless] step 1200/1500 loss 1.129  52s
+    [stateless] step 1300/1500 loss 1.104  56s
+    [stateless] step 1400/1500 loss 1.112  60s
+    [stateless] step 1500/1500 loss 1.093  64s
+    {'2': 0.352, '5': 0.418, '10': 0.402, '20': 0.406, '30': 0.427, '45': 0.433, '60': 0.404}
+probe gru ...
+    [gru] step 100/1500 loss 2.164  9s
+    [gru] step 200/1500 loss 1.409  18s
+    [gru] step 300/1500 loss 0.976  28s
+    [gru] step 400/1500 loss 0.694  37s
+    [gru] step 500/1500 loss 0.494  46s
+    [gru] step 600/1500 loss 0.371  55s
+    [gru] step 700/1500 loss 0.270  64s
+    [gru] step 800/1500 loss 0.191  73s
+    [gru] step 900/1500 loss 0.133  82s
+    [gru] step 1000/1500 loss 0.110  92s
+    [gru] step 1100/1500 loss 0.099  101s
+    [gru] step 1200/1500 loss 0.088  111s
+    [gru] step 1300/1500 loss 0.086  120s
+    [gru] step 1400/1500 loss 0.084  129s
+    [gru] step 1500/1500 loss 0.083  138s
+    {'2': 0.39, '5': 0.51, '10': 0.617, '20': 0.666, '30': 0.67, '45': 0.713, '60': 0.727}
+probe kda ...
+    [kda] step 100/1500 loss 1.980  10s
+    [kda] step 200/1500 loss 1.225  20s
+    [kda] step 300/1500 loss 0.723  30s
+    [kda] step 400/1500 loss 0.397  40s
+    [kda] step 500/1500 loss 0.272  51s
+    [kda] step 600/1500 loss 0.177  61s
+    [kda] step 700/1500 loss 0.114  71s
+    [kda] step 800/1500 loss 0.074  82s
+    [kda] step 900/1500 loss 0.058  92s
+    [kda] step 1000/1500 loss 0.048  102s
+    [kda] step 1100/1500 loss 0.044  113s
+    [kda] step 1200/1500 loss 0.040  123s
+    [kda] step 1300/1500 loss 0.037  134s
+    [kda] step 1400/1500 loss 0.035  144s
+    [kda] step 1500/1500 loss 0.036  155s
+    {'2': 0.369, '5': 0.514, '10': 0.569, '20': 0.591, '30': 0.612, '45': 0.66, '60': 0.677}
+probe tm ...
+    [tm] step 100/1000 loss 2.070  94s
+    [tm] step 200/1000 loss 1.426  186s
+    [tm] step 300/1000 loss 1.278  279s
+    [tm] step 400/1000 loss 1.094  369s
+    [tm] step 500/1000 loss 0.916  458s
+    [tm] step 600/1000 loss 0.792  546s
+    [tm] step 700/1000 loss 0.601  638s
+    [tm] step 800/1000 loss 0.437  731s
+    [tm] step 900/1000 loss 0.363  823s
+    [tm] step 1000/1000 loss 0.330  916s
+    {'2': 0.34, '5': 0.543, '10': 0.579, '20': 0.654, '30': 0.637, '45': 0.713, '60': 0.658}
+probe raw_stateless ...
+    [raw_stateless] step 100/1500 loss 2.329  0s
+    [raw_stateless] step 200/1500 loss 2.045  1s
+    [raw_stateless] step 300/1500 loss 1.910  1s
+    [raw_stateless] step 400/1500 loss 1.851  2s
+    [raw_stateless] step 500/1500 loss 1.804  2s
+    [raw_stateless] step 600/1500 loss 1.756  3s
+    [raw_stateless] step 700/1500 loss 1.745  3s
+    [raw_stateless] step 800/1500 loss 1.722  3s
+    [raw_stateless] step 900/1500 loss 1.698  4s
+    [raw_stateless] step 1000/1500 loss 1.680  4s
+    [raw_stateless] step 1100/1500 loss 1.687  5s
+    [raw_stateless] step 1200/1500 loss 1.654  5s
+    [raw_stateless] step 1300/1500 loss 1.643  6s
+    [raw_stateless] step 1400/1500 loss 1.652  6s
+    [raw_stateless] step 1500/1500 loss 1.656  6s
+    {'2': 0.225, '5': 0.297, '10': 0.34, '20': 0.339, '30': 0.333, '45': 0.351, '60': 0.348}
+probe raw_gru ...
+    [raw_gru] step 100/1500 loss 2.294  7s
+    [raw_gru] step 200/1500 loss 1.855  14s
+    [raw_gru] step 300/1500 loss 1.552  21s
+    [raw_gru] step 400/1500 loss 1.403  27s
+    [raw_gru] step 500/1500 loss 1.258  34s
+    [raw_gru] step 600/1500 loss 1.142  41s
+    [raw_gru] step 700/1500 loss 1.027  48s
+    [raw_gru] step 800/1500 loss 0.919  55s
+    [raw_gru] step 900/1500 loss 0.844  62s
+    [raw_gru] step 1000/1500 loss 0.753  69s
+    [raw_gru] step 1100/1500 loss 0.700  76s
+    [raw_gru] step 1200/1500 loss 0.626  84s
+    [raw_gru] step 1300/1500 loss 0.591  91s
+    [raw_gru] step 1400/1500 loss 0.593  98s
+    [raw_gru] step 1500/1500 loss 0.573  105s
+    {'2': 0.258, '5': 0.414, '10': 0.519, '20': 0.576, '30': 0.627, '45': 0.642, '60': 0.658}
+probe raw_kda ...
+    [raw_kda] step 100/1500 loss 2.021  8s
+    [raw_kda] step 200/1500 loss 1.455  15s
+    [raw_kda] step 300/1500 loss 1.210  22s
+    [raw_kda] step 400/1500 loss 1.004  30s
+    [raw_kda] step 500/1500 loss 0.852  37s
+    [raw_kda] step 600/1500 loss 0.703  44s
+    [raw_kda] step 700/1500 loss 0.577  52s
+    [raw_kda] step 800/1500 loss 0.469  59s
+    [raw_kda] step 900/1500 loss 0.368  66s
+    [raw_kda] step 1000/1500 loss 0.298  73s
+    [raw_kda] step 1100/1500 loss 0.251  81s
+    [raw_kda] step 1200/1500 loss 0.196  88s
+    [raw_kda] step 1300/1500 loss 0.178  95s
+    [raw_kda] step 1400/1500 loss 0.162  102s
+    [raw_kda] step 1500/1500 loss 0.160  109s
+    {'2': 0.297, '5': 0.438, '10': 0.533, '20': 0.594, '30': 0.618, '45': 0.642, '60': 0.677}
+wrote reports/opponent_id_probe/summary.md, results.json  (1513s)

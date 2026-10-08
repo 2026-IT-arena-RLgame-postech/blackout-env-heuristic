@@ -1,0 +1,44 @@
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+30437_59475/step_80000 vs V4: margin -77.6 (-74, -77, -74, -79, -85, -84, -70, -85, -80, -68)
+  on own states vs shadow v17 other : same 32.0%  45 12.4%  >=90 55.7%  (n=24974)
+  on own states vs shadow v17 hunter: same 34.5%  45 13.0%  >=90 52.4%  (n=8846)
+  on own states vs shadow v4  other : same 31.3%  45 13.0%  >=90 55.7%  (n=24974)
+  on own states vs shadow v4  hunter: same 30.6%  45 15.6%  >=90 53.8%  (n=8846)
+  lineup collector/hunter/carrier: [2.84 1.31 0.85]
+  30437_59475/step_80000
+    hunter reversal  wall 1:  66.0% (n=6917)  wall 2:  42.2% (n=1835)  wall 3:  11.1% (n=72)  wall 4+:   0.0% (n=0)
+    other  reversal  wall 1:  20.8% (n=15129)  wall 2:   8.1% (n=6449)  wall 3:   0.1% (n=3104)  wall 4+:   0.0% (n=0)
+    deliveries 68: spawn storage 46%, other 54% | own storage clusters per match 5.0
+  V4
+    hunter reversal  wall 1:  21.1% (n=3225)  wall 2:  25.3% (n=2363)  wall 3:  18.9% (n=175)  wall 4+:   0.0% (n=0)
+    other  reversal  wall 1:   9.3% (n=15349)  wall 2:  12.4% (n=8989)  wall 3:  13.1% (n=3606)  wall 4+:   0.0% (n=0)
+    deliveries 202: spawn storage 28%, other 72% | own storage clusters per match 5.0

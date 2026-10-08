@@ -1,0 +1,13 @@
+candidate                                  inference opponent                                       n  margin   ±se   win H<30s H<60s H<120 Ca<60 end_s  agree deliv/1k  rev/1k die/1k @base camped
+d9/latest.pt                               iqn       ckpt-frozen-d6_v42                            24   +42.4   8.8  0.79   1.8   2.1   2.3   0.8    42   0.85      3.6     117   3.45  0.54   0.29
+d9/latest.pt                               iqn       ckpt-frozen-p5a_v22                           24   -17.2  11.0  0.33   1.0   0.8   1.5   0.6    51   0.85      2.3     110   6.50  0.68   0.57
+frozen/p5a_v22.pt                          iqn       ckpt-frozen-d6_v42                            24   +42.2   9.3  0.79   1.8   1.5   1.8   0.8    40   0.84      3.9      92   4.03  0.60   0.34
+frozen/p5a_v22.pt                          iqn       ckpt-frozen-p5a_v22                           24    +0.0  10.9  0.50   1.2   1.7   2.0   0.8    60   0.84      2.4     149   5.25  0.65   0.42
+teacher:act:strategic_v21_anyangle         -         ckpt-frozen-d6_v42                            24   +17.4  11.3  0.58   1.5   2.0   1.4   0.7    58    nan      2.3     129   4.26  0.64   0.50
+teacher:act:strategic_v21_anyangle         -         ckpt-frozen-p5a_v22                           24   -29.5   9.7  0.25   1.0   1.2   1.5   0.8    55    nan      2.0      73   5.58  0.68   0.51
+
+paired gap (candidate - teacher)           inference opponent                                     seeds     gap   ±se
+d9/latest.pt                               iqn       ckpt-frozen-d6_v42                              12   +25.0  11.1
+d9/latest.pt                               iqn       ckpt-frozen-p5a_v22                             12   +12.4  10.0
+frozen/p5a_v22.pt                          iqn       ckpt-frozen-d6_v42                              12   +24.9  12.5
+frozen/p5a_v22.pt                          iqn       ckpt-frozen-p5a_v22                             12   +29.5   8.6

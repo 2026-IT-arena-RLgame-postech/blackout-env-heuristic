@@ -1,0 +1,6 @@
+strategic_v21_anyangle vs strategic_v17: 48 games
+W-L-D 45-3-0  margin +47.5 +- 4.9 (SE)
+seed-paired margin +47.5 +- 5.3 (SE over 24 seeds)
+  strategic_v21_anyangle   deliveries/game 19.9+-0.8  /1000 steps 16.84+-1.51  first 40+-2  tiles/dlv 30.3+-4.3  deaths 6.6+-0.9  speed eff collector 0.988 hunter 1.011 carrier 0.963
+  strategic_v17            deliveries/game 9.9+-0.6  /1000 steps 7.80+-0.79  first 45+-2  tiles/dlv 240.6+-45.0  deaths 419.8+-86.4  speed eff collector 0.972 hunter 0.997 carrier 1.000
+  any-angle moves: approach 3.2%, evade_8dir 8.9%, fallback 1.2%, hunt 5.3%, path 81.4%

@@ -1,0 +1,171 @@
+matches: diverse 1000, matchups 480, v17_variants 360
+diverse split: fit 800, holdout 200
+
+fit: start objective 0.4473
+  sweep 0 steal_hazard=0.3: 0.4566
+  sweep 0 steal_hazard=0.6: 0.4726
+  sweep 0 carry_hazard=0.3: 0.4898
+  sweep 0 carry_hazard=0.6: 0.5120
+  sweep 0 lambda_rho=0.8: 0.5854
+  sweep 0 lambda_rho=0.95: 0.6119
+  sweep 0 lambda_length=6.0: 0.6449
+  sweep 0 hunt_beta=0.8: 0.6491
+  sweep 0 hunt_beta=0.95: 0.6511
+  sweep 0 hunt_length=8.0: 0.6639
+  sweep 0 exit_value=15.0: 0.6887
+  sweep 0 exit_value=30.0: 0.7107
+  sweep 0 exit_value=45.0: 0.7208
+  sweep 0 exit_value=60.0: 0.7245
+  sweep 0 exit_length=5.0: 0.7300
+  sweep 0 travel_value=1.5: 0.7379
+  sweep 0 travel_value=3.0: 0.7399
+  sweep 0 travel_cap_seconds=5.0: 0.7410
+  sweep 0 hunter_value=10.0: 0.7540
+  sweep 0 hunter_value=15.0: 0.7572
+  sweep 0 carrier_value=10.0: 0.7575
+  sweep 1 lambda_rho=0.8: 0.7578
+  sweep 1 exit_value=15.0: 0.7593
+  sweep 1 exit_value=30.0: 0.7607
+  sweep 1 travel_value=0.0: 0.7627
+  sweep 1 travel_value=0.5: 0.7640
+  sweep 1 travel_value=1.5: 0.7642
+fit: best objective 0.7642
+{"initial_battery_total": 200.0, "steal_hazard": 0.6, "carry_hazard": 0.6, "lambda_rho": 0.8, "lambda_length": 6.0, "hunt_beta": 0.95, "hunt_length": 8.0, "exit_value": 30.0, "exit_length": 5.0, "class_value": [0.0, 15.0, 10.0], "travel_value": 1.5, "travel_cap_seconds": 5.0}
+
+----- diverse fit set (800 matches) -----
+
+E3 predicting the 64 s score difference (r) / winner (AUC) from the state at t
+  r              2s      5s     10s     15s     20s     30s     40s
+    displayed score diff     0.080  -0.044  -0.002   0.280   0.724   0.845   0.938
+    old Psi                  0.060  -0.133  -0.001   0.297   0.725   0.845   0.928
+    v2 default               0.120   0.058   0.130   0.435   0.756   0.857   0.931
+    v2 fitted (previous)     0.118   0.525   0.670   0.779   0.870   0.900   0.932
+    v2 fitted                0.109   0.567   0.697   0.790   0.869   0.898   0.929
+  auc            2s      5s     10s     15s     20s     30s     40s
+    displayed score diff     0.545   0.451   0.462   0.605   0.859   0.933   0.990
+    old Psi                  0.517   0.406   0.468   0.630   0.861   0.938   0.988
+    v2 default               0.563   0.501   0.530   0.688   0.879   0.939   0.987
+    v2 fitted (previous)     0.557   0.764   0.834   0.903   0.956   0.973   0.996
+    v2 fitted                0.548   0.793   0.857   0.916   0.957   0.973   0.996
+  partial_r      2s      5s     10s     15s     20s     30s     40s
+    displayed score diff     0.000   0.000   0.000   0.000   0.000   0.000   0.000
+    old Psi                 -0.017  -0.256   0.003   0.103   0.158   0.309   0.189
+    v2 default               0.096   0.293   0.342   0.562   0.353   0.279  -0.056
+    v2 fitted (previous)     0.088   0.566   0.685   0.768   0.700   0.584   0.227
+    v2 fitted                0.074   0.575   0.698   0.770   0.700   0.583   0.243
+  objective (mean r 5-30 s): v2 default 0.4473, v2 fitted (previous) 0.7486, v2 fitted 0.7642
+
+----- diverse holdout (200 matches) -----
+
+E3 predicting the 64 s score difference (r) / winner (AUC) from the state at t
+  r              2s      5s     10s     15s     20s     30s     40s
+    displayed score diff     0.024  -0.089   0.004   0.286   0.709   0.806   0.910
+    old Psi                  0.046  -0.207   0.003   0.308   0.719   0.812   0.919
+    v2 default               0.056   0.019   0.150   0.439   0.744   0.825   0.905
+    v2 fitted (previous)     0.067   0.478   0.672   0.755   0.867   0.886   0.916
+    v2 fitted                0.074   0.527   0.703   0.759   0.868   0.886   0.914
+  auc            2s      5s     10s     15s     20s     30s     40s
+    displayed score diff     0.507   0.447   0.498   0.624   0.850   0.904   0.985
+    old Psi                  0.502   0.388   0.494   0.644   0.849   0.913   0.986
+    v2 default               0.502   0.495   0.558   0.697   0.877   0.920   0.984
+    v2 fitted (previous)     0.497   0.742   0.830   0.890   0.948   0.966   0.995
+    v2 fitted                0.507   0.776   0.845   0.894   0.950   0.965   0.994
+  partial_r      2s      5s     10s     15s     20s     30s     40s
+    displayed score diff     0.000   0.000   0.000   0.000   0.000   0.000   0.000
+    old Psi                  0.050  -0.332  -0.003   0.118   0.193   0.276   0.346
+    v2 default               0.071   0.294   0.356   0.552   0.375   0.318   0.012
+    v2 fitted (previous)     0.077   0.529   0.686   0.733   0.709   0.621   0.320
+    v2 fitted                0.097   0.541   0.703   0.734   0.714   0.627   0.323
+  objective (mean r 5-30 s): v2 default 0.4353, v2 fitted (previous) 0.7316, v2 fitted 0.7486
+
+===== v2 default =====
+
+E4 matchups: candidate mean X(t) (points) and win rate
+  label              games   win   exp      2s      5s     10s     15s     20s     30s     40s
+  v17-vs-v1..16        360   97%   94%     1.7    -1.9     1.7    15.3    31.8    42.8    50.6
+  v18-vs-v17            60   76%   78%    -0.8    -5.6    -8.6    -6.3    -1.3     6.5    19.2
+  v19-vs-v18            60   60%   72%    -0.3     4.3     8.5     7.9     6.4     7.2    10.6
+  rank correlation (win rate vs X at 10s): -0.50
+  rank correlation (win rate vs X at 20s): +0.50
+  rank correlation (win rate vs X at 30s): +0.50
+
+E5 V17 variants (findings §3.1 win rates vs V1-V16): candidate mean X(t) (points) and win rate
+  label              games   win   exp      2s      5s     10s     15s     20s     30s     40s
+  quota0-mixed          60   50%   50%     2.9     6.6     7.7     4.4    -0.1     1.2    -1.4
+  quota1-mixed          60   62%   66%     2.2     3.5     3.7     5.3     7.4    15.5    15.2
+  quota2-mixed          60   95%   86%     2.7     5.3     9.0    19.9    36.6    45.7    46.2
+  quota3-camp           60   45%   53%     1.2    -2.7    -3.5   -15.5   -22.9   -16.9   -12.3
+  quota3-hunt           60   83%   86%     1.3    -0.2    -0.3    10.0    15.9    23.2    30.0
+  quota3-mixed          60   97%   96%     1.3    -0.0     0.2    12.1    29.4    38.7    45.6
+  rank correlation (win rate vs X at 10s): +0.31
+  rank correlation (win rate vs X at 20s): +0.94
+  rank correlation (win rate vs X at 30s): +0.94
+
+===== v2 fitted (previous) =====
+
+E4 matchups: candidate mean X(t) (points) and win rate
+  label              games   win   exp      2s      5s     10s     15s     20s     30s     40s
+  v17-vs-v1..16        360   97%   94%     0.9    12.9    33.4    45.5    57.6    57.8    62.5
+  v18-vs-v17            60   76%   78%    -0.4     1.5     8.4    15.9    21.0    27.6    35.3
+  v19-vs-v18            60   60%   72%    -0.5    11.3    14.1    12.9    15.9    17.4    21.5
+  rank correlation (win rate vs X at 10s): +0.50
+  rank correlation (win rate vs X at 20s): +1.00
+  rank correlation (win rate vs X at 30s): +1.00
+
+E5 V17 variants (findings §3.1 win rates vs V1-V16): candidate mean X(t) (points) and win rate
+  label              games   win   exp      2s      5s     10s     15s     20s     30s     40s
+  quota0-mixed          60   50%   50%     2.3     1.8    -2.6    -2.1    -4.7    -0.8    -2.5
+  quota1-mixed          60   62%   66%     1.8     1.5     8.0    16.5    15.8    16.7    17.4
+  quota2-mixed          60   95%   86%     2.4    11.7    30.1    41.6    54.9    53.8    53.3
+  quota3-camp           60   45%   53%     0.3    11.1    29.9    17.0     3.1    -0.8     0.9
+  quota3-hunt           60   83%   86%     0.8    13.7    21.0    29.8    31.6    33.3    36.7
+  quota3-mixed          60   97%   96%     0.8    14.7    29.8    41.7    54.4    51.6    55.7
+  rank correlation (win rate vs X at 10s): +0.31
+  rank correlation (win rate vs X at 20s): +0.89
+  rank correlation (win rate vs X at 30s): +0.94
+
+===== v2 fitted =====
+
+E4 matchups: candidate mean X(t) (points) and win rate
+  label              games   win   exp      2s      5s     10s     15s     20s     30s     40s
+  v17-vs-v1..16        360   97%   94%     0.9    18.7    40.7    49.1    61.1    59.2    63.3
+  v18-vs-v17            60   76%   78%    -0.8     4.2    11.4    18.0    23.3    29.0    36.3
+  v19-vs-v18            60   60%   72%    -0.4    11.5    14.2    13.4    17.2    18.4    22.7
+  rank correlation (win rate vs X at 10s): +0.50
+  rank correlation (win rate vs X at 20s): +1.00
+  rank correlation (win rate vs X at 30s): +1.00
+
+E5 V17 variants (findings §3.1 win rates vs V1-V16): candidate mean X(t) (points) and win rate
+  label              games   win   exp      2s      5s     10s     15s     20s     30s     40s
+  quota0-mixed          60   50%   50%     2.6     0.1    -6.9    -6.3    -6.2    -1.5    -2.9
+  quota1-mixed          60   62%   66%     1.9     1.4     7.0    16.3    16.8    16.6    17.5
+  quota2-mixed          60   95%   86%     2.4    13.9    33.3    42.1    57.4    54.7    54.0
+  quota3-camp           60   45%   53%     0.7    16.0    35.6    22.2     6.0     2.1     2.8
+  quota3-hunt           60   83%   86%     0.9    17.9    27.7    33.7    35.9    35.5    37.7
+  quota3-mixed          60   97%   96%     0.8    19.5    35.8    46.5    57.7    52.6    56.1
+  rank correlation (win rate vs X at 10s): +0.43
+  rank correlation (win rate vs X at 20s): +0.94
+  rank correlation (win rate vs X at 30s): +0.89
+
+===== displayed score diff (reference) =====
+
+E4 matchups: candidate mean X(t) (points) and win rate
+  label              games   win   exp      2s      5s     10s     15s     20s     30s     40s
+  v17-vs-v1..16        360   97%     -     2.0    -3.7    -4.0     9.0    28.1    41.6    49.4
+  v18-vs-v17            60   76%     -    -1.4    -7.0   -13.2   -10.6    -3.9     5.4    19.3
+  v19-vs-v18            60   60%     -     0.0     3.2     7.7     7.7     5.3     5.8     9.5
+  rank correlation (win rate vs X at 10s): -0.50
+  rank correlation (win rate vs X at 20s): +0.50
+  rank correlation (win rate vs X at 30s): +0.50
+
+E5 V17 variants: candidate mean X(t) (points) and win rate
+  label              games   win   exp      2s      5s     10s     15s     20s     30s     40s
+  quota0-mixed          60   50%     -     4.1     8.7    15.1     1.5     2.0     0.3    -0.7
+  quota1-mixed          60   62%     -     2.1     4.9     7.1     0.4     8.3    14.8    14.9
+  quota2-mixed          60   95%     -     2.5     5.9     7.2    15.1    33.1    44.6    45.5
+  quota3-camp           60   45%     -     2.0    -3.3    -7.2   -20.7   -23.1   -16.0   -11.0
+  quota3-hunt           60   83%     -     1.8    -0.2    -3.1     6.6    15.5    22.1    29.3
+  quota3-mixed          60   97%     -     0.9    -0.8    -3.3     5.6    26.0    38.3    44.3
+  rank correlation (win rate vs X at 10s): +0.03
+  rank correlation (win rate vs X at 20s): +0.94
+  rank correlation (win rate vs X at 30s): +0.94

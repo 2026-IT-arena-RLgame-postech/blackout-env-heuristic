@@ -1,0 +1,36 @@
+round 1: 18 games | run11 963±158, run13 653±216
+round 2: 36 games | run11 782±139, run13 603±164
+round 3: 54 games | run11 674±129, run13 531±153
+round 4: 72 games | run11 606±126, run13 530±146
+round 5: 90 games | run11 565±123, run13 487±142
+round 6: 108 games | run11 531±121, run13 463±138
+round 7: 126 games | run11 508±118, run13 414±136
+round 8: 144 games | run11 488±117, run13 371±134
+round 9: 162 games | run11 472±115, run13 345±131
+round 10: 180 games | run11 456±114, run13 312±130
+round 11: 198 games | run11 441±113, run13 282±128
+round 12: 216 games | run11 428±112, run13 254±127
+round 13: 234 games | run11 411±112, run13 273±125
+round 14: 252 games | run11 398±111, run13 260±125
+round 15: 270 games | run11 386±110, run13 257±123
+round 16: 288 games | run11 373±110, run13 271±122
+round 17: 306 games | run11 362±110, run13 260±122
+round 18: 324 games | run11 352±109, run13 251±121
+round 19: 342 games | run11 343±109, run13 247±120
+round 20: 360 games | run11 336±108, run13 228±120
+round 21: 378 games | run11 330±108, run13 209±119
+round 22: 396 games | run11 322±107, run13 201±119
+round 23: 414 games | run11 314±107, run13 199±118
+
+final after 414 games (anchors fixed: v1 1192, v14 1220, v2 1314, v5 1317, v6 1390, v3 1456, v4 1500, v12 1542)
+  run11        Elo    314 ± 107
+  run13        Elo    199 ± 118
+  run11 - run13: +115 ± 54 Elo
+
+record (score for the checkpoint, draws half):
+  run11      vs v1          0.0/348
+  run11      vs v2          0.0/8
+  run11      vs run13      31.5/46
+  run13      vs v1          0.0/6
+  run13      vs v2          0.0/6
+  run13      vs run11      14.5/46

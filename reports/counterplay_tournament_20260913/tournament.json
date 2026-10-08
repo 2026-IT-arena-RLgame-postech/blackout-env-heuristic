@@ -1,0 +1,1140 @@
+{
+  "policy_ids": [
+    "v4",
+    "v9",
+    "v10",
+    "v13",
+    "v14",
+    "v15",
+    "v16"
+  ],
+  "seeds": [
+    137180669,
+    152640206,
+    542698207,
+    379349886,
+    230255476
+  ],
+  "n_seeds": 5,
+  "side_swapped": true,
+  "time_scale": 200.0,
+  "workers": 8,
+  "results": [
+    {
+      "row": "v4",
+      "column": "v9",
+      "games": 10,
+      "wins": 0,
+      "losses": 8,
+      "draws": 2,
+      "win_rate": 0.1,
+      "mean_margin": -6.6999997571110725,
+      "paired_margins": [
+        -9.499996900558472,
+        -12.999999523162842,
+        -1.0000020265579224,
+        -5.500000715255737,
+        -4.49999962002039
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 245,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 168,
+          "per_1000_unit_ticks": 0.44200057881028176,
+          "worst_ticks": 13,
+          "incident_ticks": 2184
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 251,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 226,
+          "per_1000_unit_ticks": 0.5945960167328791,
+          "worst_ticks": 13,
+          "incident_ticks": 2936
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {},
+        "mode_share": {},
+        "transitions": 0
+      }
+    },
+    {
+      "row": "v4",
+      "column": "v10",
+      "games": 10,
+      "wins": 3,
+      "losses": 5,
+      "draws": 2,
+      "win_rate": 0.4,
+      "mean_margin": -0.6000000238418579,
+      "paired_margins": [
+        -14.000001549720764,
+        -4.999998211860657,
+        -9.999999403953552,
+        6.000000238418579,
+        19.999998807907104
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 255,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 188,
+          "per_1000_unit_ticks": 0.43769789532501396,
+          "worst_ticks": 19,
+          "incident_ticks": 2445
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 247,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 306,
+          "per_1000_unit_ticks": 0.7124231700502887,
+          "worst_ticks": 13,
+          "incident_ticks": 3974
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {},
+        "mode_share": {},
+        "transitions": 0
+      }
+    },
+    {
+      "row": "v4",
+      "column": "v13",
+      "games": 10,
+      "wins": 5,
+      "losses": 4,
+      "draws": 1,
+      "win_rate": 0.55,
+      "mean_margin": -2.200000286102295,
+      "paired_margins": [
+        20.499999821186066,
+        -18.99999976158142,
+        1.000000536441803,
+        -15.999999642372131,
+        2.499997615814209
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 244,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 226,
+          "per_1000_unit_ticks": 0.47500446630305704,
+          "worst_ticks": 13,
+          "incident_ticks": 2934
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 245,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 215,
+          "per_1000_unit_ticks": 0.4518847798900764,
+          "worst_ticks": 13,
+          "incident_ticks": 2792
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {},
+        "mode_share": {},
+        "transitions": 0
+      }
+    },
+    {
+      "row": "v4",
+      "column": "v14",
+      "games": 10,
+      "wins": 2,
+      "losses": 5,
+      "draws": 3,
+      "win_rate": 0.35,
+      "mean_margin": -0.5999994277954102,
+      "paired_margins": [
+        -1.9999980926513672,
+        -20.500001311302185,
+        11.000001430511475,
+        10.999998450279236,
+        -2.499997615814209
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 245,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 68,
+          "per_1000_unit_ticks": 0.17782426778242677,
+          "worst_ticks": 13,
+          "incident_ticks": 883
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 240,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 48,
+          "per_1000_unit_ticks": 0.12552301255230125,
+          "worst_ticks": 13,
+          "incident_ticks": 624
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {},
+        "mode_share": {},
+        "transitions": 0
+      }
+    },
+    {
+      "row": "v4",
+      "column": "v15",
+      "games": 10,
+      "wins": 5,
+      "losses": 2,
+      "draws": 3,
+      "win_rate": 0.65,
+      "mean_margin": 11.699999794363976,
+      "paired_margins": [
+        9.000000357627869,
+        18.000000715255737,
+        15.999999642372131,
+        -1.9999999552965164,
+        17.499998211860657
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 251,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 108,
+          "per_1000_unit_ticks": 0.32930845225027444,
+          "worst_ticks": 13,
+          "incident_ticks": 1402
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 244,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 208,
+          "per_1000_unit_ticks": 0.6342236858153434,
+          "worst_ticks": 31,
+          "incident_ticks": 2721
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {},
+        "mode_share": {},
+        "transitions": 0
+      }
+    },
+    {
+      "row": "v4",
+      "column": "v16",
+      "games": 10,
+      "wins": 2,
+      "losses": 6,
+      "draws": 2,
+      "win_rate": 0.3,
+      "mean_margin": -7.400000095367432,
+      "paired_margins": [
+        -1.9999980926513672,
+        -6.999999284744263,
+        -9.000000357627869,
+        -11.000001430511475,
+        -8.000001311302185
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 248,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 113,
+          "per_1000_unit_ticks": 0.2640711356227288,
+          "worst_ticks": 13,
+          "incident_ticks": 1468
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 247,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 221,
+          "per_1000_unit_ticks": 0.516457707722328,
+          "worst_ticks": 13,
+          "incident_ticks": 2872
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {},
+        "mode_share": {},
+        "transitions": 0
+      }
+    },
+    {
+      "row": "v9",
+      "column": "v10",
+      "games": 10,
+      "wins": 5,
+      "losses": 3,
+      "draws": 2,
+      "win_rate": 0.6,
+      "mean_margin": -0.6999999284744263,
+      "paired_margins": [
+        12.500002980232239,
+        3.999999165534973,
+        -5.500000715255737,
+        -20.500001311302185,
+        6.000000238418579
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 245,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 158,
+          "per_1000_unit_ticks": 0.3681396134534059,
+          "worst_ticks": 13,
+          "incident_ticks": 2053
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 245,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 251,
+          "per_1000_unit_ticks": 0.5848293859291448,
+          "worst_ticks": 13,
+          "incident_ticks": 3263
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {},
+        "mode_share": {},
+        "transitions": 0
+      }
+    },
+    {
+      "row": "v9",
+      "column": "v13",
+      "games": 10,
+      "wins": 5,
+      "losses": 1,
+      "draws": 4,
+      "win_rate": 0.7,
+      "mean_margin": 3.8999994471669197,
+      "paired_margins": [
+        5.4999977350234985,
+        3.999999165534973,
+        21.50000035762787,
+        -11.500000022351742,
+        0.0
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 240,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 148,
+          "per_1000_unit_ticks": 0.4493631491855293,
+          "worst_ticks": 13,
+          "incident_ticks": 1922
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 250,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 143,
+          "per_1000_unit_ticks": 0.4341819617130452,
+          "worst_ticks": 13,
+          "incident_ticks": 1858
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {},
+        "mode_share": {},
+        "transitions": 0
+      }
+    },
+    {
+      "row": "v9",
+      "column": "v14",
+      "games": 10,
+      "wins": 2,
+      "losses": 4,
+      "draws": 4,
+      "win_rate": 0.4,
+      "mean_margin": -0.7000003010034561,
+      "paired_margins": [
+        -3.0000001192092896,
+        3.4999996423721313,
+        0.0,
+        -2.000001072883606,
+        -1.9999999552965164
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 245,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 44,
+          "per_1000_unit_ticks": 0.15548527307101084,
+          "worst_ticks": 13,
+          "incident_ticks": 572
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 240,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 22,
+          "per_1000_unit_ticks": 0.07774263653550542,
+          "worst_ticks": 13,
+          "incident_ticks": 286
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {},
+        "mode_share": {},
+        "transitions": 0
+      }
+    },
+    {
+      "row": "v9",
+      "column": "v15",
+      "games": 10,
+      "wins": 5,
+      "losses": 1,
+      "draws": 4,
+      "win_rate": 0.7,
+      "mean_margin": 5.2000004053115845,
+      "paired_margins": [
+        3.4999996423721313,
+        21.000000834465027,
+        0.0,
+        1.5000015497207642,
+        0.0
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 246,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 45,
+          "per_1000_unit_ticks": 0.1913061961951323,
+          "worst_ticks": 13,
+          "incident_ticks": 582
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 237,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 152,
+          "per_1000_unit_ticks": 0.6461898182591136,
+          "worst_ticks": 19,
+          "incident_ticks": 1980
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {},
+        "mode_share": {},
+        "transitions": 0
+      }
+    },
+    {
+      "row": "v9",
+      "column": "v16",
+      "games": 10,
+      "wins": 5,
+      "losses": 2,
+      "draws": 3,
+      "win_rate": 0.65,
+      "mean_margin": 6.1000001430511475,
+      "paired_margins": [
+        22.999998927116394,
+        -4.999998211860657,
+        0.0,
+        2.5000005960464478,
+        9.999999403953552
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 247,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 115,
+          "per_1000_unit_ticks": 0.30143377630992635,
+          "worst_ticks": 13,
+          "incident_ticks": 1492
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 248,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 201,
+          "per_1000_unit_ticks": 0.5268538177243061,
+          "worst_ticks": 13,
+          "incident_ticks": 2611
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {},
+        "mode_share": {},
+        "transitions": 0
+      }
+    },
+    {
+      "row": "v10",
+      "column": "v13",
+      "games": 10,
+      "wins": 5,
+      "losses": 5,
+      "draws": 0,
+      "win_rate": 0.5,
+      "mean_margin": -0.10000050067901611,
+      "paired_margins": [
+        8.99999737739563,
+        -11.99999749660492,
+        -2.5000005960464478,
+        8.500000834465027,
+        -3.50000262260437
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 248,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 348,
+          "per_1000_unit_ticks": 0.6627877079544048,
+          "worst_ticks": 13,
+          "incident_ticks": 4520
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 251,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 154,
+          "per_1000_unit_ticks": 0.2933026063936159,
+          "worst_ticks": 13,
+          "incident_ticks": 2001
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {
+          "opening_economy": 89321,
+          "pressure_raid": 4800,
+          "closeout_defend": 10890
+        },
+        "mode_share": {
+          "opening_economy": 0.850587081353382,
+          "pressure_raid": 0.04570949710030378,
+          "closeout_defend": 0.10370342154631419
+        },
+        "transitions": 76
+      }
+    },
+    {
+      "row": "v10",
+      "column": "v14",
+      "games": 10,
+      "wins": 3,
+      "losses": 4,
+      "draws": 3,
+      "win_rate": 0.45,
+      "mean_margin": -2.599999811500311,
+      "paired_margins": [
+        0.4999999888241291,
+        -7.999998331069946,
+        -15.000000596046448,
+        6.499999761581421,
+        3.0000001192092896
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 237,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 85,
+          "per_1000_unit_ticks": 0.22388747678813659,
+          "worst_ticks": 17,
+          "incident_ticks": 1109
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 244,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 91,
+          "per_1000_unit_ticks": 0.23969129867906389,
+          "worst_ticks": 13,
+          "incident_ticks": 1182
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {
+          "opening_economy": 61011,
+          "pressure_raid": 4030,
+          "closeout_defend": 10890
+        },
+        "mode_share": {
+          "opening_economy": 0.8035058144894707,
+          "pressure_raid": 0.05307450185036414,
+          "closeout_defend": 0.14341968366016514
+        },
+        "transitions": 49
+      }
+    },
+    {
+      "row": "v10",
+      "column": "v15",
+      "games": 10,
+      "wins": 1,
+      "losses": 2,
+      "draws": 7,
+      "win_rate": 0.45,
+      "mean_margin": 0.8000004291534424,
+      "paired_margins": [
+        0.0,
+        -1.9999980926513672,
+        -0.9999990463256836,
+        0.0,
+        6.999999284744263
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 240,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 85,
+          "per_1000_unit_ticks": 0.4704710245198428,
+          "worst_ticks": 13,
+          "incident_ticks": 1104
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 245,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 70,
+          "per_1000_unit_ticks": 0.38744672607516467,
+          "worst_ticks": 13,
+          "incident_ticks": 910
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {
+          "opening_economy": 27375,
+          "pressure_raid": 3314,
+          "closeout_defend": 5445
+        },
+        "mode_share": {
+          "opening_economy": 0.757596723307688,
+          "pressure_raid": 0.09171417501522112,
+          "closeout_defend": 0.15068910167709082
+        },
+        "transitions": 50
+      }
+    },
+    {
+      "row": "v10",
+      "column": "v16",
+      "games": 10,
+      "wins": 4,
+      "losses": 5,
+      "draws": 1,
+      "win_rate": 0.45,
+      "mean_margin": -1.5999984741210938,
+      "paired_margins": [
+        34.00000333786011,
+        -11.500000953674316,
+        -10.499998927116394,
+        -2.999997138977051,
+        -16.999998688697815
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 241,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 162,
+          "per_1000_unit_ticks": 0.34097366925554085,
+          "worst_ticks": 13,
+          "incident_ticks": 2106
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 245,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 173,
+          "per_1000_unit_ticks": 0.36412620235313925,
+          "worst_ticks": 13,
+          "incident_ticks": 2247
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {
+          "opening_economy": 79368,
+          "pressure_raid": 4764,
+          "closeout_defend": 10890
+        },
+        "mode_share": {
+          "opening_economy": 0.8352592031319063,
+          "pressure_raid": 0.050135758034981374,
+          "closeout_defend": 0.11460503883311234
+        },
+        "transitions": 70
+      }
+    },
+    {
+      "row": "v13",
+      "column": "v14",
+      "games": 10,
+      "wins": 6,
+      "losses": 0,
+      "draws": 4,
+      "win_rate": 0.8,
+      "mean_margin": 17.899999618530273,
+      "paired_margins": [
+        22.999998927116394,
+        19.499999284744263,
+        30.000001192092896,
+        16.999998688697815,
+        0.0
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 245,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 33,
+          "per_1000_unit_ticks": 0.09972349394859707,
+          "worst_ticks": 13,
+          "incident_ticks": 428
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 243,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 53,
+          "per_1000_unit_ticks": 0.16016197512956498,
+          "worst_ticks": 13,
+          "incident_ticks": 689
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {
+          "harvest": 59842,
+          "raid_window": 6341
+        },
+        "mode_share": {
+          "harvest": 0.9041898977078706,
+          "raid_window": 0.0958101022921294
+        },
+        "transitions": 71
+      }
+    },
+    {
+      "row": "v13",
+      "column": "v15",
+      "games": 10,
+      "wins": 4,
+      "losses": 2,
+      "draws": 4,
+      "win_rate": 0.6,
+      "mean_margin": 2.5,
+      "paired_margins": [
+        -5.500000715255737,
+        -5.500000715255737,
+        13.500002026557922,
+        0.0,
+        9.999999403953552
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 245,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 105,
+          "per_1000_unit_ticks": 0.2766105981374886,
+          "worst_ticks": 19,
+          "incident_ticks": 1370
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 246,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 258,
+          "per_1000_unit_ticks": 0.6796717554235435,
+          "worst_ticks": 19,
+          "incident_ticks": 3354
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {
+          "harvest": 68621,
+          "raid_window": 7298
+        },
+        "mode_share": {
+          "harvest": 0.9038712311806004,
+          "raid_window": 0.09612876881939962
+        },
+        "transitions": 62
+      }
+    },
+    {
+      "row": "v13",
+      "column": "v16",
+      "games": 10,
+      "wins": 2,
+      "losses": 4,
+      "draws": 4,
+      "win_rate": 0.4,
+      "mean_margin": -1.000000536441803,
+      "paired_margins": [
+        15.999999642372131,
+        -16.500000655651093,
+        5.99999725818634,
+        -10.499998927116394,
+        0.0
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 248,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 124,
+          "per_1000_unit_ticks": 0.373843046217854,
+          "worst_ticks": 13,
+          "incident_ticks": 1612
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 243,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 202,
+          "per_1000_unit_ticks": 0.609002381741988,
+          "worst_ticks": 13,
+          "incident_ticks": 2626
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {
+          "harvest": 59305,
+          "raid_window": 7033
+        },
+        "mode_share": {
+          "harvest": 0.8939823329012029,
+          "raid_window": 0.10601766709879706
+        },
+        "transitions": 77
+      }
+    },
+    {
+      "row": "v14",
+      "column": "v15",
+      "games": 10,
+      "wins": 4,
+      "losses": 1,
+      "draws": 5,
+      "win_rate": 0.65,
+      "mean_margin": 7.9000007174909115,
+      "paired_margins": [
+        -0.4999999888241291,
+        5.500000715255737,
+        7.0000022649765015,
+        9.000000357627869,
+        18.50000023841858
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 244,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 32,
+          "per_1000_unit_ticks": 0.1385431323736335,
+          "worst_ticks": 13,
+          "incident_ticks": 416
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 234,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 9,
+          "per_1000_unit_ticks": 0.03896525598008443,
+          "worst_ticks": 13,
+          "incident_ticks": 116
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {
+          "home_guard": 37768,
+          "counter_intercept": 8427
+        },
+        "mode_share": {
+          "home_guard": 0.8175776599199047,
+          "counter_intercept": 0.18242234008009525
+        },
+        "transitions": 0
+      }
+    },
+    {
+      "row": "v14",
+      "column": "v16",
+      "games": 10,
+      "wins": 4,
+      "losses": 5,
+      "draws": 1,
+      "win_rate": 0.45,
+      "mean_margin": -5.0999996066093445,
+      "paired_margins": [
+        -9.49999988079071,
+        -8.499999344348907,
+        11.000001430511475,
+        -29.500001668930054,
+        11.000001430511475
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 251,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 104,
+          "per_1000_unit_ticks": 0.21850805223182865,
+          "worst_ticks": 13,
+          "incident_ticks": 1351
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 235,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 84,
+          "per_1000_unit_ticks": 0.17648727295647698,
+          "worst_ticks": 17,
+          "incident_ticks": 1100
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {
+          "home_guard": 82419,
+          "counter_intercept": 12772
+        },
+        "mode_share": {
+          "home_guard": 0.8658276517738022,
+          "counter_intercept": 0.13417234822619786
+        },
+        "transitions": 0
+      }
+    },
+    {
+      "row": "v15",
+      "column": "v16",
+      "games": 10,
+      "wins": 3,
+      "losses": 1,
+      "draws": 6,
+      "win_rate": 0.6,
+      "mean_margin": -0.5999994277954102,
+      "paired_margins": [
+        9.999999403953552,
+        -15.999999642372131,
+        0.0,
+        1.5000015497207642,
+        1.5000015497207642
+      ],
+      "row_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 236,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 111,
+          "per_1000_unit_ticks": 0.4797095812265007,
+          "worst_ticks": 13,
+          "incident_ticks": 1441
+        }
+      },
+      "column_reliability": {
+        "idle_6s": {
+          "incidents": 0,
+          "per_1000_unit_ticks": 0.0,
+          "worst_ticks": 236,
+          "incident_ticks": 0
+        },
+        "blocked_0.24s": {
+          "incidents": 224,
+          "per_1000_unit_ticks": 0.9680625783309564,
+          "worst_ticks": 13,
+          "incident_ticks": 2911
+        }
+      },
+      "row_modes": {
+        "mode_ticks": {
+          "convoy_rush": 46278
+        },
+        "mode_share": {
+          "convoy_rush": 1.0
+        },
+        "transitions": 0
+      }
+    }
+  ]
+}

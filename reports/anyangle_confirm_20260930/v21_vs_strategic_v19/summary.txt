@@ -1,0 +1,5 @@
+strategic_v21 vs strategic_v19: 48 games
+W-L-D 24-24-0  margin +6.7 +- 6.2 (SE)
+seed-paired margin +6.7 +- 4.9 (SE over 24 seeds)
+  strategic_v21            deliveries/game 17.6+-0.8  /1000 steps 7.31+-1.09  first 44+-2  tiles/dlv 101.1+-16.0  deaths 57.0+-11.4  speed eff collector 0.947 hunter 1.007 carrier 0.947
+  strategic_v19            deliveries/game 14.5+-1.0  /1000 steps 5.98+-0.83  first 46+-2  tiles/dlv 582.6+-158.0  deaths 581.7+-98.5  speed eff collector 0.975 hunter 1.009 carrier 1.006

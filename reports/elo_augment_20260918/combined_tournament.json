@@ -1,0 +1,1735 @@
+{
+ "policy_ids": [
+  "strategic_v1",
+  "strategic_v2",
+  "strategic_v3",
+  "strategic_v4",
+  "strategic_v5",
+  "strategic_v6",
+  "strategic_v7",
+  "strategic_v8",
+  "strategic_v9",
+  "strategic_v10",
+  "strategic_v11",
+  "strategic_v12",
+  "strategic_v13",
+  "strategic_v14",
+  "strategic_v15",
+  "strategic_v16",
+  "strategic_v17",
+  "strategic_v18",
+  "strategic_v19"
+ ],
+ "results": [
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v2",
+   "games": 830,
+   "win_rate": 0.19337349397590362,
+   "wins": 156,
+   "losses": 665,
+   "draws": 9,
+   "se": 0.049300664859163464
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v3",
+   "games": 74,
+   "win_rate": 0.17567567567567569,
+   "wins": 13,
+   "losses": 61,
+   "draws": 0,
+   "se": 0.04506406975153194
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v4",
+   "games": 68,
+   "win_rate": 0.16176470588235295,
+   "wins": 10,
+   "losses": 56,
+   "draws": 2,
+   "se": 0.04570378030550302
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v5",
+   "games": 900,
+   "win_rate": 0.165,
+   "wins": 146,
+   "losses": 749,
+   "draws": 5,
+   "se": 0.04792601128113233
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v6",
+   "games": 80,
+   "win_rate": 0.1375,
+   "wins": 11,
+   "losses": 69,
+   "draws": 0,
+   "se": 0.04732423621500228
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v7",
+   "games": 34,
+   "win_rate": 0.029411764705882353,
+   "wins": 1,
+   "losses": 33,
+   "draws": 0,
+   "se": 0.039283710065919304
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v8",
+   "games": 34,
+   "win_rate": 0.029411764705882353,
+   "wins": 1,
+   "losses": 33,
+   "draws": 0,
+   "se": 0.039283710065919304
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v9",
+   "games": 34,
+   "win_rate": 0.029411764705882353,
+   "wins": 1,
+   "losses": 33,
+   "draws": 0,
+   "se": 0.039283710065919304
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v10",
+   "games": 40,
+   "win_rate": 0.0875,
+   "wins": 3,
+   "losses": 36,
+   "draws": 1,
+   "se": 0.04890379977724697
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v11",
+   "games": 42,
+   "win_rate": 0.09523809523809523,
+   "wins": 4,
+   "losses": 38,
+   "draws": 0,
+   "se": 0.04897111405518947
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v12",
+   "games": 34,
+   "win_rate": 0.029411764705882353,
+   "wins": 1,
+   "losses": 33,
+   "draws": 0,
+   "se": 0.039283710065919304
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v13",
+   "games": 62,
+   "win_rate": 0.12903225806451613,
+   "wins": 8,
+   "losses": 54,
+   "draws": 0,
+   "se": 0.04618651955895599
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v14",
+   "games": 880,
+   "win_rate": 0.40397727272727274,
+   "wins": 352,
+   "losses": 521,
+   "draws": 7,
+   "se": 0.04903143514780147
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v15",
+   "games": 444,
+   "win_rate": 0.15090090090090091,
+   "wins": 67,
+   "losses": 377,
+   "draws": 0,
+   "se": 0.049978736975436505
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v16",
+   "games": 546,
+   "win_rate": 0.2591575091575092,
+   "wins": 138,
+   "losses": 401,
+   "draws": 7,
+   "se": 0.047944282909247515
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v17",
+   "games": 20,
+   "win_rate": 0.0,
+   "wins": 0,
+   "losses": 20,
+   "draws": 0,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v18",
+   "games": 70,
+   "win_rate": 0.12857142857142856,
+   "wins": 9,
+   "losses": 61,
+   "draws": 0,
+   "se": 0.042716857234080106
+  },
+  {
+   "row": "strategic_v1",
+   "column": "strategic_v19",
+   "games": 54,
+   "win_rate": 0.14814814814814814,
+   "wins": 8,
+   "losses": 46,
+   "draws": 0,
+   "se": 0.049978736975436505
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v3",
+   "games": 258,
+   "win_rate": 0.3333333333333333,
+   "wins": 86,
+   "losses": 172,
+   "draws": 0,
+   "se": 0.04972959265027622
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v4",
+   "games": 216,
+   "win_rate": 0.2800925925925926,
+   "wins": 59,
+   "losses": 154,
+   "draws": 3,
+   "se": 0.04988787826925559
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v5",
+   "games": 340,
+   "win_rate": 0.3588235294117647,
+   "wins": 120,
+   "losses": 216,
+   "draws": 4,
+   "se": 0.04912488694636632
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v6",
+   "games": 248,
+   "win_rate": 0.2963709677419355,
+   "wins": 73,
+   "losses": 174,
+   "draws": 1,
+   "se": 0.04974990100719159
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v7",
+   "games": 208,
+   "win_rate": 0.3125,
+   "wins": 63,
+   "losses": 141,
+   "draws": 4,
+   "se": 0.04956220868313708
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v8",
+   "games": 214,
+   "win_rate": 0.2897196261682243,
+   "wins": 61,
+   "losses": 151,
+   "draws": 2,
+   "se": 0.04956220868313707
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v9",
+   "games": 234,
+   "win_rate": 0.3162393162393162,
+   "wins": 74,
+   "losses": 160,
+   "draws": 0,
+   "se": 0.04818904206840983
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v10",
+   "games": 266,
+   "win_rate": 0.2951127819548872,
+   "wins": 76,
+   "losses": 185,
+   "draws": 5,
+   "se": 0.048502030523714525
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v11",
+   "games": 272,
+   "win_rate": 0.3088235294117647,
+   "wins": 82,
+   "losses": 186,
+   "draws": 4,
+   "se": 0.049605705312831774
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v12",
+   "games": 214,
+   "win_rate": 0.308411214953271,
+   "wins": 65,
+   "losses": 147,
+   "draws": 2,
+   "se": 0.04956220868313707
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v13",
+   "games": 258,
+   "win_rate": 0.3449612403100775,
+   "wins": 88,
+   "losses": 168,
+   "draws": 2,
+   "se": 0.04890379977724697
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v14",
+   "games": 328,
+   "win_rate": 0.5548780487804879,
+   "wins": 179,
+   "losses": 143,
+   "draws": 6,
+   "se": 0.04938137713919353
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v15",
+   "games": 268,
+   "win_rate": 0.31529850746268656,
+   "wins": 84,
+   "losses": 183,
+   "draws": 1,
+   "se": 0.04917428697706311
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v16",
+   "games": 268,
+   "win_rate": 0.39925373134328357,
+   "wins": 106,
+   "losses": 160,
+   "draws": 2,
+   "se": 0.04948716593053935
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v17",
+   "games": 34,
+   "win_rate": 0.058823529411764705,
+   "wins": 2,
+   "losses": 32,
+   "draws": 0,
+   "se": 0.04739970491621009
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v18",
+   "games": 72,
+   "win_rate": 0.2013888888888889,
+   "wins": 14,
+   "losses": 57,
+   "draws": 1,
+   "se": 0.04795631610330537
+  },
+  {
+   "row": "strategic_v2",
+   "column": "strategic_v19",
+   "games": 80,
+   "win_rate": 0.2125,
+   "wins": 17,
+   "losses": 63,
+   "draws": 0,
+   "se": 0.04627723405124458
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v4",
+   "games": 288,
+   "win_rate": 0.4548611111111111,
+   "wins": 130,
+   "losses": 156,
+   "draws": 2,
+   "se": 0.04967167743283009
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v5",
+   "games": 262,
+   "win_rate": 0.7461832061068703,
+   "wins": 194,
+   "losses": 65,
+   "draws": 3,
+   "se": 0.04923568106874719
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v6",
+   "games": 274,
+   "win_rate": 0.4981751824817518,
+   "wins": 136,
+   "losses": 137,
+   "draws": 1,
+   "se": 0.04946006592718347
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v7",
+   "games": 292,
+   "win_rate": 0.4434931506849315,
+   "wins": 129,
+   "losses": 162,
+   "draws": 1,
+   "se": 0.049882117862314494
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v8",
+   "games": 290,
+   "win_rate": 0.453448275862069,
+   "wins": 130,
+   "losses": 157,
+   "draws": 3,
+   "se": 0.04993989082003747
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v9",
+   "games": 282,
+   "win_rate": 0.5372340425531915,
+   "wins": 149,
+   "losses": 128,
+   "draws": 5,
+   "se": 0.049592243536592445
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v10",
+   "games": 272,
+   "win_rate": 0.4852941176470588,
+   "wins": 131,
+   "losses": 139,
+   "draws": 2,
+   "se": 0.0489875173326506
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v11",
+   "games": 270,
+   "win_rate": 0.5148148148148148,
+   "wins": 138,
+   "losses": 130,
+   "draws": 2,
+   "se": 0.04993989082003747
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v12",
+   "games": 290,
+   "win_rate": 0.4689655172413793,
+   "wins": 135,
+   "losses": 153,
+   "draws": 2,
+   "se": 0.049882117862314494
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v13",
+   "games": 272,
+   "win_rate": 0.5018382352941176,
+   "wins": 136,
+   "losses": 135,
+   "draws": 1,
+   "se": 0.04775181215925697
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v14",
+   "games": 260,
+   "win_rate": 0.6846153846153846,
+   "wins": 176,
+   "losses": 80,
+   "draws": 4,
+   "se": 0.04975932471565971
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v15",
+   "games": 260,
+   "win_rate": 0.5230769230769231,
+   "wins": 134,
+   "losses": 122,
+   "draws": 4,
+   "se": 0.04999038738816456
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v16",
+   "games": 258,
+   "win_rate": 0.6046511627906976,
+   "wins": 154,
+   "losses": 100,
+   "draws": 4,
+   "se": 0.04964365854693175
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v17",
+   "games": 264,
+   "win_rate": 0.026515151515151516,
+   "wins": 7,
+   "losses": 257,
+   "draws": 0,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v18",
+   "games": 186,
+   "win_rate": 0.11827956989247312,
+   "wins": 21,
+   "losses": 163,
+   "draws": 2,
+   "se": 0.04611275407855919
+  },
+  {
+   "row": "strategic_v3",
+   "column": "strategic_v19",
+   "games": 48,
+   "win_rate": 0.020833333333333332,
+   "wins": 1,
+   "losses": 47,
+   "draws": 0,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v5",
+   "games": 184,
+   "win_rate": 0.7309782608695652,
+   "wins": 132,
+   "losses": 47,
+   "draws": 5,
+   "se": 0.048919071018586856
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v6",
+   "games": 280,
+   "win_rate": 0.5089285714285714,
+   "wins": 140,
+   "losses": 135,
+   "draws": 5,
+   "se": 0.049260235616543746
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v7",
+   "games": 244,
+   "win_rate": 0.5389344262295082,
+   "wins": 130,
+   "losses": 111,
+   "draws": 3,
+   "se": 0.049772441354301145
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v8",
+   "games": 248,
+   "win_rate": 0.5181451612903226,
+   "wins": 126,
+   "losses": 117,
+   "draws": 5,
+   "se": 0.049772441354301145
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v9",
+   "games": 260,
+   "win_rate": 0.5,
+   "wins": 128,
+   "losses": 128,
+   "draws": 4,
+   "se": 0.04880667874390187
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v10",
+   "games": 292,
+   "win_rate": 0.553082191780822,
+   "wins": 161,
+   "losses": 130,
+   "draws": 1,
+   "se": 0.04999759702030379
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v11",
+   "games": 300,
+   "win_rate": 0.5466666666666666,
+   "wins": 161,
+   "losses": 133,
+   "draws": 6,
+   "se": 0.047534483157730276
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v12",
+   "games": 248,
+   "win_rate": 0.49798387096774194,
+   "wins": 120,
+   "losses": 121,
+   "draws": 7,
+   "se": 0.049772441354301145
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v13",
+   "games": 288,
+   "win_rate": 0.5,
+   "wins": 143,
+   "losses": 143,
+   "draws": 2,
+   "se": 0.04910292837626617
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v14",
+   "games": 198,
+   "win_rate": 0.7171717171717171,
+   "wins": 140,
+   "losses": 54,
+   "draws": 4,
+   "se": 0.04879953896272402
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v15",
+   "games": 280,
+   "win_rate": 0.5928571428571429,
+   "wins": 165,
+   "losses": 113,
+   "draws": 2,
+   "se": 0.04927018388851582
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v16",
+   "games": 270,
+   "win_rate": 0.6814814814814815,
+   "wins": 183,
+   "losses": 85,
+   "draws": 2,
+   "se": 0.048294324784407414
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v17",
+   "games": 438,
+   "win_rate": 0.06278538812785388,
+   "wins": 27,
+   "losses": 410,
+   "draws": 1,
+   "se": 0.040720550896397784
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v18",
+   "games": 542,
+   "win_rate": 0.1466789667896679,
+   "wins": 78,
+   "losses": 461,
+   "draws": 3,
+   "se": 0.04641330640385221
+  },
+  {
+   "row": "strategic_v4",
+   "column": "strategic_v19",
+   "games": 282,
+   "win_rate": 0.12056737588652482,
+   "wins": 34,
+   "losses": 248,
+   "draws": 0,
+   "se": 0.049999999999999996
+  },
+  {
+   "row": "strategic_v5",
+   "column": "strategic_v6",
+   "games": 246,
+   "win_rate": 0.25203252032520324,
+   "wins": 62,
+   "losses": 184,
+   "draws": 0,
+   "se": 0.04937553303419972
+  },
+  {
+   "row": "strategic_v5",
+   "column": "strategic_v7",
+   "games": 164,
+   "win_rate": 0.1676829268292683,
+   "wins": 26,
+   "losses": 135,
+   "draws": 3,
+   "se": 0.0482688476846582
+  },
+  {
+   "row": "strategic_v5",
+   "column": "strategic_v8",
+   "games": 178,
+   "win_rate": 0.15730337078651685,
+   "wins": 28,
+   "losses": 150,
+   "draws": 0,
+   "se": 0.0482688476846582
+  },
+  {
+   "row": "strategic_v5",
+   "column": "strategic_v9",
+   "games": 214,
+   "win_rate": 0.21495327102803738,
+   "wins": 46,
+   "losses": 168,
+   "draws": 0,
+   "se": 0.049978736975436505
+  },
+  {
+   "row": "strategic_v5",
+   "column": "strategic_v10",
+   "games": 274,
+   "win_rate": 0.22262773722627738,
+   "wins": 59,
+   "losses": 211,
+   "draws": 4,
+   "se": 0.049569721182033254
+  },
+  {
+   "row": "strategic_v5",
+   "column": "strategic_v11",
+   "games": 286,
+   "win_rate": 0.263986013986014,
+   "wins": 74,
+   "losses": 209,
+   "draws": 3,
+   "se": 0.049832156669847534
+  },
+  {
+   "row": "strategic_v5",
+   "column": "strategic_v12",
+   "games": 178,
+   "win_rate": 0.2050561797752809,
+   "wins": 36,
+   "losses": 141,
+   "draws": 1,
+   "se": 0.0482688476846582
+  },
+  {
+   "row": "strategic_v5",
+   "column": "strategic_v13",
+   "games": 260,
+   "win_rate": 0.2519230769230769,
+   "wins": 64,
+   "losses": 193,
+   "draws": 3,
+   "se": 0.04904653061509807
+  },
+  {
+   "row": "strategic_v5",
+   "column": "strategic_v14",
+   "games": 364,
+   "win_rate": 0.3791208791208791,
+   "wins": 138,
+   "losses": 226,
+   "draws": 0,
+   "se": 0.04948716593053935
+  },
+  {
+   "row": "strategic_v5",
+   "column": "strategic_v15",
+   "games": 292,
+   "win_rate": 0.2910958904109589,
+   "wins": 85,
+   "losses": 207,
+   "draws": 0,
+   "se": 0.04928193004379606
+  },
+  {
+   "row": "strategic_v5",
+   "column": "strategic_v16",
+   "games": 296,
+   "win_rate": 0.31925675675675674,
+   "wins": 94,
+   "losses": 201,
+   "draws": 1,
+   "se": 0.04919835942443342
+  },
+  {
+   "row": "strategic_v5",
+   "column": "strategic_v17",
+   "games": 34,
+   "win_rate": 0.029411764705882353,
+   "wins": 1,
+   "losses": 33,
+   "draws": 0,
+   "se": 0.039283710065919304
+  },
+  {
+   "row": "strategic_v5",
+   "column": "strategic_v18",
+   "games": 56,
+   "win_rate": 0.11607142857142858,
+   "wins": 6,
+   "losses": 49,
+   "draws": 1,
+   "se": 0.04483883432204662
+  },
+  {
+   "row": "strategic_v5",
+   "column": "strategic_v19",
+   "games": 66,
+   "win_rate": 0.13636363636363635,
+   "wins": 9,
+   "losses": 57,
+   "draws": 0,
+   "se": 0.04996555287224591
+  },
+  {
+   "row": "strategic_v6",
+   "column": "strategic_v7",
+   "games": 284,
+   "win_rate": 0.477112676056338,
+   "wins": 134,
+   "losses": 147,
+   "draws": 3,
+   "se": 0.04997836902343067
+  },
+  {
+   "row": "strategic_v6",
+   "column": "strategic_v8",
+   "games": 282,
+   "win_rate": 0.48404255319148937,
+   "wins": 135,
+   "losses": 144,
+   "draws": 3,
+   "se": 0.04997836902343067
+  },
+  {
+   "row": "strategic_v6",
+   "column": "strategic_v9",
+   "games": 278,
+   "win_rate": 0.5053956834532374,
+   "wins": 137,
+   "losses": 134,
+   "draws": 7,
+   "se": 0.049978369023430676
+  },
+  {
+   "row": "strategic_v6",
+   "column": "strategic_v10",
+   "games": 274,
+   "win_rate": 0.531021897810219,
+   "wins": 144,
+   "losses": 127,
+   "draws": 3,
+   "se": 0.04795121423953955
+  },
+  {
+   "row": "strategic_v6",
+   "column": "strategic_v12",
+   "games": 282,
+   "win_rate": 0.43439716312056736,
+   "wins": 120,
+   "losses": 157,
+   "draws": 5,
+   "se": 0.04997836902343067
+  },
+  {
+   "row": "strategic_v6",
+   "column": "strategic_v11",
+   "games": 274,
+   "win_rate": 0.5273722627737226,
+   "wins": 144,
+   "losses": 129,
+   "draws": 1,
+   "se": 0.04950737714883372
+  },
+  {
+   "row": "strategic_v6",
+   "column": "strategic_v13",
+   "games": 276,
+   "win_rate": 0.5344202898550725,
+   "wins": 147,
+   "losses": 128,
+   "draws": 1,
+   "se": 0.048574514939112884
+  },
+  {
+   "row": "strategic_v6",
+   "column": "strategic_v14",
+   "games": 250,
+   "win_rate": 0.646,
+   "wins": 161,
+   "losses": 88,
+   "draws": 1,
+   "se": 0.04964365854693175
+  },
+  {
+   "row": "strategic_v6",
+   "column": "strategic_v15",
+   "games": 262,
+   "win_rate": 0.6125954198473282,
+   "wins": 160,
+   "losses": 101,
+   "draws": 1,
+   "se": 0.04718416136255831
+  },
+  {
+   "row": "strategic_v6",
+   "column": "strategic_v16",
+   "games": 258,
+   "win_rate": 0.6317829457364341,
+   "wins": 160,
+   "losses": 92,
+   "draws": 6,
+   "se": 0.049856938190329
+  },
+  {
+   "row": "strategic_v6",
+   "column": "strategic_v17",
+   "games": 330,
+   "win_rate": 0.006060606060606061,
+   "wins": 2,
+   "losses": 328,
+   "draws": 0,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v6",
+   "column": "strategic_v18",
+   "games": 272,
+   "win_rate": 0.03308823529411765,
+   "wins": 9,
+   "losses": 263,
+   "draws": 0,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v6",
+   "column": "strategic_v19",
+   "games": 20,
+   "win_rate": 0.0,
+   "wins": 0,
+   "losses": 20,
+   "draws": 0,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v7",
+   "column": "strategic_v8",
+   "games": 238,
+   "win_rate": 0.49159663865546216,
+   "wins": 117,
+   "losses": 121,
+   "draws": 0,
+   "se": 0.05
+  },
+  {
+   "row": "strategic_v7",
+   "column": "strategic_v9",
+   "games": 256,
+   "win_rate": 0.537109375,
+   "wins": 135,
+   "losses": 116,
+   "draws": 5,
+   "se": 0.04993989082003747
+  },
+  {
+   "row": "strategic_v7",
+   "column": "strategic_v10",
+   "games": 300,
+   "win_rate": 0.5533333333333333,
+   "wins": 165,
+   "losses": 133,
+   "draws": 2,
+   "se": 0.04881782789259124
+  },
+  {
+   "row": "strategic_v7",
+   "column": "strategic_v11",
+   "games": 310,
+   "win_rate": 0.5919354838709677,
+   "wins": 181,
+   "losses": 124,
+   "draws": 5,
+   "se": 0.04970839611542049
+  },
+  {
+   "row": "strategic_v7",
+   "column": "strategic_v12",
+   "games": 238,
+   "win_rate": 0.5021008403361344,
+   "wins": 119,
+   "losses": 118,
+   "draws": 1,
+   "se": 0.05
+  },
+  {
+   "row": "strategic_v7",
+   "column": "strategic_v13",
+   "games": 292,
+   "win_rate": 0.5513698630136986,
+   "wins": 159,
+   "losses": 129,
+   "draws": 4,
+   "se": 0.04922967555699781
+  },
+  {
+   "row": "strategic_v7",
+   "column": "strategic_v14",
+   "games": 182,
+   "win_rate": 0.760989010989011,
+   "wins": 136,
+   "losses": 41,
+   "draws": 5,
+   "se": 0.04611275407855919
+  },
+  {
+   "row": "strategic_v7",
+   "column": "strategic_v15",
+   "games": 286,
+   "win_rate": 0.5891608391608392,
+   "wins": 168,
+   "losses": 117,
+   "draws": 1,
+   "se": 0.04692128250510891
+  },
+  {
+   "row": "strategic_v7",
+   "column": "strategic_v16",
+   "games": 276,
+   "win_rate": 0.6340579710144928,
+   "wins": 172,
+   "losses": 98,
+   "draws": 6,
+   "se": 0.04960570531283178
+  },
+  {
+   "row": "strategic_v7",
+   "column": "strategic_v17",
+   "games": 486,
+   "win_rate": 0.07098765432098765,
+   "wins": 34,
+   "losses": 451,
+   "draws": 1,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v7",
+   "column": "strategic_v18",
+   "games": 634,
+   "win_rate": 0.1719242902208202,
+   "wins": 108,
+   "losses": 524,
+   "draws": 2,
+   "se": 0.049978736975436505
+  },
+  {
+   "row": "strategic_v7",
+   "column": "strategic_v19",
+   "games": 278,
+   "win_rate": 0.13129496402877697,
+   "wins": 36,
+   "losses": 241,
+   "draws": 1,
+   "se": 0.04492721269564549
+  },
+  {
+   "row": "strategic_v8",
+   "column": "strategic_v9",
+   "games": 258,
+   "win_rate": 0.4728682170542636,
+   "wins": 121,
+   "losses": 135,
+   "draws": 2,
+   "se": 0.04993989082003747
+  },
+  {
+   "row": "strategic_v8",
+   "column": "strategic_v10",
+   "games": 296,
+   "win_rate": 0.5456081081081081,
+   "wins": 160,
+   "losses": 133,
+   "draws": 3,
+   "se": 0.04881782789259124
+  },
+  {
+   "row": "strategic_v8",
+   "column": "strategic_v11",
+   "games": 304,
+   "win_rate": 0.5608552631578947,
+   "wins": 169,
+   "losses": 132,
+   "draws": 3,
+   "se": 0.04990296707059591
+  },
+  {
+   "row": "strategic_v8",
+   "column": "strategic_v12",
+   "games": 242,
+   "win_rate": 0.4772727272727273,
+   "wins": 115,
+   "losses": 126,
+   "draws": 1,
+   "se": 0.05
+  },
+  {
+   "row": "strategic_v8",
+   "column": "strategic_v13",
+   "games": 288,
+   "win_rate": 0.5590277777777778,
+   "wins": 159,
+   "losses": 125,
+   "draws": 4,
+   "se": 0.04980498300551794
+  },
+  {
+   "row": "strategic_v8",
+   "column": "strategic_v14",
+   "games": 196,
+   "win_rate": 0.7653061224489796,
+   "wins": 148,
+   "losses": 44,
+   "draws": 4,
+   "se": 0.04611275407855919
+  },
+  {
+   "row": "strategic_v8",
+   "column": "strategic_v15",
+   "games": 284,
+   "win_rate": 0.6179577464788732,
+   "wins": 175,
+   "losses": 108,
+   "draws": 1,
+   "se": 0.04577245172018684
+  },
+  {
+   "row": "strategic_v8",
+   "column": "strategic_v16",
+   "games": 276,
+   "win_rate": 0.6340579710144928,
+   "wins": 173,
+   "losses": 99,
+   "draws": 4,
+   "se": 0.04960570531283178
+  },
+  {
+   "row": "strategic_v8",
+   "column": "strategic_v17",
+   "games": 462,
+   "win_rate": 0.044372294372294376,
+   "wins": 20,
+   "losses": 441,
+   "draws": 1,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v8",
+   "column": "strategic_v18",
+   "games": 594,
+   "win_rate": 0.14646464646464646,
+   "wins": 85,
+   "losses": 505,
+   "draws": 4,
+   "se": 0.049978736975436505
+  },
+  {
+   "row": "strategic_v8",
+   "column": "strategic_v19",
+   "games": 252,
+   "win_rate": 0.15873015873015872,
+   "wins": 40,
+   "losses": 212,
+   "draws": 0,
+   "se": 0.04492721269564549
+  },
+  {
+   "row": "strategic_v9",
+   "column": "strategic_v10",
+   "games": 286,
+   "win_rate": 0.5699300699300699,
+   "wins": 162,
+   "losses": 122,
+   "draws": 2,
+   "se": 0.04993618376467701
+  },
+  {
+   "row": "strategic_v9",
+   "column": "strategic_v11",
+   "games": 290,
+   "win_rate": 0.5224137931034483,
+   "wins": 150,
+   "losses": 137,
+   "draws": 3,
+   "se": 0.0489292120988083
+  },
+  {
+   "row": "strategic_v9",
+   "column": "strategic_v12",
+   "games": 256,
+   "win_rate": 0.533203125,
+   "wins": 136,
+   "losses": 119,
+   "draws": 1,
+   "se": 0.04993989082003747
+  },
+  {
+   "row": "strategic_v9",
+   "column": "strategic_v13",
+   "games": 282,
+   "win_rate": 0.48404255319148937,
+   "wins": 135,
+   "losses": 144,
+   "draws": 3,
+   "se": 0.048974458828536245
+  },
+  {
+   "row": "strategic_v9",
+   "column": "strategic_v14",
+   "games": 222,
+   "win_rate": 0.7567567567567568,
+   "wins": 167,
+   "losses": 53,
+   "draws": 2,
+   "se": 0.0478452261596338
+  },
+  {
+   "row": "strategic_v9",
+   "column": "strategic_v15",
+   "games": 276,
+   "win_rate": 0.6141304347826086,
+   "wins": 167,
+   "losses": 104,
+   "draws": 5,
+   "se": 0.04921529567847503
+  },
+  {
+   "row": "strategic_v9",
+   "column": "strategic_v16",
+   "games": 268,
+   "win_rate": 0.6268656716417911,
+   "wins": 167,
+   "losses": 99,
+   "draws": 2,
+   "se": 0.049762262766857385
+  },
+  {
+   "row": "strategic_v9",
+   "column": "strategic_v17",
+   "games": 436,
+   "win_rate": 0.0389908256880734,
+   "wins": 17,
+   "losses": 419,
+   "draws": 0,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v9",
+   "column": "strategic_v18",
+   "games": 506,
+   "win_rate": 0.1541501976284585,
+   "wins": 76,
+   "losses": 426,
+   "draws": 4,
+   "se": 0.0482688476846582
+  },
+  {
+   "row": "strategic_v9",
+   "column": "strategic_v19",
+   "games": 76,
+   "win_rate": 0.14473684210526316,
+   "wins": 11,
+   "losses": 65,
+   "draws": 0,
+   "se": 0.046081534320441056
+  },
+  {
+   "row": "strategic_v10",
+   "column": "strategic_v11",
+   "games": 266,
+   "win_rate": 0.5639097744360902,
+   "wins": 148,
+   "losses": 114,
+   "draws": 4,
+   "se": 0.049772441354301145
+  },
+  {
+   "row": "strategic_v10",
+   "column": "strategic_v12",
+   "games": 296,
+   "win_rate": 0.46283783783783783,
+   "wins": 135,
+   "losses": 157,
+   "draws": 4,
+   "se": 0.04881782789259124
+  },
+  {
+   "row": "strategic_v10",
+   "column": "strategic_v13",
+   "games": 272,
+   "win_rate": 0.5202205882352942,
+   "wins": 139,
+   "losses": 128,
+   "draws": 5,
+   "se": 0.049856938190329
+  },
+  {
+   "row": "strategic_v10",
+   "column": "strategic_v14",
+   "games": 270,
+   "win_rate": 0.5518518518518518,
+   "wins": 146,
+   "losses": 118,
+   "draws": 6,
+   "se": 0.04703423374896319
+  },
+  {
+   "row": "strategic_v10",
+   "column": "strategic_v15",
+   "games": 260,
+   "win_rate": 0.5903846153846154,
+   "wins": 152,
+   "losses": 105,
+   "draws": 3,
+   "se": 0.049592243536592445
+  },
+  {
+   "row": "strategic_v10",
+   "column": "strategic_v16",
+   "games": 258,
+   "win_rate": 0.5290697674418605,
+   "wins": 134,
+   "losses": 119,
+   "draws": 5,
+   "se": 0.04970839611542049
+  },
+  {
+   "row": "strategic_v10",
+   "column": "strategic_v17",
+   "games": 236,
+   "win_rate": 0.038135593220338986,
+   "wins": 9,
+   "losses": 227,
+   "draws": 0,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v10",
+   "column": "strategic_v18",
+   "games": 122,
+   "win_rate": 0.13934426229508196,
+   "wins": 17,
+   "losses": 105,
+   "draws": 0,
+   "se": 0.0451820774018105
+  },
+  {
+   "row": "strategic_v10",
+   "column": "strategic_v19",
+   "games": 50,
+   "win_rate": 0.1,
+   "wins": 5,
+   "losses": 45,
+   "draws": 0,
+   "se": 0.0451820774018105
+  },
+  {
+   "row": "strategic_v11",
+   "column": "strategic_v12",
+   "games": 304,
+   "win_rate": 0.44901315789473684,
+   "wins": 135,
+   "losses": 166,
+   "draws": 3,
+   "se": 0.049708396115420495
+  },
+  {
+   "row": "strategic_v11",
+   "column": "strategic_v13",
+   "games": 270,
+   "win_rate": 0.5222222222222223,
+   "wins": 139,
+   "losses": 127,
+   "draws": 4,
+   "se": 0.04993989082003747
+  },
+  {
+   "row": "strategic_v11",
+   "column": "strategic_v14",
+   "games": 282,
+   "win_rate": 0.6843971631205674,
+   "wins": 188,
+   "losses": 84,
+   "draws": 10,
+   "se": 0.04958794860109305
+  },
+  {
+   "row": "strategic_v11",
+   "column": "strategic_v15",
+   "games": 256,
+   "win_rate": 0.51171875,
+   "wins": 129,
+   "losses": 123,
+   "draws": 4,
+   "se": 0.04997836902343067
+  },
+  {
+   "row": "strategic_v11",
+   "column": "strategic_v16",
+   "games": 258,
+   "win_rate": 0.5930232558139535,
+   "wins": 152,
+   "losses": 104,
+   "draws": 2,
+   "se": 0.049823781046202935
+  },
+  {
+   "row": "strategic_v11",
+   "column": "strategic_v17",
+   "games": 170,
+   "win_rate": 0.020588235294117647,
+   "wins": 3,
+   "losses": 166,
+   "draws": 1,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v11",
+   "column": "strategic_v18",
+   "games": 46,
+   "win_rate": 0.09782608695652174,
+   "wins": 4,
+   "losses": 41,
+   "draws": 1,
+   "se": 0.046962981040009066
+  },
+  {
+   "row": "strategic_v11",
+   "column": "strategic_v19",
+   "games": 40,
+   "win_rate": 0.075,
+   "wins": 3,
+   "losses": 37,
+   "draws": 0,
+   "se": 0.04641330640385221
+  },
+  {
+   "row": "strategic_v12",
+   "column": "strategic_v13",
+   "games": 288,
+   "win_rate": 0.5729166666666666,
+   "wins": 163,
+   "losses": 121,
+   "draws": 4,
+   "se": 0.04922967555699781
+  },
+  {
+   "row": "strategic_v12",
+   "column": "strategic_v14",
+   "games": 196,
+   "win_rate": 0.7780612244897959,
+   "wins": 151,
+   "losses": 42,
+   "draws": 3,
+   "se": 0.04611275407855919
+  },
+  {
+   "row": "strategic_v12",
+   "column": "strategic_v15",
+   "games": 284,
+   "win_rate": 0.596830985915493,
+   "wins": 168,
+   "losses": 113,
+   "draws": 3,
+   "se": 0.04692128250510891
+  },
+  {
+   "row": "strategic_v12",
+   "column": "strategic_v16",
+   "games": 274,
+   "win_rate": 0.6186131386861314,
+   "wins": 167,
+   "losses": 102,
+   "draws": 5,
+   "se": 0.04960570531283178
+  },
+  {
+   "row": "strategic_v12",
+   "column": "strategic_v17",
+   "games": 468,
+   "win_rate": 0.04487179487179487,
+   "wins": 21,
+   "losses": 447,
+   "draws": 0,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v12",
+   "column": "strategic_v18",
+   "games": 606,
+   "win_rate": 0.15676567656765678,
+   "wins": 92,
+   "losses": 508,
+   "draws": 6,
+   "se": 0.049978736975436505
+  },
+  {
+   "row": "strategic_v12",
+   "column": "strategic_v19",
+   "games": 238,
+   "win_rate": 0.15756302521008403,
+   "wins": 36,
+   "losses": 199,
+   "draws": 3,
+   "se": 0.04492721269564549
+  },
+  {
+   "row": "strategic_v13",
+   "column": "strategic_v14",
+   "games": 260,
+   "win_rate": 0.775,
+   "wins": 201,
+   "losses": 58,
+   "draws": 1,
+   "se": 0.04968670435966674
+  },
+  {
+   "row": "strategic_v13",
+   "column": "strategic_v15",
+   "games": 260,
+   "win_rate": 0.6153846153846154,
+   "wins": 158,
+   "losses": 98,
+   "draws": 4,
+   "se": 0.04934263044358342
+  },
+  {
+   "row": "strategic_v13",
+   "column": "strategic_v16",
+   "games": 258,
+   "win_rate": 0.5968992248062015,
+   "wins": 154,
+   "losses": 104,
+   "draws": 0,
+   "se": 0.04938999480482786
+  },
+  {
+   "row": "strategic_v13",
+   "column": "strategic_v17",
+   "games": 290,
+   "win_rate": 0.005172413793103448,
+   "wins": 1,
+   "losses": 288,
+   "draws": 1,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v13",
+   "column": "strategic_v18",
+   "games": 186,
+   "win_rate": 0.0967741935483871,
+   "wins": 18,
+   "losses": 168,
+   "draws": 0,
+   "se": 0.04611275407855919
+  },
+  {
+   "row": "strategic_v13",
+   "column": "strategic_v19",
+   "games": 40,
+   "win_rate": 0.075,
+   "wins": 3,
+   "losses": 37,
+   "draws": 0,
+   "se": 0.04641330640385221
+  },
+  {
+   "row": "strategic_v14",
+   "column": "strategic_v15",
+   "games": 282,
+   "win_rate": 0.5460992907801419,
+   "wins": 153,
+   "losses": 127,
+   "draws": 2,
+   "se": 0.049961538455846694
+  },
+  {
+   "row": "strategic_v14",
+   "column": "strategic_v16",
+   "games": 286,
+   "win_rate": 0.4493006993006993,
+   "wins": 126,
+   "losses": 155,
+   "draws": 5,
+   "se": 0.049772441354301145
+  },
+  {
+   "row": "strategic_v14",
+   "column": "strategic_v17",
+   "games": 20,
+   "win_rate": 0.0,
+   "wins": 0,
+   "losses": 20,
+   "draws": 0,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v14",
+   "column": "strategic_v18",
+   "games": 20,
+   "win_rate": 0.0,
+   "wins": 0,
+   "losses": 20,
+   "draws": 0,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v14",
+   "column": "strategic_v19",
+   "games": 20,
+   "win_rate": 0.0,
+   "wins": 0,
+   "losses": 20,
+   "draws": 0,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v15",
+   "column": "strategic_v16",
+   "games": 244,
+   "win_rate": 0.3770491803278688,
+   "wins": 91,
+   "losses": 151,
+   "draws": 2,
+   "se": 0.049762262766857385
+  },
+  {
+   "row": "strategic_v15",
+   "column": "strategic_v17",
+   "games": 20,
+   "win_rate": 0.0,
+   "wins": 0,
+   "losses": 20,
+   "draws": 0,
+   "se": 0.04657704893617999
+  },
+  {
+   "row": "strategic_v15",
+   "column": "strategic_v18",
+   "games": 70,
+   "win_rate": 0.17142857142857143,
+   "wins": 12,
+   "losses": 58,
+   "draws": 0,
+   "se": 0.04597441010474977
+  },
+  {
+   "row": "strategic_v15",
+   "column": "strategic_v19",
+   "games": 68,
+   "win_rate": 0.16176470588235295,
+   "wins": 11,
+   "losses": 57,
+   "draws": 0,
+   "se": 0.04570378030550302
+  },
+  {
+   "row": "strategic_v16",
+   "column": "strategic_v17",
+   "games": 34,
+   "win_rate": 0.029411764705882353,
+   "wins": 1,
+   "losses": 33,
+   "draws": 0,
+   "se": 0.039283710065919304
+  },
+  {
+   "row": "strategic_v16",
+   "column": "strategic_v18",
+   "games": 42,
+   "win_rate": 0.09523809523809523,
+   "wins": 4,
+   "losses": 38,
+   "draws": 0,
+   "se": 0.04897111405518947
+  },
+  {
+   "row": "strategic_v16",
+   "column": "strategic_v19",
+   "games": 62,
+   "win_rate": 0.12903225806451613,
+   "wins": 8,
+   "losses": 54,
+   "draws": 0,
+   "se": 0.04414960076811421
+  },
+  {
+   "row": "strategic_v17",
+   "column": "strategic_v18",
+   "games": 682,
+   "win_rate": 0.20674486803519063,
+   "wins": 141,
+   "losses": 541,
+   "draws": 0,
+   "se": 0.04717242789595474
+  },
+  {
+   "row": "strategic_v17",
+   "column": "strategic_v19",
+   "games": 1354,
+   "win_rate": 0.15805022156573117,
+   "wins": 214,
+   "losses": 1140,
+   "draws": 0,
+   "se": 0.0485071250072666
+  },
+  {
+   "row": "strategic_v18",
+   "column": "strategic_v19",
+   "games": 1402,
+   "win_rate": 0.3067047075606277,
+   "wins": 430,
+   "losses": 972,
+   "draws": 0,
+   "se": 0.049350438385075183
+  }
+ ]
+}

@@ -1,0 +1,103 @@
+trace_000.npz: seed-init exact 786/786 div=None | obs-init exact 786 maxerr=0 | scores {'sim': [97, 0], 'unity': [97, 0]}
+trace_001.npz: seed-init exact 10502/10502 div=None | obs-init exact 10502 maxerr=0 | scores {'sim': [84, 69], 'unity': [84, 69]}
+trace_002.npz: seed-init exact 1198/1198 div=None | obs-init exact 1198 maxerr=0 | scores {'sim': [37, 93], 'unity': [37, 93]}
+trace_003.npz: seed-init exact 1049/1049 div=None | obs-init exact 1049 maxerr=0 | scores {'sim': [95, 45], 'unity': [95, 45]}
+trace_004.npz: seed-init exact 10501/10501 div=None | obs-init exact 10501 maxerr=0 | scores {'sim': [69, 97], 'unity': [69, 97]}
+trace_005.npz: seed-init exact 682/682 div=None | obs-init exact 682 maxerr=0 | scores {'sim': [94, 0], 'unity': [94, 0]}
+trace_006.npz: seed-init exact 832/832 div=None | obs-init exact 832 maxerr=0 | scores {'sim': [92, 31], 'unity': [92, 31]}
+trace_007.npz: seed-init exact 10501/10501 div=None | obs-init exact 10501 maxerr=0 | scores {'sim': [74, 94], 'unity': [74, 94]}
+trace_008.npz: seed-init exact 1407/1407 div=None | obs-init exact 1407 maxerr=0 | scores {'sim': [94, 38], 'unity': [94, 38]}
+trace_009.npz: seed-init exact 649/649 div=None | obs-init exact 649 maxerr=0 | scores {'sim': [96, 14], 'unity': [96, 14]}
+trace_010.npz: seed-init exact 704/704 div=None | obs-init exact 704 maxerr=0 | scores {'sim': [97, 0], 'unity': [97, 0]}
+trace_011.npz: seed-init exact 364/364 div=None | obs-init exact 364 maxerr=0 | scores {'sim': [98, 0], 'unity': [98, 0]}
+trace_012.npz: seed-init exact 1349/1349 div=None | obs-init exact 1349 maxerr=0 | scores {'sim': [96, 44], 'unity': [96, 44]}
+trace_013.npz: seed-init exact 1060/1060 div=None | obs-init exact 1060 maxerr=0 | scores {'sim': [20, 98], 'unity': [20, 98]}
+trace_014.npz: seed-init exact 1336/1336 div=None | obs-init exact 1336 maxerr=0 | scores {'sim': [94, 36], 'unity': [94, 36]}
+trace_015.npz: seed-init exact 1539/1539 div=None | obs-init exact 1539 maxerr=0 | scores {'sim': [97, 66], 'unity': [97, 66]}
+trace_016.npz: seed-init exact 995/995 div=None | obs-init exact 995 maxerr=0 | scores {'sim': [18, 95], 'unity': [18, 95]}
+trace_017.npz: seed-init exact 584/584 div=None | obs-init exact 584 maxerr=0 | scores {'sim': [95, 8], 'unity': [95, 8]}
+trace_018.npz: seed-init exact 1196/1196 div=None | obs-init exact 1196 maxerr=0 | scores {'sim': [98, 27], 'unity': [98, 27]}
+trace_019.npz: seed-init exact 592/592 div=None | obs-init exact 592 maxerr=0 | scores {'sim': [20, 97], 'unity': [20, 97]}
+{
+ "traces": 20,
+ "full_match_bit_exact": 20,
+ "score_timeline_equal": 20,
+ "final_score_equal": 20,
+ "match_over_with_env_winner": 20,
+ "events_full_agreement": 1.0,
+ "events_mid_agreement": 1.0,
+ "events_mid_hist25_agreement": 1.0
+} {"seed_reproducible": 17, "bit_exact": 17} {"heuristic_matches": 14, "all_moves_identical": 14}
+{
+ "full": {
+  "n": 478260,
+  "median": 0.0,
+  "p99": 0.0,
+  "max": 0.0,
+  "frac_le_1e-3": 1.0
+ },
+ "1s": {
+  "n": 46800,
+  "median": 0.0,
+  "p99": 1.430511474609375e-06,
+  "max": 4.00543212890625e-05,
+  "frac_le_1e-3": 1.0,
+  "starts": 180,
+  "starts_max_err_le_1e-3": 1.0,
+  "starts_bit_exact": 1
+ },
+ "5s": {
+  "n": 221610,
+  "median": 0.0,
+  "p99": 1.430511474609375e-06,
+  "max": 0.00034332275390625,
+  "frac_le_1e-3": 1.0,
+  "starts": 180,
+  "starts_max_err_le_1e-3": 1.0,
+  "starts_bit_exact": 0
+ },
+ "20s": {
+  "n": 809280,
+  "median": 0.0,
+  "p99": 1.430511474609375e-06,
+  "max": 0.00034332275390625,
+  "frac_le_1e-3": 1.0,
+  "starts": 180,
+  "starts_max_err_le_1e-3": 1.0,
+  "starts_bit_exact": 0
+ },
+ "1s_hist25": {
+  "n": 46800,
+  "median": 0.0,
+  "p99": 7.152557373046875e-07,
+  "max": 2.1457672119140625e-06,
+  "frac_le_1e-3": 1.0,
+  "starts": 180,
+  "starts_max_err_le_1e-3": 1.0,
+  "starts_bit_exact": 91
+ },
+ "5s_hist25": {
+  "n": 221610,
+  "median": 0.0,
+  "p99": 7.152557373046875e-07,
+  "max": 2.86102294921875e-06,
+  "frac_le_1e-3": 1.0,
+  "starts": 180,
+  "starts_max_err_le_1e-3": 1.0,
+  "starts_bit_exact": 86
+ },
+ "20s_hist25": {
+  "n": 809280,
+  "median": 0.0,
+  "p99": 7.152557373046875e-07,
+  "max": 2.86102294921875e-06,
+  "frac_le_1e-3": 1.0,
+  "starts": 180,
+  "starts_max_err_le_1e-3": 1.0,
+  "starts_bit_exact": 70
+ }
+}
+events_full {"absorb": {"unity": 88, "sim": 88, "matched": 88}, "deposit": {"unity": 690, "sim": 690, "matched": 690}, "kill": {"unity": 1529, "sim": 1529, "matched": 1529}, "lost": {"unity": 33, "sim": 33, "matched": 33}, "pickup": {"unity": 750, "sim": 750, "matched": 750}, "score": {"unity": 643, "sim": 643, "matched": 643}, "transform": {"unity": 1215, "sim": 1215, "matched": 1215}, "all": {"unity": 5026, "sim": 5026, "matched": 5026}, "storage_out": {"unity": 76, "sim": 76, "matched": 76}, "swap": {"unity": 2, "sim": 2, "matched": 2}}
+events_mid {"deposit": {"unity": 241, "sim": 241, "matched": 241}, "pickup": {"unity": 242, "sim": 242, "matched": 242}, "score": {"unity": 205, "sim": 205, "matched": 205}, "transform": {"unity": 552, "sim": 552, "matched": 552}, "all": {"unity": 2040, "sim": 2040, "matched": 2040}, "kill": {"unity": 753, "sim": 753, "matched": 753}, "lost": {"unity": 16, "sim": 16, "matched": 16}, "storage_out": {"unity": 30, "sim": 30, "matched": 30}, "swap": {"unity": 1, "sim": 1, "matched": 1}}
+events_mid_hist25 {"deposit": {"unity": 241, "sim": 241, "matched": 241}, "pickup": {"unity": 242, "sim": 242, "matched": 242}, "score": {"unity": 205, "sim": 205, "matched": 205}, "transform": {"unity": 552, "sim": 552, "matched": 552}, "all": {"unity": 2040, "sim": 2040, "matched": 2040}, "kill": {"unity": 753, "sim": 753, "matched": 753}, "lost": {"unity": 16, "sim": 16, "matched": 16}, "storage_out": {"unity": 30, "sim": 30, "matched": 30}, "swap": {"unity": 1, "sim": 1, "matched": 1}}
+ALLDONE

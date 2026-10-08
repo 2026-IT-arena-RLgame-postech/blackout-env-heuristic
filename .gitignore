@@ -8,3 +8,8 @@ build/
 *.pt
 runs/
 checkpoints/
+
+# regenerable dataset dumps (3 GB of npz shards)
+reports/**/shards/
+.DS_Store
+.claude/

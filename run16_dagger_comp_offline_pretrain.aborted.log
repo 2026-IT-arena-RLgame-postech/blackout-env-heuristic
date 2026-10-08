@@ -1,0 +1,171 @@
+[compile] net/target_net/ema_net wrapped with torch.compile
+[offline] checkpoint_dir=checkpoints/offline/20260919-010200_41882
+[offline] tb_log_dir=runs/offline/20260919-010200_41882
+[offline] amp_dtype=float16, compile=True
+[offline] reset_interval=40000
+[offline] batch_source_fracs (dataset, self_vs_heuristic, self_play)=(0.7, 0.3, 0.0), self_vs_heuristic FIFO buffer 262144 rows/stream
+[offline] loading dataset from datasets/heuristic_mixv6_live_20260918 ...
+[offline] reward=v2-fitted RewardV2Config(initial_battery_total=200.0, steal_hazard=0.6, carry_hazard=0.6, lambda_rho=0.8, lambda_length=6.0, hunt_beta=0.8, hunt_length=8.0, exit_value=15.0, exit_length=5.0, class_value=(0.0, 15.0, 10.0), travel_value=1.5, travel_cap_seconds=5.0)
+[offline] kept 1000000/1000000 (a) and 1000000/1000000 (b) rows after dropping segments with no battery left
+[offline] loaded buffer_a=1000000, buffer_b=1000000 transitions (blocked_penalty=0.02)
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+Mono path[0] = '/Users/mac/project/26rl/blackout-env/build/mac/BlackOut.app/Contents/Resources/Data/Managed'
+Mono config path = '/Users/mac/project/26rl/blackout-env/build/mac/BlackOut.app/Contents/MonoBleedingEdge/etc'
+CodeReloadManager initialized
+Input System module state changed to: Initialized.
+[Physics::Module] Initialized fallback backend.
+[Physics::Module] Id: 0xdecafbad
+Initialize engine version: 6000.4.11f1 (b0a1d6caadd2)
+[Subsystems] Discovering subsystems at path /Users/mac/project/26rl/blackout-env/build/mac/BlackOut.app/Contents/Resources/Data/UnitySubsystems
+Forcing GfxDevice: Null
+GfxDevice: creating device client; kGfxThreadingModeNonThreaded
+NullGfxDevice:
+    Version:  NULL 1.0 [1.0]
+    Renderer: Null Device
+    Vendor:   Unity Technologies
+Begin MonoManager ReloadAssembly
+- Finished resetting the current domain, in  0.001 seconds
+[Physics::Module] Selected backend.
+[Physics::Module] Name: PhysX
+[Physics::Module] Id: 0xf2b8ea05
+[Physics::Module] SDK Version: 4.1.2
+[Physics::Module] Integration Version: 1.0.0
+[Physics::Module] Threading Mode: Multi-Threaded
+UnloadTime: 0.874667 ms
+[MapObsAgent] Removing RenderTextureSensorComponent — sensor is now created by DynamicRTSensorComponent.
+Registered Communicator in Academy.
+[offline] periodic eval enabled: every 10000 steps, 6 matches vs StrategicHeuristicV4
+[offline] on-policy data collection enabled: ~15000 self-vs-heuristic + ~0 self-play ticks per eval window (20 windows), blocked_penalty=0.02, opponent=v4, dagger_teacher=v4-teach (weight 1.0, loss margin, margin 0.5, target hunters/carriers 2/1)
+[RewardConfig] Loaded from /Users/mac/project/26rl/blackout-env/build/mac/BlackOut.app/Contents/Resources/Data/StreamingAssets/reward_config.json
+[RewardConfig] -noRewardShaping: potential and nav shaping disabled
+DontDestroyOnLoad only works for root GameObjects or components on root GameObjects.
+Special Item Spawned: DebuffSize at (14, 5)
+Unit (1) dead
+Unit (3) dead
+Unit dead
+Unit (3) dead
+Unit (3) dead
+Unit (1) dead
+Unit (3) dead
+Unit (1) dead
+Unit (1) dead
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (2, 5)
+Unit (6) dead
+Unit (5) dead
+Unit (8) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (17, 20)
+Unit (1) dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (10, 17)
+Unit (5) dead
+Unit (6) dead
+Unit (8) dead
+Unit (6) dead
+Unit (8) dead
+Unit (6) dead
+Unit (8) dead
+Unit (6) dead
+Unit (8) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Unit (6) dead
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Special Item Spawned: BuffSize at (22, 12)
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (1) dead
+Unit (3) dead
+Unit (3) dead
+Unit (1) dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (8) dead
+Unit (6) dead
+Unit (8) dead
+Unit (6) dead
+Special Item Spawned: BuffSize at (4, 3)
+Unit (6) dead
+Unit (8) dead
+Unit (6) dead
+Unit (5) dead
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] eval @ step 0: win_rate=0.00 loss_rate=1.00 draw_rate=0.00 mean_margin=-96.17 candidate_idle/1k=0.0 candidate_blocked/1k=8.6
+           objectives (candidate vs opponent): approach_battery=+0.0021/+0.0455 pickups/1k=0.0/9.1 deliveries/1k=0.0/8.1 cargo_lost/1k=0.0/0.0 | by side: margin=-96.0/-96.3 blocked/1k=8.2/9.1
+[offline] step 0: BBF reset (shrink-and-perturb + re-anneal n_step/gamma)
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] Graph break from `Tensor.item()`, consider setting:
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     torch._dynamo.config.capture_scalar_outputs = True
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] or:
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     env TORCHDYNAMO_CAPTURE_SCALAR_OUTPUTS=1
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] to include these operations in the captured graph.
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] 
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] Graph break: from user code at:
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/my_model.py", line 243, in forward
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     tokens_out = self.attention(tokens_in, rope=(rope_cos, rope_sin))
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/modules/attention_block.py", line 195, in forward
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     x = layer(x, attn_mask, is_causal, rope)
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/modules/attention_block.py", line 168, in forward
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     x = x + self.gqa(x, attn_mask, is_causal, rope)
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/modules/attention_block.py", line 93, in forward
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     self.last_logit_norm = self._compute_logit_rms(q, k)
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/.venv/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     return func(*args, **kwargs)
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/modules/attention_block.py", line 123, in _compute_logit_rms
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     return logits.pow(2).mean().sqrt().item()
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] 
+W0919 01:03:01.190000 41882 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] 
+/Users/mac/project/26rl/blackout-env/.venv/lib/python3.10/site-packages/torch/_dynamo/utils.py:4415: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /Users/runner/work/pytorch/pytorch/aten/src/ATen/native/layer_norm.cpp:350.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+/Users/mac/.local/share/uv/python/cpython-3.10.12-macos-aarch64-none/lib/python3.10/multiprocessing/resource_tracker.py:224: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+Special Item Spawned: DebuffSpeed at (16, 12)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Thread 0x16e1d7000 may have been prematurely finalized

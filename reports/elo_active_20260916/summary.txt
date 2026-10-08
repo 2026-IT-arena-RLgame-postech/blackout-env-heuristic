@@ -1,0 +1,47 @@
+games=728 (+72 hold-out), pairs sampled=159/190
+
+rank policy        Elo   ±SE  games
+   1 v19          2059    65     68
+   2 v17          1832    51     96
+   3 v18          1831    50     98
+   4 v12          1542    43     76
+   5 v8           1529    42     76
+   6 v9           1519    43     72
+   7 v4           1500    43     68
+   8 v16          1490    43     72
+   9 v15          1482    43     66
+  10 v7           1480    43     68
+  11 v13          1472    43     72
+  12 v10          1472    42     72
+  13 v4_near      1462    43     66
+  14 v3           1456    43     68
+  15 v11          1443    42     68
+  16 v6           1390    42     72
+  17 v5           1317    44     70
+  18 v2           1314    44     74
+  19 v14          1220    48     66
+  20 v1           1192    50     68
+
+largest residuals on sampled pairs (non-transitivity shows up here)
+        v4 vs v7       observed   0% predicted  53% (n=4)
+       v10 vs v15      observed   0% predicted  49% (n=4)
+        v2 vs v13      observed  75% predicted  29% (n=4)
+        v4 vs v13      observed 100% predicted  54% (n=4)
+        v3 vs v5       observed  25% predicted  69% (n=4)
+        v8 vs v10      observed 100% predicted  58% (n=4)
+        v9 vs v11      observed 100% predicted  61% (n=4)
+        v6 vs v13      observed   0% predicted  38% (n=4)
+
+hold-out pairs (never used in the fit): mean |pred-obs| = 11%
+        v1 vs v15      predicted  16% observed  17% (n=6)
+        v1 vs v4       predicted  14% observed   0% (n=6)
+        v1 vs v9       predicted  13% observed  17% (n=6)
+        v7 vs v19      predicted   3% observed  33% (n=6)
+        v1 vs v13      predicted  17% observed   0% (n=6)
+        v9 vs v19      predicted   4% observed   0% (n=6)
+        v5 vs v17      predicted   5% observed   0% (n=6)
+        v8 vs v14      predicted  86% observed  75% (n=6)
+        v3 vs v17      predicted  10% observed   0% (n=6)
+       v11 vs v17      predicted  10% observed   0% (n=6)
+       v18 vs v4_near  predicted  89% observed 100% (n=6)
+       v11 vs v19      predicted   3% observed  17% (n=6)

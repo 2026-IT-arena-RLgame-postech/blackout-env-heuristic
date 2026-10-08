@@ -1,0 +1,48 @@
+candidate                                  inference opponent                                       n  margin   ±se   win H<30s H<60s H<120 Ca<60 end_s  agree deliv/1k  rev/1k die/1k @base camped   ang  <=2 ang10 <=2@10
+frozen/p10_v22.pt                          iqn       ckpt-frozen-p10_v22                           24    +0.0  14.6  0.50   1.3   1.6   1.5   0.7    38   0.80      3.2     149   5.14  0.67   0.39  13.6 0.29  10.2   0.29
+frozen/p10_v22.pt                          iqn       ckpt-frozen-p5a_v22                           24   +34.3  12.3  0.79   2.0   2.7   3.1   1.0    36   0.83      3.7     184   2.22  0.69   0.18  11.6 0.29   9.7   0.29
+frozen/p10_v22.pt                          iqn       strategic_v17                                 24   +72.7   2.4  1.00   2.3   3.2   3.0   1.0    35   0.83      4.4     372   0.73  0.69   0.11  12.1 0.30   8.2   0.29
+frozen/p10_v22.pt                          iqn       strategic_v19                                 24   +56.7   8.0  0.83   2.0   1.8   1.6   1.0    74   0.75      2.1     504   1.82  0.45   0.15  22.4 0.30   9.0   0.29
+frozen/p10_v22.pt                          iqn       strategic_v21                                 24   +77.2   1.5  1.00   2.6   3.5   nan   1.0    26   0.84      5.4     212   0.04  0.67   0.00  10.4 0.29   9.1   0.28
+frozen/p10_v22.pt                          iqn       strategic_v21_anyangle                        24   +13.7  13.1  0.58   1.6   2.9   3.3   1.0    53   0.82      2.4     321   1.94  0.66   0.18  16.5 0.35  10.5   0.29
+frozen/p10_v22.pt                          iqn       strategic_v22                                 24   -38.6  11.5  0.25   0.7   1.5   1.4   0.8    42   0.79      2.5     130   6.78  0.65   0.58  14.1 0.30  10.7   0.30
+frozen/p10_v22.pt                          iqn       strategic_v23                                 24   -76.6   1.7  0.00   0.1   0.0   nan   0.6    30   0.77      2.2      43   9.67  0.64   0.73  14.7 0.30  11.2   0.31
+frozen/p10_v22.pt                          iqn       strategic_v4                                  24   +74.2   2.7  1.00   2.5   3.2   3.5   1.0    38   0.84      4.2     244   0.25  0.04   0.00  10.4 0.29   9.4   0.28
+p11/latest.pt                              iqn       ckpt-frozen-p10_v22                           24   +78.5   1.7  1.00   2.6   3.5   nan   1.0    30   0.92      4.9     228   0.06  0.60   0.01   6.3 0.69   3.6   0.76
+p11/latest.pt                              iqn       ckpt-frozen-p5a_v22                           24   +72.0   2.5  1.00   2.6   3.3   3.1   1.0    47   0.92      3.2     367   0.06  0.75   0.01   7.0 0.69   4.2   0.74
+p11/latest.pt                              iqn       strategic_v17                                 24   +77.9   2.2  1.00   2.4   3.1   3.8   1.0    45   0.94      3.2     485   0.23  0.55   0.05   4.8 0.81   3.6   0.79
+p11/latest.pt                              iqn       strategic_v19                                 24   +73.5   4.2  0.96   2.2   1.7   0.8   1.0    34   0.89      4.5     288   1.50  0.45   0.13   8.9 0.67   4.1   0.78
+p11/latest.pt                              iqn       strategic_v21                                 24   +78.3   1.4  1.00   2.6   3.8   nan   1.0    27   0.92      5.4     217   0.02  1.00   0.00   5.6 0.70   4.0   0.74
+p11/latest.pt                              iqn       strategic_v21_anyangle                        24   +73.5   2.5  1.00   2.4   3.4   nan   1.0    30   0.91      4.7     206   0.57  0.41   0.05   6.6 0.69   4.4   0.75
+p11/latest.pt                              iqn       strategic_v22                                 24   +33.6  12.3  0.75   1.9   2.2   2.0   0.9    53   0.90      2.6     277   2.69  0.44   0.19   6.9 0.69   4.7   0.73
+p11/latest.pt                              iqn       strategic_v23                                 24    +4.5  13.6  0.54   1.2   1.7   3.0   0.8    53   0.89      2.4     308   3.12  0.56   0.29   7.8 0.65   6.2   0.70
+p11/latest.pt                              iqn       strategic_v4                                  24   +76.4   1.5  1.00   2.6   3.1   2.6   0.8    34   0.92      4.5     224   0.29  0.10   0.01   6.5 0.71   4.1   0.77
+teacher:act:strategic_v23                  -         ckpt-frozen-p10_v22                           24   +76.6   1.7  1.00   2.5   3.3   nan   1.0    30    nan      5.1      26   0.08  0.71   0.02   nan  nan   nan    nan
+teacher:act:strategic_v23                  -         ckpt-frozen-p5a_v22                           24   +72.5   1.6  1.00   2.6   3.3   nan   1.0    30    nan      5.0      33   0.07  0.83   0.02   nan  nan   nan    nan
+teacher:act:strategic_v23                  -         strategic_v17                                 24   +79.0   1.1  1.00   2.5   2.9   nan   1.0    29    nan      5.0      25   0.19  0.59   0.05   nan  nan   nan    nan
+teacher:act:strategic_v23                  -         strategic_v19                                 24   +74.2   5.7  0.96   2.3   1.1   0.7   0.9    45    nan      3.2      74   0.84  0.37   0.45   nan  nan   nan    nan
+teacher:act:strategic_v23                  -         strategic_v21                                 24   +77.5   1.6  1.00   2.7   3.8   nan   1.0    27    nan      5.2      27   0.01  1.00   0.00   nan  nan   nan    nan
+teacher:act:strategic_v23                  -         strategic_v21_anyangle                        24   +64.8   6.3  0.96   2.5   3.1   3.3   1.0    48    nan      3.1      74   1.15  0.79   0.17   nan  nan   nan    nan
+teacher:act:strategic_v23                  -         strategic_v22                                 24   +17.6  13.5  0.58   1.5   1.0   0.5   0.7    38    nan      3.5      49   4.91  0.72   0.44   nan  nan   nan    nan
+teacher:act:strategic_v23                  -         strategic_v23                                 24    +0.0  11.8  0.50   1.2   1.6   1.9   0.7    80    nan      1.7      74   4.43  0.79   0.49   nan  nan   nan    nan
+teacher:act:strategic_v23                  -         strategic_v4                                  24   +76.0   3.2  1.00   2.6   3.2   3.6   1.0    51    nan      2.9      25   0.18  0.19   0.01   nan  nan   nan    nan
+
+paired gap (candidate - teacher)           inference opponent                                     seeds     gap   ±se
+frozen/p10_v22.pt                          iqn       ckpt-frozen-p10_v22                             12   -76.6   1.7
+frozen/p10_v22.pt                          iqn       ckpt-frozen-p5a_v22                             12   -38.2  11.3
+frozen/p10_v22.pt                          iqn       strategic_v17                                   12    -6.4   2.6
+frozen/p10_v22.pt                          iqn       strategic_v19                                   12   -17.6  10.4
+frozen/p10_v22.pt                          iqn       strategic_v21                                   12    -0.4   2.2
+frozen/p10_v22.pt                          iqn       strategic_v21_anyangle                          12   -51.0  10.1
+frozen/p10_v22.pt                          iqn       strategic_v22                                   12   -56.2  10.0
+frozen/p10_v22.pt                          iqn       strategic_v23                                   12   -76.6   1.7
+frozen/p10_v22.pt                          iqn       strategic_v4                                    12    -1.8   4.0
+p11/latest.pt                              iqn       ckpt-frozen-p10_v22                             12    +2.0   2.1
+p11/latest.pt                              iqn       ckpt-frozen-p5a_v22                             12    -0.5   1.7
+p11/latest.pt                              iqn       strategic_v17                                   12    -1.2   2.3
+p11/latest.pt                              iqn       strategic_v19                                   12    -0.7   6.5
+p11/latest.pt                              iqn       strategic_v21                                   12    +0.8   2.1
+p11/latest.pt                              iqn       strategic_v21_anyangle                          12    +8.8   4.6
+p11/latest.pt                              iqn       strategic_v22                                   12   +16.0  10.1
+p11/latest.pt                              iqn       strategic_v23                                   12    +4.5   6.8
+p11/latest.pt                              iqn       strategic_v4                                    12    +0.3   3.3

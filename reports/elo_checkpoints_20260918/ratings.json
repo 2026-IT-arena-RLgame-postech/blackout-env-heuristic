@@ -1,0 +1,23 @@
+{
+  "games": 414,
+  "anchors": {
+    "strategic_v1": 1192.0,
+    "strategic_v14": 1220.0,
+    "strategic_v2": 1314.0,
+    "strategic_v5": 1317.0,
+    "strategic_v6": 1390.0,
+    "strategic_v3": 1456.0,
+    "strategic_v4": 1500.0,
+    "strategic_v12": 1542.0
+  },
+  "ratings": {
+    "run11": {
+      "elo": 314.26000791567577,
+      "se": 107.24823639257812
+    },
+    "run13": {
+      "elo": 199.4605778717289,
+      "se": 117.86595792910838
+    }
+  }
+}

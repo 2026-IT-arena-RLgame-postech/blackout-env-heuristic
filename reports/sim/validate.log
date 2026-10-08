@@ -1,0 +1,122 @@
+trace_000.npz: seed-init exact 808/808 div=None | obs-init exact 808 maxerr=0 | scores {'sim': [95, 9], 'unity': [95, 9]}
+trace_001.npz: seed-init exact 1471/1471 div=None | obs-init exact 1471 maxerr=0 | scores {'sim': [72, 99], 'unity': [72, 99]}
+trace_002.npz: seed-init exact 10502/10502 div=None | obs-init exact 10502 maxerr=0 | scores {'sim': [91, 68], 'unity': [91, 68]}
+trace_003.npz: seed-init exact 660/660 div=None | obs-init exact 660 maxerr=0 | scores {'sim': [98, 25], 'unity': [98, 25]}
+trace_004.npz: seed-init exact 817/817 div=None | obs-init exact 817 maxerr=0 | scores {'sim': [38, 96], 'unity': [38, 96]}
+trace_005.npz: seed-init exact 464/464 div=None | obs-init exact 464 maxerr=0 | scores {'sim': [93, 0], 'unity': [93, 0]}
+trace_006.npz: seed-init exact 584/584 div=None | obs-init exact 584 maxerr=0 | scores {'sim': [99, 24], 'unity': [99, 24]}
+trace_007.npz: seed-init exact 595/595 div=None | obs-init exact 595 maxerr=0 | scores {'sim': [42, 96], 'unity': [42, 96]}
+trace_008.npz: seed-init exact 2244/2244 div=None | obs-init exact 2244 maxerr=0 | scores {'sim': [92, 0], 'unity': [92, 0]}
+trace_009.npz: seed-init exact 1261/1261 div=None | obs-init exact 1261 maxerr=0 | scores {'sim': [98, 71], 'unity': [98, 71]}
+trace_010.npz: seed-init exact 560/560 div=None | obs-init exact 560 maxerr=0 | scores {'sim': [28, 96], 'unity': [28, 96]}
+trace_011.npz: seed-init exact 10501/10501 div=None | obs-init exact 10501 maxerr=0 | scores {'sim': [49, 79], 'unity': [49, 79]}
+trace_012.npz: seed-init exact 1666/1666 div=None | obs-init exact 1666 maxerr=0 | scores {'sim': [33, 99], 'unity': [33, 99]}
+trace_013.npz: seed-init exact 626/626 div=None | obs-init exact 626 maxerr=0 | scores {'sim': [6, 99], 'unity': [6, 99]}
+trace_014.npz: seed-init exact 493/493 div=None | obs-init exact 493 maxerr=0 | scores {'sim': [93, 9], 'unity': [93, 9]}
+trace_015.npz: seed-init exact 666/666 div=None | obs-init exact 666 maxerr=0 | scores {'sim': [93, 24], 'unity': [93, 24]}
+trace_016.npz: seed-init exact 10501/10501 div=None | obs-init exact 10501 maxerr=0 | scores {'sim': [98, 74], 'unity': [98, 74]}
+trace_017.npz: seed-init exact 10501/10501 div=None | obs-init exact 10501 maxerr=0 | scores {'sim': [53, 47], 'unity': [53, 47]}
+trace_018.npz: seed-init exact 10501/10501 div=None | obs-init exact 10501 maxerr=0 | scores {'sim': [86, 87], 'unity': [86, 87]}
+trace_019.npz: seed-init exact 1967/1967 div=None | obs-init exact 1967 maxerr=0 | scores {'sim': [23, 95], 'unity': [23, 95]}
+trace_020.npz: seed-init exact 919/919 div=None | obs-init exact 919 maxerr=0 | scores {'sim': [23, 98], 'unity': [23, 98]}
+trace_021.npz: seed-init exact 1192/1192 div=None | obs-init exact 1192 maxerr=0 | scores {'sim': [41, 93], 'unity': [41, 93]}
+trace_022.npz: seed-init exact 10501/10501 div=None | obs-init exact 10501 maxerr=0 | scores {'sim': [50, 99], 'unity': [50, 99]}
+trace_023.npz: seed-init exact 10501/10501 div=None | obs-init exact 10501 maxerr=0 | scores {'sim': [67, 4], 'unity': [67, 4]}
+trace_024.npz: seed-init exact 614/614 div=None | obs-init exact 614 maxerr=0 | scores {'sim': [98, 24], 'unity': [98, 24]}
+trace_025.npz: seed-init exact 744/744 div=None | obs-init exact 744 maxerr=0 | scores {'sim': [44, 94], 'unity': [44, 94]}
+trace_026.npz: seed-init exact 10501/10501 div=None | obs-init exact 10501 maxerr=0 | scores {'sim': [75, 85], 'unity': [75, 85]}
+trace_027.npz: seed-init exact 923/923 div=None | obs-init exact 923 maxerr=0 | scores {'sim': [93, 18], 'unity': [93, 18]}
+trace_028.npz: seed-init exact 458/458 div=None | obs-init exact 458 maxerr=0 | scores {'sim': [22, 97], 'unity': [22, 97]}
+trace_029.npz: seed-init exact 699/699 div=None | obs-init exact 699 maxerr=0 | scores {'sim': [99, 1], 'unity': [99, 1]}
+trace_030.npz: seed-init exact 762/762 div=None | obs-init exact 762 maxerr=0 | scores {'sim': [97, 21], 'unity': [97, 21]}
+trace_031.npz: seed-init exact 1437/1437 div=None | obs-init exact 1437 maxerr=0 | scores {'sim': [53, 99], 'unity': [53, 99]}
+trace_032.npz: seed-init exact 783/783 div=None | obs-init exact 783 maxerr=0 | scores {'sim': [99, 31], 'unity': [99, 31]}
+trace_033.npz: seed-init exact 861/861 div=None | obs-init exact 861 maxerr=0 | scores {'sim': [99, 51], 'unity': [99, 51]}
+trace_034.npz: seed-init exact 870/870 div=None | obs-init exact 870 maxerr=0 | scores {'sim': [19, 97], 'unity': [19, 97]}
+trace_035.npz: seed-init exact 10501/10501 div=None | obs-init exact 10501 maxerr=0 | scores {'sim': [31, 12], 'unity': [31, 12]}
+trace_036.npz: seed-init exact 10501/10501 div=None | obs-init exact 10501 maxerr=0 | scores {'sim': [19, 27], 'unity': [19, 27]}
+trace_037.npz: seed-init exact 480/480 div=None | obs-init exact 480 maxerr=0 | scores {'sim': [0, 99], 'unity': [0, 99]}
+trace_038.npz: seed-init exact 10501/10501 div=None | obs-init exact 10501 maxerr=0 | scores {'sim': [55, 79], 'unity': [55, 79]}
+trace_039.npz: seed-init exact 790/790 div=None | obs-init exact 790 maxerr=0 | scores {'sim': [7, 96], 'unity': [7, 96]}
+{
+ "traces": 40,
+ "full_match_bit_exact": 40,
+ "score_timeline_equal": 40,
+ "final_score_equal": 40,
+ "match_over_with_env_winner": 40,
+ "events_full_agreement": 1.0,
+ "events_mid_agreement": 1.0,
+ "events_mid_hist25_agreement": 1.0
+} {"seed_reproducible": 36, "bit_exact": 36} {"heuristic_matches": 29, "all_moves_identical": 29}
+{
+ "full": {
+  "n": 1419260,
+  "median": 0.0,
+  "p99": 0.0,
+  "max": 0.0,
+  "frac_le_1e-3": 1.0
+ },
+ "1s": {
+  "n": 140110,
+  "median": 0.0,
+  "p99": 1.430511474609375e-06,
+  "max": 0.000194549560546875,
+  "frac_le_1e-3": 1.0,
+  "starts": 540,
+  "starts_max_err_le_1e-3": 1.0,
+  "starts_bit_exact": 28
+ },
+ "5s": {
+  "n": 673330,
+  "median": 0.0,
+  "p99": 1.430511474609375e-06,
+  "max": 0.007537364959716797,
+  "frac_le_1e-3": 0.9998514844132892,
+  "starts": 540,
+  "starts_max_err_le_1e-3": 0.9925925925925926,
+  "starts_bit_exact": 21
+ },
+ "20s": {
+  "n": 2544200,
+  "median": 0.0,
+  "p99": 2.86102294921875e-06,
+  "max": 13.671451091766357,
+  "frac_le_1e-3": 0.9985036553730052,
+  "starts": 540,
+  "starts_max_err_le_1e-3": 0.9777777777777777,
+  "starts_bit_exact": 21
+ },
+ "1s_hist25": {
+  "n": 140110,
+  "median": 0.0,
+  "p99": 0.0,
+  "max": 2.86102294921875e-06,
+  "frac_le_1e-3": 1.0,
+  "starts": 540,
+  "starts_max_err_le_1e-3": 1.0,
+  "starts_bit_exact": 387
+ },
+ "5s_hist25": {
+  "n": 673330,
+  "median": 0.0,
+  "p99": 7.152557373046875e-07,
+  "max": 0.003202199935913086,
+  "frac_le_1e-3": 0.9999331679859801,
+  "starts": 540,
+  "starts_max_err_le_1e-3": 0.9981481481481481,
+  "starts_bit_exact": 341
+ },
+ "20s_hist25": {
+  "n": 2544200,
+  "median": 0.0,
+  "p99": 7.152557373046875e-07,
+  "max": 13.671451091766357,
+  "frac_le_1e-3": 0.9993750491313576,
+  "starts": 540,
+  "starts_max_err_le_1e-3": 0.9907407407407407,
+  "starts_bit_exact": 317
+ }
+}
+events_full {"absorb": {"unity": 267, "sim": 267, "matched": 267}, "deposit": {"unity": 1355, "sim": 1355, "matched": 1355}, "kill": {"unity": 2965, "sim": 2965, "matched": 2965}, "lost": {"unity": 70, "sim": 70, "matched": 70}, "pickup": {"unity": 1471, "sim": 1471, "matched": 1471}, "score": {"unity": 1165, "sim": 1165, "matched": 1165}, "swap": {"unity": 7, "sim": 7, "matched": 7}, "transform": {"unity": 3257, "sim": 3257, "matched": 3257}, "all": {"unity": 10643, "sim": 10643, "matched": 10643}, "storage_out": {"unity": 86, "sim": 86, "matched": 86}}
+events_mid {"deposit": {"unity": 421, "sim": 421, "matched": 421}, "kill": {"unity": 1447, "sim": 1447, "matched": 1447}, "pickup": {"unity": 467, "sim": 467, "matched": 467}, "score": {"unity": 318, "sim": 318, "matched": 318}, "transform": {"unity": 1503, "sim": 1503, "matched": 1503}, "all": {"unity": 4221, "sim": 4221, "matched": 4221}, "lost": {"unity": 32, "sim": 32, "matched": 32}, "swap": {"unity": 2, "sim": 2, "matched": 2}, "storage_out": {"unity": 31, "sim": 31, "matched": 31}}
+events_mid_hist25 {"deposit": {"unity": 421, "sim": 421, "matched": 421}, "kill": {"unity": 1447, "sim": 1447, "matched": 1447}, "pickup": {"unity": 467, "sim": 467, "matched": 467}, "score": {"unity": 318, "sim": 318, "matched": 318}, "transform": {"unity": 1503, "sim": 1503, "matched": 1503}, "all": {"unity": 4221, "sim": 4221, "matched": 4221}, "lost": {"unity": 32, "sim": 32, "matched": 32}, "swap": {"unity": 2, "sim": 2, "matched": 2}, "storage_out": {"unity": 31, "sim": 31, "matched": 31}}

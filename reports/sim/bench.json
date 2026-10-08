@@ -1,0 +1,20 @@
+{
+ "step_us": 6.7856875248253345,
+ "run_50_steps_us": 231.4902050420642,
+ "copy_us": 4.558125045150518,
+ "load_us": 3.0819789972156286,
+ "raw_obs_us": 2.3709998931735754,
+ "obs_dict_us": 62.37800046801567,
+ "step_with_v21_anyangle_both_us": 1763.7058331941564,
+ "step_with_v17_both_us": 742.7220838144422,
+ "step_with_random_both_us": 106.67652978251378,
+ "step_with_student_both_us": 9955.675420351326,
+ "step_with_student_vs_v21_us": 5768.000409007072,
+ "step_rollouts2s_per_s": 2920.8477547492344,
+ "step_with_v21_anyangle_both_rollouts2s_per_s": 11.339363214666538,
+ "step_with_v17_both_rollouts2s_per_s": 26.92573809857281,
+ "step_with_random_both_rollouts2s_per_s": 187.37439586475043,
+ "step_with_student_both_rollouts2s_per_s": 2.0088919463827293,
+ "step_with_student_vs_v21_rollouts2s_per_s": 3.4673690802094153,
+ "rollouts2s_per_s_sim_only_run": 4319.837203558092
+}

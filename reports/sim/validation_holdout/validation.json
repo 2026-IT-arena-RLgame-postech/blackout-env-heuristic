@@ -1,0 +1,4238 @@
+{
+ "traces": [
+  {
+   "trace": "trace_000.npz",
+   "a": "strategic_v21_anyangle",
+   "b": "random",
+   "seed": {
+    "replayed": 786,
+    "exact_steps": 786,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      97,
+      0
+     ],
+     "unity": [
+      97,
+      0
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 19,
+      "sim": 19,
+      "matched": 19
+     },
+     "kill": {
+      "unity": 4,
+      "sim": 4,
+      "matched": 4
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "score": {
+      "unity": 17,
+      "sim": 17,
+      "matched": 17
+     },
+     "transform": {
+      "unity": 17,
+      "sim": 17,
+      "matched": 17
+     },
+     "all": {
+      "unity": 80,
+      "sim": 80,
+      "matched": 80
+     }
+    }
+   },
+   "steps": 785,
+   "obs": {
+    "replayed": 786,
+    "exact_steps": 786,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      97,
+      0
+     ],
+     "unity": [
+      97,
+      0
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 19,
+      "sim": 19,
+      "matched": 19
+     },
+     "kill": {
+      "unity": 4,
+      "sim": 4,
+      "matched": 4
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "score": {
+      "unity": 17,
+      "sim": 17,
+      "matched": 17
+     },
+     "transform": {
+      "unity": 17,
+      "sim": 17,
+      "matched": 17
+     },
+     "all": {
+      "unity": 80,
+      "sim": 80,
+      "matched": 80
+     }
+    }
+   },
+   "rng": null,
+   "closed_loop": {
+    "identical_steps": 786,
+    "first_move_mismatch": null,
+    "over": true,
+    "scores": [
+     100,
+     0
+    ]
+   }
+  },
+  {
+   "trace": "trace_001.npz",
+   "a": "strategic_v19",
+   "b": "ckpt:checkpoints/distill/frozen/p5a_v22.pt",
+   "seed": {
+    "replayed": 10502,
+    "exact_steps": 10502,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      84,
+      69
+     ],
+     "unity": [
+      84,
+      69
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "deposit": {
+      "unity": 73,
+      "sim": 73,
+      "matched": 73
+     },
+     "kill": {
+      "unity": 147,
+      "sim": 147,
+      "matched": 147
+     },
+     "lost": {
+      "unity": 5,
+      "sim": 5,
+      "matched": 5
+     },
+     "pickup": {
+      "unity": 78,
+      "sim": 78,
+      "matched": 78
+     },
+     "score": {
+      "unity": 64,
+      "sim": 64,
+      "matched": 64
+     },
+     "storage_out": {
+      "unity": 16,
+      "sim": 16,
+      "matched": 16
+     },
+     "transform": {
+      "unity": 70,
+      "sim": 70,
+      "matched": 70
+     },
+     "all": {
+      "unity": 474,
+      "sim": 474,
+      "matched": 474
+     }
+    }
+   },
+   "steps": 10501,
+   "obs": {
+    "replayed": 10502,
+    "exact_steps": 10502,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      84,
+      69
+     ],
+     "unity": [
+      84,
+      69
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "deposit": {
+      "unity": 73,
+      "sim": 73,
+      "matched": 73
+     },
+     "kill": {
+      "unity": 147,
+      "sim": 147,
+      "matched": 147
+     },
+     "lost": {
+      "unity": 5,
+      "sim": 5,
+      "matched": 5
+     },
+     "pickup": {
+      "unity": 78,
+      "sim": 78,
+      "matched": 78
+     },
+     "score": {
+      "unity": 64,
+      "sim": 64,
+      "matched": 64
+     },
+     "storage_out": {
+      "unity": 16,
+      "sim": 16,
+      "matched": 16
+     },
+     "transform": {
+      "unity": 70,
+      "sim": 70,
+      "matched": 70
+     },
+     "all": {
+      "unity": 474,
+      "sim": 474,
+      "matched": 474
+     }
+    }
+   },
+   "rng": null,
+   "closed_loop": null
+  },
+  {
+   "trace": "trace_002.npz",
+   "a": "strategic_v19",
+   "b": "strategic_v21_anyangle",
+   "seed": {
+    "replayed": 1198,
+    "exact_steps": 1198,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      37,
+      93
+     ],
+     "unity": [
+      37,
+      93
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 42,
+      "sim": 42,
+      "matched": 42
+     },
+     "kill": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "lost": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "pickup": {
+      "unity": 46,
+      "sim": 46,
+      "matched": 46
+     },
+     "score": {
+      "unity": 35,
+      "sim": 35,
+      "matched": 35
+     },
+     "storage_out": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "transform": {
+      "unity": 55,
+      "sim": 55,
+      "matched": 55
+     },
+     "all": {
+      "unity": 218,
+      "sim": 218,
+      "matched": 218
+     }
+    }
+   },
+   "steps": 1197,
+   "obs": {
+    "replayed": 1198,
+    "exact_steps": 1198,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      37,
+      93
+     ],
+     "unity": [
+      37,
+      93
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 42,
+      "sim": 42,
+      "matched": 42
+     },
+     "kill": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "lost": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "pickup": {
+      "unity": 46,
+      "sim": 46,
+      "matched": 46
+     },
+     "score": {
+      "unity": 35,
+      "sim": 35,
+      "matched": 35
+     },
+     "storage_out": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "transform": {
+      "unity": 55,
+      "sim": 55,
+      "matched": 55
+     },
+     "all": {
+      "unity": 218,
+      "sim": 218,
+      "matched": 218
+     }
+    }
+   },
+   "rng": null,
+   "closed_loop": {
+    "identical_steps": 1198,
+    "first_move_mismatch": null,
+    "over": true,
+    "scores": [
+     37,
+     101
+    ]
+   }
+  },
+  {
+   "trace": "trace_003.npz",
+   "a": "strategic_v19",
+   "b": "strategic_v4",
+   "seed": {
+    "replayed": 1049,
+    "exact_steps": 1049,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      95,
+      45
+     ],
+     "unity": [
+      95,
+      45
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "kill": {
+      "unity": 51,
+      "sim": 51,
+      "matched": 51
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 36,
+      "sim": 36,
+      "matched": 36
+     },
+     "score": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "storage_out": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "transform": {
+      "unity": 11,
+      "sim": 11,
+      "matched": 11
+     },
+     "all": {
+      "unity": 168,
+      "sim": 168,
+      "matched": 168
+     }
+    }
+   },
+   "steps": 1048,
+   "obs": {
+    "replayed": 1049,
+    "exact_steps": 1049,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      95,
+      45
+     ],
+     "unity": [
+      95,
+      45
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "kill": {
+      "unity": 51,
+      "sim": 51,
+      "matched": 51
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 36,
+      "sim": 36,
+      "matched": 36
+     },
+     "score": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "storage_out": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "transform": {
+      "unity": 11,
+      "sim": 11,
+      "matched": 11
+     },
+     "all": {
+      "unity": 168,
+      "sim": 168,
+      "matched": 168
+     }
+    }
+   },
+   "rng": {
+    "replayed": 1049,
+    "exact_steps": 1049,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      95,
+      45
+     ],
+     "unity": [
+      95,
+      45
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "kill": {
+      "unity": 51,
+      "sim": 51,
+      "matched": 51
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 36,
+      "sim": 36,
+      "matched": 36
+     },
+     "score": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "storage_out": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "transform": {
+      "unity": 11,
+      "sim": 11,
+      "matched": 11
+     },
+     "all": {
+      "unity": 168,
+      "sim": 168,
+      "matched": 168
+     }
+    }
+   },
+   "closed_loop": {
+    "identical_steps": 1049,
+    "first_move_mismatch": null,
+    "over": true,
+    "scores": [
+     101,
+     45
+    ]
+   }
+  },
+  {
+   "trace": "trace_004.npz",
+   "a": "mixture",
+   "b": "ckpt:checkpoints/distill/frozen/p5a_v22.pt",
+   "seed": {
+    "replayed": 10501,
+    "exact_steps": 10501,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      69,
+      97
+     ],
+     "unity": [
+      69,
+      97
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "deposit": {
+      "unity": 63,
+      "sim": 63,
+      "matched": 63
+     },
+     "kill": {
+      "unity": 333,
+      "sim": 333,
+      "matched": 333
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 65,
+      "sim": 65,
+      "matched": 65
+     },
+     "score": {
+      "unity": 57,
+      "sim": 57,
+      "matched": 57
+     },
+     "storage_out": {
+      "unity": 11,
+      "sim": 11,
+      "matched": 11
+     },
+     "transform": {
+      "unity": 613,
+      "sim": 613,
+      "matched": 613
+     },
+     "all": {
+      "unity": 1165,
+      "sim": 1165,
+      "matched": 1165
+     }
+    }
+   },
+   "steps": 10500,
+   "obs": {
+    "replayed": 10501,
+    "exact_steps": 10501,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      69,
+      97
+     ],
+     "unity": [
+      69,
+      97
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "deposit": {
+      "unity": 63,
+      "sim": 63,
+      "matched": 63
+     },
+     "kill": {
+      "unity": 333,
+      "sim": 333,
+      "matched": 333
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 65,
+      "sim": 65,
+      "matched": 65
+     },
+     "score": {
+      "unity": 57,
+      "sim": 57,
+      "matched": 57
+     },
+     "storage_out": {
+      "unity": 11,
+      "sim": 11,
+      "matched": 11
+     },
+     "transform": {
+      "unity": 613,
+      "sim": 613,
+      "matched": 613
+     },
+     "all": {
+      "unity": 1165,
+      "sim": 1165,
+      "matched": 1165
+     }
+    }
+   },
+   "rng": {
+    "replayed": 10501,
+    "exact_steps": 10501,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      69,
+      97
+     ],
+     "unity": [
+      69,
+      97
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "deposit": {
+      "unity": 63,
+      "sim": 63,
+      "matched": 63
+     },
+     "kill": {
+      "unity": 333,
+      "sim": 333,
+      "matched": 333
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 65,
+      "sim": 65,
+      "matched": 65
+     },
+     "score": {
+      "unity": 57,
+      "sim": 57,
+      "matched": 57
+     },
+     "storage_out": {
+      "unity": 11,
+      "sim": 11,
+      "matched": 11
+     },
+     "transform": {
+      "unity": 613,
+      "sim": 613,
+      "matched": 613
+     },
+     "all": {
+      "unity": 1165,
+      "sim": 1165,
+      "matched": 1165
+     }
+    }
+   },
+   "closed_loop": null
+  },
+  {
+   "trace": "trace_005.npz",
+   "a": "ckpt:checkpoints/distill/frozen/p5a_v22.pt",
+   "b": "random",
+   "seed": {
+    "replayed": 682,
+    "exact_steps": 682,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      94,
+      0
+     ],
+     "unity": [
+      94,
+      0
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 23,
+      "sim": 23,
+      "matched": 23
+     },
+     "kill": {
+      "unity": 14,
+      "sim": 14,
+      "matched": 14
+     },
+     "pickup": {
+      "unity": 25,
+      "sim": 25,
+      "matched": 25
+     },
+     "score": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "storage_out": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "transform": {
+      "unity": 12,
+      "sim": 12,
+      "matched": 12
+     },
+     "all": {
+      "unity": 97,
+      "sim": 97,
+      "matched": 97
+     }
+    }
+   },
+   "steps": 681,
+   "obs": {
+    "replayed": 682,
+    "exact_steps": 682,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      94,
+      0
+     ],
+     "unity": [
+      94,
+      0
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 23,
+      "sim": 23,
+      "matched": 23
+     },
+     "kill": {
+      "unity": 14,
+      "sim": 14,
+      "matched": 14
+     },
+     "pickup": {
+      "unity": 25,
+      "sim": 25,
+      "matched": 25
+     },
+     "score": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "storage_out": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "transform": {
+      "unity": 12,
+      "sim": 12,
+      "matched": 12
+     },
+     "all": {
+      "unity": 97,
+      "sim": 97,
+      "matched": 97
+     }
+    }
+   },
+   "rng": {
+    "replayed": 682,
+    "exact_steps": 682,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      94,
+      0
+     ],
+     "unity": [
+      94,
+      0
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 23,
+      "sim": 23,
+      "matched": 23
+     },
+     "kill": {
+      "unity": 14,
+      "sim": 14,
+      "matched": 14
+     },
+     "pickup": {
+      "unity": 25,
+      "sim": 25,
+      "matched": 25
+     },
+     "score": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "storage_out": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "transform": {
+      "unity": 12,
+      "sim": 12,
+      "matched": 12
+     },
+     "all": {
+      "unity": 97,
+      "sim": 97,
+      "matched": 97
+     }
+    }
+   },
+   "closed_loop": null
+  },
+  {
+   "trace": "trace_006.npz",
+   "a": "strategic_v21_anyangle",
+   "b": "strategic_v19",
+   "seed": {
+    "replayed": 832,
+    "exact_steps": 832,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      92,
+      31
+     ],
+     "unity": [
+      92,
+      31
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 27,
+      "sim": 27,
+      "matched": 27
+     },
+     "kill": {
+      "unity": 40,
+      "sim": 40,
+      "matched": 40
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 30,
+      "sim": 30,
+      "matched": 30
+     },
+     "score": {
+      "unity": 31,
+      "sim": 31,
+      "matched": 31
+     },
+     "storage_out": {
+      "unity": 6,
+      "sim": 6,
+      "matched": 6
+     },
+     "transform": {
+      "unity": 39,
+      "sim": 39,
+      "matched": 39
+     },
+     "all": {
+      "unity": 176,
+      "sim": 176,
+      "matched": 176
+     }
+    }
+   },
+   "steps": 831,
+   "obs": {
+    "replayed": 832,
+    "exact_steps": 832,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      92,
+      31
+     ],
+     "unity": [
+      92,
+      31
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 27,
+      "sim": 27,
+      "matched": 27
+     },
+     "kill": {
+      "unity": 40,
+      "sim": 40,
+      "matched": 40
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 30,
+      "sim": 30,
+      "matched": 30
+     },
+     "score": {
+      "unity": 31,
+      "sim": 31,
+      "matched": 31
+     },
+     "storage_out": {
+      "unity": 6,
+      "sim": 6,
+      "matched": 6
+     },
+     "transform": {
+      "unity": 39,
+      "sim": 39,
+      "matched": 39
+     },
+     "all": {
+      "unity": 176,
+      "sim": 176,
+      "matched": 176
+     }
+    }
+   },
+   "rng": {
+    "replayed": 832,
+    "exact_steps": 832,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      92,
+      31
+     ],
+     "unity": [
+      92,
+      31
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 27,
+      "sim": 27,
+      "matched": 27
+     },
+     "kill": {
+      "unity": 40,
+      "sim": 40,
+      "matched": 40
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 30,
+      "sim": 30,
+      "matched": 30
+     },
+     "score": {
+      "unity": 31,
+      "sim": 31,
+      "matched": 31
+     },
+     "storage_out": {
+      "unity": 6,
+      "sim": 6,
+      "matched": 6
+     },
+     "transform": {
+      "unity": 39,
+      "sim": 39,
+      "matched": 39
+     },
+     "all": {
+      "unity": 176,
+      "sim": 176,
+      "matched": 176
+     }
+    }
+   },
+   "closed_loop": {
+    "identical_steps": 832,
+    "first_move_mismatch": null,
+    "over": true,
+    "scores": [
+     100,
+     31
+    ]
+   }
+  },
+  {
+   "trace": "trace_007.npz",
+   "a": "strategic_v19",
+   "b": "ckpt:checkpoints/distill/frozen/p5a_v22.pt",
+   "seed": {
+    "replayed": 10501,
+    "exact_steps": 10501,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      74,
+      94
+     ],
+     "unity": [
+      74,
+      94
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "deposit": {
+      "unity": 67,
+      "sim": 67,
+      "matched": 67
+     },
+     "kill": {
+      "unity": 552,
+      "sim": 552,
+      "matched": 552
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 69,
+      "sim": 69,
+      "matched": 69
+     },
+     "score": {
+      "unity": 55,
+      "sim": 55,
+      "matched": 55
+     },
+     "storage_out": {
+      "unity": 9,
+      "sim": 9,
+      "matched": 9
+     },
+     "swap": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "transform": {
+      "unity": 46,
+      "sim": 46,
+      "matched": 46
+     },
+     "all": {
+      "unity": 822,
+      "sim": 822,
+      "matched": 822
+     }
+    }
+   },
+   "steps": 10500,
+   "obs": {
+    "replayed": 10501,
+    "exact_steps": 10501,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      74,
+      94
+     ],
+     "unity": [
+      74,
+      94
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "deposit": {
+      "unity": 67,
+      "sim": 67,
+      "matched": 67
+     },
+     "kill": {
+      "unity": 552,
+      "sim": 552,
+      "matched": 552
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 69,
+      "sim": 69,
+      "matched": 69
+     },
+     "score": {
+      "unity": 55,
+      "sim": 55,
+      "matched": 55
+     },
+     "storage_out": {
+      "unity": 9,
+      "sim": 9,
+      "matched": 9
+     },
+     "swap": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "transform": {
+      "unity": 46,
+      "sim": 46,
+      "matched": 46
+     },
+     "all": {
+      "unity": 822,
+      "sim": 822,
+      "matched": 822
+     }
+    }
+   },
+   "rng": {
+    "replayed": 10501,
+    "exact_steps": 10501,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      74,
+      94
+     ],
+     "unity": [
+      74,
+      94
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "deposit": {
+      "unity": 67,
+      "sim": 67,
+      "matched": 67
+     },
+     "kill": {
+      "unity": 552,
+      "sim": 552,
+      "matched": 552
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 69,
+      "sim": 69,
+      "matched": 69
+     },
+     "score": {
+      "unity": 55,
+      "sim": 55,
+      "matched": 55
+     },
+     "storage_out": {
+      "unity": 9,
+      "sim": 9,
+      "matched": 9
+     },
+     "swap": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "transform": {
+      "unity": 46,
+      "sim": 46,
+      "matched": 46
+     },
+     "all": {
+      "unity": 822,
+      "sim": 822,
+      "matched": 822
+     }
+    }
+   },
+   "closed_loop": null
+  },
+  {
+   "trace": "trace_008.npz",
+   "a": "strategic_v19",
+   "b": "strategic_v19",
+   "seed": {
+    "replayed": 1407,
+    "exact_steps": 1407,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      94,
+      38
+     ],
+     "unity": [
+      94,
+      38
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 35,
+      "sim": 35,
+      "matched": 35
+     },
+     "kill": {
+      "unity": 74,
+      "sim": 74,
+      "matched": 74
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 37,
+      "sim": 37,
+      "matched": 37
+     },
+     "score": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "storage_out": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "transform": {
+      "unity": 51,
+      "sim": 51,
+      "matched": 51
+     },
+     "all": {
+      "unity": 237,
+      "sim": 237,
+      "matched": 237
+     }
+    }
+   },
+   "steps": 1406,
+   "obs": {
+    "replayed": 1407,
+    "exact_steps": 1407,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      94,
+      38
+     ],
+     "unity": [
+      94,
+      38
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 35,
+      "sim": 35,
+      "matched": 35
+     },
+     "kill": {
+      "unity": 74,
+      "sim": 74,
+      "matched": 74
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 37,
+      "sim": 37,
+      "matched": 37
+     },
+     "score": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "storage_out": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "transform": {
+      "unity": 51,
+      "sim": 51,
+      "matched": 51
+     },
+     "all": {
+      "unity": 237,
+      "sim": 237,
+      "matched": 237
+     }
+    }
+   },
+   "rng": {
+    "replayed": 1407,
+    "exact_steps": 1407,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      94,
+      38
+     ],
+     "unity": [
+      94,
+      38
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 35,
+      "sim": 35,
+      "matched": 35
+     },
+     "kill": {
+      "unity": 74,
+      "sim": 74,
+      "matched": 74
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 37,
+      "sim": 37,
+      "matched": 37
+     },
+     "score": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "storage_out": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "transform": {
+      "unity": 51,
+      "sim": 51,
+      "matched": 51
+     },
+     "all": {
+      "unity": 237,
+      "sim": 237,
+      "matched": 237
+     }
+    }
+   },
+   "closed_loop": {
+    "identical_steps": 1407,
+    "first_move_mismatch": null,
+    "over": true,
+    "scores": [
+     101,
+     38
+    ]
+   }
+  },
+  {
+   "trace": "trace_009.npz",
+   "a": "strategic_v21_anyangle",
+   "b": "strategic_v4",
+   "seed": {
+    "replayed": 649,
+    "exact_steps": 649,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      96,
+      14
+     ],
+     "unity": [
+      96,
+      14
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 27,
+      "sim": 27,
+      "matched": 27
+     },
+     "kill": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "score": {
+      "unity": 23,
+      "sim": 23,
+      "matched": 23
+     },
+     "storage_out": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "transform": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "all": {
+      "unity": 129,
+      "sim": 129,
+      "matched": 129
+     }
+    }
+   },
+   "steps": 648,
+   "obs": {
+    "replayed": 649,
+    "exact_steps": 649,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      96,
+      14
+     ],
+     "unity": [
+      96,
+      14
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 27,
+      "sim": 27,
+      "matched": 27
+     },
+     "kill": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "score": {
+      "unity": 23,
+      "sim": 23,
+      "matched": 23
+     },
+     "storage_out": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "transform": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "all": {
+      "unity": 129,
+      "sim": 129,
+      "matched": 129
+     }
+    }
+   },
+   "rng": {
+    "replayed": 649,
+    "exact_steps": 649,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      96,
+      14
+     ],
+     "unity": [
+      96,
+      14
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 27,
+      "sim": 27,
+      "matched": 27
+     },
+     "kill": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "score": {
+      "unity": 23,
+      "sim": 23,
+      "matched": 23
+     },
+     "storage_out": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "transform": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "all": {
+      "unity": 129,
+      "sim": 129,
+      "matched": 129
+     }
+    }
+   },
+   "closed_loop": {
+    "identical_steps": 649,
+    "first_move_mismatch": null,
+    "over": true,
+    "scores": [
+     101,
+     14
+    ]
+   }
+  },
+  {
+   "trace": "trace_010.npz",
+   "a": "mixture",
+   "b": "random",
+   "seed": {
+    "replayed": 704,
+    "exact_steps": 704,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      97,
+      0
+     ],
+     "unity": [
+      97,
+      0
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "kill": {
+      "unity": 13,
+      "sim": 13,
+      "matched": 13
+     },
+     "lost": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "pickup": {
+      "unity": 25,
+      "sim": 25,
+      "matched": 25
+     },
+     "score": {
+      "unity": 18,
+      "sim": 18,
+      "matched": 18
+     },
+     "transform": {
+      "unity": 7,
+      "sim": 7,
+      "matched": 7
+     },
+     "all": {
+      "unity": 88,
+      "sim": 88,
+      "matched": 88
+     }
+    }
+   },
+   "steps": 703,
+   "obs": {
+    "replayed": 704,
+    "exact_steps": 704,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      97,
+      0
+     ],
+     "unity": [
+      97,
+      0
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "kill": {
+      "unity": 13,
+      "sim": 13,
+      "matched": 13
+     },
+     "lost": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "pickup": {
+      "unity": 25,
+      "sim": 25,
+      "matched": 25
+     },
+     "score": {
+      "unity": 18,
+      "sim": 18,
+      "matched": 18
+     },
+     "transform": {
+      "unity": 7,
+      "sim": 7,
+      "matched": 7
+     },
+     "all": {
+      "unity": 88,
+      "sim": 88,
+      "matched": 88
+     }
+    }
+   },
+   "rng": {
+    "replayed": 704,
+    "exact_steps": 704,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      97,
+      0
+     ],
+     "unity": [
+      97,
+      0
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "kill": {
+      "unity": 13,
+      "sim": 13,
+      "matched": 13
+     },
+     "lost": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "pickup": {
+      "unity": 25,
+      "sim": 25,
+      "matched": 25
+     },
+     "score": {
+      "unity": 18,
+      "sim": 18,
+      "matched": 18
+     },
+     "transform": {
+      "unity": 7,
+      "sim": 7,
+      "matched": 7
+     },
+     "all": {
+      "unity": 88,
+      "sim": 88,
+      "matched": 88
+     }
+    }
+   },
+   "closed_loop": {
+    "identical_steps": 704,
+    "first_move_mismatch": null,
+    "over": true,
+    "scores": [
+     104,
+     0
+    ]
+   }
+  },
+  {
+   "trace": "trace_011.npz",
+   "a": "strategic_v4",
+   "b": "random",
+   "seed": {
+    "replayed": 364,
+    "exact_steps": 364,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      98,
+      0
+     ],
+     "unity": [
+      98,
+      0
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "deposit": {
+      "unity": 18,
+      "sim": 18,
+      "matched": 18
+     },
+     "kill": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "score": {
+      "unity": 17,
+      "sim": 17,
+      "matched": 17
+     },
+     "transform": {
+      "unity": 5,
+      "sim": 5,
+      "matched": 5
+     },
+     "all": {
+      "unity": 64,
+      "sim": 64,
+      "matched": 64
+     }
+    }
+   },
+   "steps": 363,
+   "obs": {
+    "replayed": 364,
+    "exact_steps": 364,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      98,
+      0
+     ],
+     "unity": [
+      98,
+      0
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "deposit": {
+      "unity": 18,
+      "sim": 18,
+      "matched": 18
+     },
+     "kill": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "score": {
+      "unity": 17,
+      "sim": 17,
+      "matched": 17
+     },
+     "transform": {
+      "unity": 5,
+      "sim": 5,
+      "matched": 5
+     },
+     "all": {
+      "unity": 64,
+      "sim": 64,
+      "matched": 64
+     }
+    }
+   },
+   "rng": {
+    "replayed": 364,
+    "exact_steps": 364,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      98,
+      0
+     ],
+     "unity": [
+      98,
+      0
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "deposit": {
+      "unity": 18,
+      "sim": 18,
+      "matched": 18
+     },
+     "kill": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "score": {
+      "unity": 17,
+      "sim": 17,
+      "matched": 17
+     },
+     "transform": {
+      "unity": 5,
+      "sim": 5,
+      "matched": 5
+     },
+     "all": {
+      "unity": 64,
+      "sim": 64,
+      "matched": 64
+     }
+    }
+   },
+   "closed_loop": {
+    "identical_steps": 364,
+    "first_move_mismatch": null,
+    "over": true,
+    "scores": [
+     103,
+     0
+    ]
+   }
+  },
+  {
+   "trace": "trace_012.npz",
+   "a": "strategic_v21_anyangle",
+   "b": "strategic_v4",
+   "seed": {
+    "replayed": 1349,
+    "exact_steps": 1349,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      96,
+      44
+     ],
+     "unity": [
+      96,
+      44
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 31,
+      "sim": 31,
+      "matched": 31
+     },
+     "kill": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 33,
+      "sim": 33,
+      "matched": 33
+     },
+     "score": {
+      "unity": 30,
+      "sim": 30,
+      "matched": 30
+     },
+     "storage_out": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "transform": {
+      "unity": 37,
+      "sim": 37,
+      "matched": 37
+     },
+     "all": {
+      "unity": 171,
+      "sim": 171,
+      "matched": 171
+     }
+    }
+   },
+   "steps": 1348,
+   "obs": {
+    "replayed": 1349,
+    "exact_steps": 1349,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      96,
+      44
+     ],
+     "unity": [
+      96,
+      44
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 31,
+      "sim": 31,
+      "matched": 31
+     },
+     "kill": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 33,
+      "sim": 33,
+      "matched": 33
+     },
+     "score": {
+      "unity": 30,
+      "sim": 30,
+      "matched": 30
+     },
+     "storage_out": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "transform": {
+      "unity": 37,
+      "sim": 37,
+      "matched": 37
+     },
+     "all": {
+      "unity": 171,
+      "sim": 171,
+      "matched": 171
+     }
+    }
+   },
+   "rng": {
+    "replayed": 1349,
+    "exact_steps": 1349,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      96,
+      44
+     ],
+     "unity": [
+      96,
+      44
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 31,
+      "sim": 31,
+      "matched": 31
+     },
+     "kill": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 33,
+      "sim": 33,
+      "matched": 33
+     },
+     "score": {
+      "unity": 30,
+      "sim": 30,
+      "matched": 30
+     },
+     "storage_out": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "transform": {
+      "unity": 37,
+      "sim": 37,
+      "matched": 37
+     },
+     "all": {
+      "unity": 171,
+      "sim": 171,
+      "matched": 171
+     }
+    }
+   },
+   "closed_loop": {
+    "identical_steps": 1349,
+    "first_move_mismatch": null,
+    "over": true,
+    "scores": [
+     101,
+     44
+    ]
+   }
+  },
+  {
+   "trace": "trace_013.npz",
+   "a": "strategic_v4",
+   "b": "ckpt:checkpoints/distill/frozen/p5a_v22.pt",
+   "seed": {
+    "replayed": 1060,
+    "exact_steps": 1060,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      20,
+      98
+     ],
+     "unity": [
+      20,
+      98
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "kill": {
+      "unity": 15,
+      "sim": 15,
+      "matched": 15
+     },
+     "pickup": {
+      "unity": 36,
+      "sim": 36,
+      "matched": 36
+     },
+     "score": {
+      "unity": 30,
+      "sim": 30,
+      "matched": 30
+     },
+     "storage_out": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "transform": {
+      "unity": 44,
+      "sim": 44,
+      "matched": 44
+     },
+     "all": {
+      "unity": 164,
+      "sim": 164,
+      "matched": 164
+     }
+    }
+   },
+   "steps": 1059,
+   "obs": {
+    "replayed": 1060,
+    "exact_steps": 1060,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      20,
+      98
+     ],
+     "unity": [
+      20,
+      98
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "kill": {
+      "unity": 15,
+      "sim": 15,
+      "matched": 15
+     },
+     "pickup": {
+      "unity": 36,
+      "sim": 36,
+      "matched": 36
+     },
+     "score": {
+      "unity": 30,
+      "sim": 30,
+      "matched": 30
+     },
+     "storage_out": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "transform": {
+      "unity": 44,
+      "sim": 44,
+      "matched": 44
+     },
+     "all": {
+      "unity": 164,
+      "sim": 164,
+      "matched": 164
+     }
+    }
+   },
+   "rng": {
+    "replayed": 1060,
+    "exact_steps": 1060,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      20,
+      98
+     ],
+     "unity": [
+      20,
+      98
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "kill": {
+      "unity": 15,
+      "sim": 15,
+      "matched": 15
+     },
+     "pickup": {
+      "unity": 36,
+      "sim": 36,
+      "matched": 36
+     },
+     "score": {
+      "unity": 30,
+      "sim": 30,
+      "matched": 30
+     },
+     "storage_out": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "transform": {
+      "unity": 44,
+      "sim": 44,
+      "matched": 44
+     },
+     "all": {
+      "unity": 164,
+      "sim": 164,
+      "matched": 164
+     }
+    }
+   },
+   "closed_loop": null
+  },
+  {
+   "trace": "trace_014.npz",
+   "a": "strategic_v19",
+   "b": "strategic_v4",
+   "seed": {
+    "replayed": 1336,
+    "exact_steps": 1336,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      94,
+      36
+     ],
+     "unity": [
+      94,
+      36
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "kill": {
+      "unity": 50,
+      "sim": 50,
+      "matched": 50
+     },
+     "lost": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "pickup": {
+      "unity": 37,
+      "sim": 37,
+      "matched": 37
+     },
+     "score": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "storage_out": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "transform": {
+      "unity": 10,
+      "sim": 10,
+      "matched": 10
+     },
+     "all": {
+      "unity": 171,
+      "sim": 171,
+      "matched": 171
+     }
+    }
+   },
+   "steps": 1335,
+   "obs": {
+    "replayed": 1336,
+    "exact_steps": 1336,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      94,
+      36
+     ],
+     "unity": [
+      94,
+      36
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "kill": {
+      "unity": 50,
+      "sim": 50,
+      "matched": 50
+     },
+     "lost": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "pickup": {
+      "unity": 37,
+      "sim": 37,
+      "matched": 37
+     },
+     "score": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "storage_out": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "transform": {
+      "unity": 10,
+      "sim": 10,
+      "matched": 10
+     },
+     "all": {
+      "unity": 171,
+      "sim": 171,
+      "matched": 171
+     }
+    }
+   },
+   "rng": {
+    "replayed": 1336,
+    "exact_steps": 1336,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      94,
+      36
+     ],
+     "unity": [
+      94,
+      36
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "kill": {
+      "unity": 50,
+      "sim": 50,
+      "matched": 50
+     },
+     "lost": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "pickup": {
+      "unity": 37,
+      "sim": 37,
+      "matched": 37
+     },
+     "score": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "storage_out": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "transform": {
+      "unity": 10,
+      "sim": 10,
+      "matched": 10
+     },
+     "all": {
+      "unity": 171,
+      "sim": 171,
+      "matched": 171
+     }
+    }
+   },
+   "closed_loop": {
+    "identical_steps": 1336,
+    "first_move_mismatch": null,
+    "over": true,
+    "scores": [
+     100,
+     36
+    ]
+   }
+  },
+  {
+   "trace": "trace_015.npz",
+   "a": "strategic_v19",
+   "b": "strategic_v4",
+   "seed": {
+    "replayed": 1539,
+    "exact_steps": 1539,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      97,
+      66
+     ],
+     "unity": [
+      97,
+      66
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "deposit": {
+      "unity": 45,
+      "sim": 45,
+      "matched": 45
+     },
+     "kill": {
+      "unity": 55,
+      "sim": 55,
+      "matched": 55
+     },
+     "lost": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "pickup": {
+      "unity": 49,
+      "sim": 49,
+      "matched": 49
+     },
+     "score": {
+      "unity": 54,
+      "sim": 54,
+      "matched": 54
+     },
+     "storage_out": {
+      "unity": 9,
+      "sim": 9,
+      "matched": 9
+     },
+     "transform": {
+      "unity": 11,
+      "sim": 11,
+      "matched": 11
+     },
+     "all": {
+      "unity": 229,
+      "sim": 229,
+      "matched": 229
+     }
+    }
+   },
+   "steps": 1538,
+   "obs": {
+    "replayed": 1539,
+    "exact_steps": 1539,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      97,
+      66
+     ],
+     "unity": [
+      97,
+      66
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "deposit": {
+      "unity": 45,
+      "sim": 45,
+      "matched": 45
+     },
+     "kill": {
+      "unity": 55,
+      "sim": 55,
+      "matched": 55
+     },
+     "lost": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "pickup": {
+      "unity": 49,
+      "sim": 49,
+      "matched": 49
+     },
+     "score": {
+      "unity": 54,
+      "sim": 54,
+      "matched": 54
+     },
+     "storage_out": {
+      "unity": 9,
+      "sim": 9,
+      "matched": 9
+     },
+     "transform": {
+      "unity": 11,
+      "sim": 11,
+      "matched": 11
+     },
+     "all": {
+      "unity": 229,
+      "sim": 229,
+      "matched": 229
+     }
+    }
+   },
+   "rng": {
+    "replayed": 1539,
+    "exact_steps": 1539,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      97,
+      66
+     ],
+     "unity": [
+      97,
+      66
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "deposit": {
+      "unity": 45,
+      "sim": 45,
+      "matched": 45
+     },
+     "kill": {
+      "unity": 55,
+      "sim": 55,
+      "matched": 55
+     },
+     "lost": {
+      "unity": 3,
+      "sim": 3,
+      "matched": 3
+     },
+     "pickup": {
+      "unity": 49,
+      "sim": 49,
+      "matched": 49
+     },
+     "score": {
+      "unity": 54,
+      "sim": 54,
+      "matched": 54
+     },
+     "storage_out": {
+      "unity": 9,
+      "sim": 9,
+      "matched": 9
+     },
+     "transform": {
+      "unity": 11,
+      "sim": 11,
+      "matched": 11
+     },
+     "all": {
+      "unity": 229,
+      "sim": 229,
+      "matched": 229
+     }
+    }
+   },
+   "closed_loop": {
+    "identical_steps": 1539,
+    "first_move_mismatch": null,
+    "over": true,
+    "scores": [
+     101,
+     66
+    ]
+   }
+  },
+  {
+   "trace": "trace_016.npz",
+   "a": "mixture",
+   "b": "strategic_v21_anyangle",
+   "seed": {
+    "replayed": 995,
+    "exact_steps": 995,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      18,
+      95
+     ],
+     "unity": [
+      18,
+      95
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 29,
+      "sim": 29,
+      "matched": 29
+     },
+     "kill": {
+      "unity": 51,
+      "sim": 51,
+      "matched": 51
+     },
+     "pickup": {
+      "unity": 31,
+      "sim": 31,
+      "matched": 31
+     },
+     "score": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "transform": {
+      "unity": 64,
+      "sim": 64,
+      "matched": 64
+     },
+     "all": {
+      "unity": 197,
+      "sim": 197,
+      "matched": 197
+     }
+    }
+   },
+   "steps": 994,
+   "obs": {
+    "replayed": 995,
+    "exact_steps": 995,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      18,
+      95
+     ],
+     "unity": [
+      18,
+      95
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 29,
+      "sim": 29,
+      "matched": 29
+     },
+     "kill": {
+      "unity": 51,
+      "sim": 51,
+      "matched": 51
+     },
+     "pickup": {
+      "unity": 31,
+      "sim": 31,
+      "matched": 31
+     },
+     "score": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "transform": {
+      "unity": 64,
+      "sim": 64,
+      "matched": 64
+     },
+     "all": {
+      "unity": 197,
+      "sim": 197,
+      "matched": 197
+     }
+    }
+   },
+   "rng": {
+    "replayed": 995,
+    "exact_steps": 995,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      18,
+      95
+     ],
+     "unity": [
+      18,
+      95
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 29,
+      "sim": 29,
+      "matched": 29
+     },
+     "kill": {
+      "unity": 51,
+      "sim": 51,
+      "matched": 51
+     },
+     "pickup": {
+      "unity": 31,
+      "sim": 31,
+      "matched": 31
+     },
+     "score": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "transform": {
+      "unity": 64,
+      "sim": 64,
+      "matched": 64
+     },
+     "all": {
+      "unity": 197,
+      "sim": 197,
+      "matched": 197
+     }
+    }
+   },
+   "closed_loop": {
+    "identical_steps": 995,
+    "first_move_mismatch": null,
+    "over": true,
+    "scores": [
+     18,
+     102
+    ]
+   }
+  },
+  {
+   "trace": "trace_017.npz",
+   "a": "strategic_v19",
+   "b": "random",
+   "seed": {
+    "replayed": 584,
+    "exact_steps": 584,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      95,
+      8
+     ],
+     "unity": [
+      95,
+      8
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 16,
+      "sim": 16,
+      "matched": 16
+     },
+     "kill": {
+      "unity": 4,
+      "sim": 4,
+      "matched": 4
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 19,
+      "sim": 19,
+      "matched": 19
+     },
+     "score": {
+      "unity": 15,
+      "sim": 15,
+      "matched": 15
+     },
+     "swap": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "transform": {
+      "unity": 16,
+      "sim": 16,
+      "matched": 16
+     },
+     "all": {
+      "unity": 73,
+      "sim": 73,
+      "matched": 73
+     }
+    }
+   },
+   "steps": 583,
+   "obs": {
+    "replayed": 584,
+    "exact_steps": 584,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      95,
+      8
+     ],
+     "unity": [
+      95,
+      8
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 16,
+      "sim": 16,
+      "matched": 16
+     },
+     "kill": {
+      "unity": 4,
+      "sim": 4,
+      "matched": 4
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 19,
+      "sim": 19,
+      "matched": 19
+     },
+     "score": {
+      "unity": 15,
+      "sim": 15,
+      "matched": 15
+     },
+     "swap": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "transform": {
+      "unity": 16,
+      "sim": 16,
+      "matched": 16
+     },
+     "all": {
+      "unity": 73,
+      "sim": 73,
+      "matched": 73
+     }
+    }
+   },
+   "rng": {
+    "replayed": 584,
+    "exact_steps": 584,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      95,
+      8
+     ],
+     "unity": [
+      95,
+      8
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 16,
+      "sim": 16,
+      "matched": 16
+     },
+     "kill": {
+      "unity": 4,
+      "sim": 4,
+      "matched": 4
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 19,
+      "sim": 19,
+      "matched": 19
+     },
+     "score": {
+      "unity": 15,
+      "sim": 15,
+      "matched": 15
+     },
+     "swap": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "transform": {
+      "unity": 16,
+      "sim": 16,
+      "matched": 16
+     },
+     "all": {
+      "unity": 73,
+      "sim": 73,
+      "matched": 73
+     }
+    }
+   },
+   "closed_loop": {
+    "identical_steps": 584,
+    "first_move_mismatch": null,
+    "over": true,
+    "scores": [
+     102,
+     8
+    ]
+   }
+  },
+  {
+   "trace": "trace_018.npz",
+   "a": "strategic_v21_anyangle",
+   "b": "strategic_v4",
+   "seed": {
+    "replayed": 1196,
+    "exact_steps": 1196,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      98,
+      27
+     ],
+     "unity": [
+      98,
+      27
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "kill": {
+      "unity": 19,
+      "sim": 19,
+      "matched": 19
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "score": {
+      "unity": 33,
+      "sim": 33,
+      "matched": 33
+     },
+     "storage_out": {
+      "unity": 5,
+      "sim": 5,
+      "matched": 5
+     },
+     "transform": {
+      "unity": 53,
+      "sim": 53,
+      "matched": 53
+     },
+     "all": {
+      "unity": 179,
+      "sim": 179,
+      "matched": 179
+     }
+    }
+   },
+   "steps": 1195,
+   "obs": {
+    "replayed": 1196,
+    "exact_steps": 1196,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      98,
+      27
+     ],
+     "unity": [
+      98,
+      27
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "kill": {
+      "unity": 19,
+      "sim": 19,
+      "matched": 19
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "score": {
+      "unity": 33,
+      "sim": 33,
+      "matched": 33
+     },
+     "storage_out": {
+      "unity": 5,
+      "sim": 5,
+      "matched": 5
+     },
+     "transform": {
+      "unity": 53,
+      "sim": 53,
+      "matched": 53
+     },
+     "all": {
+      "unity": 179,
+      "sim": 179,
+      "matched": 179
+     }
+    }
+   },
+   "rng": {
+    "replayed": 1196,
+    "exact_steps": 1196,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      98,
+      27
+     ],
+     "unity": [
+      98,
+      27
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 0,
+    "events": {
+     "absorb": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "deposit": {
+      "unity": 32,
+      "sim": 32,
+      "matched": 32
+     },
+     "kill": {
+      "unity": 19,
+      "sim": 19,
+      "matched": 19
+     },
+     "lost": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "pickup": {
+      "unity": 34,
+      "sim": 34,
+      "matched": 34
+     },
+     "score": {
+      "unity": 33,
+      "sim": 33,
+      "matched": 33
+     },
+     "storage_out": {
+      "unity": 5,
+      "sim": 5,
+      "matched": 5
+     },
+     "transform": {
+      "unity": 53,
+      "sim": 53,
+      "matched": 53
+     },
+     "all": {
+      "unity": 179,
+      "sim": 179,
+      "matched": 179
+     }
+    }
+   },
+   "closed_loop": {
+    "identical_steps": 1196,
+    "first_move_mismatch": null,
+    "over": true,
+    "scores": [
+     102,
+     27
+    ]
+   }
+  },
+  {
+   "trace": "trace_019.npz",
+   "a": "strategic_v19",
+   "b": "ckpt:checkpoints/distill/frozen/p5a_v22.pt",
+   "seed": {
+    "replayed": 592,
+    "exact_steps": 592,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      20,
+      97
+     ],
+     "unity": [
+      20,
+      97
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 24,
+      "sim": 24,
+      "matched": 24
+     },
+     "kill": {
+      "unity": 18,
+      "sim": 18,
+      "matched": 18
+     },
+     "pickup": {
+      "unity": 26,
+      "sim": 26,
+      "matched": 26
+     },
+     "score": {
+      "unity": 22,
+      "sim": 22,
+      "matched": 22
+     },
+     "transform": {
+      "unity": 33,
+      "sim": 33,
+      "matched": 33
+     },
+     "all": {
+      "unity": 124,
+      "sim": 124,
+      "matched": 124
+     }
+    }
+   },
+   "steps": 591,
+   "obs": {
+    "replayed": 592,
+    "exact_steps": 592,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      20,
+      97
+     ],
+     "unity": [
+      20,
+      97
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 24,
+      "sim": 24,
+      "matched": 24
+     },
+     "kill": {
+      "unity": 18,
+      "sim": 18,
+      "matched": 18
+     },
+     "pickup": {
+      "unity": 26,
+      "sim": 26,
+      "matched": 26
+     },
+     "score": {
+      "unity": 22,
+      "sim": 22,
+      "matched": 22
+     },
+     "transform": {
+      "unity": 33,
+      "sim": 33,
+      "matched": 33
+     },
+     "all": {
+      "unity": 124,
+      "sim": 124,
+      "matched": 124
+     }
+    }
+   },
+   "rng": {
+    "replayed": 592,
+    "exact_steps": 592,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      20,
+      97
+     ],
+     "unity": [
+      20,
+      97
+     ]
+    },
+    "ended_sim": true,
+    "winner_sim": 1,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 24,
+      "sim": 24,
+      "matched": 24
+     },
+     "kill": {
+      "unity": 18,
+      "sim": 18,
+      "matched": 18
+     },
+     "pickup": {
+      "unity": 26,
+      "sim": 26,
+      "matched": 26
+     },
+     "score": {
+      "unity": 22,
+      "sim": 22,
+      "matched": 22
+     },
+     "transform": {
+      "unity": 33,
+      "sim": 33,
+      "matched": 33
+     },
+     "all": {
+      "unity": 124,
+      "sim": 124,
+      "matched": 124
+     }
+    }
+   },
+   "closed_loop": null
+  }
+ ],
+ "horizons": {
+  "full": {
+   "n": 478260,
+   "median": 0.0,
+   "p99": 0.0,
+   "max": 0.0,
+   "frac_le_1e-3": 1.0
+  },
+  "1s": {
+   "n": 46800,
+   "median": 0.0,
+   "p99": 1.430511474609375e-06,
+   "max": 4.00543212890625e-05,
+   "frac_le_1e-3": 1.0,
+   "starts": 180,
+   "starts_max_err_le_1e-3": 1.0,
+   "starts_bit_exact": 1
+  },
+  "5s": {
+   "n": 221610,
+   "median": 0.0,
+   "p99": 1.430511474609375e-06,
+   "max": 0.00034332275390625,
+   "frac_le_1e-3": 1.0,
+   "starts": 180,
+   "starts_max_err_le_1e-3": 1.0,
+   "starts_bit_exact": 0
+  },
+  "20s": {
+   "n": 809280,
+   "median": 0.0,
+   "p99": 1.430511474609375e-06,
+   "max": 0.00034332275390625,
+   "frac_le_1e-3": 1.0,
+   "starts": 180,
+   "starts_max_err_le_1e-3": 1.0,
+   "starts_bit_exact": 0
+  },
+  "1s_hist25": {
+   "n": 46800,
+   "median": 0.0,
+   "p99": 7.152557373046875e-07,
+   "max": 2.1457672119140625e-06,
+   "frac_le_1e-3": 1.0,
+   "starts": 180,
+   "starts_max_err_le_1e-3": 1.0,
+   "starts_bit_exact": 91
+  },
+  "5s_hist25": {
+   "n": 221610,
+   "median": 0.0,
+   "p99": 7.152557373046875e-07,
+   "max": 2.86102294921875e-06,
+   "frac_le_1e-3": 1.0,
+   "starts": 180,
+   "starts_max_err_le_1e-3": 1.0,
+   "starts_bit_exact": 86
+  },
+  "20s_hist25": {
+   "n": 809280,
+   "median": 0.0,
+   "p99": 7.152557373046875e-07,
+   "max": 2.86102294921875e-06,
+   "frac_le_1e-3": 1.0,
+   "starts": 180,
+   "starts_max_err_le_1e-3": 1.0,
+   "starts_bit_exact": 70
+  }
+ },
+ "events_full": {
+  "absorb": {
+   "unity": 88,
+   "sim": 88,
+   "matched": 88
+  },
+  "deposit": {
+   "unity": 690,
+   "sim": 690,
+   "matched": 690
+  },
+  "kill": {
+   "unity": 1529,
+   "sim": 1529,
+   "matched": 1529
+  },
+  "lost": {
+   "unity": 33,
+   "sim": 33,
+   "matched": 33
+  },
+  "pickup": {
+   "unity": 750,
+   "sim": 750,
+   "matched": 750
+  },
+  "score": {
+   "unity": 643,
+   "sim": 643,
+   "matched": 643
+  },
+  "transform": {
+   "unity": 1215,
+   "sim": 1215,
+   "matched": 1215
+  },
+  "all": {
+   "unity": 5026,
+   "sim": 5026,
+   "matched": 5026
+  },
+  "storage_out": {
+   "unity": 76,
+   "sim": 76,
+   "matched": 76
+  },
+  "swap": {
+   "unity": 2,
+   "sim": 2,
+   "matched": 2
+  }
+ },
+ "events_mid": {
+  "deposit": {
+   "unity": 241,
+   "sim": 241,
+   "matched": 241
+  },
+  "pickup": {
+   "unity": 242,
+   "sim": 242,
+   "matched": 242
+  },
+  "score": {
+   "unity": 205,
+   "sim": 205,
+   "matched": 205
+  },
+  "transform": {
+   "unity": 552,
+   "sim": 552,
+   "matched": 552
+  },
+  "all": {
+   "unity": 2040,
+   "sim": 2040,
+   "matched": 2040
+  },
+  "kill": {
+   "unity": 753,
+   "sim": 753,
+   "matched": 753
+  },
+  "lost": {
+   "unity": 16,
+   "sim": 16,
+   "matched": 16
+  },
+  "storage_out": {
+   "unity": 30,
+   "sim": 30,
+   "matched": 30
+  },
+  "swap": {
+   "unity": 1,
+   "sim": 1,
+   "matched": 1
+  }
+ },
+ "events_mid_hist25": {
+  "deposit": {
+   "unity": 241,
+   "sim": 241,
+   "matched": 241
+  },
+  "pickup": {
+   "unity": 242,
+   "sim": 242,
+   "matched": 242
+  },
+  "score": {
+   "unity": 205,
+   "sim": 205,
+   "matched": 205
+  },
+  "transform": {
+   "unity": 552,
+   "sim": 552,
+   "matched": 552
+  },
+  "all": {
+   "unity": 2040,
+   "sim": 2040,
+   "matched": 2040
+  },
+  "kill": {
+   "unity": 753,
+   "sim": 753,
+   "matched": 753
+  },
+  "lost": {
+   "unity": 16,
+   "sim": 16,
+   "matched": 16
+  },
+  "storage_out": {
+   "unity": 30,
+   "sim": 30,
+   "matched": 30
+  },
+  "swap": {
+   "unity": 1,
+   "sim": 1,
+   "matched": 1
+  }
+ },
+ "summary_rng_spawns": {
+  "seed_reproducible": 17,
+  "bit_exact": 17
+ },
+ "summary_closed_loop": {
+  "heuristic_matches": 14,
+  "all_moves_identical": 14
+ },
+ "summary": {
+  "traces": 20,
+  "full_match_bit_exact": 20,
+  "score_timeline_equal": 20,
+  "final_score_equal": 20,
+  "match_over_with_env_winner": 20,
+  "events_full_agreement": 1.0,
+  "events_mid_agreement": 1.0,
+  "events_mid_hist25_agreement": 1.0
+ }
+}

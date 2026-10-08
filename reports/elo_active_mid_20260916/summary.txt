@@ -1,0 +1,26 @@
+games=1324 (+0 hold-out), pairs sampled=78/78
+
+rank policy        Elo   ±SE  games
+   1 v12          1559    23    204
+   2 v4           1538    23    204
+   3 v9           1534    23    204
+   4 v7           1527    23    202
+   5 v8           1512    23    204
+   6 v13          1504    23    204
+   7 v3           1499    23    204
+   8 v4_near      1489    23    204
+   9 v11          1478    23    202
+  10 v6           1472    23    204
+  11 v10          1471    23    204
+  12 v16          1461    23    204
+  13 v15          1456    23    204
+
+largest residuals on sampled pairs (non-transitivity shows up here)
+        v4 vs v11      observed  25% predicted  59% (n=16)
+        v4 vs v13      observed  81% predicted  55% (n=18)
+        v9 vs v16      observed  84% predicted  60% (n=16)
+        v4 vs v7       observed  28% predicted  51% (n=18)
+        v3 vs v15      observed  33% predicted  56% (n=18)
+        v9 vs v13      observed  33% predicted  54% (n=18)
+       v15 vs v16      observed  30% predicted  49% (n=20)
+   v4_near vs v9       observed  62% predicted  44% (n=16)

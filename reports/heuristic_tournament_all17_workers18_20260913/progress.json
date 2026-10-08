@@ -1,0 +1,39 @@
+{
+  "policy_ids": [
+    "v1",
+    "v2",
+    "v3",
+    "v4",
+    "v4-near",
+    "v5",
+    "v6",
+    "v7",
+    "v8",
+    "v9",
+    "v10",
+    "v11",
+    "v12",
+    "v13",
+    "v14",
+    "v15",
+    "v16"
+  ],
+  "seeds": [
+    137180669,
+    152640206,
+    542698207,
+    379349886,
+    230255476
+  ],
+  "n_seeds": 5,
+  "side_swapped": true,
+  "time_scale": 200.0,
+  "workers": 18,
+  "total_pairs": 136,
+  "completed_pairs": 136,
+  "complete": true,
+  "seeded_from": {
+    "full13": "reports/heuristic_tournament_all13_workers8_20260913",
+    "counterplay7": "reports/counterplay_tournament_20260913"
+  }
+}

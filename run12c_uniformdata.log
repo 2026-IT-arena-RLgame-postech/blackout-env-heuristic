@@ -1,0 +1,3756 @@
+[compile] net/target_net/ema_net wrapped with torch.compile
+[offline] checkpoint_dir=checkpoints/offline/20260917-200803_75984
+[offline] tb_log_dir=runs/offline/20260917-200803_75984
+[offline] amp_dtype=float16, compile=True
+[offline] reset_interval=40000
+[offline] batch_source_fracs (dataset, self_vs_heuristic, self_play)=(0.7, 0.3, 0.0), self_vs_heuristic FIFO buffer 262144 rows/stream
+[offline] loading dataset from datasets/heuristic_mixv7_uniform10_20260917 ...
+[offline] reward=v2-fitted RewardV2Config(initial_battery_total=200.0, steal_hazard=0.6, carry_hazard=0.6, lambda_rho=0.8, lambda_length=6.0, hunt_beta=0.8, hunt_length=8.0, exit_value=15.0, exit_length=5.0, class_value=(0.0, 15.0, 10.0), travel_value=1.5, travel_cap_seconds=5.0)
+[offline] kept 1000000/1000000 (a) and 1000000/1000000 (b) rows after dropping segments with no battery left
+[offline] loaded buffer_a=1000000, buffer_b=1000000 transitions (blocked_penalty=0.02)
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+Mono path[0] = '/Users/mac/project/26rl/blackout-env/build/mac/BlackOut.app/Contents/Resources/Data/Managed'
+Mono config path = '/Users/mac/project/26rl/blackout-env/build/mac/BlackOut.app/Contents/MonoBleedingEdge/etc'
+CodeReloadManager initialized
+Input System module state changed to: Initialized.
+[Physics::Module] Initialized fallback backend.
+[Physics::Module] Id: 0xdecafbad
+Initialize engine version: 6000.4.11f1 (b0a1d6caadd2)
+[Subsystems] Discovering subsystems at path /Users/mac/project/26rl/blackout-env/build/mac/BlackOut.app/Contents/Resources/Data/UnitySubsystems
+Forcing GfxDevice: Null
+GfxDevice: creating device client; kGfxThreadingModeNonThreaded
+NullGfxDevice:
+    Version:  NULL 1.0 [1.0]
+    Renderer: Null Device
+    Vendor:   Unity Technologies
+Begin MonoManager ReloadAssembly
+- Finished resetting the current domain, in  0.002 seconds
+[Physics::Module] Selected backend.
+[Physics::Module] Name: PhysX
+[Physics::Module] Id: 0xf2b8ea05
+[Physics::Module] SDK Version: 4.1.2
+[Physics::Module] Integration Version: 1.0.0
+[Physics::Module] Threading Mode: Multi-Threaded
+UnloadTime: 0.899209 ms
+[MapObsAgent] Removing RenderTextureSensorComponent — sensor is now created by DynamicRTSensorComponent.
+Registered Communicator in Academy.
+[offline] periodic eval enabled: every 10000 steps, 6 matches vs StrategicHeuristicV4
+[offline] on-policy data collection enabled: ~15000 self-vs-heuristic + ~0 self-play ticks per eval window (20 windows), blocked_penalty=0.02, opponent=mixture
+[RewardConfig] Loaded from /Users/mac/project/26rl/blackout-env/build/mac/BlackOut.app/Contents/Resources/Data/StreamingAssets/reward_config.json
+[RewardConfig] -noRewardShaping: potential and nav shaping disabled
+DontDestroyOnLoad only works for root GameObjects or components on root GameObjects.
+Special Item Spawned: DebuffSize at (14, 5)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (2, 5)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (17, 20)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (10, 17)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (22, 12)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (4, 3)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] eval @ step 0: win_rate=0.00 loss_rate=1.00 draw_rate=0.00 mean_margin=-96.17 candidate_idle/1k=0.0 candidate_blocked/1k=7.8
+           objectives (candidate vs opponent): approach_battery=+0.0000/+0.0442 pickups/1k=0.0/9.1 deliveries/1k=0.0/8.1 cargo_lost/1k=0.0/0.0 | by side: margin=-96.0/-96.3 blocked/1k=7.9/7.7
+[offline] step 0: BBF reset (shrink-and-perturb + re-anneal n_step/gamma)
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] Graph break from `Tensor.item()`, consider setting:
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     torch._dynamo.config.capture_scalar_outputs = True
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] or:
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     env TORCHDYNAMO_CAPTURE_SCALAR_OUTPUTS=1
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] to include these operations in the captured graph.
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] 
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] Graph break: from user code at:
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/my_model.py", line 243, in forward
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     tokens_out = self.attention(tokens_in, rope=(rope_cos, rope_sin))
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/modules/attention_block.py", line 195, in forward
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     x = layer(x, attn_mask, is_causal, rope)
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/modules/attention_block.py", line 168, in forward
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     x = x + self.gqa(x, attn_mask, is_causal, rope)
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/modules/attention_block.py", line 93, in forward
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     self.last_logit_norm = self._compute_logit_rms(q, k)
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/.venv/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     return func(*args, **kwargs)
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]   File "/Users/mac/project/26rl/blackout-env/blackout_env/model/modules/attention_block.py", line 123, in _compute_logit_rms
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1]     return logits.pow(2).mean().sqrt().item()
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] 
+W0917 20:11:30.763000 75984 .venv/lib/python3.10/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/1] 
+/Users/mac/project/26rl/blackout-env/.venv/lib/python3.10/site-packages/torch/_dynamo/utils.py:4415: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /Users/runner/work/pytorch/pytorch/aten/src/ATen/native/layer_norm.cpp:350.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+[offline] step 1000/200000 (12.9 steps/s) avg_loss=0.1134
+[offline] step 2000/200000 (15.8 steps/s) avg_loss=0.0348
+[offline] step 3000/200000 (17.2 steps/s) avg_loss=0.0245
+[offline] step 4000/200000 (17.9 steps/s) avg_loss=0.0201
+[offline] step 5000/200000 (18.4 steps/s) avg_loss=0.0315
+[checkpoint] saved checkpoints/offline/20260917-200803_75984/step_5000.pt
+[offline] step 6000/200000 (18.8 steps/s) avg_loss=0.0407
+[offline] step 7000/200000 (19.0 steps/s) avg_loss=0.0396
+[offline] step 8000/200000 (19.2 steps/s) avg_loss=0.0362
+[offline] step 9000/200000 (19.3 steps/s) avg_loss=0.0431
+[offline] step 10000/200000 (19.4 steps/s) avg_loss=0.0517
+[checkpoint] saved checkpoints/offline/20260917-200803_75984/step_10000.pt
+Special Item Spawned: BuffSize at (6, 16)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (14, 2)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (14, 1)
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (17, 20)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit (3) dead
+Special Item Spawned: BuffSize at (15, 13)
+Unit dead
+Unit dead
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (5) dead
+Special Item Spawned: BuffSize at (4, 3)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] eval @ step 10000: win_rate=0.00 loss_rate=1.00 draw_rate=0.00 mean_margin=-92.83 candidate_idle/1k=0.0 candidate_blocked/1k=1.7
+           objectives (candidate vs opponent): approach_battery=+0.0104/+0.0380 pickups/1k=1.2/9.0 deliveries/1k=0.5/8.1 cargo_lost/1k=0.1/0.0 | by side: margin=-89.0/-96.7 blocked/1k=2.1/1.4
+Special Item Spawned: DebuffSize at (6, 11)
+Unit (2) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Special Item Spawned: BuffSize at (22, 12)
+Unit (8) dead
+Unit (9) dead
+Unit (7) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Special Item Spawned: DebuffSpeed at (20, 13)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (18, 5)
+Unit (8) dead
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Special Item Spawned: DebuffSpeed at (17, 14)
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (7) dead
+Unit (7) dead
+Unit (7) dead
+Special Item Spawned: DebuffSize at (16, 15)
+Unit (7) dead
+Unit (7) dead
+Unit (7) dead
+Unit (7) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (7) dead
+Unit (7) dead
+Unit (7) dead
+Unit (5) dead
+Unit (7) dead
+Unit (7) dead
+Unit (7) dead
+Unit (5) dead
+Unit (4) dead
+Unit (9) dead
+Unit (9) dead
+Unit (7) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (7) dead
+Unit (9) dead
+Unit (7) dead
+Unit (9) dead
+Unit (7) dead
+Unit (7) dead
+Unit (9) dead
+Unit (7) dead
+Unit (9) dead
+Unit (9) dead
+Unit (7) dead
+Unit (9) dead
+Unit (7) dead
+Unit (9) dead
+Unit (7) dead
+Unit (9) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (8, 19)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (4) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (6) dead
+Unit (8) dead
+Unit (7) dead
+Special Item Spawned: DebuffSize at (15, 13)
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (6) dead
+Unit (8) dead
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (5) dead
+Unit (7) dead
+Unit (6) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (7) dead
+Unit (7) dead
+Unit (9) dead
+Unit (6) dead
+Unit (8) dead
+Unit (7) dead
+Unit dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (3) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Special Item Spawned: BuffSpeed at (7, 4)
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (4) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit dead
+Unit dead
+Unit dead
+Unit (4) dead
+Unit dead
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (2, 17)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (4) dead
+Special Item Spawned: DebuffSpeed at (15, 7)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (7) dead
+Unit (5) dead
+Special Item Spawned: BuffSpeed at (7, 3)
+Unit (7) dead
+Unit (7) dead
+Unit (7) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (7) dead
+Unit (7) dead
+Unit (7) dead
+Unit (7) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (7) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit (2) dead
+Special Item Spawned: BuffSize at (10, 16)
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (7) dead
+Special Item Spawned: BuffSpeed at (9, 6)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (7) dead
+Unit (4) dead
+Special Item Spawned: BuffSpeed at (1, 5)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit dead
+Unit (9) dead
+Unit (9) dead
+Unit (8) dead
+Special Item Spawned: BuffSize at (16, 7)
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (9) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (4) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Special Item Spawned: BuffSpeed at (19, 17)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (11, 22)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (2) dead
+Special Item Spawned: BuffSize at (7, 4)
+Unit (2) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (7, 12)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit (4) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (9) dead
+Unit (9) dead
+Special Item Spawned: BuffSize at (15, 17)
+Unit (9) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (9) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (9) dead
+Unit (9) dead
+Unit (9) dead
+Unit (9) dead
+Unit (9) dead
+Unit (9) dead
+Unit (9) dead
+Unit (9) dead
+Special Item Spawned: BuffSize at (12, 14)
+Unit (9) dead
+Unit (9) dead
+Unit (9) dead
+Unit (9) dead
+Unit (9) dead
+Unit (9) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (20, 10)
+Unit (1) dead
+Unit (2) dead
+Unit (1) dead
+Unit (2) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (1) dead
+Unit (2) dead
+Unit (2) dead
+Unit (1) dead
+Unit (1) dead
+Unit (2) dead
+Unit (1) dead
+Unit (2) dead
+Unit (2) dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (2) dead
+Unit (1) dead
+Unit (2) dead
+Unit (1) dead
+Unit (2) dead
+Unit (1) dead
+Unit (9) dead
+Unit (4) dead
+Unit (2) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (1) dead
+Unit (4) dead
+Unit (2) dead
+Unit (1) dead
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+[offline] onpolicy collect @ step 10000: self_vs_heuristic=15618 ticks/23 matches, self_play=0 ticks/0 matches (onpolicy buffer rows a/b: self_vs_heuristic=15618/15618) | svh W/L/D=0.00/1.00/0.00 margin=-94.0 vs_top=-93.3/9 vs_rest=-94.4/14 env_r/tick=-0.00736 penalty/tick=-0.03721 psi_saturated=0.55 approach_battery=+0.0064/+0.0206 cargo_lost/1k=0.1/0.0
+[offline] step 11000/200000 (16.4 steps/s) avg_loss=0.0544
+[offline] step 12000/200000 (16.7 steps/s) avg_loss=0.0624
+[offline] step 13000/200000 (17.0 steps/s) avg_loss=0.0688
+[offline] step 14000/200000 (17.2 steps/s) avg_loss=0.0740
+[offline] step 15000/200000 (17.4 steps/s) avg_loss=0.0769
+[checkpoint] saved checkpoints/offline/20260917-200803_75984/step_15000.pt
+[offline] step 16000/200000 (17.6 steps/s) avg_loss=0.0788
+[offline] step 17000/200000 (17.7 steps/s) avg_loss=0.0758
+[offline] step 18000/200000 (17.9 steps/s) avg_loss=0.0713
+[offline] step 19000/200000 (18.0 steps/s) avg_loss=0.0654
+[offline] step 20000/200000 (18.1 steps/s) avg_loss=0.0638
+[checkpoint] saved checkpoints/offline/20260917-200803_75984/step_20000.pt
+Unit (6) dead
+Unit (9) dead
+Special Item Spawned: BuffSize at (11, 16)
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (12, 16)
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (16, 12)
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (16, 5)
+Unit (5) dead
+Unit (8) dead
+Unit (8) dead
+Unit (7) dead
+Unit (1) dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (20, 20)
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Unit (1) dead
+Unit (5) dead
+Unit (4) dead
+Special Item Spawned: BuffSize at (5, 3)
+Unit (1) dead
+Unit (1) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] eval @ step 20000: win_rate=0.00 loss_rate=1.00 draw_rate=0.00 mean_margin=-80.50 candidate_idle/1k=0.0 candidate_blocked/1k=0.3
+           objectives (candidate vs opponent): approach_battery=+0.0139/+0.0372 pickups/1k=2.6/7.7 deliveries/1k=2.1/6.7 cargo_lost/1k=0.3/0.0 | by side: margin=-82.7/-78.3 blocked/1k=0.4/0.3
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Special Item Spawned: BuffSize at (1, 17)
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (2) dead
+Unit (9) dead
+Unit (2) dead
+Unit (2) dead
+Unit (2) dead
+Unit (2) dead
+Unit (2) dead
+Unit dead
+Unit (2) dead
+Unit dead
+Unit (2) dead
+Unit dead
+Unit dead
+Unit (2) dead
+Unit dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (2) dead
+Unit dead
+Unit (2) dead
+Unit dead
+Unit (2) dead
+Unit dead
+Unit (2) dead
+Unit dead
+Unit dead
+Unit (2) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Unit (1) dead
+Unit (8) dead
+Special Item Spawned: DebuffSize at (5, 7)
+Unit (1) dead
+Unit (5) dead
+Unit (1) dead
+Unit (1) dead
+Unit (1) dead
+Unit (1) dead
+Unit (3) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Unit (9) dead
+Special Item Spawned: BuffSpeed at (17, 1)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Unit (1) dead
+Special Item Spawned: BuffSpeed at (11, 4)
+Unit (1) dead
+Unit (5) dead
+Unit (1) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit (6) dead
+Unit (1) dead
+Unit (6) dead
+Unit dead
+Special Item Spawned: BuffSize at (6, 8)
+Unit (3) dead
+Unit (6) dead
+Unit (1) dead
+Unit dead
+Unit dead
+Unit (2) dead
+Unit dead
+Unit (6) dead
+Unit (2) dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (1) dead
+Unit dead
+Unit (9) dead
+Unit (3) dead
+Unit (1) dead
+Unit (2) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (6) dead
+Unit (7) dead
+Unit (6) dead
+Special Item Spawned: BuffSpeed at (5, 7)
+Unit (7) dead
+Unit (6) dead
+Unit (7) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (2) dead
+Unit dead
+Unit (9) dead
+Unit (1) dead
+Unit (9) dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Special Item Spawned: BuffSize at (18, 4)
+Unit (1) dead
+Unit dead
+Unit dead
+Unit (2) dead
+Unit (9) dead
+Unit dead
+Unit (8) dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (1) dead
+Unit (2) dead
+Unit (8) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Special Item Spawned: BuffSpeed at (9, 22)
+Unit (1) dead
+Unit (1) dead
+Unit (1) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit dead
+Special Item Spawned: DebuffSpeed at (13, 5)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (2) dead
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (4) dead
+Unit (2) dead
+Unit (1) dead
+Special Item Spawned: DebuffSpeed at (22, 20)
+Unit (2) dead
+Unit (8) dead
+Unit (8) dead
+Unit (7) dead
+Unit (8) dead
+Unit (7) dead
+Unit (8) dead
+Unit (7) dead
+Unit (8) dead
+Unit (7) dead
+Unit (4) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Special Item Spawned: BuffSize at (19, 11)
+Unit (5) dead
+Unit (2) dead
+Unit (2) dead
+Unit (2) dead
+Unit (2) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (2) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Unit (1) dead
+Special Item Spawned: BuffSize at (7, 7)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (4) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Special Item Spawned: DebuffSpeed at (17, 13)
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (7) dead
+Unit (5) dead
+Unit (7) dead
+Unit (5) dead
+Unit (7) dead
+Unit (6) dead
+Unit (8) dead
+Special Item Spawned: DebuffSpeed at (14, 12)
+Unit (7) dead
+Unit (6) dead
+Unit (8) dead
+Unit (9) dead
+Unit (2) dead
+Unit (7) dead
+Unit (6) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (6) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Timer completed
+Checking winner...
+Game Over. Waiting for reset command. Winner: TeamA
+[offline] onpolicy collect @ step 20000: self_vs_heuristic=17865 ticks/14 matches, self_play=0 ticks/0 matches (onpolicy buffer rows a/b: self_vs_heuristic=33483/33483) | svh W/L/D=0.00/1.00/0.00 margin=-75.6 vs_top=-63.0/4 vs_rest=-80.7/10 env_r/tick=-0.00392 penalty/tick=-0.00414 psi_saturated=0.15 approach_battery=+0.0041/+0.0102 cargo_lost/1k=0.1/0.0
+[offline] step 21000/200000 (16.9 steps/s) avg_loss=0.0591
+[offline] step 22000/200000 (17.0 steps/s) avg_loss=0.0570
+[offline] step 23000/200000 (17.1 steps/s) avg_loss=0.0617
+[offline] step 24000/200000 (17.2 steps/s) avg_loss=0.0577
+[offline] step 25000/200000 (17.4 steps/s) avg_loss=0.0573
+[checkpoint] saved checkpoints/offline/20260917-200803_75984/step_25000.pt
+[offline] step 26000/200000 (17.5 steps/s) avg_loss=0.0551
+[offline] step 27000/200000 (17.6 steps/s) avg_loss=0.0527
+[offline] step 28000/200000 (17.7 steps/s) avg_loss=0.0524
+[offline] step 29000/200000 (17.8 steps/s) avg_loss=0.0508
+[offline] step 30000/200000 (17.9 steps/s) avg_loss=0.0479
+[checkpoint] saved checkpoints/offline/20260917-200803_75984/step_30000.pt
+Special Item Spawned: BuffSize at (17, 15)
+Unit dead
+Unit (7) dead
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Special Item Spawned: BuffSize at (14, 5)
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit dead
+Special Item Spawned: DebuffSpeed at (6, 11)
+Unit dead
+Unit (4) dead
+Unit dead
+Unit dead
+Unit (4) dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSpeed at (8, 11)
+Unit (9) dead
+Unit (7) dead
+Unit (5) dead
+Unit (7) dead
+Unit (9) dead
+Unit (5) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Unit (5) dead
+Unit (5) dead
+Unit (5) dead
+Unit (5) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (7) dead
+Special Item Spawned: BuffSize at (3, 3)
+Unit (3) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (4) dead
+Unit (6) dead
+Unit (3) dead
+Unit (7) dead
+Special Item Spawned: BuffSize at (3, 10)
+Unit (5) dead
+Unit (7) dead
+Unit (4) dead
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] eval @ step 30000: win_rate=0.00 loss_rate=1.00 draw_rate=0.00 mean_margin=-75.00 candidate_idle/1k=0.0 candidate_blocked/1k=1.2
+           objectives (candidate vs opponent): approach_battery=+0.0175/+0.0327 pickups/1k=3.5/7.5 deliveries/1k=2.6/6.6 cargo_lost/1k=0.5/0.1 | by side: margin=-74.0/-76.0 blocked/1k=1.1/1.4
+Unit (2) dead
+Unit (2) dead
+Unit (4) dead
+Special Item Spawned: BuffSize at (12, 20)
+Unit (2) dead
+Unit (4) dead
+Unit (3) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (9) dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (1) dead
+Unit (2) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (3) dead
+Unit (4) dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (3) dead
+Unit (4) dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (3) dead
+Unit (4) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (4) dead
+Unit (2) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (4) dead
+Unit (2) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (1) dead
+Unit (3) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (15, 14)
+Unit (7) dead
+Unit (9) dead
+Unit (6) dead
+Unit (8) dead
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (7) dead
+Special Item Spawned: BuffSpeed at (16, 20)
+Unit (6) dead
+Unit dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (7) dead
+Unit (3) dead
+Unit (5) dead
+Special Item Spawned: BuffSize at (2, 15)
+Unit (6) dead
+Unit (2) dead
+Unit (5) dead
+Unit (2) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Special Item Spawned: DebuffSize at (8, 19)
+Unit (1) dead
+Unit (7) dead
+Unit (5) dead
+Unit (2) dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (7) dead
+Unit (1) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (8) dead
+Special Item Spawned: BuffSpeed at (21, 22)
+Unit (9) dead
+Unit (3) dead
+Unit (3) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: BuffSize at (1, 4)
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (6) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Special Item Spawned: DebuffSize at (10, 13)
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (6) dead
+Unit (5) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (6) dead
+Unit (5) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (6) dead
+Unit (5) dead
+Unit (9) dead
+Unit (7) dead
+Unit (8) dead
+Unit (5) dead
+Unit (6) dead
+Unit (9) dead
+Unit (7) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (2) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (4) dead
+Unit (9) dead
+Unit (3) dead
+Unit (2) dead
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Unit (2) dead
+Unit dead
+Special Item Spawned: BuffSize at (19, 9)
+Unit (1) dead
+Unit (4) dead
+Unit (3) dead
+Unit dead
+Unit (2) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (20, 6)
+Unit (2) dead
+Unit (2) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSize at (10, 6)
+Unit (9) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (1) dead
+Unit (4) dead
+Unit (1) dead
+Unit (4) dead
+Special Item Spawned: BuffSpeed at (11, 19)
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSpeed at (19, 17)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: BuffSize at (8, 14)
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (9) dead
+Unit (2) dead
+Unit (3) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (8) dead
+Unit (1) dead
+Unit (2) dead
+Special Item Spawned: BuffSize at (12, 10)
+Unit (3) dead
+Unit (4) dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (3) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (4) dead
+Unit dead
+Unit (3) dead
+Unit (4) dead
+Unit (1) dead
+Unit (2) dead
+Unit dead
+Unit (3) dead
+Unit (4) dead
+Unit dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (4) dead
+Unit (1) dead
+Unit (2) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (2) dead
+Special Item Spawned: DebuffSize at (3, 17)
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (7) dead
+Unit (4) dead
+Unit (6) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (5) dead
+Unit (7) dead
+Unit (6) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (9) dead
+Unit (5) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (9) dead
+Unit (8) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (9) dead
+Unit (8) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (6) dead
+Unit (7) dead
+Unit (5) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Unit (8) dead
+Unit (9) dead
+Unit (5) dead
+Unit (6) dead
+Unit (7) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Special Item Spawned: BuffSize at (11, 17)
+Unit dead
+Unit (9) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (7) dead
+Unit (5) dead
+Special Item Spawned: BuffSize at (7, 11)
+Unit (6) dead
+Unit (1) dead
+Unit (8) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Unit dead
+Unit (5) dead
+Unit (3) dead
+Unit (2) dead
+Unit dead
+Special Item Spawned: BuffSpeed at (17, 20)
+Unit (3) dead
+Unit (2) dead
+Unit dead
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Unit (7) dead
+Unit (1) dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (4) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (2) dead
+Special Item Spawned: DebuffSpeed at (6, 15)
+Unit (9) dead
+Unit (5) dead
+Unit (8) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (5) dead
+Unit (6) dead
+Unit (1) dead
+Unit (5) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit dead
+Special Item Spawned: BuffSize at (15, 2)
+Unit (6) dead
+Unit (4) dead
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (5) dead
+Special Item Spawned: BuffSpeed at (9, 19)
+Unit (8) dead
+Unit (8) dead
+Unit (8) dead
+Unit (6) dead
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Special Item Spawned: DebuffSize at (8, 10)
+Unit (1) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Special Item Spawned: DebuffSize at (13, 12)
+Unit (5) dead
+Unit (5) dead
+Unit (5) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+Unit (4) dead
+Unit (4) dead
+Unit (3) dead
+Unit dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit (2) dead
+Unit dead
+Unit (3) dead
+Special Item Spawned: BuffSpeed at (14, 3)
+Unit (1) dead
+Unit (4) dead
+Unit dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Unit (4) dead
+Unit (1) dead
+Unit dead
+Unit (3) dead
+Unit (2) dead
+Unit (1) dead
+Unit dead
+Unit (4) dead
+Unit dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit dead
+Unit (1) dead
+Unit dead
+Unit (4) dead
+Unit (2) dead
+Unit (3) dead
+Unit (1) dead
+Unit dead
+Unit (4) dead
+Game Over. Waiting for reset command. Winner: TeamB
+Game Ended! Winner: TeamB
+Unit (9) dead
+Unit (8) dead
+Unit (3) dead
+Special Item Spawned: BuffSize at (9, 4)
+Unit (2) dead
+Unit (1) dead
+Unit (6) dead
+Game Over. Waiting for reset command. Winner: TeamA
+Game Ended! Winner: TeamA
+[offline] onpolicy collect @ step 30000: self_vs_heuristic=15100 ticks/26 matches, self_play=0 ticks/0 matches (onpolicy buffer rows a/b: self_vs_heuristic=48583/48583) | svh W/L/D=0.00/1.00/0.00 margin=-79.5 vs_top=-78.1/8 vs_rest=-80.1/18 env_r/tick=-0.00861 penalty/tick=-0.00420 psi_saturated=0.32 approach_battery=+0.0116/+0.0255 cargo_lost/1k=0.5/0.0
+/Users/mac/.local/share/uv/python/cpython-3.10.12-macos-aarch64-none/lib/python3.10/multiprocessing/resource_tracker.py:224: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+Special Item Spawned: BuffSpeed at (17, 1)
+Timer completed
+Absorption(is Game playing?)
+Absorption
+Thread 0x16ddb7000 may have been prematurely finalized
+[Physics::Module] Cleanup current backend.
+[Physics::Module] Id: 0xf2b8ea05
+Input System module state changed to: ShutdownInProgress.
+Input Polling Thread exited.
+Input System module state changed to: Shutdown.
+Thread 0x16c5e7000 may have been prematurely finalized
+Thread 0x16c78b000 may have been prematurely finalized
+Thread 0x16c817000 may have been prematurely finalized
+Thread 0x16c673000 may have been prematurely finalized
+Thread 0x16c6ff000 may have been prematurely finalized
+CodeReloadManager destroyed
+GarbageCollector disposing of ComputeBuffer. Please use ComputeBuffer.Release() or .Dispose() to manually release the buffer.
