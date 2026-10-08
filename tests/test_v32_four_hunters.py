@@ -84,3 +84,11 @@ def test_adapt_latches_on_a_hunter_poor_enemy():
             _play(sim, a, opp)
         assert a.fallback is expect
     assert not StrategicHeuristicV32(**V31_KW, **ROLES).fallback
+
+
+def test_v32_1_descriptor():
+    from blackout_env.heuristics.v32_four_hunters import V32_1
+    from blackout_env.train.distill.opponents import make_opponent
+
+    p = make_opponent(V32_1, 0)
+    assert p.adapt_k == 3 and p.adapt_at == 6.0 and p.sweep and p.exit_guards == 1
