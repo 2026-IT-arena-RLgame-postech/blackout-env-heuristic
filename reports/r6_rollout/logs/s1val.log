@@ -1,0 +1,13 @@
+11 jobs (11 to do): {'teacher': -3, 'net:/home/cucumbersaurus/blackout-env-r5/checkpoints/distill/frozen/p17_v28.pt': 1, 'net:/home/cucumbersaurus/blackout-env-r5/checkpoints/distill/frozen/p16_v27.pt': 1, 'net:/home/cucumbersaurus/blackout-env-r5/checkpoints/distill/frozen/p14_v25.pt': 1, 'heur:strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true': 1, 'heur:strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=3': 1, 'heur:strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,hunter_quota=4': 1, 'heur:strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true': 1, 'heur:strategic_v28:reserve_stage=0.5,trade_hold=advance': 1, 'heur:strategic_v27:reserve_stage=1.5': 1, 'heur:strategic_v25': 1, 'heur:strategic_v23': 1}
+/home/cucumbersaurus/r6runs/s1val/part_003.npz 27642 over 0.88 net 175s 1005s
+/home/cucumbersaurus/r6runs/s1val/part_004.npz 26962 over 0.88 net 174s 1056s
+/home/cucumbersaurus/r6runs/s1val/part_005.npz 33334 over 0.72 net 167s 1150s
+/home/cucumbersaurus/r6runs/s1val/part_006.npz 30056 over 0.73 net 178s 1150s
+/home/cucumbersaurus/r6runs/s1val/part_007.npz 21338 over 0.94 net 187s 1150s
+/home/cucumbersaurus/r6runs/s1val/part_008.npz 20684 over 0.95 net 173s 1150s
+/home/cucumbersaurus/r6runs/s1val/part_009.npz 25300 over 0.84 net 107s 1765s
+/home/cucumbersaurus/r6runs/s1val/part_010.npz 23080 over 0.92 net 110s 1765s
+/home/cucumbersaurus/r6runs/s1val/part_000.npz 25498 over 0.88 net 136s 1765s
+/home/cucumbersaurus/r6runs/s1val/part_001.npz 22310 over 0.91 net 132s 1765s
+/home/cucumbersaurus/r6runs/s1val/part_002.npz 24944 over 0.88 net 126s 1765s
+rows 281148 1772s

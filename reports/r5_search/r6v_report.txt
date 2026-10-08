@@ -1,0 +1,8 @@
+margins (mean over rows; n = seeds)
+arm                       v321
+p24c:o4f_r24c        +41.1/64 
+p24c:plain           +24.5/64 
+
+paired a - b (same opponent, seed, side), pooled over common opponents
+  p24c:o4f_r24c - p24c:plain: pooled +16.7±5.3 (+3.1 SE), worst v321 +16.7±5.3
+     v321 +16.7±5.3/64

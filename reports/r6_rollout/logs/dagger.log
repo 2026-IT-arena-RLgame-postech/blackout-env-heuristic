@@ -1,0 +1,14 @@
+12 jobs (12 to do): {'self': 0, 'teacher': 1, 'net:/home/cucumbersaurus/blackout-env-r5/checkpoints/distill/frozen/p17_v28.pt': 1, 'net:/home/cucumbersaurus/blackout-env-r5/checkpoints/distill/frozen/p16_v27.pt': 1, 'net:/home/cucumbersaurus/blackout-env-r5/checkpoints/distill/frozen/p14_v25.pt': 1, 'heur:strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true': 1, 'heur:strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=3': 1, 'heur:strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,hunter_quota=4': 1, 'heur:strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true': 1, 'heur:strategic_v28:reserve_stage=0.5,trade_hold=advance': 1, 'heur:strategic_v27:reserve_stage=1.5': 1, 'heur:strategic_v25': 1, 'heur:strategic_v23': 1}
+/home/cucumbersaurus/r6runs/dagger/part_004.npz 223610 over 0.88 net 151s 1382s
+/home/cucumbersaurus/r6runs/dagger/part_005.npz 199648 over 0.94 net 180s 1382s
+/home/cucumbersaurus/r6runs/dagger/part_006.npz 243098 over 0.78 net 185s 1479s
+/home/cucumbersaurus/r6runs/dagger/part_007.npz 204948 over 0.88 net 173s 1479s
+/home/cucumbersaurus/r6runs/dagger/part_008.npz 188440 over 0.90 net 181s 1479s
+/home/cucumbersaurus/r6runs/dagger/part_009.npz 202086 over 0.88 net 181s 1483s
+/home/cucumbersaurus/r6runs/dagger/part_010.npz 215178 over 0.82 net 124s 2484s
+/home/cucumbersaurus/r6runs/dagger/part_011.npz 201326 over 0.86 net 129s 2484s
+/home/cucumbersaurus/r6runs/dagger/part_000.npz 221800 over 0.83 net 199s 2484s
+/home/cucumbersaurus/r6runs/dagger/part_001.npz 210732 over 0.85 net 143s 2484s
+/home/cucumbersaurus/r6runs/dagger/part_002.npz 201582 over 0.86 net 147s 2484s
+/home/cucumbersaurus/r6runs/dagger/part_003.npz 216544 over 0.83 net 146s 2484s
+rows 2528992 2557s
