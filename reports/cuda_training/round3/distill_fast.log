@@ -1,0 +1,43 @@
+[ab] ring 600000 rows from 2652 shards, held-out 40000 rows from 139 shards (64s); device cuda:0, amp fp16, compile True, batch 256
+/home/cucumbersaurus/blackout-env/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py:3895: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+{"step": 250, "ms_step": 110.21121883392334, "ce": 0.16426303100585937, "accuracy": 0.9489715099334717, "angle_loss": 0.6640007934570312, "grad_norm": 4.330806640625, "amp_skipped": 0.012, "loss_scale": 8192.0}
+{"step": 500, "ms_step": 42.07958126068115, "ce": 0.12202297973632813, "accuracy": 0.9576038718223572, "angle_loss": 0.4188978271484375, "grad_norm": 2.55689794921875, "amp_skipped": 0.0, "loss_scale": 8192.0}
+{"step": 750, "ms_step": 40.99406719207764, "ce": 0.10624350738525391, "accuracy": 0.9629489183425903, "angle_loss": 0.3655553894042969, "grad_norm": 2.42968359375, "amp_skipped": 0.0, "loss_scale": 8192.0}
+{"step": 1000, "ms_step": 42.5952205657959, "ce": 0.09979334259033203, "accuracy": 0.9653567671775818, "angle_loss": 0.33428076171875, "grad_norm": 2.40923974609375, "amp_skipped": 0.0, "loss_scale": 8192.0}
+{"step": 1250, "ms_step": 42.78610038757324, "ce": 0.09258262634277344, "accuracy": 0.968335747718811, "angle_loss": 0.3093468322753906, "grad_norm": 2.33993896484375, "amp_skipped": 0.0, "loss_scale": 8192.0}
+{"step": 1500, "ms_step": 42.526533126831055, "ce": 0.08406196594238281, "accuracy": 0.9706100821495056, "angle_loss": 0.28754544067382815, "grad_norm": 2.33597802734375, "amp_skipped": 0.0, "loss_scale": 8192.0}
+{"step": 1750, "ms_step": 42.9226131439209, "ce": 0.08025676727294923, "accuracy": 0.9717674255371094, "angle_loss": 0.26942193603515624, "grad_norm": 2.252982421875, "amp_skipped": 0.0, "loss_scale": 8192.0}
+{"step": 2000, "ms_step": 40.596261978149414, "ce": 0.07647382354736328, "accuracy": 0.9736007452011108, "angle_loss": 0.2570892333984375, "grad_norm": 2.284150146484375, "amp_skipped": 0.0, "loss_scale": 8192.0}
+{"step": 2250, "ms_step": 41.29655170440674, "ce": 0.07267137145996094, "accuracy": 0.9744434356689453, "angle_loss": 0.24494422912597658, "grad_norm": 2.2698974609375, "amp_skipped": 0.0, "loss_scale": 16384.0}
+{"step": 2500, "ms_step": 41.12632465362549, "ce": 0.07017683410644532, "accuracy": 0.9756711721420288, "angle_loss": 0.2367599639892578, "grad_norm": 2.25054931640625, "amp_skipped": 0.0, "loss_scale": 16384.0}
+{"step": 2750, "ms_step": 40.40772724151611, "ce": 0.06679061126708985, "accuracy": 0.9766879081726074, "angle_loss": 0.22670626831054688, "grad_norm": 2.292058349609375, "amp_skipped": 0.0, "loss_scale": 16384.0}
+{"step": 3000, "ms_step": 41.18064212799072, "ce": 0.0641545639038086, "accuracy": 0.9775635004043579, "angle_loss": 0.2155523681640625, "grad_norm": 2.288037109375, "amp_skipped": 0.0, "loss_scale": 16384.0}
+{
+ "device": "cuda:0",
+ "torch": "2.11.0+cu128",
+ "amp": "fp16",
+ "compile": true,
+ "batch": 256,
+ "steps": 3000,
+ "median_ms_step": 41.29655170440674,
+ "rows_per_s": 6199.064799221053,
+ "heldout": {
+  "heldout/angle_err_deg/all": 9.768385887145996,
+  "heldout/angle_within2/all": 0.6294698119163513,
+  "heldout/angle_bin_hit/all": 0.7050905227661133,
+  "heldout/angle_res_err_deg/all": 2.029552936553955,
+  "heldout/angle_n/all": 155936.0,
+  "heldout/angle_err_deg/opening": 4.353639602661133,
+  "heldout/angle_within2/opening": 0.6775408983230591,
+  "heldout/angle_bin_hit/opening": 0.7112959027290344,
+  "heldout/angle_res_err_deg/opening": 1.9344563484191895,
+  "heldout/angle_n/opening": 56525.0,
+  "heldout/accuracy": 0.9300097227096558,
+  "heldout/labels": 155936.0,
+  "heldout/accuracy_role_collector": 0.9439734816551208,
+  "heldout/accuracy_role_hunter": 0.9193041324615479,
+  "heldout/accuracy_role_carrier": 0.9311939477920532,
+  "heldout/accuracy_kind_act": 0.9300097227096558
+ }
+}

@@ -1,0 +1,2 @@
+{"a": "strategic_v21_anyangle", "b": "random", "seed": 543346299, "max_steps": 750, "path": "reports/sim/traces_ts1/trace_000.npz", "steps": 751, "winner": null, "score_0": 0.800000011920929, "score_1": 0.07000000029802322, "time_left": 0.9285702705383301, "wall_s": 30.2}
+{"a": "random", "b": "random", "seed": 606762519, "max_steps": 750, "path": "reports/sim/traces_ts1/trace_001.npz", "steps": 751, "winner": null, "score_0": 0.009999999776482582, "score_1": 0.2800000011920929, "time_left": 0.928475022315979, "wall_s": 30.0}

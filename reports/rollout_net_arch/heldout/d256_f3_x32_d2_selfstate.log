@@ -1,0 +1,6 @@
+checkpoints/rollout_net_arch/selfstate_d256_f3_x32_d2/part_000.npz 35300 over 0.56 210s
+checkpoints/rollout_net_arch/selfstate_d256_f3_x32_d2/part_001.npz 21212 over 0.88 210s
+checkpoints/rollout_net_arch/selfstate_d256_f3_x32_d2/part_002.npz 26106 over 0.75 210s
+checkpoints/rollout_net_arch/selfstate_d256_f3_x32_d2/part_003.npz 25182 over 0.81 210s
+rows 107800 211s
+checkpoints/rollout_net_arch/d256_f3_x32_d2.pt {"val": {"hit": 0.9098199933879775, "err": 11.820252315810999, "w2": 0.7254614165688164, "hit_open": 0.9550544878145433, "err_open": 4.5908857752749155, "w2_open": 0.7723954824648306, "hit_late": 0.804752462581553, "err_late": 31.771484577276066, "p11_agree": 0.8082710633130203, "p11_err": 12.058610673678654}, "simval/val": {"hit": 0.8595439560835912, "err": 10.784892897171908, "w2": 0.6373325542643208, "hit_open": 0.9047742605085626, "err_open": 8.222883489556304, "w2_open": 0.7087960560456669, "hit_late": 0.8580159714013895, "err_late": 10.110799164672644, "p11_agree": 0.7408163888380045, "p11_err": 11.15941106429749}, "selfstate_d256_f3_x32_d2/train": {"hit": 0.8688130461882895, "err": 12.220313516980864, "w2": 0.6597488116893304, "hit_open": 0.9161933285138903, "err_open": 7.242913341197201, "w2_open": 0.7378007848807188, "hit_late": 0.855614849545784, "err_late": 14.212328126686923, "p11_agree": NaN, "p11_err": NaN}, "params": 1831552}

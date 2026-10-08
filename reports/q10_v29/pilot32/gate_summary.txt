@@ -1,0 +1,28 @@
+== strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=always  - strategic_v28:reserve_stage=0.5,trade_hold=advance
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance    +12.69 ±  6.71  (32 seeds, z  +1.9) 
+   vs p17                                                   +67.47 ±  8.79  (32 seeds, z  +7.7) 
+   vs p16                                                    -3.00 ±  7.43  (32 seeds, z  -0.4) 
+   vs strategic_v27:reserve_stage=1.5                       -11.98 ±  5.14  (32 seeds, z  -2.3) REGRESS>1SE
+   vs strategic_v25                                          -5.05 ±  4.77  (32 seeds, z  -1.1) REGRESS>1SE
+   vs p14b                                                   +6.55 ±  4.60  (32 seeds, z  +1.4) 
+   vs strategic_v23                                          -2.09 ±  1.46  (32 seeds, z  -1.4) REGRESS>1SE
+   vs strategic_v27:reserve_stage=1.0                       +25.02 ±  6.48  (32 seeds, z  +3.9) 
+   POOL (8 opponents, 32 seeds): +11.20 ± 2.10; worst strategic_v27:reserve_stage=1.5 -11.98 ± 5.14; rule -> more seeds
+== strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve  - strategic_v28:reserve_stage=0.5,trade_hold=advance
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance    +11.84 ±  6.80  (32 seeds, z  +1.7) 
+   vs p17                                                   +66.55 ±  8.80  (32 seeds, z  +7.6) 
+   vs p16                                                    -1.31 ±  7.37  (32 seeds, z  -0.2) 
+   vs strategic_v27:reserve_stage=1.5                        -0.33 ±  0.96  (32 seeds, z  -0.3) 
+   vs strategic_v25                                          +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs p14b                                                   +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs strategic_v23                                          +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   vs strategic_v27:reserve_stage=1.0                       +25.27 ±  6.46  (32 seeds, z  +3.9) 
+   POOL (8 opponents, 32 seeds): +12.75 ± 1.81; worst p16 -1.31 ± 7.37; rule -> adopt
+== strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=tie  - strategic_v28:reserve_stage=0.5,trade_hold=advance
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance    +12.02 ±  6.81  (32 seeds, z  +1.8) 
+   vs p17                                                   +66.98 ±  8.74  (32 seeds, z  +7.7) 
+   vs p16                                                    -1.58 ±  7.35  (32 seeds, z  -0.2) 
+   vs strategic_v27:reserve_stage=1.5                       -12.34 ±  4.92  (32 seeds, z  -2.5) REGRESS>1SE
+   vs strategic_v25                                          -6.06 ±  4.69  (32 seeds, z  -1.3) REGRESS>1SE
+   vs strategic_v23                                          +0.00 ±  0.00  (32 seeds, z  +0.0) 
+   POOL (6 opponents, 32 seeds): +9.84 ± 2.38; worst strategic_v27:reserve_stage=1.5 -12.34 ± 4.92; rule -> more seeds

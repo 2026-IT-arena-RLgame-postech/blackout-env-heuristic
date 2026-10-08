@@ -1,0 +1,15 @@
+B1: one Searcher.search, o4f_v28r (B8 alt*,samp:1.0x2 x opp samp:1.0x3 mean, window 25 + leaf 125), base P20 overlay,
+128 roots (P20 x P20 games 30 s in) = 4096 rollout games / 8192 views per decision, 492717 game-decisions.
+poscat_gpu2, RTX 2080 Ti (GPU 0, otherwise idle), 1 CPU thread at nice 19 (server load ~50 on 28 threads).
+examples/b1_profile.py; seconds per search call (second rep).
+
+mode                                  wall    render  policy  step   notes
+old BatchRollout (float maps)         47.7    8.3     30.5    8.1    policy = GPU sync .cpu() 12.4, H2D 6.4, numpy decode_moves 4.5, base-row copies 1.5
+old + packed maps                     36.0    2.5     23.9    8.8    (choices identical)
+PipelinedRollout                      24.1    8.6*    5.6     9.1    * render + queueing the device work; window (25 dec.) 9.8 s, of it waiting on P20 5.0 s
+PipelinedRollout + CUDA graphs        21.5    6.5*    5.6     8.7    reference in the same process 45.9 s -> 2.13x
+all pipelined runs: values and choices equal to the reference, max |dv| = 0.
+
+Where the 21.5 s go: the 25-decision window is GPU-bound on the P20 base net (2 x 2048 views per decision,
+~100 ms per 2048 views fp32 eager); the 125-decision leaf phase is CPU-bound (numba step ~7.4 s, packed render ~1.8 s,
+kernel launches / branch masks / trig ~2.6 s).  GPU 0 utilisation ~78 % with one pipelined process.

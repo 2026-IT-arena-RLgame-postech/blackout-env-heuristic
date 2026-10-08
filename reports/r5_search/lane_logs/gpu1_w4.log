@@ -1,0 +1,15 @@
+== 16:21:40 v28
+[plain vs v28] 64/384 margin +51.0 wall 865s (search 0s, 0 roots)
+[plain vs v28] 128/384 margin +66.2 wall 640s (search 0s, 0 roots)
+[plain vs v28] 192/384 margin +59.6 wall 671s (search 0s, 0 roots)
+[plain vs v28] 256/384 margin +53.3 wall 742s (search 0s, 0 roots)
+[plain vs v28] 320/384 margin +57.2 wall 610s (search 0s, 0 roots)
+[plain vs v28] 384/384 margin +61.9 wall 637s (search 0s, 0 roots)
+== 17:31:10 v27
+[plain vs v27] 64/384 margin +51.6 wall 662s (search 0s, 0 roots)
+[plain vs v27] 128/384 margin +62.8 wall 679s (search 0s, 0 roots)
+[plain vs v27] 192/384 margin +62.8 wall 689s (search 0s, 0 roots)
+[plain vs v27] 256/384 margin +57.3 wall 839s (search 0s, 0 roots)
+[plain vs v27] 320/384 margin +61.9 wall 707s (search 0s, 0 roots)
+[plain vs v27] 384/384 margin +64.3 wall 692s (search 0s, 0 roots)
+== 18:42:22 cpu lane w4 done

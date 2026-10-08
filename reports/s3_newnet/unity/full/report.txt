@@ -1,0 +1,8 @@
+search   vs p11    n= 300 margin  +43.8 ±  2.9  race w/t/l (28, 270, 2)  win 0.82  end {'cap': 34, 'exhausted': 35, 'game': 231}  len 61s  wall 178s/match  desync matches 1 (ticks 2)
+search   vs v23    n= 300 margin  +43.6 ±  3.0  race w/t/l (26, 261, 13)  win 0.80  end {'cap': 32, 'exhausted': 27, 'game': 241}  len 58s  wall 137s/match  desync matches 2 (ticks 3)
+PAIR search - /home/cucumbersaurus/blackout-env/reports/unity_search/s8e25m3_p11:search vs p11:  +16.5 ±  3.8 (150 seeds, 300 matches; +43.8 vs +27.3)  race (28, 270, 2) vs (87, 211, 2)  same margin 9  search s/match 90.7 vs 39.5
+PAIR search - /home/cucumbersaurus/blackout-env/reports/unity_search/s8e25m3_v23:search vs v23:  +20.3 ±  4.0 (150 seeds, 300 matches; +43.6 vs +23.4)  race (26, 261, 13) vs (77, 210, 13)  same margin 3  search s/match 82.7 vs 40.9
+PAIR search - /home/cucumbersaurus/blackout-env/reports/unity_search/s8e25m3_p11:plain vs p11:  +42.1 ±  4.0 (150 seeds, 300 matches; +43.8 vs +1.8)  race (28, 270, 2) vs (21, 276, 3)  same margin 2  search s/match 90.7 vs 0.0
+PAIR search - /home/cucumbersaurus/blackout-env/reports/unity_search/s8e25m3_v23:plain vs v23:  +51.6 ±  3.7 (150 seeds, 300 matches; +43.6 vs -7.9)  race (26, 261, 13) vs (17, 271, 12)  same margin 6  search s/match 82.7 vs 0.0
+PAIR search - /home/cucumbersaurus/blackout-env/reports/search_server/race10_p11:race10 vs p11:  +23.2 ±  3.7 (150 seeds, 300 matches; +43.8 vs +20.6)  race (28, 270, 2) vs (87, 211, 2)  same margin 3  search s/match 90.7 vs 6.6
+PAIR search - /home/cucumbersaurus/blackout-env/reports/search_server/race10_v23:race10 vs v23:  +24.3 ±  4.0 (150 seeds, 300 matches; +43.6 vs +19.3)  race (26, 261, 13) vs (77, 210, 13)  same margin 2  search s/match 82.7 vs 4.8

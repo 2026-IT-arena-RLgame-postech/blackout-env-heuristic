@@ -64,6 +64,18 @@ def mirror_action_idx(action_idx: np.ndarray) -> np.ndarray:
     return DIR_MIRROR[np.roll(action_idx, -N_TEAM, axis=-1)]
 
 
+# Bit i of a direction-set mask marks compass index i; reflecting moves bit i to bit DIR_MIRROR[i].
+DIR_BITS_MIRROR = np.array(
+    [sum(1 << int(DIR_MIRROR[i]) for i in range(8) if bits >> i & 1) for bits in range(256)], dtype=np.uint8
+)
+
+
+def mirror_direction_bits(bits: np.ndarray) -> np.ndarray:
+    """Reflect per-unit direction-set bit masks in a [..., N_UNITS] uint8 table and roll the units
+    (mirror_action_idx for masks: train/onpolicy_collect.py's teacher labels)."""
+    return DIR_BITS_MIRROR[np.roll(bits, -N_TEAM, axis=-1)]
+
+
 def mirror_direction_idx(action_idx: np.ndarray | int) -> np.ndarray | int:
     """Reflect a bare compass index (or array of them), with no unit-axis reordering."""
     if isinstance(action_idx, (int, np.integer)):

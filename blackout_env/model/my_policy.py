@@ -1,25 +1,3 @@
-"""
-MyPolicy: a trained MyModel exposed through the BaseModel.act() interface that run_match(),
-the evaluation scripts and the Elo tooling all call.
-
-Getting one:
-  - from a QMIXTrainer checkpoint via loader.load_my_policy_checkpoint(path, hidden_size=...),
-  - or, as the examples/ scripts do, MyPolicy(trainer.net) after QMIXTrainer.load().
-
-Per act() call (one team, 5 agents; every agent gets the same shared observation):
-  1. Detect the team from the observation itself (agent_states row 0's team sign) and, for
-     Team B, mirror it into the canonical frame the network was trained on
-     (blackout_env.env.team_frame).
-  2. One forward pass at batch 1 -> Q-table [10 units, 8 directions].
-  3. For Team B, reorder the 8 columns back to world-frame directions; pick each agent's row
-     (canonical_unit_row of its unit index).
-  4. Optionally mask directions that step into a wall (mask_walls, model/action_mask.py).
-  5. Greedy argmax -> DIRECTION_VECTORS[i], a unit (dx, dy) vector in the env's [-1, 1] range.
-
-There is no exploration here; the only randomness is the IQN quantile fractions MyModel samples
-per call (see MyModel.forward).
-"""
-
 import math
 
 import numpy as np
@@ -34,6 +12,7 @@ from blackout_env.env.team_frame import (
 )
 from blackout_env.model.action_mask import world_legal_mask
 from blackout_env.model.base import BaseModel
+from blackout_env.model.direction_bins import action_vectors, bins_of_width, mirror_bin, offset_vectors
 from blackout_env.model.my_model import MyModel
 
 # 8 compass directions, evenly spaced starting at 0 rad (+x axis), matching MyModel's
@@ -44,6 +23,14 @@ DIRECTION_VECTORS = np.array(
     [[math.cos(i * math.pi / 4), math.sin(i * math.pi / 4)] for i in range(N_DIRECTIONS)],
     dtype=np.float32,
 )
+
+
+# A net with one more output than directions (MyModel(n_actions=N_DIRECTIONS + 1), the distilled
+# students trained with --stand-action) has a "stay" action at index STAND: the zero move.
+STAND = N_DIRECTIONS
+ACTION_VECTORS = np.vstack([DIRECTION_VECTORS, np.zeros((1, 2), dtype=np.float32)])
+# A K-bin net (P4, model/direction_bins.py: MyModel(n_actions=K [+ 1])) has K heading bins, bin k
+# at 2 pi k / K, then STAND at index K when the width is odd; K = 8 is the layout above.
 
 
 def direction_vector_to_idx(vectors: np.ndarray) -> np.ndarray:
@@ -71,6 +58,17 @@ class MyPolicy(BaseModel):
     once per act() call (batch size 1) — each agent's action is then just its row of the
     resulting 10-unit Q-table, selected by unit index (blackout_env.unit_index), converted
     from an argmax direction index to a continuous (dx, dy) vector.
+
+    A temporal net (``net.is_temporal``: ``MyModel(temporal=True)`` or a ``_FastNet`` around
+    one) makes this policy stateful: every ``action_values``/``act`` call is one tick, feeding
+    the memory the net returned last tick back in.  The memory lives in the canonical frame and
+    is kept per team (Team A / Team B view), so one policy object can play both sides of a
+    mirror match.  ``reset()`` forgets it -- call it at the start of every match.
+
+    An angle-head net (``net.angle_head``, P11: MyModel or inference._FastNet around one) also
+    gives each bin an offset; ``action_values`` then keeps them, in the world frame, in
+    ``last_offsets`` (agent -> [K] radians) and ``act`` executes the chosen bin's heading plus its
+    offset (``bin_headings``) instead of the bin centre.
     """
 
     def __init__(self, net: MyModel, device: str | torch.device = "cpu", mask_walls: bool = False) -> None:
@@ -79,10 +77,23 @@ class MyPolicy(BaseModel):
         # Keep in step with QMIXConfig.action_masking: a policy evaluated without the mask its
         # targets were computed under is a different policy (see model/action_mask.py).
         self._mask_walls = mask_walls
+        self._temporal = bool(getattr(net, "is_temporal", False))
+        self._angle = bool(getattr(net, "angle_head", False))
+        self._memory: dict[bool, object] = {}  # team_b -> the net's memory after the last tick
+        self.last_offsets: dict[str, np.ndarray] | None = None  # angle head: the last call's offsets
+
+    @property
+    def is_temporal(self) -> bool:
+        return self._temporal
+
+    def reset(self) -> None:
+        """Start of a match: forget the temporal memory (a no-op for a stateless net)."""
+        self._memory.clear()
 
     def action_values(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         """
-        Each agent's 8 Q-values, indexed by DIRECTION_VECTORS in the *world* frame.
+        Each agent's 8 Q-values, indexed by DIRECTION_VECTORS in the *world* frame (a K-bin net:
+        K bin logits, bin k at 2 pi k / K, then STAND if it has one).
 
         Exposed separately from act() so that anything wanting a different rule over the same
         Q-table -- epsilon-greedy, Boltzmann sampling, a diagnostic that reads the margin between
@@ -110,26 +121,53 @@ class MyPolicy(BaseModel):
             canonical["agent_states"], dtype=torch.float32, device=self._device
         ).unsqueeze(0)
 
+        offsets = None
         with torch.no_grad():
-            q_values, *_ = self._net(graphic, team_state, agent_states)  # [1, N_UNITS, 8]
+            angle = {"angle": True} if self._angle else {}
+            if self._temporal:
+                out = self._net(graphic, team_state, agent_states, memory=self._memory.get(team_b), **angle)
+                q_values, self._memory[team_b] = out[0], out[-1]
+                offsets = out[-2] if self._angle else None
+            else:
+                out = self._net(graphic, team_state, agent_states, **angle)  # [1, N_UNITS, 8]
+                q_values, offsets = out[0], (out[-1] if self._angle else None)  # offsets: last
         q_rows = q_values.squeeze(0).cpu().numpy()
+        off_rows = offsets.squeeze(0).float().cpu().numpy() if offsets is not None else None
 
         if team_b:
-            # Canonical action index i is world index mirror(i), so reordering the 8 columns by
-            # the mirror turns a canonical row into a world-frame one.
-            q_rows = q_rows[:, mirror_direction_idx(np.arange(N_DIRECTIONS))]
-        return {
-            agent: q_rows[canonical_unit_row(unit_index(agent), team_b)]
-            for agent in agents
-        }
+            # Canonical action index i is world index mirror(i), so reordering the K columns by
+            # the mirror turns a canonical row into a world-frame one (STAND mirrors to itself).
+            bins, _ = bins_of_width(q_rows.shape[1])
+            order = mirror_direction_idx(np.arange(N_DIRECTIONS)) if bins == N_DIRECTIONS else mirror_bin(np.arange(bins), bins)
+            q_rows = q_rows[:, np.r_[order, np.arange(bins, q_rows.shape[1])]]
+            if off_rows is not None:  # the reflection t -> 90 deg - t also turns each offset around
+                off_rows = -off_rows[:, order]
+        rows = {agent: canonical_unit_row(unit_index(agent), team_b) for agent in agents}
+        self.last_offsets = None if off_rows is None else {agent: off_rows[r] for agent, r in rows.items()}
+        return {agent: q_rows[r] for agent, r in rows.items()}
+
+    def bin_headings(self, agent: str, width: int) -> np.ndarray:
+        """What each output index of ``agent``'s last row executes: the bin headings (plus the
+        last call's offsets for an angle head), then the zero move for STAND."""
+        bins, stand = bins_of_width(width)
+        if self.last_offsets is None or agent not in self.last_offsets:
+            return ACTION_VECTORS if bins == N_DIRECTIONS and stand else action_vectors(bins, stand)
+        vectors = offset_vectors(self.last_offsets[agent])
+        return np.vstack([vectors, np.zeros((1, 2), np.float32)]) if stand else vectors
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         q_rows = self.action_values(obs)
+        width = len(next(iter(q_rows.values())))
+        bins, stand = bins_of_width(width)
         if self._mask_walls:
             shared_obs = obs[next(iter(obs))]
             mask = world_legal_mask(shared_obs["graphic"], shared_obs["agent_states"])  # [N_UNITS, 8]
+            nearest = np.rint(np.arange(bins) * N_DIRECTIONS / bins).astype(np.int64) % N_DIRECTIONS  # bin -> compass
             q_rows = {
-                agent: np.where(mask[unit_index(agent)], row, -np.inf)
+                agent: np.where(np.r_[mask[unit_index(agent)][nearest], np.ones(width - bins, bool)], row, -np.inf)
                 for agent, row in q_rows.items()
             }
-        return {agent: DIRECTION_VECTORS[int(np.argmax(row))] for agent, row in q_rows.items()}
+        if self.last_offsets is not None:
+            return {agent: self.bin_headings(agent, width)[int(np.argmax(row))] for agent, row in q_rows.items()}
+        vectors = ACTION_VECTORS if bins == N_DIRECTIONS else action_vectors(bins, stand)
+        return {agent: vectors[int(np.argmax(row))] for agent, row in q_rows.items()}

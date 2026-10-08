@@ -1,0 +1,39 @@
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+20260917-130437_59475/final hysteresis 0.1 vs V4: 8 matches, margin -61.5 (-75, -83, -61, -77, -59, -72, -5, -60)
+  20260917-130437_59475/final hysteresis 0.1
+    hunter reversal  wall 1:  43.2% (n=3239)  wall 2:  27.0% (n=1099)  wall 3:  12.0% (n=192)  wall 4+:  12.5% (n=16)
+    other  reversal  wall 1:  22.0% (n=9748)  wall 2:   6.6% (n=4419)  wall 3:   0.1% (n=1965)  wall 4+:  16.7% (n=6)
+    deliveries 67: spawn storage 49%, other 51% | own storage clusters per match 5.0
+  V4 (opponent)
+    hunter reversal  wall 1:  23.3% (n=1521)  wall 2:  20.5% (n=839)  wall 3:  17.4% (n=161)  wall 4+:  25.8% (n=31)
+    other  reversal  wall 1:   7.4% (n=10379)  wall 2:   5.9% (n=5822)  wall 3:   7.6% (n=1959)  wall 4+:   0.0% (n=35)
+    deliveries 149: spawn storage 24%, other 76% | own storage clusters per match 5.0

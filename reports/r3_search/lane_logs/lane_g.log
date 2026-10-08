@@ -1,0 +1,9 @@
+== 17:07:35 v31 o4f_r20,plain
+[o4f_r20 vs v31] 128/512 margin +18.5 wall 1813s (search 1391s, 6646 roots)
+[o4f_r20 vs v31] 256/512 margin +14.0 wall 1818s (search 1350s, 6443 roots)
+[o4f_r20 vs v31] 384/512 margin +25.2 wall 1760s (search 1304s, 6235 roots)
+[o4f_r20 vs v31] 512/512 margin +24.3 wall 1818s (search 1392s, 6883 roots)
+[plain vs v31] 128/512 margin +16.7 wall 357s (search 0s, 0 roots)
+[plain vs v31] 256/512 margin +17.9 wall 374s (search 0s, 0 roots)
+[plain vs v31] 384/512 margin +16.3 wall 381s (search 0s, 0 roots)
+[plain vs v31] 512/512 margin +18.0 wall 382s (search 0s, 0 roots)

@@ -1,0 +1,2 @@
+train 77493 roots adv mean -6.39 sd 25.74 |adv|>3 0.29 search non-base 0.19
+val 8785 roots adv mean -6.60 sd 25.32 |adv|>3 0.30 search non-base 0.20

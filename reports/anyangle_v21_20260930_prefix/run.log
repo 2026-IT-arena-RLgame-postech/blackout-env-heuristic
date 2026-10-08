@@ -1,0 +1,80 @@
+12 games, seeds=[393627449, 500547030, 626673321, 325352305, 448145861, 813174530]
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[ 1/12] seed=393627449 swap=0 96-27 steps=573 dlv 19-9
+[ 2/12] seed=393627449 swap=1 99-41 steps=10502 dlv 18-12
+[ 3/12] seed=500547030 swap=1 97-18 steps=685 dlv 19-6
+[ 4/12] seed=500547030 swap=0 78-34 steps=10501 dlv 16-12
+[ 5/12] seed=626673321 swap=1 92-33 steps=871 dlv 18-10
+[ 6/12] seed=626673321 swap=0 93-72 steps=10501 dlv 19-18
+[ 7/12] seed=325352305 swap=0 94-46 steps=10501 dlv 23-15
+[ 8/12] seed=448145861 swap=0 99-31 steps=780 dlv 20-14
+[ 9/12] seed=448145861 swap=1 92-21 steps=393 dlv 15-9
+[10/12] seed=325352305 swap=1 66-84 steps=10501 dlv 18-19
+[11/12] seed=813174530 swap=0 83-70 steps=10501 dlv 16-17
+[12/12] seed=813174530 swap=1 37-95 steps=2208 dlv 9-16
+
+strategic_v21_anyangle vs strategic_v21: 12 games
+W-L-D 10-2-0  margin +37.8 +- 12.0 (SE)
+seed-paired margin +37.8 +- 14.6 (SE over 6 seeds)
+  strategic_v21_anyangle   deliveries/game 17.5+-1.0  /1000 steps 13.33+-4.19  first 43+-4  tiles/dlv 163.1+-48.1  kills 119.2+-46.4  speed eff collector 0.967 hunter 1.003 carrier 0.889
+  strategic_v21            deliveries/game 13.1+-1.2  /1000 steps 7.74+-2.22  first 46+-5  tiles/dlv 182.7+-51.5  kills 120.4+-50.6  speed eff collector 0.961 hunter 1.011 carrier 0.975
+  any-angle moves: approach 0.6%, evade_8dir 20.7%, fallback 0.2%, hunt 5.8%, path 72.6%

@@ -1,0 +1,2 @@
+train 151507 roots adv mean -9.63 sd 32.78 |adv|>3 0.39 search non-base 0.29
+val 16560 roots adv mean -9.68 sd 32.69 |adv|>3 0.39 search non-base 0.29

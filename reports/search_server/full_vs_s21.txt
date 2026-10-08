@@ -1,0 +1,4 @@
+p11: n=80 server search - plain +29.8±9.2 | §21 in-process search - plain (same seeds) +29.1±9.3 | server - §21 +0.6±0.5 | same margin 74/80, same length+choices 74
+   latency server 430 (p95 535) vs §21 752 (p95 926); batch roots 1.9; wall 68 vs 102
+v23: n=80 server search - plain +37.6±8.4 | §21 in-process search - plain (same seeds) +38.6±8.2 | server - §21 -1.0±1.5 | same margin 73/80, same length+choices 72
+   latency server 425 (p95 524) vs §21 542 (p95 773); batch roots 2.5; wall 51 vs 68

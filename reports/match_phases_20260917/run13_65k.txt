@@ -1,0 +1,46 @@
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+12224_79536/step_65000 vs V4: 10 matches, per 5 s window (points summed over matches; score = mean displayed at window end, held after the match ends)
+                             0-5s    5-10s   10-15s   15-20s   20-25s   25-30s   30-35s   35-40s
+  model score                 9.5     17.9     16.1     13.3     14.4     15.1     15.1     15.1
+  model stolen                  0        6       57       34       10        0        0        0
+  model stolen_outer            0        6       57       34       10        0        0        0
+  model withdrawn               0        0        0        0        0        0        0        0
+  model lost_cargo              0        0       46       13        5        0        0        0
+  model delivered              95       84       42        6       21        7        0        0
+  model delivered_outer        19       43       37        6       10        7        0        0
+  V4 score                   23.4     54.2     78.3     92.5     94.4     95.0     95.0     95.0
+  V4 stolen                     0       13       16       22        0        0        0        0
+  V4 stolen_outer               0       13       16       22        0        0        0        0
+  V4 withdrawn                  0        0        0        0        0        0        0        0
+  V4 lost_cargo                 0        0        0        0        0        0        0        0
+  V4 delivered                223      332      257      163       26        6        0        0
+  V4 delivered_outer           90      278      256      163       14        0        0        0

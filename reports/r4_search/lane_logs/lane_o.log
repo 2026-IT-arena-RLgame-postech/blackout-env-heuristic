@@ -1,0 +1,5 @@
+== 12:42:25 p17 o4f_r20
+[o4f_r20 vs p17] 128/384 margin +44.8 wall 1693s (search 1447s, 6208 roots)
+[o4f_r20 vs p17] 256/384 margin +52.5 wall 1604s (search 1359s, 5549 roots)
+[o4f_r20 vs p17] 384/384 margin +55.9 wall 2058s (search 1723s, 5395 roots)
+== 14:11:47 lane o done

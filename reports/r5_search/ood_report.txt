@@ -1,0 +1,8 @@
+margins (mean over rows; n = seeds)
+arm                        v31    rush_all      v30_c0    v30_camp      v30_h2      v30_h4  v30_h4hunt    v30_hunt v30_nostage v30_reckless  v30_stage3
+p22:o4f_r22          +18.4/32    +97.5/32    +17.9/32    +23.8/32    +73.6/32    -10.7/32     -3.2/32    +20.5/32    +74.7/32    +22.7/32    +26.2/32 
+p22:plain            +19.9/32    +96.6/32    +12.0/32    +26.6/32    +69.3/32    -10.4/32     -6.5/32    +19.7/32    +67.6/32    +22.3/32    +24.9/32 
+
+paired a - b (same opponent, seed, side), pooled over common opponents
+  p22:o4f_r22 - p22:plain: pooled +1.8±1.5 (+1.1 SE), worst v30_camp -2.8±4.3
+     v31 -1.5±6.7/32  rush_all +0.9±0.3/32  v30_c0 +5.9±4.2/32  v30_camp -2.8±4.3/32  v30_h2 +4.3±1.1/32  v30_h4 -0.3±7.1/32  v30_h4hunt +3.3±6.9/32  v30_hunt +0.8±5.5/32  v30_nostage +7.1±2.9/32  v30_reckless +0.4±6.1/32  v30_stage3 +1.3±5.4/32

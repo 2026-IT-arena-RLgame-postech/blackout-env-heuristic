@@ -1,0 +1,95 @@
+=== p16 vs strategic_v28:reserve_stage=0.5,trade_hold=advance  (ref strategic_v28:reserve_stage=0.5,trade_hold=advance, 128 matches)
+  margin         ours  -27.41  ref   +0.00  diff  -27.41 ±  5.23
+  m0_5           ours   -0.25  ref   +0.00  diff   -0.25 ±  0.27
+  m5_10          ours   -3.23  ref   +0.00  diff   -3.23 ±  0.94
+  m10_30         ours  -17.85  ref   +0.00  diff  -17.85 ±  4.22
+  m30_60         ours   -5.62  ref   +0.00  diff   -5.62 ±  1.85
+  m60_150        ours   -0.45  ref   +0.00  diff   -0.45 ±  0.20
+  hunter_s       ours  +44.56  ref  +54.72  diff  -10.16 ±  8.54
+  opp_hunter_s   ours  +80.52  ref  +54.72  diff  +25.80 ±  8.47
+  ticks          ours +1082.50  ref +1170.41  diff  -87.91 ± 84.20
+  race       w/t/l ours (0, 128, 0)  ref (0, 128, 0)
+  2nd race   w/t/l ours (47, 7, 74)  ref (32, 64, 32)
+  first Hunter ours: 99 128 100 0 other 0 | ref 99 128; opp first 99: 128 / 128
+  reserve99      median ours 7.31 (p10 1.13)  ref 8.06 (p10 3.61)
+  opp_reserve99  median ours 8.06 (p10 3.53)  ref 8.06 (p10 3.61)
+  2nd Hunter decision median ours 198 ref 198; opp 198 / 198
+  events per match (ours - ref, by window):
+    event                 0-5s           5-10s          10-30s          30-60s         60-150s
+    kill_our   0.20 +0.16±0.06 1.57 +0.59±0.20 7.80 -0.57±0.82 4.14 -3.45±1.15 1.73 -0.97±1.60
+    kill_opp   0.36 +0.32±0.05 3.34 +2.36±0.3015.44 +7.07±1.09 8.87 +1.27±1.04 3.52 +0.83±1.94
+    death_our  3.44 -0.20±0.05 3.67 +0.28±0.1915.88 +1.43±0.85 9.06 +1.03±1.08 3.55 +0.82±1.95
+    death_opp  3.27 -0.36±0.07 1.90 -1.49±0.23 8.23 -6.21±1.00 4.34 -3.70±1.17 1.75 -0.98±1.62
+    death_c_our 0.36 +0.32±0.05 2.98 +2.12±0.2712.27 +5.59±0.84 7.08 +0.78±0.90 3.14 +0.72±1.68
+    death_c_opp 0.20 +0.16±0.06 1.35 +0.50±0.18 6.05 -0.63±0.66 3.30 -2.99±0.96 1.70 -0.72±1.39
+    death_h_our 3.08 -0.52±0.06 0.33 -2.08±0.24 0.44 -5.64±0.78 0.20 -0.24±0.17 0.02 -0.01±0.03
+    death_h_opp 3.08 -0.52±0.06 0.33 -2.08±0.24 0.44 -5.64±0.78 0.20 -0.24±0.17 0.02 -0.01±0.03
+    death_k_our 0.00 +0.00±0.00 0.37 +0.23±0.07 3.16 +1.48±0.31 1.79 +0.49±0.24 0.38 +0.11±0.34
+    death_k_opp 0.00 +0.00±0.00 0.22 +0.09±0.05 1.74 +0.06±0.22 0.84 -0.46±0.25 0.02 -0.25±0.25
+    dep_our    2.76 -0.12±0.05 2.62 -0.55±0.14 5.49 -1.92±0.38 1.62 -1.31±0.36 0.06 -0.11±0.06
+    dep_opp    2.88 +0.00±0.01 3.20 +0.04±0.12 8.29 +0.88±0.34 2.59 -0.34±0.33 0.19 +0.02±0.10
+    steal_our  0.00 +0.00±0.00 0.20 +0.04±0.04 1.20 -0.53±0.13 0.21 -0.07±0.08 0.01 -0.01±0.02
+    steal_opp  0.00 +0.00±0.00 0.20 +0.04±0.04 1.49 -0.24±0.11 0.29 +0.01±0.09 0.02 +0.00±0.02
+    pick_our   4.97 +0.06±0.06 3.14 -0.09±0.14 6.16 -0.81±0.34 1.91 -1.24±0.34 0.10 -0.05±0.07
+    pick_opp   4.93 +0.02±0.01 3.61 +0.38±0.14 7.85 +0.88±0.31 2.66 -0.50±0.33 0.23 +0.07±0.10
+    tr_h_our   3.44 -0.36±0.06 1.05 -1.88±0.22 0.48 -6.43±0.84 0.19 -0.38±0.20 0.02 -0.02±0.04
+    tr_h_opp   3.78 -0.02±0.02 1.64 -1.28±0.17 0.67 -6.24±0.84 0.19 -0.38±0.21 0.02 -0.02±0.04
+    tr_k_our   1.00 +0.00±0.00 0.30 +0.20±0.06 3.07 +1.46±0.32 1.74 +0.59±0.24 0.35 +0.09±0.34
+    tr_k_opp   1.00 +0.00±0.00 0.20 +0.09±0.05 1.66 +0.05±0.22 0.77 -0.38±0.23 0.01 -0.25±0.25
+    lost_our   6.82 +0.28±0.14 3.47 +1.86±0.50 9.69 +4.09±0.88 2.14 +0.05±0.55 0.23 +0.20±0.13
+    lost_opp   6.69 +0.15±0.09 2.21 +0.60±0.40 5.52 -0.08±0.84 0.92 -1.16±0.48 0.22 +0.18±0.13
+  margin diff by 2nd race (ours, ref) outcome:  [n, mean diff, share of total]
+    ours W ref W: n=  19  -10.26 share +0.06
+    ours W ref T: n=  19   -7.21 share +0.04
+    ours W ref L: n=   9  +58.89 share -0.15
+    ours T ref W: n=   1  +67.00 share -0.02
+    ours T ref T: n=   6  -93.00 share +0.16
+    ours L ref W: n=  12  -51.42 share +0.18
+    ours L ref T: n=  39  -57.41 share +0.64
+    ours L ref L: n=  23  -15.65 share +0.10
+  race tied (ours): 128
+  reserve (ours):
+    reserve@98 p10/25/50/75/90 0.16 0.37 0.74 1.03 5.03; Hunters at 99: [0, 0, 1, 115, 12, 0]
+    next Hunter after 99: ours first 37 tie 3 opp first 88
+    reserve in [0, 0.5): n= 48 margin   -9.2  ours-next median 115  opp-next median 103  4 Hunters at 99: 12
+    reserve in [0.5, 1.0): n= 45 margin  -23.4  ours-next median 247  opp-next median 102  4 Hunters at 99: 0
+    reserve in [1.0, 1.4): n= 12 margin  -47.8  ours-next median 9999  opp-next median 102  4 Hunters at 99: 0
+    reserve in [1.4, 99): n= 23 margin  -62.5  ours-next median 9999  opp-next median 102  4 Hunters at 99: 0
+  reserve (ref):
+    reserve@98 p10/25/50/75/90 0.34 0.35 0.37 0.50 4.42; Hunters at 99: [0, 0, 0, 128, 0, 0]
+    next Hunter after 99: ours first 32 tie 64 opp first 32
+    reserve in [0, 0.5): n= 94 margin  +17.1  ours-next median 102  opp-next median 102  4 Hunters at 99: 0
+    reserve in [0.5, 1.0): n=  8 margin  +21.9  ours-next median 103  opp-next median 102  4 Hunters at 99: 0
+    reserve in [1.4, 99): n= 26 margin  -68.5  ours-next median 878  opp-next median 102  4 Hunters at 99: 0
+  student vs shadow-teacher moves (ours=p16):
+    phase    role              n mean_deg  >30deg stu_stop tea_stop
+    0-5      C-batt         9080      1.4   0.012    0.000    0.000
+    0-5      C-empty       54901      3.2   0.030    0.000    0.002
+    0-5      Hunter         1299      2.4   0.014    0.000    0.000
+    0-5      K-empty        9048      5.3   0.051    0.000    0.000
+    0-5      K-loaded       5672      1.9   0.007    0.000    0.000
+    5-10     C-batt         3689     17.7   0.162    0.000    0.003
+    5-10     C-empty       50116     12.6   0.151    0.000    0.016
+    5-10     Hunter        10631      4.8   0.028    0.000    0.144
+    5-10     K-empty        9888      8.8   0.110    0.000    0.049
+    5-10     K-loaded       5676      4.7   0.058    0.000    0.006
+    10-30    C-batt        14553     12.5   0.115    0.000    0.043
+    10-30    C-empty      163297     14.8   0.177    0.000    0.026
+    10-30    C-special       709     12.1   0.110    0.000    0.000
+    10-30    Hunter        65781      6.4   0.038    0.000    0.279
+    10-30    K-empty       36940      8.7   0.112    0.000    0.033
+    10-30    K-loaded      17630      7.4   0.078    0.000    0.023
+    30-60    C-batt         6381     10.2   0.088    0.000    0.113
+    30-60    C-empty       94877     15.2   0.176    0.000    0.016
+    30-60    C-special       309      3.3   0.019    0.000    0.000
+    30-60    Hunter        42378      5.4   0.032    0.000    0.329
+    30-60    K-empty       17919      8.8   0.108    0.000    0.038
+    30-60    K-loaded       7606      3.8   0.038    0.000    0.021
+    60-150   C-batt          389      3.2   0.035    0.000    0.123
+    60-150   C-empty       36835     15.2   0.166    0.000    0.039
+    60-150   C-special        52     18.3   0.077    0.000    0.000
+    60-150   Hunter        22373      3.1   0.018    0.000    0.274
+    60-150   K-empty        2941     14.5   0.138    0.000    0.156
+    60-150   K-loaded       1830      5.0   0.069    0.000    0.000
+  ref sanity: ref moves == shadow labels everywhere: True
+

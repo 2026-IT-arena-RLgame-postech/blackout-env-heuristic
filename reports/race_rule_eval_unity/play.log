@@ -1,0 +1,242 @@
+1200 matches to play (0 done), 6 workers
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[20/1200] 132s 9.1 matches/min  last: strategic_v25 vs p11 seed 4000002 side 0 margin +79 first 99/-1 desync 0
+[40/1200] 180s 13.4 matches/min  last: strategic_v23 vs p11 seed 4000001 side 1 margin -53 first 100/100 desync 0
+[60/1200] 238s 15.1 matches/min  last: strategic_v25 vs strategic_v23 seed 4000007 side 1 margin +76 first 99/-1 desync 0
+[80/1200] 306s 15.7 matches/min  last: strategic_v25 vs strategic_v23 seed 4000010 side 1 margin +86 first 99/-1 desync 0
+[100/1200] 448s 13.4 matches/min  last: strategic_v25 vs strategic_v23 seed 4000011 side 1 margin +22 first 99/99 desync 0
+[120/1200] 571s 12.6 matches/min  last: strategic_v23 vs strategic_v23 seed 4000015 side 1 margin +63 first 100/100 desync 0
+[140/1200] 711s 11.8 matches/min  last: strategic_v25 vs strategic_v23 seed 4000017 side 1 margin +73 first 99/595 desync 0
+[160/1200] 826s 11.6 matches/min  last: strategic_v25 vs p11 seed 4000019 side 1 margin +72 first 99/-1 desync 0
+[180/1200] 957s 11.3 matches/min  last: strategic_v23 vs p11 seed 4000021 side 0 margin +58 first 100/100 desync 0
+[200/1200] 1092s 11.0 matches/min  last: strategic_v23 vs strategic_v23 seed 4000025 side 1 margin +84 first 100/100 desync 0
+[220/1200] 1310s 10.1 matches/min  last: strategic_v23 vs p11 seed 4000027 side 0 margin -62 first 100/100 desync 0
+[240/1200] 1448s 9.9 matches/min  last: strategic_v23 vs p11 seed 4000029 side 0 margin -75 first 100/100 desync 0
+[260/1200] 1603s 9.7 matches/min  last: strategic_v25 vs p11 seed 4000032 side 1 margin +75 first 99/-1 desync 0
+[280/1200] 1774s 9.5 matches/min  last: strategic_v23 vs strategic_v23 seed 4000035 side 0 margin -75 first 100/100 desync 0
+[300/1200] 1882s 9.6 matches/min  last: strategic_v25 vs strategic_v23 seed 4000037 side 1 margin +78 first 99/-1 desync 0
+[320/1200] 2004s 9.6 matches/min  last: strategic_v23 vs strategic_v23 seed 4000040 side 1 margin -76 first 100/100 desync 0
+[340/1200] 2105s 9.7 matches/min  last: strategic_v25 vs strategic_v23 seed 4000042 side 0 margin +47 first 99/99 desync 0
+[360/1200] 2235s 9.7 matches/min  last: strategic_v23 vs strategic_v23 seed 4000045 side 0 margin +65 first 100/100 desync 0
+[380/1200] 2405s 9.5 matches/min  last: strategic_v25 vs strategic_v23 seed 4000047 side 0 margin +64 first 99/99 desync 0
+[400/1200] 2559s 9.4 matches/min  last: strategic_v25 vs strategic_v23 seed 4000050 side 0 margin +81 first 99/-1 desync 0
+[420/1200] 2715s 9.3 matches/min  last: strategic_v23 vs strategic_v23 seed 4000052 side 1 margin -48 first 100/100 desync 0
+[440/1200] 2837s 9.3 matches/min  last: strategic_v23 vs p11 seed 4000054 side 0 margin -53 first 103/100 desync 0
+[460/1200] 3017s 9.1 matches/min  last: strategic_v23 vs p11 seed 4000056 side 0 margin +21 first 100/100 desync 0
+[480/1200] 3226s 8.9 matches/min  last: strategic_v25 vs p11 seed 4000059 side 1 margin +62 first 99/-1 desync 0
+[500/1200] 3353s 8.9 matches/min  last: strategic_v23 vs p11 seed 4000062 side 0 margin +79 first 99/273 desync 0
+[520/1200] 3511s 8.9 matches/min  last: strategic_v23 vs p11 seed 4000064 side 0 margin -78 first 100/100 desync 0
+[540/1200] 3674s 8.8 matches/min  last: strategic_v23 vs p11 seed 4000067 side 1 margin -89 first 100/100 desync 0
+[560/1200] 3770s 8.9 matches/min  last: strategic_v25 vs p11 seed 4000069 side 0 margin +72 first 99/-1 desync 0
+[580/1200] 3872s 9.0 matches/min  last: strategic_v25 vs strategic_v23 seed 4000072 side 1 margin +84 first 99/-1 desync 0
+[600/1200] 3982s 9.0 matches/min  last: strategic_v25 vs p11 seed 4000074 side 1 margin +81 first 99/-1 desync 0
+[620/1200] 4142s 9.0 matches/min  last: strategic_v25 vs p11 seed 4000077 side 0 margin +81 first 99/-1 desync 0
+[640/1200] 4324s 8.9 matches/min  last: strategic_v25 vs p11 seed 4000079 side 1 margin +77 first 99/-1 desync 0
+[660/1200] 4479s 8.8 matches/min  last: strategic_v23 vs p11 seed 4000082 side 0 margin +65 first 100/100 desync 0
+[680/1200] 4675s 8.7 matches/min  last: strategic_v25 vs strategic_v23 seed 4000085 side 1 margin +77 first 99/-1 desync 0
+[700/1200] 4842s 8.7 matches/min  last: strategic_v23 vs p11 seed 4000087 side 0 margin +79 first 100/100 desync 0
+[720/1200] 5015s 8.6 matches/min  last: strategic_v25 vs p11 seed 4000089 side 0 margin +87 first 99/-1 desync 0
+[740/1200] 5217s 8.5 matches/min  last: strategic_v25 vs p11 seed 4000092 side 1 margin +93 first 99/-1 desync 0
+[760/1200] 5333s 8.6 matches/min  last: strategic_v23 vs strategic_v23 seed 4000095 side 1 margin +54 first 100/100 desync 0
+[780/1200] 5462s 8.6 matches/min  last: strategic_v23 vs p11 seed 4000096 side 0 margin -35 first 100/100 desync 0
+[800/1200] 5676s 8.5 matches/min  last: strategic_v25 vs strategic_v23 seed 4000100 side 1 margin +82 first 99/-1 desync 0
+[820/1200] 5846s 8.4 matches/min  last: strategic_v25 vs p11 seed 4000102 side 0 margin +77 first 99/-1 desync 0
+[840/1200] 6036s 8.4 matches/min  last: strategic_v25 vs strategic_v23 seed 4000105 side 0 margin +72 first 99/477 desync 0
+[860/1200] 6171s 8.4 matches/min  last: strategic_v23 vs p11 seed 4000107 side 0 margin +80 first 100/100 desync 0
+[880/1200] 6320s 8.4 matches/min  last: strategic_v23 vs strategic_v23 seed 4000110 side 0 margin +70 first 100/100 desync 0
+[900/1200] 6443s 8.4 matches/min  last: strategic_v23 vs strategic_v23 seed 4000112 side 1 margin +59 first 100/100 desync 0
+[920/1200] 6601s 8.4 matches/min  last: strategic_v25 vs strategic_v23 seed 4000115 side 0 margin +81 first 99/-1 desync 0
+[940/1200] 6750s 8.4 matches/min  last: strategic_v23 vs p11 seed 4000117 side 0 margin +73 first 100/100 desync 0
+[960/1200] 6938s 8.3 matches/min  last: strategic_v25 vs strategic_v23 seed 4000120 side 0 margin +81 first 99/-1 desync 0
+[980/1200] 7125s 8.3 matches/min  last: strategic_v25 vs p11 seed 4000122 side 0 margin +73 first 99/-1 desync 0
+[1000/1200] 7276s 8.2 matches/min  last: strategic_v23 vs strategic_v23 seed 4000125 side 1 margin +84 first 100/100 desync 0
+[1020/1200] 7471s 8.2 matches/min  last: strategic_v23 vs p11 seed 4000127 side 0 margin -66 first 100/100 desync 0
+[1040/1200] 7627s 8.2 matches/min  last: strategic_v23 vs strategic_v23 seed 4000130 side 0 margin +66 first 100/100 desync 0
+[1060/1200] 7805s 8.1 matches/min  last: strategic_v23 vs p11 seed 4000132 side 0 margin +75 first 100/100 desync 0
+[1080/1200] 7990s 8.1 matches/min  last: strategic_v23 vs strategic_v23 seed 4000135 side 0 margin -81 first 100/100 desync 0
+[1100/1200] 8171s 8.1 matches/min  last: strategic_v23 vs strategic_v23 seed 4000137 side 0 margin -63 first 100/100 desync 0
+[1120/1200] 8314s 8.1 matches/min  last: strategic_v25 vs p11 seed 4000139 side 1 margin +82 first 99/-1 desync 0
+[1140/1200] 8499s 8.0 matches/min  last: strategic_v25 vs p11 seed 4000142 side 0 margin +83 first 99/-1 desync 0
+[1160/1200] 8694s 8.0 matches/min  last: strategic_v25 vs p11 seed 4000144 side 1 margin +71 first 99/-1 desync 0
+[1180/1200] 8830s 8.0 matches/min  last: strategic_v23 vs p11 seed 4000147 side 1 margin -78 first 100/100 desync 0
+[1200/1200] 8966s 8.0 matches/min  last: strategic_v23 vs p11 seed 4000149 side 1 margin -58 first 100/100 desync 0
+done 1200 matches in 8966s

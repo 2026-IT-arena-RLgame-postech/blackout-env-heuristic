@@ -1,0 +1,7 @@
+== 18:30:01 plain vs v29
+[plain vs v29] 64/128 margin -31.0 372s (search 0s)
+[plain vs v29] 128/128 margin -30.5 417s (search 0s)
+== 18:43:15 search vs v29
+[search vs v29] 64/128 margin -14.3 1369s (search 1035s)
+[search vs v29] 128/128 margin +5.2 1570s (search 1233s)
+== 19:32:18 lane v29 done

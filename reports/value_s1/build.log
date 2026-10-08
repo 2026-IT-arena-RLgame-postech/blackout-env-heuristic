@@ -1,0 +1,20 @@
+index: 81155 shards, 107994697 rows (8 s)
+cache: 0/81155 matches, 0 rows
+cache: 5000/81155 matches, 160000 rows
+cache: 10000/81155 matches, 320000 rows
+cache: 15000/81155 matches, 480000 rows
+cache: 20000/81155 matches, 640000 rows
+cache: 25000/81155 matches, 800000 rows
+cache: 30000/81155 matches, 960000 rows
+cache: 35000/81155 matches, 1120000 rows
+cache: 40000/81155 matches, 1280000 rows
+cache: 45000/81155 matches, 1440000 rows
+cache: 50000/81155 matches, 1600000 rows
+cache: 55000/81155 matches, 1760000 rows
+cache: 60000/81155 matches, 1920000 rows
+cache: 65000/81155 matches, 2080000 rows
+cache: 70000/81155 matches, 2240000 rows
+cache: 75000/81155 matches, 2400000 rows
+cache: 80000/81155 matches, 2560000 rows
+cache: 2596960 rows {'train': 1889824, 'heldout': 102016, 'unseen': 605120} (66 s)
+BUILD32 DONE

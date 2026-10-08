@@ -1,0 +1,46 @@
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+strategic_v17 vs V4: 10 matches, per 5 s window (points summed over matches; score = mean displayed at window end, held after the match ends)
+                             0-5s    5-10s   10-15s   15-20s   20-25s   25-30s   30-35s   35-40s
+  cand score                 22.3     40.4     50.6     60.9     70.0     74.4     78.7     82.9
+  cand stolen                   0       46       38       56        0        0        7        7
+  cand stolen_outer             0       46       38       56        0        0        7        7
+  cand withdrawn                0        0        0        0        0        0        0        0
+  cand lost_cargo               0        7       12        8       13       25        1        3
+  cand delivered              223      228      137      159       91       44       50       49
+  cand delivered_outer         66      199      135      159       11       20       34       45
+  V4 score                   24.9     39.6     35.2     38.8     40.7     42.4     45.0     43.6
+  V4 stolen                     0       44      113       47        6        8        5       29
+  V4 stolen_outer               0       44      113       47        6        8        5       29
+  V4 withdrawn                  0        0        0        0        0        0        0        0
+  V4 lost_cargo                 0       54       29       39       97       55       39       48
+  V4 delivered                243      194       69       75       25       25       31       15
+  V4 delivered_outer          102      157       66       72       14       25       22       11

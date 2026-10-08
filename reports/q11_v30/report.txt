@@ -1,0 +1,264 @@
+== search - plain vs v29: n=128  -4.5 vs -30.7  diff +26.2 ± 4.5   race w/t/l search [0, 128, 0] plain [0, 128, 0]
+   race plain +0 -> search +0:  128 matches  diff  +26.2 ±  4.5  share of total +1.00
+   lead trajectory (all / both race-tied), search - plain:
+      t= 10s    -0.9 ± 0.8   tied   -0.9 ± 0.8
+      t= 20s   +14.3 ± 2.6   tied  +14.3 ± 2.6
+      t= 30s   +20.9 ± 3.5   tied  +20.9 ± 3.5
+      t= 45s   +26.0 ± 4.4   tied  +26.0 ± 4.4
+      t= 60s   +26.4 ± 4.5   tied  +26.4 ± 4.5
+      t= 90s   +26.2 ± 4.5   tied  +26.2 ± 4.5
+      t=120s   +26.1 ± 4.5   tied  +26.1 ± 4.5
+      t=150s   +26.2 ± 4.5   tied  +26.2 ± 4.5
+   per-match stats, search vs plain (all | both race-tied):
+      deaths_c        33.53 vs   30.52 (d  +3.01 ± 4.82) |   33.53 vs   30.52
+      deaths_h         6.40 vs    6.28 (d  +0.12 ± 0.14) |    6.40 vs    6.28
+      deaths_car       4.32 vs    4.66 (d  -0.34 ± 0.48) |    4.32 vs    4.66
+      lost_bat        14.41 vs   14.71 (d  -0.30 ± 1.19) |   14.41 vs   14.71
+      kills_h         19.34 vs   18.86 (d  +0.48 ± 3.23) |   19.34 vs   18.86
+      opp_deaths_c    16.16 vs   16.08 (d  +0.08 ± 3.04) |   16.16 vs   16.08
+      opp_lost_bat     8.72 vs    6.06 (d  +2.66 ± 0.81) |    8.72 vs    6.06
+      dep_amt         84.67 vs   69.54 (d +15.13 ± 2.29) |   84.67 vs   69.54
+      opp_dep_amt     90.72 vs   94.52 (d  -3.80 ± 2.25) |   90.72 vs   94.52
+      steal            2.62 vs    1.72 (d  +0.90 ± 0.15) |    2.62 vs    1.72
+      opp_steal        2.40 vs    2.30 (d  +0.10 ± 0.15) |    2.40 vs    2.30
+      tr_h             7.80 vs    7.29 (d  +0.52 ± 0.19) |    7.80 vs    7.29
+      opp_tr_h         8.34 vs    8.62 (d  -0.28 ± 0.18) |    8.34 vs    8.62
+      tr_car           4.92 vs    5.34 (d  -0.42 ± 0.47) |    4.92 vs    5.34
+      opp_tr_car       3.98 vs    3.63 (d  +0.34 ± 0.37) |    3.98 vs    3.63
+      hh_trade         6.40 vs    6.28 (d  +0.12 ± 0.14) |    6.40 vs    6.28
+      hunter_s        57.44 vs   53.50 (d  +3.94 ± 8.79) |   57.44 vs   53.50
+      opp_hunter_s   109.63 vs   93.56 (d +16.08 ± 15.35) |  109.63 vs   93.56
+   match length s: 56.6 vs 51.2
+== search - plain vs v28: n=128  +58.8 vs +40.7  diff +18.1 ± 3.3   race w/t/l search [0, 128, 0] plain [0, 128, 0]
+   race plain +0 -> search +0:  128 matches  diff  +18.1 ±  3.3  share of total +1.00
+   lead trajectory (all / both race-tied), search - plain:
+      t= 10s    +0.0 ± 0.8   tied   +0.0 ± 0.8
+      t= 20s   +18.0 ± 2.3   tied  +18.0 ± 2.3
+      t= 30s   +21.2 ± 2.7   tied  +21.2 ± 2.7
+      t= 45s   +19.7 ± 3.0   tied  +19.7 ± 3.0
+      t= 60s   +18.5 ± 3.2   tied  +18.5 ± 3.2
+      t= 90s   +18.0 ± 3.3   tied  +18.0 ± 3.3
+      t=120s   +18.0 ± 3.3   tied  +18.0 ± 3.3
+      t=150s   +18.1 ± 3.3   tied  +18.1 ± 3.3
+   per-match stats, search vs plain (all | both race-tied):
+      deaths_c        11.21 vs   11.55 (d  -0.34 ± 2.81) |   11.21 vs   11.55
+      deaths_h         3.79 vs    3.83 (d  -0.04 ± 0.10) |    3.79 vs    3.83
+      deaths_car       1.91 vs    2.06 (d  -0.15 ± 0.39) |    1.91 vs    2.06
+      lost_bat         4.88 vs    6.10 (d  -1.22 ± 0.79) |    4.88 vs    6.10
+      kills_h         32.97 vs   44.27 (d -11.30 ± 3.55) |   32.97 vs   44.27
+      opp_deaths_c    26.38 vs   36.38 (d -10.00 ± 3.19) |   26.38 vs   36.38
+      opp_lost_bat    14.89 vs   15.81 (d  -0.92 ± 1.15) |   14.89 vs   15.81
+      dep_amt        100.06 vs   95.30 (d  +4.77 ± 1.92) |  100.06 vs   95.30
+      opp_dep_amt     55.65 vs   62.67 (d  -7.02 ± 2.24) |   55.65 vs   62.67
+      steal            2.45 vs    2.06 (d  +0.38 ± 0.14) |    2.45 vs    2.06
+      opp_steal        1.20 vs    1.41 (d  -0.21 ± 0.17) |    1.20 vs    1.41
+      tr_h             6.55 vs    6.66 (d  -0.10 ± 0.15) |    6.55 vs    6.66
+      opp_tr_h         4.25 vs    4.52 (d  -0.27 ± 0.12) |    4.25 vs    4.52
+      tr_car           2.85 vs    2.95 (d  -0.10 ± 0.38) |    2.85 vs    2.95
+      opp_tr_car       7.35 vs    8.48 (d  -1.13 ± 0.68) |    7.35 vs    8.48
+      hh_trade         3.79 vs    3.83 (d  -0.04 ± 0.10) |    3.79 vs    3.83
+      hunter_s        84.95 vs  120.36 (d -35.41 ± 10.68) |   84.95 vs  120.36
+      opp_hunter_s    40.43 vs   42.19 (d  -1.77 ± 8.34) |   40.43 vs   42.19
+   match length s: 43.1 vs 51.8
+== search - plain vs v25: n=128  +76.9 vs +65.5  diff +11.4 ± 2.3   race w/t/l search [0, 128, 0] plain [0, 128, 0]
+   race plain +0 -> search +0:  128 matches  diff  +11.4 ±  2.3  share of total +1.00
+   lead trajectory (all / both race-tied), search - plain:
+      t= 10s    +2.3 ± 0.8   tied   +2.3 ± 0.8
+      t= 20s   +14.7 ± 2.3   tied  +14.7 ± 2.3
+      t= 30s   +17.0 ± 2.5   tied  +17.0 ± 2.5
+      t= 45s   +13.9 ± 2.4   tied  +13.9 ± 2.4
+      t= 60s   +11.8 ± 2.3   tied  +11.8 ± 2.3
+      t= 90s   +11.4 ± 2.3   tied  +11.4 ± 2.3
+      t=120s   +11.4 ± 2.3   tied  +11.4 ± 2.3
+      t=150s   +11.4 ± 2.3   tied  +11.4 ± 2.3
+   per-match stats, search vs plain (all | both race-tied):
+      deaths_c         0.43 vs    4.55 (d  -4.12 ± 1.76) |    0.43 vs    4.55
+      deaths_h         3.48 vs    3.48 (d  +0.00 ± 0.06) |    3.48 vs    3.48
+      deaths_car       0.08 vs    0.57 (d  -0.49 ± 0.24) |    0.08 vs    0.57
+      lost_bat         0.74 vs    1.59 (d  -0.84 ± 0.48) |    0.74 vs    1.59
+      kills_h         38.06 vs   51.27 (d -13.20 ± 3.69) |   38.06 vs   51.27
+      opp_deaths_c    30.52 vs   42.23 (d -11.70 ± 3.50) |   30.52 vs   42.23
+      opp_lost_bat    17.12 vs   18.13 (d  -1.01 ± 1.11) |   17.12 vs   18.13
+      dep_amt        104.07 vs  104.41 (d  -0.34 ± 1.27) |  104.07 vs  104.41
+      opp_dep_amt     46.02 vs   54.38 (d  -8.35 ± 1.65) |   46.02 vs   54.38
+      steal            2.54 vs    2.59 (d  -0.05 ± 0.11) |    2.54 vs    2.59
+      opp_steal        0.84 vs    1.19 (d  -0.35 ± 0.14) |    0.84 vs    1.19
+      tr_h             6.72 vs    6.80 (d  -0.08 ± 0.09) |    6.72 vs    6.80
+      opp_tr_h         3.51 vs    3.67 (d  -0.16 ± 0.10) |    3.51 vs    3.67
+      tr_car           1.08 vs    1.54 (d  -0.46 ± 0.24) |    1.08 vs    1.54
+      opp_tr_car       8.24 vs    9.66 (d  -1.41 ± 0.48) |    8.24 vs    9.66
+      hh_trade         3.48 vs    3.48 (d  +0.00 ± 0.06) |    3.48 vs    3.48
+      hunter_s        93.83 vs  139.90 (d -46.07 ± 10.84) |   93.83 vs  139.90
+      opp_hunter_s     4.01 vs   16.90 (d -12.89 ± 5.27) |    4.01 vs   16.90
+   match length s: 36.4 vs 50.0
+== search - plain vs p17: n=128  +26.1 vs +0.0  diff +26.1 ± 4.1   race w/t/l search [0, 128, 0] plain [0, 128, 0]
+   race plain +0 -> search +0:  128 matches  diff  +26.1 ±  4.1  share of total +1.00
+   lead trajectory (all / both race-tied), search - plain:
+      t= 10s    -0.7 ± 0.7   tied   -0.7 ± 0.7
+      t= 20s   +14.5 ± 2.0   tied  +14.5 ± 2.0
+      t= 30s   +21.1 ± 3.0   tied  +21.1 ± 3.0
+      t= 45s   +24.4 ± 4.0   tied  +24.4 ± 4.0
+      t= 60s   +25.6 ± 4.1   tied  +25.6 ± 4.1
+      t= 90s   +25.7 ± 4.2   tied  +25.7 ± 4.2
+      t=120s   +25.8 ± 4.2   tied  +25.8 ± 4.2
+      t=150s   +26.1 ± 4.1   tied  +26.1 ± 4.1
+   per-match stats, search vs plain (all | both race-tied):
+      deaths_c        20.53 vs   22.95 (d  -2.41 ± 3.38) |   20.53 vs   22.95
+      deaths_h         7.03 vs    7.55 (d  -0.52 ± 0.24) |    7.03 vs    7.55
+      deaths_car       3.45 vs    4.14 (d  -0.70 ± 0.57) |    3.45 vs    4.14
+      lost_bat         7.85 vs   10.74 (d  -2.89 ± 1.01) |    7.85 vs   10.74
+      kills_h         32.08 vs   27.09 (d  +4.99 ± 3.16) |   32.08 vs   27.09
+      opp_deaths_c    27.55 vs   22.95 (d  +4.60 ± 2.93) |   27.55 vs   22.95
+      opp_lost_bat    13.11 vs   10.74 (d  +2.37 ± 1.28) |   13.11 vs   10.74
+      dep_amt         94.36 vs   82.70 (d +11.66 ± 2.38) |   94.36 vs   82.70
+      opp_dep_amt     75.02 vs   82.70 (d  -7.68 ± 2.21) |   75.02 vs   82.70
+      steal            2.48 vs    2.01 (d  +0.47 ± 0.15) |    2.48 vs    2.01
+      opp_steal        1.95 vs    2.01 (d  -0.06 ± 0.16) |    1.95 vs    2.01
+      tr_h             9.18 vs    9.27 (d  -0.09 ± 0.25) |    9.18 vs    9.27
+      opp_tr_h         8.23 vs    9.27 (d  -1.04 ± 0.25) |    8.23 vs    9.27
+      tr_car           4.23 vs    4.86 (d  -0.63 ± 0.57) |    4.23 vs    4.86
+      opp_tr_car       5.20 vs    4.86 (d  +0.34 ± 0.48) |    5.20 vs    4.86
+      hh_trade         7.03 vs    7.55 (d  -0.52 ± 0.24) |    7.03 vs    7.55
+      hunter_s        80.91 vs   72.01 (d  +8.90 ± 7.54) |   80.91 vs   72.01
+      opp_hunter_s    67.86 vs   72.01 (d  -4.15 ± 11.05) |   67.86 vs   72.01
+   match length s: 52.7 vs 51.2
+
+== deviations vs v29: roots 6664, deviations 1523 (0.23), 11.9 per match
+     5- 10s: roots    640 dev rate 0.55
+    10- 30s: roots   2456 dev rate 0.34
+    30- 60s: roots   1798 dev rate 0.14
+    60-151s: roots   1770 dev rate 0.05
+   cf: 1200 roots, K=2, horizon 750: realised vH gain +1.82±0.68, lead6 +1.00, predicted +11.33; implied per match +21.7
+   category                                       n  share   pred  cf n      real vH  lead6 sum share   cos d_sanct d_flee d_prey stopX stopB
+   joint sample (all units)                     376   0.25   +9.3   309   +1.65±1.23  +1.40     +0.23   nan     nan    nan    nan   nan   nan
+   Collector empty, Hunter <= 4                 274   0.18   +7.8   211   +1.24±1.13  +1.18     +0.12  0.57   -0.03   0.01  -0.05  0.00  0.00
+   second race (<= 6 s after the race)          231   0.15  +19.3   179   +0.16±2.12  +0.09     +0.01  0.41    0.02  -0.01   0.02  0.00  0.00
+   Carrier                                      162   0.11   +8.8   138   +2.82±1.79  -0.18     +0.18  0.33    0.17  -0.07   0.09  0.00  0.00
+   Collector empty, safe                        156   0.10   +9.1   113   +0.78±1.89  +1.55     +0.04  0.37    0.01  -0.11  -0.02  0.00  0.00
+   second race (<= 6 s after the race): sample   106   0.07  +23.3    83   +3.27±3.82  +2.04     +0.12   nan     nan    nan    nan   nan   nan
+   Hunter: prey <= 4                             97   0.06   +7.7    68   +3.86±2.92  +0.53     +0.12  0.06    0.28  -0.32  -0.25  0.00  0.00
+   Hunter: no prey near                          56   0.04   +9.0    46   +5.69±2.70  +1.41     +0.12 -0.14    0.45  -0.14  -0.09  0.00  0.00
+   Collector carrying, Hunter <= 4               24   0.02  +10.4    18   +2.83±3.12  +0.94     +0.02  0.46    0.19  -0.02   0.15  0.00  0.00
+   Collector carrying, safe                      23   0.02   +7.0    20   -3.01±3.78  +0.15     -0.03 -0.14    0.37  -0.20   0.27  0.00  0.00
+   second race (<= 6 s after the race): Hunter    16   0.01  +25.9    13  +9.57±17.69  +4.73     +0.06  0.22    0.25  -0.13  -0.16  0.00  0.00
+   Collector special item                         2   0.00  +14.3     2  +0.37±31.48  +0.00     +0.00 -0.30    1.01   0.68   0.02  0.00  0.00
+   cf by 6 s event effect (chosen - base):
+      own death - (good)                         439 real  +6.91±1.36 share +1.39
+      own death + (bad)                          361 real  -2.82±1.21 share -0.47
+      no event change in 6 s                      84 real  -1.12±0.89 share -0.04
+      own kill + (good)                           80 real  +2.58±1.62 share +0.09
+      own kill - (bad)                            72 real  -2.44±2.56 share -0.08
+      own deposit + (good)                        54 real  +0.25±1.63 share +0.01
+      own deposit - (bad)                         40 real  +1.02±2.36 share +0.02
+      own pickup/steal - (bad)                    16 real  -4.73±3.63 share -0.03
+      own Hunter transform - (bad)                15 real  -1.70±3.40 share -0.01
+      own pickup/steal + (good)                   14 real  +5.96±3.93 share +0.04
+      own Hunter transform + (good)               10 real +19.85±10.27 share +0.09
+      opp deposit + (bad)                          6 real  +4.66±7.43 share +0.01
+      own battery lost - (good)                    4 real  -2.01±2.28 share -0.00
+      own battery lost + (bad)                     3 real  -9.03±3.51 share -0.01
+      opp Hunter transform - (good)                1 real  +7.00±nan share +0.00
+      opp deposit - (good)                         1 real  +2.30±nan share +0.00
+   cf by phase:
+        5- 10s   275 real  +1.55±1.97 share +0.19
+       10- 30s   661 real  +2.14±0.87 share +0.64
+       30- 60s   191 real  +1.38±0.88 share +0.12
+       60-151s    73 real  +1.21±1.60 share +0.04
+
+== deviations vs v28: roots 4942, deviations 1063 (0.22), 8.3 per match
+     5- 10s: roots    640 dev rate 0.55
+    10- 30s: roots   2399 dev rate 0.22
+    30- 60s: roots   1057 dev rate 0.10
+    60-151s: roots    846 dev rate 0.08
+   cf: 1063 roots, K=2, horizon 750: realised vH gain +2.46±0.64, lead6 +1.12, predicted +10.30; implied per match +20.5
+   category                                       n  share   pred  cf n      real vH  lead6 sum share   cos d_sanct d_flee d_prey stopX stopB
+   joint sample (all units)                     228   0.21   +8.6   228   +1.04±1.05  +1.34     +0.09   nan     nan    nan    nan   nan   nan
+   second race (<= 6 s after the race)          169   0.16  +16.1   169   +6.62±2.11  +0.80     +0.43  0.40    0.02  -0.04  -0.02  0.00  0.00
+   second race (<= 6 s after the race): sample   126   0.12  +15.0   126   +5.26±1.98  +1.27     +0.25   nan     nan    nan    nan   nan   nan
+   Collector empty, Hunter <= 4                 112   0.11   +7.9   112   +1.99±1.70  +0.58     +0.09  0.57   -0.04   0.05  -0.04  0.00  0.00
+   Carrier                                      105   0.10   +7.9   105   +3.02±1.92  +0.68     +0.12  0.27    0.12  -0.07   0.07  0.00  0.00
+   Hunter: prey <= 4                             99   0.09   +6.5    99   +1.69±1.40  +1.15     +0.06  0.08    0.31  -0.28  -0.31  0.00  0.00
+   Hunter: no prey near                          72   0.07   +6.4    72   +0.57±1.01  +2.00     +0.02 -0.11    0.23   0.09  -0.01  0.00  0.00
+   Collector empty, safe                         63   0.06   +7.5    63   -0.14±1.69  +1.67     -0.00  0.30    0.08  -0.11   0.03  0.00  0.00
+   second race (<= 6 s after the race): Hunter    60   0.06  +14.7    60   -4.17±5.06  +0.03     -0.10  0.14    0.19  -0.21  -0.18  0.00  0.00
+   Collector carrying, safe                      17   0.02   +6.6    17   +2.73±2.20  +0.47     +0.02 -0.18    0.25   0.44   0.31  0.01  0.01
+   Collector carrying, Hunter <= 4               11   0.01   +7.0    11   +5.46±4.34  +7.09     +0.02  0.61    0.12  -0.07   0.15  0.00  0.00
+   Collector special item                         1   0.00   +6.4     1    +2.61±nan  +5.00     +0.00 -0.58    0.15    nan   0.23  0.00  0.00
+   cf by 6 s event effect (chosen - base):
+      own death - (good)                         282 real  +9.09±1.64 share +0.98
+      own death + (bad)                          208 real  -3.35±1.74 share -0.27
+      own kill + (good)                          183 real  +3.89±0.92 share +0.27
+      own kill - (bad)                           180 real  -1.07±0.95 share -0.07
+      no event change in 6 s                      76 real  -0.55±1.02 share -0.02
+      own deposit + (good)                        45 real  +4.11±2.07 share +0.07
+      own deposit - (bad)                         31 real  +0.79±3.48 share +0.01
+      own Hunter transform - (bad)                19 real  +2.92±3.46 share +0.02
+      own pickup/steal - (bad)                    16 real  -2.21±1.58 share -0.01
+      own pickup/steal + (good)                    9 real  +2.67±2.12 share +0.01
+      own Hunter transform + (good)                4 real  -9.45±9.70 share -0.01
+      opp deposit + (bad)                          4 real  +5.28±3.49 share +0.01
+      own battery lost + (bad)                     2 real +15.82±20.86 share +0.01
+      opp deposit - (good)                         2 real  -0.52±7.52 share -0.00
+      opp Hunter transform - (good)                1 real +14.45±nan share +0.01
+      own battery lost - (good)                    1 real  -6.46±nan share -0.00
+   cf by phase:
+        5- 10s   355 real  +4.31±1.50 share +0.58
+       10- 30s   532 real  +1.53±0.74 share +0.31
+       30- 60s   108 real  +1.61±1.06 share +0.07
+       60-151s    68 real  +1.49±1.18 share +0.04
+
+== deviations vs v25: roots 4073, deviations 649 (0.16), 5.1 per match
+     5- 10s: roots    640 dev rate 0.42
+    10- 30s: roots   2329 dev rate 0.15
+    30- 60s: roots    744 dev rate 0.05
+    60-151s: roots    360 dev rate 0.00
+   cf: 649 roots, K=2, horizon 750: realised vH gain +2.11±0.59, lead6 +1.76, predicted +8.45; implied per match +10.7
+   category                                       n  share   pred  cf n      real vH  lead6 sum share   cos d_sanct d_flee d_prey stopX stopB
+   second race (<= 6 s after the race)          132   0.20   +9.4   132   +2.40±1.32  +2.28     +0.23  0.47   -0.03   0.14   0.01  0.00  0.00
+   joint sample (all units)                     122   0.19   +7.3   122   +2.05±1.14  +2.24     +0.18   nan     nan    nan    nan   nan   nan
+   second race (<= 6 s after the race): sample    75   0.12   +8.5    75   +2.27±1.90  +4.29     +0.12   nan     nan    nan    nan   nan   nan
+   Hunter: prey <= 4                             72   0.11   +6.3    72   +0.65±1.69  -0.52     +0.03  0.08    0.28  -0.24  -0.28  0.00  0.00
+   Carrier                                       67   0.10   +5.9    67   +2.39±1.58  +1.77     +0.12  0.10    0.05   0.13   0.16  0.00  0.00
+   second race (<= 6 s after the race): Hunter    64   0.10  +13.9    64   +3.26±2.71  +2.41     +0.15  0.14    0.27  -0.30  -0.16  0.00  0.00
+   Hunter: no prey near                          62   0.10   +8.1    62   +1.94±1.72  +1.65     +0.09 -0.12    0.18  -0.05  -0.09  0.00  0.00
+   Collector empty, safe                         28   0.04   +8.0    28   +1.34±2.73  -3.04     +0.03  0.23    0.10  -0.20   0.03  0.00  0.00
+   Collector carrying, safe                      18   0.03   +6.6    18   +2.17±1.81  -0.89     +0.03  0.12   -0.08  -0.36  -0.23  0.04  0.04
+   Collector empty, Hunter <= 4                   7   0.01  +17.2     7   +8.49±3.26  +1.14     +0.04  0.55   -0.12   0.20   0.06  0.00  0.00
+   Collector carrying, Hunter <= 4                2   0.00   +4.1     2 -20.76±32.94  +1.50     -0.03  0.67   -0.21   0.30  -0.35  0.00  0.00
+   cf by 6 s event effect (chosen - base):
+      own kill + (good)                          215 real  +3.87±0.79 share +0.61
+      own kill - (bad)                           194 real  -1.13±0.83 share -0.16
+      own death - (good)                          56 real  +7.04±3.23 share +0.29
+      own death + (bad)                           54 real  +2.00±3.77 share +0.08
+      no event change in 6 s                      46 real  +0.09±1.56 share +0.00
+      own deposit + (good)                        21 real  +5.52±2.20 share +0.08
+      own deposit - (bad)                         19 real  -0.42±2.60 share -0.01
+      own Hunter transform - (bad)                17 real  +4.09±2.18 share +0.05
+      own pickup/steal + (good)                    6 real  +7.64±2.32 share +0.03
+      own Hunter transform + (good)                6 real  -3.02±9.24 share -0.01
+      own pickup/steal - (bad)                     5 real  +5.17±2.59 share +0.02
+      opp deposit - (good)                         5 real  +3.58±2.86 share +0.01
+      opp deposit + (bad)                          4 real  +1.12±3.24 share +0.00
+      own battery lost - (good)                    1 real  -3.12±nan share -0.00
+   cf by phase:
+        5- 10s   271 real  +2.57±1.04 share +0.51
+       10- 30s   341 real  +1.60±0.73 share +0.40
+       30- 60s    37 real  +3.45±1.84 share +0.09
+
+== deviations vs p17: roots 6158, deviations 1346 (0.22), 10.5 per match
+     5- 10s: roots    640 dev rate 0.60
+    10- 30s: roots   2472 dev rate 0.31
+    30- 60s: roots   1652 dev rate 0.10
+    60-151s: roots   1394 dev rate 0.03
+   category                                       n  share   pred   cos d_sanct d_flee d_prey stopX stopB
+   joint sample (all units)                     327   0.24  +11.5   nan     nan    nan    nan   nan   nan
+   second race (<= 6 s after the race)          251   0.19  +23.6  0.44    0.02  -0.03   0.02  0.00  0.00
+   Collector empty, Hunter <= 4                 159   0.12   +7.7  0.57   -0.02   0.06   0.01  0.00  0.00
+   Carrier                                      140   0.10   +9.1  0.33    0.13  -0.05   0.10  0.00  0.00
+   second race (<= 6 s after the race): sample   121   0.09  +23.4   nan     nan    nan    nan   nan   nan
+   Collector empty, safe                        117   0.09  +12.7  0.37   -0.10  -0.11  -0.11  0.00  0.00
+   Hunter: prey <= 4                            115   0.09   +8.4  0.07    0.20  -0.24  -0.16  0.00  0.00
+   Hunter: no prey near                          66   0.05   +6.8 -0.11    0.34  -0.15  -0.06  0.00  0.00
+   Collector carrying, safe                      24   0.02   +9.4 -0.07    0.23  -0.14   0.07  0.00  0.00
+   Collector carrying, Hunter <= 4               15   0.01   +9.5  0.56    0.12   0.01   0.17  0.00  0.00
+   second race (<= 6 s after the race): Hunter    11   0.01  +20.1  0.35    0.26  -0.16   0.04  0.00  0.00

@@ -1,0 +1,3 @@
+P16 vs V27(1.5), decisions 40-98: unit-decisions where the shadow V27 holds a Collector (zero move): 1074
+  P16 move toward the sanctuary centre (cos): mean +0.57, share cos>0.5 0.75, share cos<0 0.20
+  distance to the sanctuary during these holds: median 1.01 (p10 0.46, p90 1.38)

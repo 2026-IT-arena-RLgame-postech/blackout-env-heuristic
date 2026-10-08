@@ -1,0 +1,2 @@
+candidate                                  inference opponent         n  margin   ±se   win H<30s H<60s H<120 Ca<60 end_s  agree deliv/1k  rev/1k die/1k @base camped
+teacher:v20-teach                          -         strategic_v19   24   -29.7   8.6  0.17   0.6   0.4   1.8   0.9    87    nan      1.3      56   3.65  0.53   0.36

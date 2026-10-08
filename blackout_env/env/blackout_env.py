@@ -17,11 +17,11 @@ a second independent decode) and shares the results across every agent's obs dic
 
 Usage
 -----
-    from blackout_env import BlackOutEnv
+    from training.env.blackout_env import BlackOutEnv
 
     env = BlackOutEnv(
-        env_path="build/mac/BlackOut.app",    # None = connect to running Unity Editor
-        # semantic_config_path defaults to the package's blackout_env/semantic_map_config.json
+        env_path="path/to/BlackOut.exe",      # None = connect to running Unity Editor
+        semantic_config_path="semantic_map_config.json",
     )
     obs, infos = env.reset()
     while env.agents:
@@ -36,7 +36,8 @@ Parallel usage (Ray)
     # base_port=None (default): each worker calls find_free_port() independently,
     # so no manual port coordination is needed.
     def make_env():
-        return BlackOutEnv(env_path="build/mac/BlackOut.app")
+        return BlackOutEnv(env_path="path/to/BlackOut.exe",
+                           semantic_config_path="semantic_map_config.json")
 """
 
 from __future__ import annotations
@@ -115,6 +116,23 @@ def _kill_stray_unity_processes(port: int) -> None:
                 pass
 
 
+# A time-expiry ending is seen at most one decision step (2 ticks, ~1e-4 of a 600 s match) after
+# the last playing-state broadcast; a terminal step with more time left than this was a decisive win.
+_TIME_EXPIRY_MARGIN = 1e-3
+
+
+def _winner_from_terminal_bonus(rewards: dict[str, float], terminations: dict[str, bool]) -> int | None:
+    """Team (0 = A, 1 = B) with the larger mean terminal reward, None if tied or a team is missing."""
+    team_rewards: tuple[list[float], list[float]] = ([], [])
+    for name, done in terminations.items():
+        if done:
+            team_rewards[0 if unit_index(name) < N_TEAM_A else 1].append(rewards[name])
+    if not (team_rewards[0] and team_rewards[1]):
+        return None
+    gap = float(np.mean(team_rewards[0]) - np.mean(team_rewards[1]))
+    return 0 if gap > 0 else 1 if gap < 0 else None
+
+
 class BlackOutEnv(ParallelEnv):
     """
     PettingZoo Parallel API wrapper for the BlackOut Unity environment.
@@ -184,17 +202,13 @@ class BlackOutEnv(ParallelEnv):
             Unity Time.timeScale. Values > 1 speed up simulation for faster training.
             20~100 is typical for headless builds; keep at 1 when using the Editor.
         additional_args : list[str] | None
-            Optional command-line arguments forwarded to a launched Unity player, e.g.
-            ["-logFile", "/dev/null"] to silence the player log in headless tournaments.
-            ``-noRewardShaping`` is appended here automatically when unity_shaping is False.
+            Optional command-line arguments forwarded to a launched Unity player.
         unity_shaping : bool
             False launches the player with -noRewardShaping: Unity skips its potential shaping
             (Ψ and nav Φ) and the reward carries only fixed event rewards (all 0 by default).
             Use it whenever the Unity reward is unused -- reward v2 computes its own from
             observations, and evaluation or recording ignores rewards -- since computing the
-            potentials is per-tick path-search work in the player. True (the default) is only
-            needed when training on Unity's own reward (offline_pretrain --reward unity, the
-            online qmix_trainer); the Unity-side win/loss bonus is sent either way.
+            potentials is per-tick path-search work in the player.
         """
         if base_port is None:
             base_port = find_free_port()
@@ -283,13 +297,6 @@ class BlackOutEnv(ParallelEnv):
         seed: int | None = None,
         options: dict | None = None,
     ) -> tuple[dict[str, dict], dict[str, Any]]:
-        """Start a new match and return its first decision observations.
-
-        seed goes over SeedChannel and is applied by Unity (Random.InitState) before the new
-        episode's map/item generation, so the same seed reproduces the same map; None leaves
-        Unity's RNG where it was. Infos are empty dicts. ``options`` is accepted for the
-        PettingZoo signature and ignored.
-        """
         if seed is not None:
             self._seed_channel.send_seed(seed)
         self._unity_env.reset()
@@ -344,20 +351,6 @@ class BlackOutEnv(ParallelEnv):
         dict[str, bool],
         dict[str, Any],
     ]:
-        """Apply one decision's actions and advance to the next decision (or match end).
-
-        actions: agent name -> float32[2] (dx, dy); values are clipped to [-1, 1]. An agent
-        missing from the dict gets (0, 0) for this decision, i.e. stands still.
-
-        Returns PettingZoo's (obs, rewards, terminations, truncations, infos). Skip ticks between
-        decisions are absorbed inside (_advance_until_ready). rewards/terminations cover the
-        agents alive before this call; rewards are Unity's per-unit rewards (only fixed event
-        rewards plus the terminal win/loss bonus when unity_shaping=False). Every agent shares
-        the same info dict: score_0, score_1, time_left, absorption_time_left (normalized, as in
-        team_state; scores x 100 = game points), plus ``winner`` (0 = A, 1 = B, -1 = draw) on
-        the terminal step, decided from the final scores. After termination ``self.agents`` is
-        empty; call reset() for the next match.
-        """
         self._send_actions(actions)
         self._unity_env.step()
         obs = self._advance_until_ready()
@@ -400,10 +393,12 @@ class BlackOutEnv(ParallelEnv):
         rewards: dict[str, float] = {a: 0.0 for a in self.agents}
         terminations: dict[str, bool] = {a: False for a in self.agents}
 
-        # Unit agents call EndEpisode immediately on game end.  Depending on ML-Agents
-        # scheduling, MapObsAgent can already expose the freshly reset episode (scores=0,
-        # time_left=1) in the same Python poll.  Retain the last playing-state scalars so
-        # terminal infos report the match that just ended rather than the next reset.
+        # Unit agents call EndEpisode immediately on game end, which resets the match before
+        # MapObsAgent's terminal broadcast is collected (on the next Academy step). Builds with
+        # MapObsAgent.CaptureTerminalState replay the frozen final state in that broadcast; older
+        # builds expose the freshly reset episode (scores=0, time_left=1) instead.  For those,
+        # retain the last playing-state scalars so terminal infos report the match that just
+        # ended rather than the next reset (one decision step stale -- see the winner below).
         previous_scalars = dict(self._latest_scalars)
         self._collect_map_obs()
 
@@ -430,6 +425,7 @@ class BlackOutEnv(ParallelEnv):
 
         self._latest_rewards = rewards
         self._latest_terminations = terminations
+        reset_leaked = False
         if any(terminations.values()) and previous_scalars:
             previous_time = previous_scalars.get("time_left", 0.0)
             current_time = self._latest_scalars.get("time_left", 0.0)
@@ -458,6 +454,7 @@ class BlackOutEnv(ParallelEnv):
             # new match had already moved off (0, 0), reporting e.g. 0-2 as the final score.
             if current_time > previous_time + 1e-4 or reset_to_zero:
                 self._latest_scalars = previous_scalars
+                reset_leaked = True
         if any(terminations.values()) and self._latest_winner is None:
             # Winner is decided purely by final score, mirroring MatchManager.cs's own
             # tie-break (ScoreA>ScoreB -> TeamA, ScoreB>ScoreA -> TeamB, equal -> draw).
@@ -474,6 +471,16 @@ class BlackOutEnv(ParallelEnv):
                 self._latest_winner = 1
             else:
                 self._latest_winner = -1
+            # On a build without the terminal snapshot those scores are one decision step stale
+            # and miss the deciding deposit, so a trailing team that wins by depositing past
+            # TargetScore (A=98, B=99, A deposits 3) would read as a loss.  A match that ends
+            # with time left was decided by that deposit, and the only thing separating the two
+            # teams' terminal rewards then is the ±1 bonus (exactly ±1 under -noRewardShaping,
+            # whose event rewards are all 0) -- the one place the reward is the best evidence.
+            if reset_leaked and previous_scalars.get("time_left", 0.0) > _TIME_EXPIRY_MARGIN:
+                bonus_winner = _winner_from_terminal_bonus(rewards, terminations)
+                if bonus_winner is not None:
+                    self._latest_winner = bonus_winner
         return obs
 
     def _collect_map_obs(self) -> None:
@@ -503,7 +510,7 @@ class BlackOutEnv(ParallelEnv):
         if len(obs_list) < 1:
             if not self._warned_empty_map_obs:
                 print(f"[BlackOutEnv] WARNING: MapObsAgent has no observations in obs_list. "
-                      f"Check that MapObsAgent adds its DynamicRTSensorComponent (the build may predate the packed-map observation).")
+                      f"Check that a RenderTextureSensorComponent is attached to the MapObsAgent GameObject.")
                 self._warned_empty_map_obs = True
             return
         # Find the visual (3-D) and vector (1-D) observations regardless of order.
@@ -518,7 +525,7 @@ class BlackOutEnv(ParallelEnv):
             if not self._warned_no_visual_obs:
                 print(f"[BlackOutEnv] WARNING: MapObsAgent has no 3-D visual observation in obs_list. "
                       f"Shapes: {[o.shape for o in obs_list]}. "
-                      f"Check that MapObsAgent adds its DynamicRTSensorComponent (R16 packed map, see SemanticMapRenderer.cs).")
+                      f"Ensure RenderTextureSensorComponent is attached with Grayscale=true.")
                 self._warned_no_visual_obs = True
         else:
             # ML-Agents delivers visual obs as (C, H, W); preprocessor expects (H, W, C)
@@ -583,12 +590,6 @@ class BlackOutEnv(ParallelEnv):
         return {"graphic": graphic, "team_state": team_state, "agent_states": agent_states}
 
     def _send_actions(self, actions: dict[str, np.ndarray]) -> None:
-        """Queue actions for every agent Unity is currently asking to decide.
-
-        Unity only accepts actions for agents in the current DecisionSteps, in that batch's
-        order, so the array is built per behavior from agent_id -> name (cached by _collect_obs)
-        rather than from ``actions``' own order. Agents without an entry get zeros.
-        """
         # Send empty actions to MapObsAgent (it has no real actions, Continuous Actions = 0)
         map_behavior = self._resolve_map_behavior_name()
         if map_behavior is not None:

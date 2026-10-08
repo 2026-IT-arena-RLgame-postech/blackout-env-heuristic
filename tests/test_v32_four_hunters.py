@@ -1,0 +1,94 @@
+"""V32 (docs/policy_v2_design_ko.md §58): V31 + V18's exit guard / V19's sanctuary sweep, defaults = V31."""
+
+import numpy as np
+
+from blackout_env.heuristics import POLICY_REGISTRY, StrategicHeuristicV28, StrategicHeuristicV31, StrategicHeuristicV32
+from blackout_env.heuristics.mixture import make_heuristic
+
+from .test_v22_teacher import _fixtures
+from .test_v27_reserve import _play
+
+V28_KW = dict(reserve_stage=0.5, trade_hold="advance")
+V31_KW = dict(reserve_stage=0.5, trade_hold="advance", reserve_join="reserve", solo_sentry=True,
+              threat_radius=0.13, camp_engage_radius=6.5)
+ROLES = dict(hunter_quota=4, exit_guards=1, guard_min_hunters=3, sweep=True, cargo_transform=True, late_hunter_quota=3)
+
+
+def test_v32_is_registered_and_off_by_default():
+    p = POLICY_REGISTRY["strategic_v32"]()
+    assert isinstance(p, StrategicHeuristicV32) and p.exit_guards == 0 and not p.sweep
+    q = make_heuristic("strategic_v32", **V31_KW, **ROLES)
+    assert q.hunter_quota == 4 and q.exit_guards == 1 and q.guard_min_hunters == 3 and q.sweep
+
+
+def test_default_is_v31_on_fixtures():
+    for obs in _fixtures():
+        x = StrategicHeuristicV31(**V31_KW).act(obs)
+        y = StrategicHeuristicV32(**V31_KW).act(obs)
+        assert set(x) == set(y) and all(np.array_equal(x[n], y[n]) for n in x)
+
+
+def test_default_is_v31_in_a_sim_match():
+    from blackout_env.sim.state import SimState
+
+    sims = [SimState.from_seed(4_000_003), SimState.from_seed(4_000_003)]
+    players = [[StrategicHeuristicV31(**V31_KW), StrategicHeuristicV28(**V28_KW)],
+               [StrategicHeuristicV32(**V31_KW), StrategicHeuristicV28(**V28_KW)]]
+    for t in range(400):
+        out = [_play(sim, a, b) for sim, (a, b) in zip(sims, players)]
+        assert np.array_equal(out[0], out[1]), t
+
+
+def test_roles_fire_and_stay_observation_only():
+    """Four Hunters by the race, the guard / sweep roles appear in a match, and a fresh instance plays the same
+    moves on the same observation."""
+    from blackout_env.sim.state import SimState, obs_from_raw
+
+    sim = SimState.from_seed(4_000_003)
+    a, b = StrategicHeuristicV32(**V31_KW, **ROLES), StrategicHeuristicV28(**V28_KW)
+    seen_guard = seen_sweep = False
+    for t in range(1500):
+        if t % 50 == 0:
+            obs = obs_from_raw(sim.raw_state(), sim.raw_map())
+            mine = {f"unit_{i}": obs[f"unit_{i}"] for i in range(5)}
+            x, y = StrategicHeuristicV32(**V31_KW, **ROLES).act(mine), StrategicHeuristicV32(**V31_KW, **ROLES).act(mine)
+            assert all(np.array_equal(x[n], y[n]) for n in x)
+        _play(sim, a, b)
+        seen_guard |= bool(a.guards)
+        seen_sweep |= bool(a.sweepers)
+        assert not (set(a.guards) & set(a.sweepers)) and not (set(a.guards) & set(a.sentries))
+    assert seen_guard and seen_sweep
+
+
+def test_adopted_v32_descriptor():
+    from blackout_env.heuristics.v32_four_hunters import V32
+    from blackout_env.train.distill.opponents import make_opponent
+
+    p = make_opponent(V32, 0)
+    assert isinstance(p, StrategicHeuristicV32)
+    assert (p.hunter_quota, p.exit_guards, p.guard_min_hunters, p.sentry_min_hunters) == (4, 1, 2, 3)
+    assert p.sweep and p.sweep_radius == 9.0 and p.cargo_transform and not p.solo_sentry
+    assert p.threat_radius == 0.13 and p.camp_engage_radius == 6.5 and p.reserve_join == "reserve"
+
+
+def test_adapt_latches_on_a_hunter_poor_enemy():
+    """V32.1: against V23 (loses the race, ~no Hunters by 6 s) the latch falls back to V30 roles; against V31 it
+    does not.  Off (adapt_k=0) never falls back."""
+    from blackout_env.heuristics import StrategicHeuristicV23
+    from blackout_env.sim.state import SimState
+
+    for opp, expect in ((StrategicHeuristicV23(), True), (StrategicHeuristicV31(**V31_KW), False)):
+        sim = SimState.from_seed(5_200_000)
+        a = StrategicHeuristicV32(**V31_KW, **ROLES, adapt_k=2, adapt_at=6.0)
+        for _ in range(400):  # 8 s
+            _play(sim, a, opp)
+        assert a.fallback is expect
+    assert not StrategicHeuristicV32(**V31_KW, **ROLES).fallback
+
+
+def test_v32_1_descriptor():
+    from blackout_env.heuristics.v32_four_hunters import V32_1
+    from blackout_env.train.distill.opponents import make_opponent
+
+    p = make_opponent(V32_1, 0)
+    assert p.adapt_k == 3 and p.adapt_at == 6.0 and p.sweep and p.exit_guards == 1

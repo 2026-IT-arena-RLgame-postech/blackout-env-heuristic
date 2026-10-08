@@ -1,0 +1,27 @@
+500 tasks, 500 to run
+[1/500] 960001_A 20s match, 8 roots, 21s; total rows 79 (branch 59) elapsed 22s
+[21/500] 960010_B 31s match, 12 roots, 29s; total rows 2988 (branch 2191) elapsed 124s
+[41/500] 960021_A 64s match, 17 roots, 37s; total rows 6740 (branch 4792) elapsed 251s
+[61/500] 960030_A 60s match, 19 roots, 44s; total rows 11204 (branch 7738) elapsed 354s
+[81/500] 960040_B 31s match, 12 roots, 34s; total rows 16352 (branch 11007) elapsed 476s
+[101/500] 960050_B 43s match, 14 roots, 35s; total rows 19937 (branch 13473) elapsed 592s
+[121/500] 960061_A 44s match, 15 roots, 37s; total rows 23168 (branch 15688) elapsed 707s
+[141/500] 960070_B 45s match, 14 roots, 38s; total rows 28255 (branch 18967) elapsed 853s
+[161/500] 960081_B 27s match, 12 roots, 36s; total rows 30685 (branch 20774) elapsed 954s
+[181/500] 960090_B 32s match, 12 roots, 28s; total rows 33348 (branch 22740) elapsed 1033s
+[201/500] 960093_B 420s match, 62 roots, 99s; total rows 36914 (branch 25198) elapsed 1132s
+[221/500] 960112_A 24s match, 9 roots, 31s; total rows 39383 (branch 27036) elapsed 1299s
+[241/500] 960121_A 37s match, 12 roots, 34s; total rows 44225 (branch 30111) elapsed 1482s
+[261/500] 960132_A 29s match, 11 roots, 33s; total rows 48572 (branch 32978) elapsed 1628s
+[281/500] 960141_B 28s match, 12 roots, 35s; total rows 53020 (branch 35921) elapsed 1825s
+[301/500] 960152_A 21s match, 8 roots, 16s; total rows 57124 (branch 38597) elapsed 1906s
+[321/500] 960161_A 26s match, 11 roots, 30s; total rows 62763 (branch 42081) elapsed 2084s
+[341/500] 960171_B 24s match, 11 roots, 30s; total rows 66729 (branch 44687) elapsed 2203s
+[361/500] 960180_B 38s match, 14 roots, 38s; total rows 71020 (branch 47516) elapsed 2367s
+[381/500] 960192_A 24s match, 11 roots, 26s; total rows 75193 (branch 50248) elapsed 2481s
+[401/500] 960201_B 38s match, 13 roots, 28s; total rows 79413 (branch 53035) elapsed 2636s
+[421/500] 960212_A 27s match, 10 roots, 27s; total rows 83318 (branch 55598) elapsed 2719s
+[441/500] 960220_B 20s match, 8 roots, 26s; total rows 87333 (branch 58234) elapsed 2882s
+[461/500] 960230_A 38s match, 14 roots, 53s; total rows 90399 (branch 60354) elapsed 2998s
+[481/500] 960241_A 39s match, 15 roots, 49s; total rows 93775 (branch 62686) elapsed 3145s
+[500/500] 960247_A 62s match, 19 roots, 55s; total rows 98720 (branch 65814) elapsed 3285s

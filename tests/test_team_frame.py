@@ -115,6 +115,7 @@ def test_mirror_batch_keeps_every_field_in_one_frame():
         "future_agent_states": np.stack([[_random_agent_states(rng) for _ in range(k)] for _ in range(b)]),
         "actions": rng.integers(0, 8, size=(b, 10)),
         "action_window": rng.integers(0, 8, size=(b, k, 10)),
+        "teach": rng.integers(0, 256, size=(b, 10)).astype(np.uint8),
         "is_weights": rng.random(b),  # untouched field, must survive
     }
     mirrored = QMIXTrainer._mirror_batch(batch)
@@ -125,6 +126,10 @@ def test_mirror_batch_keeps_every_field_in_one_frame():
         assert mirrored["actions"][0, row] == mirror_direction_idx(batch["actions"][0, unit])
         assert mirrored["action_window"][0, 1, row] == mirror_direction_idx(batch["action_window"][0, 1, unit])
         assert np.allclose(mirrored["agent_states"][0, row, :2], batch["agent_states"][0, unit, :2][::-1])
+        # a teacher's direction set is the same set of actions, so it mirrors exactly like them
+        world = {i for i in range(8) if batch["teach"][0, unit] >> i & 1}
+        canon = {i for i in range(8) if mirrored["teach"][0, row] >> i & 1}
+        assert canon == {mirror_direction_idx(i) for i in world}
     assert np.array_equal(mirrored["future_graphic"][0, 1], mirror_graphic(batch["future_graphic"][0, 1]))
     assert np.array_equal(mirrored["boot_graphic"][2], mirror_graphic(batch["boot_graphic"][2]))
 

@@ -1,0 +1,384 @@
+{
+ "traces": [
+  {
+   "trace": "trace_000.npz",
+   "a": "strategic_v21_anyangle",
+   "b": "random",
+   "seed": {
+    "replayed": 751,
+    "exact_steps": 751,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      80,
+      7
+     ],
+     "unity": [
+      80,
+      7
+     ]
+    },
+    "ended_sim": false,
+    "winner_sim": -1,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 19,
+      "sim": 19,
+      "matched": 19
+     },
+     "kill": {
+      "unity": 8,
+      "sim": 8,
+      "matched": 8
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "score": {
+      "unity": 19,
+      "sim": 19,
+      "matched": 19
+     },
+     "storage_out": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "transform": {
+      "unity": 12,
+      "sim": 12,
+      "matched": 12
+     },
+     "all": {
+      "unity": 83,
+      "sim": 83,
+      "matched": 83
+     }
+    }
+   },
+   "steps": 750,
+   "obs": {
+    "replayed": 751,
+    "exact_steps": 751,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      80,
+      7
+     ],
+     "unity": [
+      80,
+      7
+     ]
+    },
+    "ended_sim": false,
+    "winner_sim": -1,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 19,
+      "sim": 19,
+      "matched": 19
+     },
+     "kill": {
+      "unity": 8,
+      "sim": 8,
+      "matched": 8
+     },
+     "lost": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "pickup": {
+      "unity": 21,
+      "sim": 21,
+      "matched": 21
+     },
+     "score": {
+      "unity": 19,
+      "sim": 19,
+      "matched": 19
+     },
+     "storage_out": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "transform": {
+      "unity": 12,
+      "sim": 12,
+      "matched": 12
+     },
+     "all": {
+      "unity": 83,
+      "sim": 83,
+      "matched": 83
+     }
+    }
+   }
+  },
+  {
+   "trace": "trace_001.npz",
+   "a": "random",
+   "b": "random",
+   "seed": {
+    "replayed": 751,
+    "exact_steps": 751,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      1,
+      28
+     ],
+     "unity": [
+      1,
+      28
+     ]
+    },
+    "ended_sim": false,
+    "winner_sim": -1,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 8,
+      "sim": 8,
+      "matched": 8
+     },
+     "pickup": {
+      "unity": 10,
+      "sim": 10,
+      "matched": 10
+     },
+     "score": {
+      "unity": 8,
+      "sim": 8,
+      "matched": 8
+     },
+     "transform": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "all": {
+      "unity": 29,
+      "sim": 29,
+      "matched": 29
+     }
+    }
+   },
+   "steps": 750,
+   "obs": {
+    "replayed": 751,
+    "exact_steps": 751,
+    "first_exact_divergence": null,
+    "first_divergence_1e-3": null,
+    "pos_err_max": 0.0,
+    "pos_err_p99": 0.0,
+    "score_timeline_equal": true,
+    "final_scores": {
+     "sim": [
+      1,
+      28
+     ],
+     "unity": [
+      1,
+      28
+     ]
+    },
+    "ended_sim": false,
+    "winner_sim": -1,
+    "events": {
+     "absorb": {
+      "unity": 1,
+      "sim": 1,
+      "matched": 1
+     },
+     "deposit": {
+      "unity": 8,
+      "sim": 8,
+      "matched": 8
+     },
+     "pickup": {
+      "unity": 10,
+      "sim": 10,
+      "matched": 10
+     },
+     "score": {
+      "unity": 8,
+      "sim": 8,
+      "matched": 8
+     },
+     "transform": {
+      "unity": 2,
+      "sim": 2,
+      "matched": 2
+     },
+     "all": {
+      "unity": 29,
+      "sim": 29,
+      "matched": 29
+     }
+    }
+   }
+  }
+ ],
+ "horizons": {
+  "1s": {
+   "n": 1040,
+   "median": 0.0,
+   "p99": 1.430511474609375e-06,
+   "max": 1.430511474609375e-06,
+   "frac_le_1e-3": 1.0,
+   "starts": 4,
+   "starts_max_err_le_1e-3": 1.0,
+   "starts_bit_exact": 0
+  },
+  "5s": {
+   "n": 5040,
+   "median": 0.0,
+   "p99": 1.430511474609375e-06,
+   "max": 1.430511474609375e-06,
+   "frac_le_1e-3": 1.0,
+   "starts": 4,
+   "starts_max_err_le_1e-3": 1.0,
+   "starts_bit_exact": 0
+  },
+  "20s": {
+   "n": 15040,
+   "median": 0.0,
+   "p99": 1.430511474609375e-06,
+   "max": 4.291534423828125e-06,
+   "frac_le_1e-3": 1.0,
+   "starts": 4,
+   "starts_max_err_le_1e-3": 1.0,
+   "starts_bit_exact": 0
+  },
+  "full": {
+   "n": 15020,
+   "median": 0.0,
+   "p99": 0.0,
+   "max": 0.0,
+   "frac_le_1e-3": 1.0
+  }
+ },
+ "events_full": {
+  "absorb": {
+   "unity": 2,
+   "sim": 2,
+   "matched": 2
+  },
+  "deposit": {
+   "unity": 27,
+   "sim": 27,
+   "matched": 27
+  },
+  "kill": {
+   "unity": 8,
+   "sim": 8,
+   "matched": 8
+  },
+  "lost": {
+   "unity": 2,
+   "sim": 2,
+   "matched": 2
+  },
+  "pickup": {
+   "unity": 31,
+   "sim": 31,
+   "matched": 31
+  },
+  "score": {
+   "unity": 27,
+   "sim": 27,
+   "matched": 27
+  },
+  "storage_out": {
+   "unity": 1,
+   "sim": 1,
+   "matched": 1
+  },
+  "transform": {
+   "unity": 14,
+   "sim": 14,
+   "matched": 14
+  },
+  "all": {
+   "unity": 112,
+   "sim": 112,
+   "matched": 112
+  }
+ },
+ "events_mid": {
+  "deposit": {
+   "unity": 7,
+   "sim": 7,
+   "matched": 7
+  },
+  "kill": {
+   "unity": 1,
+   "sim": 1,
+   "matched": 1
+  },
+  "pickup": {
+   "unity": 6,
+   "sim": 6,
+   "matched": 6
+  },
+  "score": {
+   "unity": 6,
+   "sim": 6,
+   "matched": 6
+  },
+  "transform": {
+   "unity": 2,
+   "sim": 2,
+   "matched": 2
+  },
+  "all": {
+   "unity": 22,
+   "sim": 22,
+   "matched": 22
+  }
+ },
+ "summary": {
+  "traces": 2,
+  "full_match_bit_exact": 2,
+  "score_timeline_equal": 2,
+  "final_score_equal": 2,
+  "events_full_agreement": 1.0,
+  "events_mid_agreement": 1.0
+ }
+}

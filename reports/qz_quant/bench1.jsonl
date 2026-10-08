@@ -1,0 +1,6 @@
+{"mode": "cpu_jit", "ms_median": 14.076, "ms_p90": 15.655, "threads": 1}
+{"mode": "cuda_fp32", "ms_median": 11.18, "ms_p90": 15.297, "threads": 1}
+{"mode": "cuda_fp16", "ms_median": 14.722, "ms_p90": 18.733, "threads": 1}
+{"mode": "cuda_graph_fp32", "ms_median": 2.026, "ms_p90": 2.267, "threads": 1}
+{"mode": "cuda_graph_fp16", "ms_median": 2.771, "ms_p90": 2.914, "threads": 1}
+{"mode": "cuda_fp16_compile", "ms_median": 1.756, "ms_p90": 1.99, "threads": 1}

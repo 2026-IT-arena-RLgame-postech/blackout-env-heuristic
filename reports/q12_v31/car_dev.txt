@@ -1,0 +1,204 @@
+106 Carrier deviation roots
+-- all: n 106
+   g                  +7.00 ±  3.25
+   o_death            -0.20 ±  0.13
+   o_kill             +0.25 ±  0.11
+   o_pickup           -0.18 ±  0.12
+   o_steal            -0.02 ±  0.06
+   o_deposit          -0.19 ±  0.12
+   o_deposit_amt      -1.28 ±  0.73
+   o_transform_h      +0.09 ±  0.05
+   o_transform_c      -0.01 ±  0.05
+   o_lost_amt         -0.47 ±  0.31
+   p_death            +0.27 ±  0.11
+   p_kill             -0.23 ±  0.13
+   p_pickup           +0.10 ±  0.12
+   p_steal            -0.02 ±  0.06
+   p_deposit          +0.07 ±  0.11
+   p_deposit_amt      +0.34 ±  0.65
+   p_transform_h      -0.07 ±  0.05
+   p_transform_c      -0.01 ±  0.04
+   p_lost_amt         -0.18 ±  0.23
+   u_death            -0.04 ±  0.06
+   u_pickup           -0.22 ±  0.10
+   u_deposit_amt      -1.39 ±  0.63
+   u_lost_amt         -0.22 ±  0.16
+-- enemy Hunter < 4: n 26
+   g                 +20.66 ±  7.01
+   o_death            -0.38 ±  0.45
+   o_kill             +0.40 ±  0.21
+   o_pickup           -0.02 ±  0.23
+   o_steal            +0.04 ±  0.13
+   o_deposit          +0.08 ±  0.23
+   o_deposit_amt      +0.10 ±  1.14
+   o_transform_h      +0.15 ±  0.13
+   o_transform_c      -0.04 ±  0.19
+   o_lost_amt         -0.50 ±  0.97
+   p_death            +0.56 ±  0.22
+   p_kill             -0.54 ±  0.45
+   p_pickup           +0.10 ±  0.26
+   p_steal            -0.25 ±  0.12
+   p_deposit          -0.08 ±  0.20
+   p_deposit_amt      -1.12 ±  1.09
+   p_transform_h      -0.19 ±  0.12
+   p_transform_c      +0.08 ±  0.05
+   p_lost_amt         -0.04 ±  0.53
+   u_death            -0.15 ±  0.23
+   u_pickup           -0.15 ±  0.19
+   u_deposit_amt      -0.08 ±  0.95
+   u_lost_amt         -0.27 ±  0.56
+-- enemy Hunter >= 4: n 80
+   g                  +2.56 ±  3.54
+   o_death            -0.14 ±  0.09
+   o_kill             +0.20 ±  0.13
+   o_pickup           -0.23 ±  0.14
+   o_steal            -0.04 ±  0.07
+   o_deposit          -0.28 ±  0.14
+   o_deposit_amt      -1.73 ±  0.90
+   o_transform_h      +0.07 ±  0.06
+   o_transform_c      -0.01 ±  0.03
+   o_lost_amt         -0.46 ±  0.26
+   p_death            +0.18 ±  0.13
+   p_kill             -0.12 ±  0.09
+   p_pickup           +0.11 ±  0.14
+   p_steal            +0.06 ±  0.07
+   p_deposit          +0.12 ±  0.13
+   p_deposit_amt      +0.81 ±  0.79
+   p_transform_h      -0.03 ±  0.05
+   p_transform_c      -0.04 ±  0.05
+   p_lost_amt         -0.23 ±  0.25
+   u_death            -0.01 ±  0.03
+   u_pickup           -0.24 ±  0.12
+   u_deposit_amt      -1.82 ±  0.78
+   u_lost_amt         -0.20 ±  0.12
+-- empty: n 60
+   g                  +8.69 ±  4.57
+   o_death            -0.24 ±  0.16
+   o_kill             +0.28 ±  0.15
+   o_pickup           -0.24 ±  0.14
+   o_steal            -0.07 ±  0.08
+   o_deposit          -0.26 ±  0.15
+   o_deposit_amt      -1.50 ±  0.89
+   o_transform_h      +0.16 ±  0.09
+   o_transform_c      +0.06 ±  0.06
+   o_lost_amt         -0.37 ±  0.26
+   p_death            +0.29 ±  0.16
+   p_kill             -0.25 ±  0.17
+   p_pickup           +0.14 ±  0.18
+   p_steal            +0.07 ±  0.08
+   p_deposit          +0.11 ±  0.16
+   p_deposit_amt      +0.56 ±  1.02
+   p_transform_h      -0.07 ±  0.08
+   p_transform_c      +0.05 ±  0.06
+   p_lost_amt         +0.07 ±  0.35
+   u_death            +0.04 ±  0.07
+   u_pickup           -0.32 ±  0.13
+   u_deposit_amt      -1.92 ±  0.84
+   u_lost_amt         -0.25 ±  0.15
+-- context of all: t / dc / hd / nh own,enemy / flee / sanct / prey / cos / gain
+   v29 t   5.0 bat 0 dc   7.7 hd   3.6 H 0v1 flee -0.04 sanct -0.02 prey -0.00 cos +0.79 gain +155.0 own dep -1.0 opp dep +11.0 own death -5.0 opp tH -2.0
+   v29 t   6.0 bat 1 dc   7.1 hd  99.0 H 0v0 flee +nan sanct +0.65 prey +0.68 cos +0.13 gain +113.3 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t   6.0 bat 0 dc   9.8 hd  99.0 H 0v0 flee +nan sanct -0.39 prey -0.22 cos +0.61 gain  +81.3 own dep +7.0 opp dep -1.5 own death +1.0 opp tH +1.0
+   v29 t   9.0 bat 1 dc   7.3 hd  99.0 H 0v0 flee +nan sanct -0.56 prey -0.36 cos +0.37 gain  +78.4 own dep -7.0 opp dep +4.0 own death -1.0 opp tH -1.0
+   v29 t  14.0 bat 0 dc   1.6 hd   3.6 H 1v2 flee -0.24 sanct +0.19 prey -0.07 cos +0.60 gain  +71.6 own dep +11.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  15.0 bat 0 dc   9.0 hd   9.1 H 0v1 flee +0.55 sanct -0.45 prey -0.17 cos +0.56 gain  +69.2 own dep +7.0 opp dep +11.0 own death +0.0 opp tH +0.0
+   v25 t   8.0 bat 0 dc   5.6 hd   3.1 H 4v1 flee -0.37 sanct +0.38 prey -0.10 cos +0.44 gain  +64.4 own dep -9.0 opp dep -13.0 own death +0.0 opp tH -1.0
+   v29 t   5.0 bat 0 dc   4.7 hd  99.0 H 0v0 flee +nan sanct +0.26 prey +0.26 cos +0.75 gain  +62.5 own dep -2.0 opp dep -35.0 own death +0.0 opp tH +0.0
+   v29 t  22.0 bat 1 dc   5.6 hd   3.9 H 1v2 flee -0.33 sanct +0.37 prey +0.34 cos +0.16 gain  +60.2 own dep +0.0 opp dep -4.0 own death -7.0 opp tH +0.0
+   v25 t  10.0 bat 1 dc   9.5 hd  99.0 H 3v0 flee +nan sanct +1.59 prey -0.35 cos -0.63 gain  +54.5 own dep -8.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t   8.0 bat 0 dc   4.5 hd   3.6 H 2v2 flee -0.61 sanct +0.56 prey -0.02 cos +0.36 gain  +54.5 own dep +1.5 opp dep -5.0 own death -1.5 opp tH -2.0
+   v29 t   6.0 bat 0 dc   4.4 hd  99.0 H 0v0 flee +nan sanct -0.11 prey +0.08 cos +0.04 gain  +48.2 own dep -6.0 opp dep -12.0 own death -1.0 opp tH +1.0
+   v29 t  29.0 bat 0 dc   4.2 hd  99.0 H 2v0 flee +nan sanct +0.61 prey +0.18 cos +0.41 gain  +44.5 own dep -0.5 opp dep -1.0 own death -0.5 opp tH -1.0
+   v29 t   7.0 bat 1 dc   9.1 hd  99.0 H 0v0 flee +nan sanct -0.61 prey -0.75 cos +0.12 gain  +43.6 own dep +0.0 opp dep +7.0 own death -1.0 opp tH +0.0
+   v29 t   5.0 bat 0 dc   9.9 hd   7.0 H 1v1 flee -0.40 sanct -0.05 prey -0.37 cos +0.09 gain  +35.7 own dep -13.0 opp dep -4.0 own death -3.0 opp tH +0.0
+   v29 t  30.0 bat 1 dc  12.1 hd   3.3 H 0v3 flee -0.40 sanct +0.72 prey +0.83 cos +0.20 gain  +29.3 own dep -3.0 opp dep +0.0 own death -1.0 opp tH +0.0
+   v29 t  15.0 bat 0 dc   4.5 hd   4.0 H 1v1 flee -0.25 sanct -0.18 prey -0.72 cos +0.00 gain  +28.6 own dep +2.0 opp dep -6.0 own death -3.0 opp tH +0.0
+   v29 t  12.0 bat 1 dc   9.0 hd  14.8 H 1v1 flee -0.00 sanct -0.10 prey +0.12 cos +0.52 gain  +24.7 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t   5.0 bat 0 dc  11.7 hd  99.0 H 0v0 flee +nan sanct -0.38 prey -0.25 cos +0.41 gain  +20.4 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t   8.0 bat 1 dc   9.4 hd  10.4 H 2v1 flee +0.07 sanct -0.07 prey +0.04 cos -1.00 gain  +15.6 own dep +0.5 opp dep -5.0 own death -2.0 opp tH -2.0
+   v29 t   7.0 bat 1 dc  11.4 hd   1.2 H 0v1 flee -0.73 sanct +0.56 prey +0.42 cos +0.01 gain  +15.0 own dep +0.0 opp dep +6.0 own death +0.0 opp tH -1.0
+   v29 t  11.0 bat 1 dc  10.4 hd  99.0 H 0v0 flee +nan sanct -0.62 prey -0.61 cos +0.49 gain  +13.9 own dep +6.0 opp dep -14.0 own death +0.0 opp tH +0.0
+   v29 t  20.0 bat 0 dc   9.2 hd  10.9 H 2v1 flee -1.67 sanct +0.86 prey -1.77 cos -0.88 gain  +13.6 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v25 t  19.0 bat 0 dc   9.9 hd  11.5 H 3v2 flee -0.53 sanct +0.52 prey +0.32 cos +0.64 gain  +13.4 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v25 t  23.0 bat 0 dc   9.8 hd   1.6 H 2v1 flee -0.41 sanct +0.42 prey +0.32 cos +0.71 gain  +13.2 own dep +0.0 opp dep +0.0 own death +1.0 opp tH +0.0
+   v25 t  14.0 bat 0 dc   4.8 hd   2.8 H 2v2 flee -0.10 sanct +0.17 prey +0.40 cos +0.42 gain  +12.0 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  14.0 bat 0 dc   4.5 hd  99.0 H 3v0 flee +nan sanct +0.08 prey +0.44 cos +0.46 gain  +11.9 own dep -1.0 opp dep +6.0 own death +0.0 opp tH +0.0
+   v29 t  12.0 bat 1 dc   5.5 hd   1.5 H 0v3 flee -0.21 sanct -0.35 prey -0.15 cos +0.29 gain  +11.3 own dep +2.0 opp dep -12.0 own death -3.0 opp tH +0.0
+   v29 t  32.0 bat 0 dc  10.5 hd   3.5 H 0v3 flee -0.06 sanct -0.03 prey -0.04 cos +0.90 gain  +11.0 own dep +13.0 opp dep -8.0 own death -1.0 opp tH +0.0
+   v25 t  14.0 bat 0 dc   6.4 hd  99.0 H 3v0 flee +nan sanct -0.17 prey -0.58 cos -0.17 gain  +11.0 own dep +2.0 opp dep -10.0 own death +0.0 opp tH +0.0
+   v25 t  13.0 bat 0 dc   8.6 hd  99.0 H 3v0 flee +nan sanct +0.33 prey +0.43 cos +0.59 gain  +11.0 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t   9.0 bat 0 dc   8.9 hd  99.0 H 0v0 flee +nan sanct -0.14 prey +0.12 cos +0.87 gain  +10.7 own dep -19.0 opp dep -6.0 own death +0.0 opp tH +0.0
+   v29 t  14.0 bat 1 dc   8.9 hd  17.3 H 1v1 flee -0.14 sanct +0.05 prey -0.21 cos +0.09 gain  +10.4 own dep +13.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v25 t  23.0 bat 1 dc   8.4 hd   6.9 H 2v2 flee -0.37 sanct +0.45 prey +0.59 cos +0.25 gain  +10.2 own dep +11.0 opp dep +0.0 own death +1.0 opp tH +0.0
+   v29 t  52.0 bat 1 dc   5.5 hd   3.7 H 4v1 flee +1.80 sanct +0.92 prey +1.04 cos -0.91 gain   +9.9 own dep +4.0 opp dep +2.0 own death +1.0 opp tH +0.0
+   v29 t  12.0 bat 1 dc   8.0 hd   1.8 H 0v3 flee +0.10 sanct +0.09 prey +0.14 cos +0.86 gain   +9.0 own dep -4.0 opp dep +4.0 own death +2.0 opp tH +0.0
+   v29 t  11.0 bat 0 dc   4.9 hd  10.6 H 0v1 flee -0.26 sanct +0.31 prey +0.07 cos +0.13 gain   +8.0 own dep +8.0 opp dep +10.0 own death +0.0 opp tH +0.0
+   v29 t  10.0 bat 1 dc   9.3 hd  99.0 H 0v0 flee +nan sanct +1.41 prey +1.18 cos -0.44 gain   +8.0 own dep +0.0 opp dep +12.0 own death +0.0 opp tH +0.0
+   v29 t  18.0 bat 1 dc  10.9 hd  14.7 H 2v1 flee -0.58 sanct +0.78 prey +0.36 cos +0.52 gain   +7.5 own dep +6.0 opp dep +0.0 own death -1.0 opp tH +0.0
+   v25 t  10.0 bat 0 dc   4.3 hd   4.6 H 1v3 flee +0.60 sanct -0.61 prey -0.59 cos +0.44 gain   +7.1 own dep -12.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v25 t  36.0 bat 1 dc  11.1 hd   0.6 H 0v3 flee -0.25 sanct +0.23 prey +0.10 cos +0.53 gain   +6.9 own dep +0.0 opp dep -2.0 own death +3.0 opp tH +0.0
+   v29 t   5.0 bat 0 dc   4.5 hd  99.0 H 0v0 flee +nan sanct +0.37 prey +0.46 cos -0.31 gain   +5.9 own dep -19.0 opp dep +4.5 own death +0.0 opp tH +0.0
+   v25 t  11.0 bat 1 dc   5.7 hd  99.0 H 3v0 flee +nan sanct +0.52 prey -0.00 cos -0.07 gain   +5.6 own dep -7.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  17.0 bat 1 dc  11.0 hd  13.8 H 1v1 flee -0.10 sanct +0.19 prey +0.02 cos +0.84 gain   +5.2 own dep +0.0 opp dep +0.0 own death -1.0 opp tH +0.0
+   v29 t  10.0 bat 0 dc   5.0 hd   4.4 H 0v4 flee -0.50 sanct +0.58 prey +0.53 cos +0.09 gain   +5.1 own dep +14.0 opp dep +9.0 own death -1.0 opp tH +0.0
+   v25 t  15.0 bat 0 dc  13.3 hd   3.5 H 3v1 flee -0.30 sanct +0.31 prey +0.31 cos +0.86 gain   +4.0 own dep -7.0 opp dep +0.0 own death +3.0 opp tH +0.0
+   v29 t  19.0 bat 1 dc   9.7 hd  99.0 H 3v0 flee +nan sanct -0.57 prey -0.66 cos +0.01 gain   +4.0 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  37.0 bat 0 dc   4.8 hd  99.0 H 3v0 flee +nan sanct +0.19 prey -1.35 cos -0.44 gain   +4.0 own dep +4.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  45.0 bat 1 dc   7.5 hd   1.4 H 3v2 flee +0.34 sanct +0.48 prey +0.31 cos +0.05 gain   +3.9 own dep +6.0 opp dep +0.0 own death +1.0 opp tH +0.0
+   v29 t  12.0 bat 1 dc   5.3 hd   3.7 H 0v4 flee -0.28 sanct +0.47 prey +0.77 cos +0.00 gain   +3.3 own dep +3.0 opp dep +6.0 own death +0.0 opp tH +0.0
+   v29 t  30.0 bat 0 dc  12.7 hd   0.7 H 2v1 flee -1.02 sanct +0.98 prey +0.97 cos +0.06 gain   +3.1 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  21.0 bat 0 dc  10.8 hd   7.4 H 0v1 flee -0.13 sanct +0.02 prey -0.06 cos +0.77 gain   +3.0 own dep +0.0 opp dep +11.0 own death -3.0 opp tH -2.0
+   v25 t  30.0 bat 0 dc   6.2 hd  99.0 H 3v0 flee +nan sanct +0.65 prey +1.24 cos -0.04 gain   +3.0 own dep +3.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  16.0 bat 0 dc   4.3 hd   6.2 H 0v3 flee -0.92 sanct +1.10 prey +1.46 cos -0.40 gain   +2.8 own dep -10.0 opp dep -6.0 own death -1.0 opp tH +0.0
+   v29 t  46.0 bat 0 dc   0.9 hd  99.0 H 4v0 flee +nan sanct -0.10 prey -0.37 cos +0.64 gain   +1.7 own dep -6.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v25 t  19.0 bat 1 dc   9.6 hd  99.0 H 3v0 flee +nan sanct -0.57 prey +0.11 cos -0.14 gain   +1.0 own dep +1.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  10.0 bat 1 dc   9.6 hd   1.4 H 3v1 flee -0.20 sanct +0.20 prey +0.11 cos +0.86 gain   +0.6 own dep +8.0 opp dep +3.0 own death -1.0 opp tH +0.0
+   v29 t  19.0 bat 0 dc   7.3 hd   2.6 H 0v3 flee -0.15 sanct +0.16 prey +0.04 cos +0.56 gain   +0.5 own dep +0.0 opp dep +0.0 own death -1.0 opp tH +0.0
+   v29 t  15.0 bat 0 dc   4.1 hd  12.3 H 1v1 flee +0.14 sanct -0.30 prey -0.10 cos +0.47 gain   +0.2 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  24.0 bat 0 dc   8.8 hd  99.0 H 3v0 flee +nan sanct +0.43 prey +0.55 cos +0.64 gain   +0.0 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  28.0 bat 1 dc   6.7 hd  99.0 H 3v0 flee +nan sanct +0.88 prey +0.88 cos -0.46 gain   +0.0 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  34.0 bat 0 dc   3.6 hd  99.0 H 3v0 flee +nan sanct -0.32 prey -0.40 cos +0.43 gain   +0.0 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  20.0 bat 0 dc  13.3 hd   3.8 H 1v3 flee -0.14 sanct +0.14 prey +0.14 cos +0.74 gain   +0.0 own dep +0.0 opp dep +0.0 own death -2.0 opp tH +0.0
+   v25 t  32.0 bat 0 dc   9.1 hd  99.0 H 4v0 flee +nan sanct -0.60 prey -0.76 cos -0.04 gain   +0.0 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v25 t  31.0 bat 1 dc  11.2 hd  99.0 H 4v0 flee +nan sanct -0.04 prey -0.03 cos +0.74 gain   +0.0 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v25 t  15.0 bat 0 dc  11.4 hd  99.0 H 3v0 flee +nan sanct +0.55 prey +0.39 cos +0.72 gain   +0.0 own dep -9.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v25 t  11.0 bat 0 dc   5.2 hd  99.0 H 3v0 flee +nan sanct +0.32 prey -1.09 cos -0.02 gain   +0.0 own dep -3.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  13.0 bat 0 dc  11.4 hd  99.0 H 0v0 flee +nan sanct -0.13 prey -0.15 cos +0.84 gain   -0.1 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  24.0 bat 1 dc   6.4 hd  99.0 H 2v0 flee +nan sanct +0.74 prey +0.89 cos -0.00 gain   -0.1 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v25 t   8.0 bat 1 dc   7.5 hd  99.0 H 3v0 flee +nan sanct -0.84 prey -0.62 cos +0.11 gain   -0.5 own dep -5.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  13.0 bat 1 dc   4.4 hd   7.5 H 0v1 flee +0.82 sanct -0.52 prey +0.84 cos +0.08 gain   -1.3 own dep +0.0 opp dep +4.0 own death +0.0 opp tH +0.0
+   v29 t   8.0 bat 0 dc   8.2 hd   9.0 H 1v1 flee +0.01 sanct -0.10 prey -0.02 cos -0.40 gain   -1.5 own dep -4.0 opp dep +4.0 own death +2.0 opp tH +0.0
+   v29 t  47.0 bat 0 dc  12.0 hd   0.6 H 2v2 flee -0.01 sanct +0.15 prey +0.17 cos +0.60 gain   -1.6 own dep +0.0 opp dep +0.0 own death +2.5 opp tH +0.0
+   v29 t  14.0 bat 1 dc   5.0 hd  13.8 H 0v1 flee +0.02 sanct -0.11 prey -0.04 cos +0.53 gain   -2.0 own dep +2.0 opp dep -5.0 own death -1.0 opp tH +0.0
+   v29 t  15.0 bat 1 dc   5.6 hd  99.0 H 3v0 flee +nan sanct -0.73 prey +0.18 cos +0.08 gain   -2.0 own dep +6.0 opp dep -6.0 own death +0.0 opp tH +0.0
+   v29 t  38.0 bat 0 dc   9.2 hd   0.8 H 0v3 flee -0.09 sanct +0.06 prey +0.05 cos +0.81 gain   -2.0 own dep -1.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  14.0 bat 1 dc   8.7 hd   8.2 H 0v1 flee +0.06 sanct -0.06 prey -0.05 cos +0.71 gain   -2.2 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  23.0 bat 0 dc  13.7 hd   4.6 H 0v3 flee -0.45 sanct +0.31 prey +0.56 cos +0.59 gain   -2.5 own dep +0.0 opp dep +0.0 own death +1.0 opp tH +0.0
+   v29 t   9.0 bat 0 dc  10.6 hd  99.0 H 0v0 flee +nan sanct +0.25 prey +0.17 cos +0.81 gain   -2.5 own dep -16.0 opp dep +10.0 own death +0.0 opp tH +0.0
+   v29 t  10.0 bat 1 dc   5.2 hd  99.0 H 0v0 flee +nan sanct -0.90 prey -0.66 cos +0.06 gain   -3.0 own dep +0.0 opp dep +10.0 own death +0.0 opp tH +0.0
+   v29 t   6.0 bat 0 dc   8.8 hd  99.0 H 0v0 flee +nan sanct -0.68 prey -0.36 cos -0.17 gain   -3.3 own dep -4.0 opp dep +0.5 own death +1.0 opp tH +0.5
+   v29 t  13.0 bat 1 dc  10.8 hd  14.0 H 1v1 flee -0.18 sanct -0.04 prey -0.23 cos +0.65 gain   -7.2 own dep +12.0 opp dep -3.0 own death +0.0 opp tH +0.0
+   v29 t   9.0 bat 0 dc   3.3 hd  99.0 H 3v0 flee +nan sanct +0.92 prey +0.51 cos -0.17 gain   -7.3 own dep -10.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  15.0 bat 1 dc   8.8 hd  99.0 H 0v0 flee +nan sanct -0.03 prey -0.04 cos +0.27 gain   -8.0 own dep +3.0 opp dep +4.0 own death +0.0 opp tH +0.0
+   v29 t  15.0 bat 1 dc   6.3 hd   6.8 H 0v4 flee +0.02 sanct +0.00 prey -0.05 cos -0.13 gain   -8.2 own dep -7.0 opp dep +0.0 own death +1.0 opp tH +0.0
+   v29 t  10.0 bat 0 dc   9.4 hd  99.0 H 3v0 flee +nan sanct -0.21 prey -0.15 cos +0.78 gain   -8.4 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v25 t  11.0 bat 1 dc   5.7 hd   7.6 H 2v2 flee -0.38 sanct +0.55 prey -0.69 cos -0.40 gain   -8.8 own dep +9.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t   9.0 bat 0 dc   4.4 hd  99.0 H 0v0 flee +nan sanct +0.17 prey -0.29 cos +0.29 gain   -9.1 own dep -5.0 opp dep +0.0 own death -1.0 opp tH -1.0
+   v29 t  14.0 bat 1 dc   8.9 hd   3.0 H 0v1 flee -0.56 sanct +0.72 prey +0.76 cos +0.13 gain  -10.5 own dep -11.0 opp dep +0.0 own death +1.0 opp tH +0.0
+   v29 t   7.0 bat 0 dc   9.1 hd  99.0 H 0v0 flee +nan sanct +0.52 prey +0.28 cos +0.42 gain  -13.3 own dep +0.0 opp dep +20.0 own death +0.0 opp tH +0.0
+   v29 t  20.0 bat 0 dc   3.3 hd   4.2 H 0v3 flee -0.08 sanct +0.40 prey -0.58 cos +0.26 gain  -13.4 own dep +5.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t  10.0 bat 1 dc   4.2 hd  99.0 H 3v0 flee +nan sanct -0.41 prey -0.05 cos +0.34 gain  -14.7 own dep -10.0 opp dep -3.0 own death +0.0 opp tH +0.0
+   v29 t  34.0 bat 0 dc   4.7 hd   4.3 H 0v3 flee -0.95 sanct +0.74 prey -0.99 cos +0.25 gain  -15.0 own dep -1.0 opp dep +0.0 own death -1.0 opp tH +0.0
+   v29 t  17.0 bat 0 dc   3.9 hd  11.7 H 1v1 flee -1.11 sanct +0.51 prey -1.18 cos -0.30 gain  -15.3 own dep -14.0 opp dep +10.0 own death -1.0 opp tH +0.0
+   v25 t  13.0 bat 1 dc   4.4 hd   2.9 H 1v3 flee +0.48 sanct -0.60 prey -0.31 cos +0.10 gain  -16.3 own dep -12.0 opp dep -11.0 own death +1.0 opp tH +1.0
+   v25 t  10.0 bat 0 dc   5.4 hd   8.9 H 4v1 flee -0.73 sanct +0.66 prey -0.81 cos +0.19 gain  -17.4 own dep -2.0 opp dep +12.0 own death +0.0 opp tH +1.0
+   v29 t   6.0 bat 0 dc   4.5 hd  99.0 H 0v0 flee +nan sanct -0.37 prey -0.55 cos +0.13 gain  -18.7 own dep +11.0 opp dep +0.0 own death +0.0 opp tH +1.0
+   v29 t  12.0 bat 0 dc  13.1 hd  13.8 H 1v1 flee +0.10 sanct -0.10 prey -0.08 cos +0.90 gain  -21.2 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t   5.0 bat 1 dc  11.6 hd   7.6 H 1v1 flee +0.32 sanct -0.14 prey -0.24 cos +0.49 gain  -26.6 own dep -38.0 opp dep +3.0 own death +2.0 opp tH +0.0
+   v29 t  14.0 bat 1 dc   4.5 hd   8.3 H 1v1 flee +0.03 sanct +0.09 prey -0.04 cos +0.33 gain  -31.5 own dep +0.0 opp dep +6.0 own death -1.0 opp tH +0.0
+   v29 t   5.0 bat 1 dc   9.7 hd  99.0 H 0v0 flee +nan sanct +0.61 prey +0.43 cos -0.28 gain  -51.1 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t   5.0 bat 0 dc   4.5 hd  99.0 H 0v0 flee +nan sanct +0.15 prey -0.06 cos +0.80 gain  -56.6 own dep +0.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t   5.0 bat 1 dc   9.9 hd  99.0 H 0v0 flee +nan sanct +0.95 prey +0.77 cos +0.11 gain  -57.4 own dep -10.0 opp dep +0.0 own death +0.0 opp tH +0.0
+   v29 t   8.0 bat 1 dc   6.5 hd   7.0 H 2v2 flee -0.32 sanct +0.39 prey +0.26 cos -0.09 gain  -73.5 own dep -16.0 opp dep -3.5 own death +0.0 opp tH +0.0
+   v29 t   8.0 bat 0 dc   6.7 hd  99.0 H 0v0 flee +nan sanct -1.00 prey -0.94 cos +0.08 gain  -78.7 own dep +4.0 opp dep +0.0 own death +1.0 opp tH +1.0
+   v29 t   6.0 bat 0 dc  10.1 hd  99.0 H 0v0 flee +nan sanct -0.40 prey -0.44 cos +0.24 gain  -83.0 own dep -8.0 opp dep +22.0 own death -1.0 opp tH -1.0

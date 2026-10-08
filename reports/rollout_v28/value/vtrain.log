@@ -1,0 +1,33 @@
+data: 255589 rows {'traj': 43376, 'branch': 212213}, 452002 states, 1536 matches; train 241612 held-out 13977 (46s)
+{"iter": 0, "heldout": {"mae_sym_vs_target": 11.005790710449219, "mae_own_vs_target": 11.418960571289062, "bias_own_minus_target": -0.24400366842746735, "traj_mae_sym_vs_true": 12.414079666137695, "traj_mae_own_vs_true": 12.534095764160156, "traj_bias_own_vs_true": -1.003444790840149}}
+iter 1: targets from 235949 next states in 61s; final mean +4.65 (own view), |rem| mean 34.7
+/home/cucumbersaurus/blackout-env-q9/.venv/lib/python3.12/site-packages/torch/nn/functional.py:2954: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return torch.rms_norm(input, normalized_shape, weight, eps)
+{"iter": 1, "step": 500, "t": 53, "train": {"loss": 0.6613, "delta": 0.1832, "final": 0.3018, "ce": 0.1764, "final_l1_pts": 11.6818, "rank": 0.5157}}
+{"iter": 1, "step": 1000, "t": 91, "train": {"loss": 0.578, "delta": 0.1695, "final": 0.246, "ce": 0.1625, "final_l1_pts": 10.2919, "rank": 0.4804}}
+{"iter": 1, "step": 1500, "t": 133, "train": {"loss": 0.5219, "delta": 0.1587, "final": 0.2109, "ce": 0.1524, "final_l1_pts": 9.3219, "rank": 0.4364}}
+{"iter": 1, "step": 2000, "t": 177, "train": {"loss": 0.5002, "delta": 0.1542, "final": 0.1962, "ce": 0.1498, "final_l1_pts": 8.7523, "rank": 0.4266}}
+{"iter": 1, "step": 2500, "t": 219, "train": {"loss": 0.462, "delta": 0.1497, "final": 0.1703, "ce": 0.142, "final_l1_pts": 8.0726, "rank": 0.3849}}
+{"iter": 1, "train_seconds": 225, "heldout": {"mae_sym_vs_target": 9.321866035461426, "mae_own_vs_target": 9.640756607055664, "bias_own_minus_target": -0.9710147976875305, "traj_mae_sym_vs_true": 12.318404197692871, "traj_mae_own_vs_true": 12.394906044006348, "traj_bias_own_vs_true": -0.39421170949935913}}
+iter 2: targets from 235949 next states in 61s; final mean +4.58 (own view), |rem| mean 35.8
+{"iter": 2, "step": 500, "t": 43, "train": {"loss": 0.4869, "delta": 0.1524, "final": 0.1948, "ce": 0.1397, "final_l1_pts": 8.603, "rank": 0.4235}}
+{"iter": 2, "step": 1000, "t": 90, "train": {"loss": 0.4911, "delta": 0.1514, "final": 0.1992, "ce": 0.1404, "final_l1_pts": 8.7446, "rank": 0.4328}}
+{"iter": 2, "step": 1500, "t": 132, "train": {"loss": 0.4643, "delta": 0.1482, "final": 0.18, "ce": 0.1361, "final_l1_pts": 8.2517, "rank": 0.4088}}
+{"iter": 2, "step": 2000, "t": 175, "train": {"loss": 0.4319, "delta": 0.142, "final": 0.1598, "ce": 0.1301, "final_l1_pts": 7.5969, "rank": 0.376}}
+{"iter": 2, "step": 2500, "t": 218, "train": {"loss": 0.4153, "delta": 0.1403, "final": 0.1484, "ce": 0.1266, "final_l1_pts": 7.1988, "rank": 0.3648}}
+{"iter": 2, "train_seconds": 223, "heldout": {"mae_sym_vs_target": 9.410926818847656, "mae_own_vs_target": 9.826150894165039, "bias_own_minus_target": -0.6693090796470642, "traj_mae_sym_vs_true": 12.33173942565918, "traj_mae_own_vs_true": 12.45468807220459, "traj_bias_own_vs_true": -0.3783953785896301}}
+iter 3: targets from 235949 next states in 61s; final mean +4.54 (own view), |rem| mean 36.6
+{"iter": 3, "step": 500, "t": 41, "train": {"loss": 0.4345, "delta": 0.1447, "final": 0.1666, "ce": 0.1232, "final_l1_pts": 7.6701, "rank": 0.3748}}
+{"iter": 3, "step": 1000, "t": 80, "train": {"loss": 0.4461, "delta": 0.1466, "final": 0.1742, "ce": 0.1253, "final_l1_pts": 7.8945, "rank": 0.3891}}
+{"iter": 3, "step": 1500, "t": 121, "train": {"loss": 0.4266, "delta": 0.1414, "final": 0.1624, "ce": 0.1228, "final_l1_pts": 7.5361, "rank": 0.3888}}
+{"iter": 3, "step": 2000, "t": 163, "train": {"loss": 0.405, "delta": 0.1367, "final": 0.1483, "ce": 0.12, "final_l1_pts": 7.0513, "rank": 0.364}}
+{"iter": 3, "step": 2500, "t": 205, "train": {"loss": 0.3914, "delta": 0.1349, "final": 0.1375, "ce": 0.119, "final_l1_pts": 6.724, "rank": 0.3541}}
+{"iter": 3, "train_seconds": 211, "heldout": {"mae_sym_vs_target": 9.681109428405762, "mae_own_vs_target": 10.124004364013672, "bias_own_minus_target": -0.5491700768470764, "traj_mae_sym_vs_true": 12.419488906860352, "traj_mae_own_vs_true": 12.545455932617188, "traj_bias_own_vs_true": -0.4077238440513611}}
+iter 4: targets from 235949 next states in 61s; final mean +4.58 (own view), |rem| mean 36.6
+{"iter": 4, "step": 500, "t": 40, "train": {"loss": 0.4035, "delta": 0.1387, "final": 0.1467, "ce": 0.1181, "final_l1_pts": 7.0717, "rank": 0.3567}}
+{"iter": 4, "step": 1000, "t": 80, "train": {"loss": 0.419, "delta": 0.1388, "final": 0.1597, "ce": 0.1204, "final_l1_pts": 7.3454, "rank": 0.3839}}
+{"iter": 4, "step": 1500, "t": 120, "train": {"loss": 0.392, "delta": 0.1354, "final": 0.1405, "ce": 0.116, "final_l1_pts": 6.9133, "rank": 0.3426}}
+{"iter": 4, "step": 2000, "t": 158, "train": {"loss": 0.378, "delta": 0.1321, "final": 0.1309, "ce": 0.1149, "final_l1_pts": 6.5669, "rank": 0.3392}}
+{"iter": 4, "step": 2500, "t": 198, "train": {"loss": 0.3624, "delta": 0.1286, "final": 0.1224, "ce": 0.1114, "final_l1_pts": 6.2296, "rank": 0.3217}}
+{"iter": 4, "train_seconds": 204, "heldout": {"mae_sym_vs_target": 9.601198196411133, "mae_own_vs_target": 10.108888626098633, "bias_own_minus_target": -0.7933530807495117, "traj_mae_sym_vs_true": 12.49105453491211, "traj_mae_own_vs_true": 12.645657539367676, "traj_bias_own_vs_true": -0.8842718005180359}}
+done in 1236s

@@ -1,0 +1,11 @@
+row_policy,column_policy,row_win_rate,games,source
+v2,v1,0.5,10,heuristic_policy_catalog_ko.md
+v3,v1,0.5,10,heuristic_policy_catalog_ko.md
+v4,v1,0.6666666666666666,30,heuristic_policy_catalog_ko.md
+v4-near,v4,0.6,10,heuristic_policy_catalog_ko.md
+v5,v4,0.2,10,heuristic_policy_catalog_ko.md
+v6,v4,0.4,10,heuristic_policy_catalog_ko.md
+v7,v4,0.6,10,heuristic_policy_catalog_ko.md
+v8,v4,0.4,10,heuristic_policy_catalog_ko.md
+v8,v7,0.4,10,heuristic_policy_catalog_ko.md
+v9,v7,0.5,10,heuristic_policy_catalog_ko.md

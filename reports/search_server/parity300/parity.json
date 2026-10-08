@@ -1,0 +1,16 @@
+{
+ "roots": 236,
+ "choice_agree": 0.9957627118644068,
+ "argmax_agree": 1.0,
+ "bit_exact_roots": 12,
+ "abs_diff_mean": 0.0011372002694061247,
+ "abs_diff_p95": 4.9591064453125e-05,
+ "abs_diff_max": 1.0027313232421875,
+ "batch_roots_mean": 11.728813559322035,
+ "base_share_ref": 0.5466101694915254,
+ "base_share_server": 0.5423728813559322,
+ "corr": 0.9999998877880769,
+ "disagree_ref_gain": [
+  2.9928665161132812
+ ]
+}

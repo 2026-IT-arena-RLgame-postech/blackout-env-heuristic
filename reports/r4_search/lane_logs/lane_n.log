@@ -1,0 +1,9 @@
+== 10:15:24 v30 o4f_r20
+[o4f_r20 vs v30] 128/384 margin +18.4 wall 2061s (search 1427s, 6331 roots)
+[o4f_r20 vs v30] 256/384 margin +30.9 wall 2067s (search 1446s, 6378 roots)
+[o4f_r20 vs v30] 384/384 margin +27.7 wall 2059s (search 1400s, 5539 roots)
+== 11:58:37 p14b o4f_r20
+[o4f_r20 vs p14b] 128/384 margin +72.2 wall 1754s (search 1445s, 5205 roots)
+[o4f_r20 vs p14b] 256/384 margin +76.4 wall 1553s (search 1296s, 4937 roots)
+[o4f_r20 vs p14b] 384/384 margin +74.8 wall 1432s (search 1201s, 5084 roots)
+== 13:17:44 lane n done

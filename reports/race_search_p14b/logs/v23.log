@@ -1,0 +1,8 @@
+[p14b vs v23] 128/256 margin +73.9 first99 1.00 wall 326s (search 0s)
+[p14b vs v23] 256/256 margin +76.1 first99 1.00 wall 293s (search 0s)
+[p14b_r10 vs v23] 128/256 margin +70.4 first99 0.99 wall 590s (search 171s)
+[p14b_r10 vs v23] 256/256 margin +71.2 first99 1.00 wall 727s (search 214s)
+[p14b_r10_team vs v23] 128/256 margin +66.9 first99 0.98 wall 688s (search 189s)
+[p14b_r10_team vs v23] 256/256 margin +74.0 first99 0.98 wall 558s (search 179s)
+[p14b_s5_10 vs v23] 128/256 margin +74.2 first99 1.00 wall 361s (search 93s)
+[p14b_s5_10 vs v23] 256/256 margin +77.2 first99 1.00 wall 273s (search 63s)

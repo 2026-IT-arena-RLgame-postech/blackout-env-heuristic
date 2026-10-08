@@ -1,0 +1,5 @@
+== 15:15:17 p22 o4f_r21
+[o4f_r21 vs p22] 128/384 margin +8.6 wall 2659s (search 2274s, 7107 roots)
+[o4f_r21 vs p22] 256/384 margin +11.0 wall 2866s (search 2467s, 7211 roots)
+[o4f_r21 vs p22] 384/384 margin +14.7 wall 2361s (search 2067s, 7659 roots)
+== 17:26:54 lane b2 done

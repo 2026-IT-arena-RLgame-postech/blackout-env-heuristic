@@ -1,0 +1,302 @@
+1200 matches to play (0 done), 8 workers
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[20/1200] 169s 7.1 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000002 side 1 margin +82 first 99/99 desync 0
+[40/1200] 219s 11.0 matches/min  last: strategic_v27:reserve_stage=1.5 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000004 side 0 margin +61 first 99/99 desync 0
+[60/1200] 264s 13.6 matches/min  last: strategic_v27:reserve_stage=1.5 vs strategic_v25 seed 4000007 side 1 margin +61 first 99/99 desync 0
+[80/1200] 330s 14.5 matches/min  last: strategic_v27:reserve_stage=1.5 vs strategic_v25 seed 4000010 side 0 margin -80 first 99/99 desync 0
+[100/1200] 419s 14.3 matches/min  last: strategic_v25 vs strategic_v25 seed 4000013 side 0 margin +79 first 99/99 desync 0
+[120/1200] 505s 14.2 matches/min  last: strategic_v27:reserve_stage=1.5 vs strategic_v25 seed 4000014 side 1 margin +33 first 99/99 desync 0
+[140/1200] 579s 14.5 matches/min  last: strategic_v27:reserve_stage=1.5 vs strategic_v25 seed 4000017 side 1 margin +76 first 99/99 desync 0
+[160/1200] 650s 14.8 matches/min  last: strategic_v27:reserve_stage=1.5 vs strategic_v25 seed 4000020 side 0 margin +90 first 99/99 desync 0
+[180/1200] 755s 14.3 matches/min  last: strategic_v27:reserve_stage=1.5 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000020 side 0 margin -62 first 99/99 desync 0
+[200/1200] 825s 14.6 matches/min  last: strategic_v25 vs strategic_v25 seed 4000025 side 0 margin -67 first 99/99 desync 0
+[220/1200] 890s 14.8 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000027 side 0 margin +61 first 99/99 desync 0
+[240/1200] 963s 14.9 matches/min  last: strategic_v27:reserve_stage=1.5 vs strategic_v25 seed 4000030 side 1 margin +68 first 99/99 desync 0
+[260/1200] 1026s 15.2 matches/min  last: strategic_v27:reserve_stage=1.5 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000032 side 1 margin +67 first 99/99 desync 0
+[280/1200] 1099s 15.3 matches/min  last: strategic_v27:reserve_stage=1.5 vs strategic_v25 seed 4000035 side 0 margin +75 first 99/99 desync 0
+[300/1200] 1173s 15.4 matches/min  last: strategic_v27:reserve_stage=1.5 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000037 side 1 margin +87 first 99/99 desync 0
+[320/1200] 1245s 15.4 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000039 side 1 margin -70 first 99/99 desync 0
+[340/1200] 1303s 15.7 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000042 side 1 margin +88 first 99/99 desync 0
+[360/1200] 1371s 15.8 matches/min  last: strategic_v25 vs strategic_v25 seed 4000045 side 1 margin -51 first 99/99 desync 0
+[380/1200] 1452s 15.7 matches/min  last: strategic_v25 vs strategic_v25 seed 4000047 side 1 margin +35 first 99/99 desync 0
+[400/1200] 1513s 15.9 matches/min  last: strategic_v27:reserve_stage=1.5 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000049 side 0 margin +58 first 99/99 desync 0
+[420/1200] 1588s 15.9 matches/min  last: strategic_v25 vs strategic_v25 seed 4000053 side 0 margin +66 first 99/99 desync 0
+[440/1200] 1689s 15.6 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000054 side 0 margin +26 first 99/99 desync 0
+[460/1200] 1784s 15.5 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000056 side 1 margin -64 first 99/99 desync 0
+[480/1200] 1907s 15.1 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000059 side 1 margin +56 first 99/99 desync 0
+[500/1200] 2018s 14.9 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000062 side 0 margin -82 first 99/99 desync 1
+[520/1200] 2120s 14.7 matches/min  last: strategic_v25 vs strategic_v25 seed 4000065 side 1 margin -57 first 99/99 desync 0
+[540/1200] 2256s 14.4 matches/min  last: strategic_v27:reserve_stage=1.5 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000065 side 0 margin +27 first 99/99 desync 0
+[560/1200] 2329s 14.4 matches/min  last: strategic_v27:reserve_stage=1.5 vs strategic_v25 seed 4000070 side 1 margin +66 first 99/99 desync 0
+[580/1200] 2397s 14.5 matches/min  last: strategic_v25 vs strategic_v25 seed 4000071 side 1 margin -1 first 99/99 desync 0
+[600/1200] 2499s 14.4 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000072 side 0 margin -6 first 99/99 desync 0
+[620/1200] 2580s 14.4 matches/min  last: strategic_v27:reserve_stage=1.5 vs strategic_v25 seed 4000077 side 1 margin +63 first 99/99 desync 0
+[640/1200] 2667s 14.4 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000079 side 0 margin +19 first 99/99 desync 0
+[660/1200] 2754s 14.4 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000082 side 1 margin -71 first 99/99 desync 0
+[680/1200] 2842s 14.4 matches/min  last: strategic_v27:reserve_stage=1.5 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000084 side 1 margin +72 first 99/99 desync 0
+[700/1200] 2906s 14.5 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000087 side 1 margin -76 first 99/99 desync 0
+[720/1200] 2966s 14.6 matches/min  last: strategic_v25 vs strategic_v25 seed 4000090 side 1 margin -55 first 99/99 desync 0
+[740/1200] 3026s 14.7 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000091 side 0 margin +77 first 99/99 desync 0
+[760/1200] 3083s 14.8 matches/min  last: strategic_v27:reserve_stage=1.5 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000094 side 1 margin +69 first 99/99 desync 0
+[780/1200] 3167s 14.8 matches/min  last: strategic_v27:reserve_stage=1.5 vs strategic_v25 seed 4000097 side 0 margin +73 first 99/99 desync 0
+[800/1200] 3260s 14.7 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000099 side 0 margin -79 first 99/99 desync 0
+[820/1200] 3348s 14.7 matches/min  last: strategic_v27:reserve_stage=1.5 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000102 side 1 margin +75 first 99/99 desync 0
+[840/1200] 3417s 14.8 matches/min  last: strategic_v25 vs strategic_v25 seed 4000105 side 1 margin +55 first 99/99 desync 0
+[860/1200] 3487s 14.8 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000107 side 0 margin +79 first 99/99 desync 0
+[880/1200] 3608s 14.6 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000110 side 0 margin +84 first 99/99 desync 0
+[900/1200] 3692s 14.6 matches/min  last: strategic_v27:reserve_stage=1.5 vs strategic_v25 seed 4000111 side 1 margin -4 first 99/99 desync 0
+[920/1200] 3799s 14.5 matches/min  last: strategic_v25 vs strategic_v25 seed 4000115 side 1 margin +59 first 99/99 desync 0
+[940/1200] 3874s 14.6 matches/min  last: strategic_v25 vs strategic_v25 seed 4000118 side 0 margin -74 first 99/99 desync 0
+[960/1200] 3936s 14.6 matches/min  last: strategic_v25 vs strategic_v25 seed 4000120 side 1 margin +89 first 99/99 desync 0
+[980/1200] 4032s 14.6 matches/min  last: strategic_v25 vs strategic_v25 seed 4000123 side 0 margin +71 first 99/99 desync 0
+[1000/1200] 4136s 14.5 matches/min  last: strategic_v27:reserve_stage=1.5 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000124 side 0 margin +47 first 99/99 desync 0
+[1020/1200] 4217s 14.5 matches/min  last: strategic_v27:reserve_stage=1.5 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000127 side 1 margin +83 first 99/99 desync 0
+[1040/1200] 4281s 14.6 matches/min  last: strategic_v25 vs strategic_v25 seed 4000130 side 0 margin -17 first 99/99 desync 0
+[1060/1200] 4351s 14.6 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000132 side 0 margin -58 first 99/99 desync 0
+[1080/1200] 4405s 14.7 matches/min  last: strategic_v25 vs strategic_v25 seed 4000135 side 1 margin +81 first 99/99 desync 0
+[1100/1200] 4463s 14.8 matches/min  last: strategic_v27:reserve_stage=1.5 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000137 side 0 margin +73 first 99/99 desync 0
+[1120/1200] 4522s 14.9 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000139 side 0 margin -74 first 99/99 desync 0
+[1140/1200] 4584s 14.9 matches/min  last: strategic_v27:reserve_stage=1.5 vs strategic_v25 seed 4000143 side 0 margin +84 first 99/99 desync 0
+[1160/1200] 4643s 15.0 matches/min  last: strategic_v25 vs strategic_v25 seed 4000144 side 1 margin +34 first 99/99 desync 0
+[1180/1200] 4709s 15.0 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000147 side 1 margin -84 first 99/99 desync 0
+[1200/1200] 4781s 15.1 matches/min  last: strategic_v25 vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p14_v25.pt seed 4000149 side 0 margin -41 first 99/99 desync 0
+done 1200 matches in 4781s

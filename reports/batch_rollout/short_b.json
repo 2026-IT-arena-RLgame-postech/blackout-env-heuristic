@@ -1,0 +1,101 @@
+[
+ {
+  "spec": "p11",
+  "n": 300,
+  "dlead_mean": -0.12333333333333334,
+  "same_dlead": 1.0,
+  "mean_abs_diff": 0.0,
+  "bias": 0.0,
+  "bias_se": 0.0,
+  "corr": 1.0,
+  "game_decisions_per_s": 3283.778535072804
+ },
+ {
+  "spec": "p11~fp16",
+  "n": 300,
+  "dlead_mean": -0.16333333333333333,
+  "same_dlead": 0.9366666666666666,
+  "mean_abs_diff": 0.35333333333333333,
+  "bias": -0.04,
+  "bias_se": 0.09720279574455361,
+  "corr": 0.9945484287872243,
+  "game_decisions_per_s": 4419.70044381008
+ },
+ {
+  "spec": "p11@2",
+  "n": 300,
+  "dlead_mean": -0.05,
+  "same_dlead": 0.6633333333333333,
+  "mean_abs_diff": 1.9066666666666667,
+  "bias": 0.07333333333333333,
+  "bias_se": 0.2581640578930599,
+  "corr": 0.9614326989335078,
+  "game_decisions_per_s": 6897.3980667126025
+ },
+ {
+  "spec": "p11@4",
+  "n": 300,
+  "dlead_mean": -0.07666666666666666,
+  "same_dlead": 0.5166666666666667,
+  "mean_abs_diff": 3.26,
+  "bias": 0.04666666666666667,
+  "bias_se": 0.37623592936451306,
+  "corr": 0.9149382522138548,
+  "game_decisions_per_s": 13591.193794729445
+ },
+ {
+  "spec": "v23",
+  "n": 300,
+  "dlead_mean": -0.07333333333333333,
+  "same_dlead": 0.47,
+  "mean_abs_diff": 3.256666666666667,
+  "bias": 0.05,
+  "bias_se": 0.4008665363099174,
+  "corr": 0.9058852309178634,
+  "game_decisions_per_s": 452.4020912930116
+ },
+ {
+  "spec": "small:checkpoints/rollout_net/r1.pt",
+  "n": 300,
+  "dlead_mean": -0.013333333333333334,
+  "same_dlead": 0.27666666666666667,
+  "mean_abs_diff": 4.983333333333333,
+  "bias": 0.11,
+  "bias_se": 0.4885006524073971,
+  "corr": 0.8541597699453035,
+  "game_decisions_per_s": 21671.340981441863
+ },
+ {
+  "spec": "small:checkpoints/rollout_net/r2.pt",
+  "n": 300,
+  "dlead_mean": -0.12333333333333334,
+  "same_dlead": 0.27,
+  "mean_abs_diff": 4.613333333333333,
+  "bias": 0.0,
+  "bias_se": 0.4475873637185651,
+  "corr": 0.8779312680997089,
+  "game_decisions_per_s": 24263.64445063332
+ },
+ {
+  "spec": "small:checkpoints/rollout_net/r4.pt",
+  "n": 300,
+  "dlead_mean": -0.6566666666666666,
+  "same_dlead": 0.32666666666666666,
+  "mean_abs_diff": 4.286666666666667,
+  "bias": -0.5333333333333333,
+  "bias_se": 0.425636996126042,
+  "corr": 0.8932016040151002,
+  "game_decisions_per_s": 21032.133572296036
+ },
+ {
+  "spec": "small:checkpoints/rollout_net/r4.pt@2",
+  "n": 300,
+  "dlead_mean": -0.48,
+  "same_dlead": 0.31333333333333335,
+  "mean_abs_diff": 4.323333333333333,
+  "bias": -0.3566666666666667,
+  "bias_se": 0.4208718013920465,
+  "corr": 0.8936869455030495,
+  "game_decisions_per_s": 43954.94461760662
+ }
+]

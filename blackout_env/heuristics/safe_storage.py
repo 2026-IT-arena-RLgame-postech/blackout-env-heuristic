@@ -1,11 +1,4 @@
-"""V3 (``strategic_v3``, parent V2): risk-aware choice of where to deposit cargo.
-
-V1/V2 deposit in the nearest storage that fits.  V3 scores every fitting own storage by
-travel distance, a bonus for the protected in-base storage (it cannot be raided, and a unit
-inside the base cannot be intercepted), and a penalty for lethal enemies near exposed
-storages.  The protected bonus shrinks to 20% when the protected store cannot be reached
-before the next absorption, so cargo still lands (and scores) in time.  Only the deposit decision changes; V4 adds tile spreading on top.
-"""
+"""Third-generation heuristic: V2 coordination plus risk-aware deposits."""
 
 from __future__ import annotations
 
@@ -37,7 +30,6 @@ class StrategicHeuristicV3(StrategicHeuristicV2):
         local_index: int,
         team_state: np.ndarray,
     ) -> tuple[tuple[int, int] | None, str]:
-        """Cargo holders use ``_risk_aware_storage_target``; everything else is V2/V1."""
         if self._is_holding(state):
             origin = self._to_pixel(state[:2], graphic.shape[:2])
             target, can_deposit = self._risk_aware_storage_target(
@@ -56,16 +48,20 @@ class StrategicHeuristicV3(StrategicHeuristicV2):
         origin: tuple[int, int],
         team_state: np.ndarray,
     ) -> tuple[tuple[int, int] | None, bool]:
-        """Pick the own storage minimising distance - protected bonus + nearby-threat cost.
-
-        Only components with room for the whole item are candidates (same atomic-capacity
-        rule as ``_storage_target``, which is also the fallback when none fit).  Returns
-        (component centre, can_deposit).
-        """
         components = self._cached_components(graphic[..., STORAGE_ALLY] > 0.5)
         if not components:
             return None, False
+        available = self._fitting_storage_components(graphic, state, components)
+        if not available:
+            return self._storage_target(graphic, state, origin)
+        costs = self._storage_component_costs(graphic, state, states, origin, team_state, components, available)
+        chosen = min(costs, key=lambda pair: pair[0])[1]
+        return self._component_center(chosen), True
 
+    def _fitting_storage_components(
+        self, graphic: np.ndarray, state: np.ndarray, components: list[list[tuple[int, int]]]
+    ) -> list[list[tuple[int, int]]]:
+        """Storages whose free capacity takes the held item whole (Storage.TryDistributeItem)."""
         held_slot = int(np.argmax(state[3:9]))
         special_presence = np.any(graphic[..., FIRST_SPECIAL:] > 0.5, axis=-1)
 
@@ -86,10 +82,19 @@ class StrategicHeuristicV3(StrategicHeuristicV2):
                 )
             return True
 
-        available = [component for component in components if fits(component)]
-        if not available:
-            return self._storage_target(graphic, state, origin)
+        return [component for component in components if fits(component)]
 
+    def _storage_component_costs(
+        self,
+        graphic: np.ndarray,
+        state: np.ndarray,
+        states: np.ndarray,
+        origin: tuple[int, int],
+        team_state: np.ndarray,
+        components: list[list[tuple[int, int]]],
+        available: list[list[tuple[int, int]]],
+    ) -> list[tuple[float, list[tuple[int, int]]]]:
+        """(cost, component) for every storage that fits the cargo; the minimum is chosen."""
         spawn = self._nearest_pixel(graphic[..., SPAWN_ALLY] > 0.5, origin)
         protected = None if spawn is None else min(
             components,
@@ -102,7 +107,7 @@ class StrategicHeuristicV3(StrategicHeuristicV2):
 
         def cost(component):
             center = self._component_center(component)
-            distance = math.dist(origin, center)
+            distance = self._storage_distance(graphic, origin, component)
             is_protected = component is protected
             # A home deposit is unraidable and its carrier cannot be intercepted inside base.
             # Close to absorption, use any substantially nearer store so cargo still lands in
@@ -122,5 +127,9 @@ class StrategicHeuristicV3(StrategicHeuristicV2):
                     threat += max(0.0, 6.0 - separation) * 1.6
             return distance + safety + threat
 
-        chosen = min(available, key=cost)
-        return self._component_center(chosen), True
+        return [(cost(component), component) for component in available]
+
+    def _storage_distance(
+        self, graphic: np.ndarray, origin: tuple[int, int], component: list[tuple[int, int]]
+    ) -> float:
+        return math.dist(origin, self._component_center(component))

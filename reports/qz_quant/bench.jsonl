@@ -1,0 +1,9 @@
+{"mode": "fp32", "n": 2048, "ms": 155.85, "views_per_s": 13141, "gpu": "NVIDIA GeForce RTX 2080 Ti"}
+{"mode": "fp32", "n": 4096, "ms": 313.89, "views_per_s": 13049, "gpu": "NVIDIA GeForce RTX 2080 Ti"}
+{"mode": "fp32", "n": 8192, "ms": 631.47, "views_per_s": 12973, "gpu": "NVIDIA GeForce RTX 2080 Ti"}
+{"mode": "fp16", "n": 2048, "ms": 94.34, "views_per_s": 21708, "gpu": "NVIDIA GeForce RTX 2080 Ti"}
+{"mode": "fp16", "n": 4096, "ms": 188.48, "views_per_s": 21732, "gpu": "NVIDIA GeForce RTX 2080 Ti"}
+{"mode": "fp16", "n": 8192, "ms": 373.47, "views_per_s": 21935, "gpu": "NVIDIA GeForce RTX 2080 Ti"}
+{"mode": "fp16c", "n": 2048, "ms": 48.65, "views_per_s": 42094, "gpu": "NVIDIA GeForce RTX 2080 Ti"}
+{"mode": "fp16c", "n": 4096, "ms": 81.1, "views_per_s": 50503, "gpu": "NVIDIA GeForce RTX 2080 Ti"}
+{"mode": "fp16c", "n": 8192, "ms": 161.6, "views_per_s": 50693, "gpu": "NVIDIA GeForce RTX 2080 Ti"}

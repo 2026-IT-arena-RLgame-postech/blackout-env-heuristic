@@ -1,0 +1,22 @@
+40 chunks
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin +0.0 wall 210s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin +0.0 wall 217s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin +0.0 wall 229s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin +0.0 wall 247s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,hunter_quota=2 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin -63.7 wall 219s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,hunter_quota=2 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin -70.4 wall 214s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,hunter_quota=2 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin -53.2 wall 242s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,hunter_quota=2 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 16 matches margin -70.5 wall 231s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +32.2 wall 166s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin -13.9 wall 162s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +5.9 wall 158s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin +23.2 wall 193s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,hunter_quota=2 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin -70.4 wall 149s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,hunter_quota=2 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin -63.7 wall 157s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,hunter_quota=2 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin -53.2 wall 174s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,hunter_quota=2 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 16 matches margin -70.5 wall 175s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs p17] 16 matches margin +47.1 wall 199s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs p17] 16 matches margin +46.1 wall 241s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs p17] 16 matches margin +19.1 wall 252s
+/usr/lib/python3.12/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 6 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

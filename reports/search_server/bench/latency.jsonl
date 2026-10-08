@@ -1,0 +1,9 @@
+{"setup": "server(threads 4)", "roots": 1, "ms_batch": 233.37867599911988, "ms_p95": 240.83221121691167, "ms_root": 233.37867599911988, "device": "cuda", "load1": 24.55029296875}
+{"setup": "server(threads 4)", "roots": 2, "ms_batch": 240.41050635278225, "ms_p95": 246.05160686187446, "ms_root": 120.20525317639112, "device": "cuda", "load1": 24.55029296875}
+{"setup": "server(threads 4)", "roots": 4, "ms_batch": 298.7226496450603, "ms_p95": 320.61771964654326, "ms_root": 74.68066241126508, "device": "cuda", "load1": 24.55029296875}
+{"setup": "server(threads 4)", "roots": 8, "ms_batch": 414.20992352068424, "ms_p95": 418.620029091835, "ms_root": 51.77624044008553, "device": "cuda", "load1": 24.55029296875}
+{"setup": "server(threads 4)", "roots": 12, "ms_batch": 584.4146034214646, "ms_p95": 610.1581435650587, "ms_root": 48.701216951788716, "device": "cuda", "load1": 24.55029296875}
+{"setup": "server(threads 4)", "roots": 16, "ms_batch": 756.712572555989, "ms_p95": 759.0052866376936, "ms_root": 47.294535784749314, "device": "cuda", "load1": 24.55029296875}
+{"setup": "server(threads 4)", "roots": 24, "ms_batch": 855.5912576150149, "ms_p95": 876.3124508783221, "ms_root": 35.64963573395895, "device": "cuda", "load1": 24.55029296875}
+{"setup": "server(threads 4)", "roots": 32, "ms_batch": 1052.2819411940873, "ms_p95": 1121.645330497995, "ms_root": 32.88381066231523, "device": "cuda", "load1": 24.55029296875}
+{"setup": "per-worker (1 thread, exact graphs)", "roots": 1, "ms_batch": 237.15815920149907, "ms_p95": 242.29101240634918, "ms_root": 237.15815920149907, "device": "cuda", "load1": 24.55029296875}

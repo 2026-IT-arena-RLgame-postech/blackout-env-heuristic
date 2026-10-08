@@ -1,0 +1,122 @@
+{
+ "P24c": {
+  "elo": 2665.570641849581,
+  "se": 22.476958133846985,
+  "spec": "net:checkpoints/distill/frozen/p24c_v321.pt"
+ },
+ "V32.1": {
+  "elo": 2611.315409006025,
+  "se": 22.256914013148556,
+  "spec": "strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=3"
+ },
+ "P21e": {
+  "elo": 2567.027857767427,
+  "se": 22.102203406279216,
+  "spec": "net:checkpoints/distill/frozen/p21e_v30.pt"
+ },
+ "P22": {
+  "elo": 2565.538899617093,
+  "se": 22.09222564896647,
+  "spec": "net:checkpoints/distill/frozen/p22_v31.pt"
+ },
+ "P20": {
+  "elo": 2518.2345102450354,
+  "se": 21.95118855489782,
+  "spec": "net:checkpoints/distill/frozen/p20_v30.pt"
+ },
+ "P18bp2": {
+  "elo": 2448.015979386518,
+  "se": 21.72019013972018,
+  "spec": "net:checkpoints/distill/frozen/p18bp2_v29.pt"
+ },
+ "V31": {
+  "elo": 2446.630100495747,
+  "se": 21.721693724737698,
+  "spec": "strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5"
+ },
+ "P19": {
+  "elo": 2348.168057422,
+  "se": 21.581996205248622,
+  "spec": "net:checkpoints/distill/frozen/p19_v30.pt"
+ },
+ "P17": {
+  "elo": 2314.598103803208,
+  "se": 21.554659078956842,
+  "spec": "net:checkpoints/distill/frozen/p17_v28.pt"
+ },
+ "V28": {
+  "elo": 2209.5653457296576,
+  "se": 21.329174698255184,
+  "spec": "strategic_v28:reserve_stage=0.5,trade_hold=advance"
+ },
+ "P16": {
+  "elo": 2204.720981415033,
+  "se": 21.285183134869893,
+  "spec": "net:checkpoints/distill/frozen/p16_v27.pt"
+ },
+ "P14": {
+  "elo": 1899.295086477309,
+  "se": 22.159478396604626,
+  "spec": "net:checkpoints/distill/frozen/p14_v25.pt"
+ },
+ "V25": {
+  "elo": 1897.428865026004,
+  "se": 22.211524519780802,
+  "spec": "strategic_v25"
+ },
+ "P11": {
+  "elo": 1338.2196117515095,
+  "se": 24.327565250762156,
+  "spec": "net:checkpoints/distill/frozen/p11_v22.pt"
+ },
+ "V22": {
+  "elo": 1206.5252569708227,
+  "se": 25.095629920562633,
+  "spec": "strategic_v22"
+ },
+ "P5a": {
+  "elo": 837.1065313571662,
+  "se": 25.948022869279797,
+  "spec": "net:checkpoints/distill/frozen/p5a_v22.pt"
+ },
+ "D6": {
+  "elo": 647.1001012184362,
+  "se": 27.62518101330435,
+  "spec": "net:checkpoints/distill/frozen/d6_v42.pt"
+ },
+ "V19": {
+  "elo": 531.5395607380292,
+  "se": 27.970588085355523,
+  "spec": "strategic_v19"
+ },
+ "V17": {
+  "elo": 491.95155104303785,
+  "se": 28.348980213501555,
+  "spec": "strategic_v17"
+ },
+ "V7": {
+  "elo": 161.48381421696263,
+  "se": 29.58097851558039,
+  "spec": "strategic_v7"
+ },
+ "V4": {
+  "elo": 144.76957504364327,
+  "se": 29.65663406163618,
+  "spec": "strategic_v4"
+ },
+ "V15": {
+  "elo": 117.6423230948676,
+  "se": 29.877685676434123,
+  "spec": "strategic_v15"
+ },
+ "V5": {
+  "elo": 1.5303727020689166,
+  "se": 30.403970532336942,
+  "spec": "strategic_v5"
+ },
+ "V1": {
+  "elo": -173.9785363771814,
+  "se": 31.53868923253911,
+  "spec": "strategic_v1"
+ }
+}

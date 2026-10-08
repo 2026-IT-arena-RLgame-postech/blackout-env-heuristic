@@ -1,0 +1,20 @@
+r6a            vs p11              n= 256 seeds= 128  search   +1.6  plain   +2.1  diff   -0.5 ±  4.3  win(sign) +0.06 vs +0.10  race w/t/l (31, 224, 1) vs (22, 232, 2)  capped 0.32/0.30  len 160s  wall 0.9s/match (plain 2.36)  e0 w0 m0 B1
+                  base share 0.00; 
+r6a            vs r5               n= 256 seeds= 128  search   +6.2  plain   +0.0  diff   +6.2 ±  3.6  win(sign) +0.09 vs +0.00  race w/t/l (30, 203, 23) vs (22, 212, 22)  capped 0.32/0.35  len 162s  wall 1.1s/match (plain 0.54)  e0 w0 m0 B1
+                  base share 0.00; 
+r6a            vs strategic_v23    n= 128 seeds=  64  search   -3.0  plain   -4.2  diff   +1.2 ±  5.5  win(sign) +0.03 vs +0.02  race w/t/l (15, 103, 10) vs (9, 108, 11)  capped 0.32/0.34  len 159s  wall 1.7s/match (plain 1.70)  e0 w0 m0 B1
+                  base share 0.00; 
+r6b            vs p11              n= 256 seeds= 128  search   +4.9  plain   +2.1  diff   +2.8 ±  4.0  win(sign) +0.11 vs +0.10  race w/t/l (25, 230, 1) vs (22, 232, 2)  capped 0.31/0.30  len 156s  wall 0.7s/match (plain 2.36)  e0 w0 m0 B1
+                  base share 0.00; 
+r6b            vs r5               n= 256 seeds= 128  search   +1.9  plain   +0.0  diff   +1.9 ±  3.3  win(sign) -0.01 vs +0.00  race w/t/l (22, 208, 26) vs (22, 212, 22)  capped 0.33/0.35  len 166s  wall 0.3s/match (plain 0.54)  e0 w0 m0 B1
+                  base share 0.00; 
+r6b            vs strategic_v23    n= 128 seeds=  64  search   +2.2  plain   -4.2  diff   +6.4 ±  5.2  win(sign) +0.08 vs +0.02  race w/t/l (8, 110, 10) vs (9, 108, 11)  capped 0.30/0.34  len 152s  wall 1.7s/match (plain 1.70)  e0 w0 m0 B1
+                  base share 0.00; 
+r6c            vs p11              n= 256 seeds= 128  search   +2.6  plain   +2.1  diff   +0.5 ±  4.5  win(sign) +0.06 vs +0.10  race w/t/l (36, 219, 1) vs (22, 232, 2)  capped 0.31/0.30  len 155s  wall 0.7s/match (plain 2.36)  e0 w0 m0 B1
+                  base share 0.00; 
+r6c            vs r5               n= 256 seeds= 128  search   +7.5  plain   +0.0  diff   +7.5 ±  3.8  win(sign) +0.12 vs +0.00  race w/t/l (28, 209, 19) vs (22, 212, 22)  capped 0.34/0.35  len 171s  wall 0.3s/match (plain 0.54)  e0 w0 m0 B1
+                  base share 0.00; 
+r6d            vs p11              n= 256 seeds= 128  search   +6.7  plain   +2.1  diff   +4.6 ±  4.6  win(sign) +0.11 vs +0.10  race w/t/l (35, 219, 2) vs (22, 232, 2)  capped 0.30/0.30  len 150s  wall 0.5s/match (plain 2.36)  e0 w0 m0 B1
+                  base share 0.00; 
+r6d            vs r5               n= 256 seeds= 128  search   +7.9  plain   +0.0  diff   +7.9 ±  3.0  win(sign) +0.13 vs +0.00  race w/t/l (28, 207, 21) vs (22, 212, 22)  capped 0.36/0.35  len 172s  wall 0.2s/match (plain 0.54)  e0 w0 m0 B1
+                  base share 0.00; 

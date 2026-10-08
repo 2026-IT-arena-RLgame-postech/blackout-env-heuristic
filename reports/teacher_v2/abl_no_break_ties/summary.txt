@@ -1,0 +1,5 @@
+candidate                                  inference opponent                                       n  margin   ±se   win H<30s H<60s H<120 Ca<60 end_s  agree deliv/1k  rev/1k die/1k @base camped
+teacher:act:strategic_v22:break_ties=false -         ckpt-frozen-d6_v42                            24   +59.4   5.0  0.92   2.6   3.2   2.2   1.0    49    nan      3.0      39   1.69  0.50   0.11
+teacher:act:strategic_v22:break_ties=false -         ckpt-frozen-p5a_v22                           24   +46.5   7.5  0.83   2.4   2.8   2.9   1.0    62    nan      2.5      42   1.24  0.49   0.11
+
+paired gap (candidate - teacher)           inference opponent                                     seeds     gap   ±se

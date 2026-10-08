@@ -1,0 +1,9 @@
+== 06:59:26 p21e o4f_r20
+[o4f_r20 vs p21e] 128/384 margin +11.1 wall 2341s (search 2069s, 7650 roots)
+[o4f_r20 vs p21e] 256/384 margin +15.7 wall 1914s (search 1662s, 6600 roots)
+[o4f_r20 vs p21e] 384/384 margin +12.5 wall 2224s (search 1956s, 7268 roots)
+== 08:47:32 v28 o4f_r20
+[o4f_r20 vs v28] 128/384 margin +60.9 wall 1900s (search 1254s, 5190 roots)
+[o4f_r20 vs v28] 256/384 margin +65.5 wall 1642s (search 1103s, 4617 roots)
+[o4f_r20 vs v28] 384/384 margin +67.6 wall 1711s (search 1126s, 4722 roots)
+== 10:15:13 lane l done

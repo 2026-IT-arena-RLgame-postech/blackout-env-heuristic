@@ -1,27 +1,4 @@
-"""Reproducible heuristic policy families for BC and offline-RL data collection.
-
-HeuristicPolicyMixture is the teacher behind every heuristic dataset (collect_heuristic_dataset*
-via QMIXTrainer.heuristic_a/b, one independently seeded mixture per team) and, optionally, the
-on-policy opponent (offline_pretrain --onpolicy-opponent mixture). It draws from
-POLICY_REGISTRY: the V1-V19 StrategicHeuristic line plus ``strategic_v4_near``
-(V4PolicyFamily, V4 with small parameter variants).
-
-  - Which heuristic: one ``policy_id`` per match, drawn from the Elo-informed weight table in
-    HeuristicPolicyMixture.__init__ (V17-V19 32% combined, V4 + V4-near 19%, weak policies at
-    1-2%). It never changes mid-match.
-  - Parameter cloud: with ``perturb`` (default) each policy gets a bounded random draw of common
-    knobs (replan_interval, threat_radius, 8% chance of no specialists) plus per-version knobs;
-    V4-near samples one of V4PolicyFamily's profiles instead.
-  - Per-absorption resampling: with ``resample_each_absorption`` (default) the numeric knobs are
-    redrawn at every absorption (20 s) by retuning the running policy in place -- never
-    rebuilding it -- so paths, roles and mode state carry over. ``use_specialists`` stays fixed
-    for the match because it changes the role scheme.
-  - ``current_sample`` (PolicySample) records policy_id, seed and parameters; collectors store
-    policy_id with every row (train/policy_strength.py uses it for BC weighting).
-
-The action noise used in data collection (--noise-frac) is applied by the collector, not here.
-docs/heuristic_policy_catalog_ko.md describes each version and the weight rationale.
-"""
+"""Reproducible heuristic policy families for BC and offline-RL data collection."""
 
 from __future__ import annotations
 
@@ -48,6 +25,25 @@ from .counterplay_strategies import (
 from .v17_planner import StrategicHeuristicV17
 from .v18_counter import StrategicHeuristicV18
 from .v19_counter import StrategicHeuristicV19
+from .v20_anticamp import StrategicHeuristicV20
+from .v21_safe_transform import StrategicHeuristicV21
+from .any_angle import StrategicHeuristicV21AnyAngle, StrategicHeuristicV21AnyAngleED
+from .v22_teacher import StrategicHeuristicV22
+from .v23_opening import StrategicHeuristicV23
+from .v25_race import StrategicHeuristicV25
+from .v26_trade import StrategicHeuristicV26
+from .v27_reserve import StrategicHeuristicV27
+from .v28_trade_hold import StrategicHeuristicV28
+from .v29_reserve_join import StrategicHeuristicV29
+from .v30_solo_sentry import StrategicHeuristicV30
+from .v31_carrier_evade import StrategicHeuristicV31
+from .v32_four_hunters import StrategicHeuristicV32
+from .v24_late import StrategicHeuristicV24
+from .raider import StrategicRaider
+from .cargo_hunter import StrategicCargoHunter
+from .early_rush import StrategicEarlyRush
+from .fortress import StrategicFortress
+from .duelist import StrategicDuelist
 
 
 @dataclass(frozen=True)
@@ -80,7 +76,32 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
     "strategic_v17": StrategicHeuristicV17,
     "strategic_v18": StrategicHeuristicV18,
     "strategic_v19": StrategicHeuristicV19,
+    "strategic_v20": StrategicHeuristicV20,  # not in the mixture's default weights
+    "strategic_v21": StrategicHeuristicV21,  # not in the mixture's default weights
+    "strategic_v21_anyangle": StrategicHeuristicV21AnyAngle,  # any-angle moves; not in the default weights
+    "strategic_v21_anyangle_ed": StrategicHeuristicV21AnyAngleED,  # + any-angle target distances; not in the weights
+    "strategic_v22": StrategicHeuristicV22,  # any-angle V21 that wins the opening race; not in the default weights
+    "strategic_v23": StrategicHeuristicV23,  # V22 racing on the exact any-angle field; not in the default weights
+    "strategic_v24": StrategicHeuristicV24,  # V23 + late-game rules (Hunters relieve pinned cargo); not in the default weights
+    "strategic_v25": StrategicHeuristicV25,  # V23 + exact taut race walk (enters at decision 99); not in the default weights
+    "strategic_v26": StrategicHeuristicV26,  # V25 + Hunter-for-Hunter trades after a lost race (P15: no gain, -9.9 vs V25); not in the default weights
+    "strategic_v27": StrategicHeuristicV27,  # V25 + a staged reserve walker for the second race (Q6); rules default off = V25; not in the default weights
+    "strategic_v28": StrategicHeuristicV28,  # V27 + reserve does not evade Hunters about to trade (Q7); trade_hold default off = V27; not in the default weights
+    "strategic_v29": StrategicHeuristicV29,  # V28 + the staged reserve joins a tied race (Q10); reserve_join default off = V28; not in the default weights
+    "strategic_v30": StrategicHeuristicV30,  # V29 + a lone Hunter already keeps the sanctuary (Q11); solo_sentry default off = V29; not in the default weights
+    "strategic_v31": StrategicHeuristicV31,  # V30 + a Carrier that flees only nearer enemies (Q12); scales default 1 = V30; not in the default weights
+    "strategic_v32": StrategicHeuristicV32,  # V31 + V18 exit guard / V19 sanctuary sweep for 4 Hunters (V32, §58); defaults = V31; not in the default weights
+    # Named strategies on the V17 planner, each on a strategic axis the V-series lacks (held-out
+    # opponents for distillation; not in the mixture's default weights):
+    "strategic_raider": StrategicRaider,  # steal-first economy, Hunter escorts the thieves
+    "strategic_cargo_hunter": StrategicCargoHunter,  # Hunters intercept only cargo and Carriers
+    "strategic_early_rush": StrategicEarlyRush,  # 4-Hunter opening sweep, then 1 Hunter + Carrier
+    "strategic_fortress": StrategicFortress,  # zone defence, protected deposits, Hunter-free tasks
+    "strategic_duelist": StrategicDuelist,  # Hunters hunt Hunters, escort our cargo otherwise
 }
+
+
+TOP_TIER = ("strategic_v17", "strategic_v18", "strategic_v19")
 
 
 def make_heuristic(policy_id: str, **parameters) -> BaseModel:
@@ -118,17 +139,14 @@ class HeuristicPolicyMixture(BaseModel):
         weights: dict[str, float] | None = None,
         perturb: bool = True,
         resample_each_absorption: bool = True,
+        perturb_top_tier: bool = False,
     ):
-        """
-        seed: drives every draw (policy_id per match, parameter seeds), so the same seed replays
-            the same sequence of policies and parameters.
-        weights: policy_id -> relative weight (normalized here; zeros allowed, negatives not).
-            None uses the default table below.
-        perturb: False plays each policy at its fixed defaults (V4-near at its exact profile)
-            and disables per-absorption resampling.
-        resample_each_absorption: redraw the parameter cloud at each absorption (see class doc).
-        """
+        """perturb_top_tier: also vary V17-V19's own strategy knobs (see _top_tier_parameters),
+        which ``perturb`` alone leaves at their defaults; off by default so existing collections
+        replay unchanged."""
         self._rng = np.random.default_rng(seed)
+        self.perturb_top_tier = bool(perturb_top_tier)
+        self._match_structure: dict[str, int | str] = {}
         # Rebalanced 2026-09-16 against the 64s-truncated adaptive Bradley-Terry fits
         # (examples/elo_active.py): reports/elo_active_20260916/ for all 20 policies (SE 42-65) and
         # reports/elo_active_mid_20260916/ for the middle tier alone (78/78 pairs, 1,324 games,
@@ -280,6 +298,8 @@ class HeuristicPolicyMixture(BaseModel):
                 parameters.update({
                     "cargo_amount_weight": float(episode_rng.uniform(15.0, 26.0)),
                 })
+            elif policy_id in TOP_TIER and self.perturb_top_tier:
+                parameters.update(self._top_tier_parameters(policy_id, episode_rng, new_match))
             elif policy_id == "strategic_v16":
                 parameters.update({
                     "mode_confirm_ticks": int(episode_rng.integers(8, 18)),
@@ -301,14 +321,31 @@ class HeuristicPolicyMixture(BaseModel):
         self.current_sample = PolicySample(policy_id, policy_seed, parameters)
         return self.current_sample
 
-    def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
-        """Delegate to this match's policy, detecting match/absorption boundaries from team_state.
+    def _top_tier_parameters(self, policy_id: str, rng: np.random.Generator, new_match: bool) -> dict:
+        """Knobs of the V17 planner family.  Role counts and the Hunter mode change who does what,
+        so like ``use_specialists`` they are drawn once per match; the weights are redrawn with
+        the rest at every absorption."""
+        if new_match:
+            default_hunters = 3 if policy_id == "strategic_v17" else 4
+            self._match_structure = {
+                "hunter_quota": int(rng.choice([default_hunters - 1, default_hunters], p=[0.3, 0.7])),
+                "hunter_mode": str(rng.choice(["mixed", "hunt"], p=[0.8, 0.2])),
+            }
+        scale = rng.uniform(0.7, 1.3, size=4)
+        parameters = {
+            **self._match_structure,
+            "exposure_cost": float(rng.uniform(0.6, 1.2)),
+            "steal_weight": float(rng.uniform(1.3, 2.3)),
+            "camp_engage_radius": float(rng.uniform(3.5, 5.5)),
+            "special_weights": tuple(float(w * k) for w, k in zip((0.45, 0.8, 0.12, 0.12), scale)),
+        }
+        if policy_id in ("strategic_v18", "strategic_v19"):
+            parameters["guard_radius"] = float(rng.uniform(5.5, 8.5))
+        if policy_id == "strategic_v19":
+            parameters.update(sweep_radius=float(rng.uniform(7.0, 11.0)), sentry_radius=float(rng.uniform(5.5, 8.5)))
+        return parameters
 
-        A rise in episode_time_left (team_state[2]) means Unity started a new match: reset()
-        draws a new policy_id. A rise in absorption_time_left (team_state[3]) means an
-        absorption fired: only the parameters are redrawn (when perturb and
-        resample_each_absorption are set).
-        """
+    def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
         assert self._policy is not None
         if obs:
             team_state = next(iter(obs.values()))["team_state"]

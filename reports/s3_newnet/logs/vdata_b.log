@@ -1,0 +1,7 @@
+opponent p11: 256 matches, 256 to play
+[p11] 128/256: 26015 rows (traj 0, branch 26015), 56 root ticks, match len 105s, chunk 576s (branches 251s); total 26015 rows, 588s
+[p11] 256/256: 25053 rows (traj 0, branch 25053), 54 root ticks, match len 104s, chunk 447s (branches 212s); total 51068 rows, 1043s
+opponent r5: 192 matches, 192 to play
+[r5] 128/192: 29739 rows (traj 0, branch 29739), 54 root ticks, match len 135s, chunk 346s (branches 222s); total 80807 rows, 1397s
+[r5] 192/192: 14751 rows (traj 0, branch 14751), 55 root ticks, match len 129s, chunk 177s (branches 101s); total 95558 rows, 1578s
+opponent strategic_v23: 192 matches, 192 to play

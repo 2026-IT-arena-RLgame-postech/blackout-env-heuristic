@@ -1,0 +1,25 @@
+# paired gap = (learner - opponent score) new - old, paired by (opponent, seed, swap); se over pairs
+== strategic_v21_anyangle_ed vs strategic_v21_anyangle
+opponent                     n            new            old        new-old
+strategic_v17               48   +54.3± 5.0    +44.5± 6.9     +9.8± 6.8
+strategic_v19               48   +40.9± 6.0    +39.9± 6.2     +1.0± 6.5
+strategic_v21               48   +39.3± 5.8    +34.4± 7.2     +4.9± 6.6
+strategic_v21_anyangle      48    +2.4± 9.3     +0.0± 8.9     +2.4± 8.4
+strategic_v4                48   +59.4± 3.0    +60.7± 2.6     -1.3± 3.8
+all                        240                                  +3.4± 2.9
+== strategic_v21_anyangle_ed_rankonly vs strategic_v21_anyangle
+opponent                     n            new            old        new-old
+strategic_v17               24   +28.4±11.3    +44.5± 6.9     -8.3± 5.2
+strategic_v19               24   +23.9± 8.5    +39.9± 6.2    -16.9± 7.9
+strategic_v21               24   +25.6±10.1    +34.4± 7.2     +0.1± 7.4
+strategic_v21_anyangle      24   -10.4±12.6     +0.0± 8.9    -10.4± 8.7
+strategic_v4                24   +57.1± 6.4    +60.7± 2.6     -2.5± 6.5
+all                        120                                  -7.6± 3.2
+== strategic_v21_anyangle_ed_v1 vs strategic_v21_anyangle
+opponent                     n            new            old        new-old
+strategic_v17               24   +19.9±10.1    +44.5± 6.9    -16.8± 9.1
+strategic_v19               24   +14.6±10.1    +39.9± 6.2    -26.2±13.0
+strategic_v21               24   +26.4± 9.8    +34.4± 7.2     +0.9±11.8
+strategic_v21_anyangle      24    -5.8±12.0     +0.0± 8.9     -5.8±11.2
+strategic_v4                24   +57.8± 3.7    +60.7± 2.6     -1.8± 4.3
+all                        120                                  -9.9± 4.6

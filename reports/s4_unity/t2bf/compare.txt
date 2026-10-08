@@ -1,0 +1,4 @@
+t2bf vs p11: n=300  t2bf +41.7  - r5 +40.0 ± 4.0  - S3 default +14.4 ± 4.0  (S3 - r5 on these matches +25.6 ± 4.4)  race w/t/l (99, 199, 2) vs S3 (87, 211, 2) vs r5 (21, 276, 3)  win 0.79  same as S3 0.02  search 4650 ms (p95 6050)  search s/match 325  wall 413 s  fallbacks 16  desyncs 5
+   base share 0.82
+t2bf vs v23: n=300  t2bf +35.3  - r5 +43.2 ± 4.0  - S3 default +11.9 ± 3.8  (S3 - r5 on these matches +31.3 ± 4.1)  race w/t/l (84, 207, 9) vs S3 (77, 210, 13) vs r5 (17, 271, 12)  win 0.74  same as S3 0.02  search 5080 ms (p95 6462)  search s/match 329  wall 378 s  fallbacks 36  desyncs 0
+   base share 0.82

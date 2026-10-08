@@ -1,0 +1,25 @@
+{
+  "policy_ids": [
+    "v4",
+    "v9",
+    "v10",
+    "v13",
+    "v14",
+    "v15",
+    "v16"
+  ],
+  "seeds": [
+    137180669,
+    152640206,
+    542698207,
+    379349886,
+    230255476
+  ],
+  "n_seeds": 5,
+  "side_swapped": true,
+  "time_scale": 200.0,
+  "workers": 8,
+  "total_pairs": 21,
+  "completed_pairs": 21,
+  "complete": true
+}

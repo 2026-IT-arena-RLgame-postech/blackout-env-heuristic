@@ -1,0 +1,3 @@
+== strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,hunter_quota=2  - strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance    -76.30 ±  7.08  (32 seeds, z -10.8) REGRESS>1SE
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve  -64.45 ±  3.26  (32 seeds, z -19.8) REGRESS>1SE

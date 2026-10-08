@@ -1,13 +1,8 @@
-"""V2 (``strategic_v2``, parent V1): team-level, path-aware economic task assignment.
+"""Second-generation team-level BlackOut heuristic.
 
 V2 intentionally inherits all navigation and recovery behaviour from V1.  Its isolated
 change is coordinated, path-aware economic task assignment, which makes V1/V2 comparisons
-and later policy-mixture sampling meaningful: every free Collector/Carrier is matched to a
-field battery, steal or special by one global greedy matching on true path distance, instead
-of V1's first-come per-unit choice.  Steals that cannot arrive before the next absorption are
-dropped.  Nearly every later version (V3-V19) builds on V2's ``_assign_economic_tasks`` and
-its per-episode ``_cached_distance_map`` (the Numba Dijkstra in ``_native``).  Weak on its own
-(Elo 1314, 2% of the mixture).
+and later policy-mixture sampling meaningful.
 """
 
 from __future__ import annotations
@@ -18,7 +13,7 @@ from collections import OrderedDict
 
 import numpy as np
 
-from . import _native
+from . import _native, _shared
 from .strategic import (
     ABSORPTION_INTERVAL_SECONDS,
     BATTERY,
@@ -46,11 +41,6 @@ class StrategicHeuristicV2(StrategicHeuristic):
         self._distance_cache.clear()
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
-        """V1's tick, except free economic units get their targets from one team matching.
-
-        Hunters, cargo holders and Collectors still walking to a specialist sanctuary keep
-        V1's per-unit ``_choose_target``; so does any economic unit left unmatched.
-        """
         if not obs:
             return {}
         sample = next(iter(obs.values()))
@@ -114,17 +104,41 @@ class StrategicHeuristicV2(StrategicHeuristic):
         team_state: np.ndarray,
         walkable: np.ndarray,
     ) -> dict[str, tuple[tuple[int, int], str]]:
-        """Greedy one-to-one matching of economic units to battery/steal/special tasks.
+        tasks, pairs, _ = self._economic_candidates(names, row_for, states, graphic, team_state, walkable)
 
-        Value of a (unit, task) pair: intrinsic value (battery amount x2.5; special by type),
-        plus an extra steal bonus rising towards absorption, plus 28 if the battery alone
-        would reach 100 points, minus 0.32 per path cell, minus a danger penalty when a
-        lethal enemy (a Hunter; any enemy for a Carrier) is within 5 cells of the target,
-        plus 1.5 hysteresis for keeping the previous target.  Unreachable tasks and steals
-        that would arrive after absorption are skipped.  Pairs are then taken best-first.
-        """
+        # Global greedy matching considers every unit-task pair together; unit ordering no
+        # longer gives the first Collector first refusal on every high-value battery.
+        pairs.sort(reverse=True, key=lambda p: p[0])
+        assigned_names: set[str] = set()
+        assigned_tasks: set[int] = set()
+        result: dict[str, tuple[tuple[int, int], str]] = {}
+        for _, name, task_idx in pairs:
+            if name in assigned_names or task_idx in assigned_tasks:
+                continue
+            target, kind, _ = tasks[task_idx]
+            result[name] = (target, kind)
+            assigned_names.add(name)
+            assigned_tasks.add(task_idx)
+            if len(assigned_names) == len(names):
+                break
+        return result
+
+    def _economic_candidates(
+        self,
+        names: list[str],
+        row_for: dict[str, int],
+        states: np.ndarray,
+        graphic: np.ndarray,
+        team_state: np.ndarray,
+        walkable: np.ndarray,
+    ) -> tuple[list[tuple[tuple[int, int], str, float]], list[tuple[float, str, int]], dict[tuple[str, int], float]]:
+        """Tasks, every feasible (value, name, task index) pair, and each pair's path distance.
+
+        Separate from the matching so a subclass can choose differently from the same values
+        (heuristics/teach.py claims tasks by arrival time instead of greedy matching)."""
+        distance_of: dict[tuple[str, int], float] = {}
         if not names:
-            return {}
+            return [], [], distance_of
 
         protected_enemy = self._cached_protected_enemy_storage_mask(graphic)
         tasks: list[tuple[tuple[int, int], str, float]] = []
@@ -142,7 +156,7 @@ class StrategicHeuristicV2(StrategicHeuristic):
                     continue
                 tasks.append(((y, x), "special", special_value.get(channel, 3.0)))
         if not tasks:
-            return {}
+            return tasks, [], distance_of
 
         enemy_states = states[states[:, 2] < 0]
         enemy_pixels = [
@@ -186,23 +200,8 @@ class StrategicHeuristicV2(StrategicHeuristic):
                 if old_target == target:
                     value += 1.5  # assignment hysteresis produces cleaner, less twitchy demos
                 pairs.append((value, name, task_idx))
-
-        # Global greedy matching considers every unit-task pair together; unit ordering no
-        # longer gives the first Collector first refusal on every high-value battery.
-        pairs.sort(reverse=True, key=lambda p: p[0])
-        assigned_names: set[str] = set()
-        assigned_tasks: set[int] = set()
-        result: dict[str, tuple[tuple[int, int], str]] = {}
-        for _, name, task_idx in pairs:
-            if name in assigned_names or task_idx in assigned_tasks:
-                continue
-            target, kind, _ = tasks[task_idx]
-            result[name] = (target, kind)
-            assigned_names.add(name)
-            assigned_tasks.add(task_idx)
-            if len(assigned_names) == len(names):
-                break
-        return result
+                distance_of[(name, task_idx)] = distance
+        return tasks, pairs, distance_of
 
     def _cached_distance_map(
         self, walkable: np.ndarray, start: tuple[int, int]
@@ -210,7 +209,11 @@ class StrategicHeuristicV2(StrategicHeuristic):
         """Reuse maps for pixel positions revisited within one static-map episode."""
         cached = self._distance_cache.get(start)
         if cached is None:
-            cached = self._distance_map(walkable, start)
+            fn = self._distance_map
+            key = (getattr(fn, "__func__", fn), walkable.shape, walkable.tobytes(), tuple(start))
+            cached = _shared.DISTANCE_MAPS.get(key)
+            if cached is None:
+                cached = _shared.DISTANCE_MAPS.put(key, _shared.frozen(fn(walkable, start)))
             self._distance_cache[start] = cached
             bytes_per_map = max(1, walkable.size * np.dtype(np.float32).itemsize)
             max_entries = max(32, min(walkable.size, (16 * 1024 * 1024) // bytes_per_map))

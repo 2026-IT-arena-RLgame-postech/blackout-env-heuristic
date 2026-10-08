@@ -1,0 +1,25 @@
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_000.npz 44498 over 0.81 554s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_001.npz 56802 over 0.72 602s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_002.npz 54746 over 0.72 614s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_003.npz 41740 over 0.84 614s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_004.npz 44864 over 0.81 614s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_005.npz 60480 over 0.66 668s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_006.npz 38266 over 0.91 668s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_007.npz 49242 over 0.78 668s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_008.npz 53030 over 0.75 1022s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_009.npz 33458 over 0.94 1022s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_010.npz 52278 over 0.75 1114s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_011.npz 39700 over 0.91 1114s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_012.npz 48108 over 0.78 1114s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_013.npz 37280 over 0.91 1114s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_014.npz 42330 over 0.88 1114s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_015.npz 34018 over 0.91 1114s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_016.npz 47870 over 0.81 1335s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_017.npz 50484 over 0.75 1421s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_018.npz 39768 over 0.88 1421s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_019.npz 43828 over 0.81 1421s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_020.npz 47946 over 0.81 1438s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_021.npz 40696 over 0.88 1438s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_022.npz 47152 over 0.81 1451s
+checkpoints/rollout_net_arch/dagger_d256_f3_x32/part_023.npz 43084 over 0.84 1451s
+rows 1091668 1455s

@@ -1,0 +1,54 @@
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4"], "every": 25, "window": 25, "margin": 2.0, "net": "checkpoints/rollout_net_arch/q6.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": "checkpoints/rollout_net_arch/q6.pt"}
+[plain vs r5] 128/256 margin +0.0 wall 34s (0.3s/match, search 0s)
+[plain vs r5] 256/256 margin +0.0 wall 31s (0.2s/match, search 0s)
+[q6_m2 vs r5] 128/256 margin +2.0 wall 77s (0.6s/match, search 3s)
+[q6_m2 vs r5] 256/256 margin +9.5 wall 74s (0.6s/match, search 3s)
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4"], "every": 25, "window": 25, "margin": 2.0, "net": "checkpoints/rollout_net_arch/q6.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": "checkpoints/rollout_net_arch/q6.pt"}
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory efficient kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:986.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory Efficient attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/sdp_utils_cpp.h:552.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:988.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention only supports gpu architectures in the range [sm80, sm121]. Attempting to run on a sm 7.5 gpu. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:342.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:990.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:706.)
+  return F.scaled_dot_product_attention(
+[plain vs p11] 128/256 margin -2.4 wall 149s (1.2s/match, search 0s)
+[plain vs p11] 256/256 margin +2.2 wall 144s (1.1s/match, search 0s)
+[q6_m2 vs p11] 128/256 margin +3.1 wall 149s (1.2s/match, search 2s)
+[q6_m2 vs p11] 256/256 margin +5.7 wall 146s (1.1s/match, search 2s)
+q6_m2          vs p11              n= 256 seeds= 128  search   +4.4  plain   -0.1  diff   +4.5 ±  3.8  win(sign) +0.11 vs +0.05  race w/t/l (22, 230, 4) vs (22, 232, 2)  capped 0.29/0.29  len 149s  wall 1.2s/match (plain 1.14)  e25 w25 m2.0 B6
+                  base share 0.99; alt0 0.00, alt1 0.00, alt2 0.00, alt3 0.00, alt4 0.01
+q6_m2          vs r5               n= 256 seeds= 128  search   +5.8  plain   +0.0  diff   +5.8 ±  2.9  win(sign) +0.12 vs +0.00  race w/t/l (22, 212, 22) vs (23, 210, 23)  capped 0.39/0.35  len 176s  wall 0.6s/match (plain 0.25)  e25 w25 m2.0 B6
+                  base share 0.99; alt0 0.00, alt1 0.00, alt2 0.00, alt3 0.00, alt4 0.01
+QEVAL DONE
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4"], "every": 25, "window": 25, "margin": 0.0, "net": "checkpoints/rollout_net_arch/q6.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": "checkpoints/rollout_net_arch/q6.pt"}
+[plain vs r5] 128/256 margin +0.0 wall 32s (0.2s/match, search 0s)
+[plain vs r5] 256/256 margin +0.0 wall 29s (0.2s/match, search 0s)
+[q6_m0 vs r5] 128/256 margin +1.3 wall 71s (0.6s/match, search 3s)
+[q6_m0 vs r5] 256/256 margin +10.1 wall 64s (0.5s/match, search 2s)
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4"], "every": 25, "window": 25, "margin": 0.0, "net": "checkpoints/rollout_net_arch/q6.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": "checkpoints/rollout_net_arch/q6.pt"}
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory efficient kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:986.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Memory Efficient attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/sdp_utils_cpp.h:552.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:988.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: Flash attention only supports gpu architectures in the range [sm80, sm121]. Attempting to run on a sm 7.5 gpu. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:342.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention kernel not used because: (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:990.)
+  return F.scaled_dot_product_attention(
+/home/cucumbersaurus/blackout-env-arch/blackout_env/model/modules/attention_block.py:130: UserWarning: cuDNN attention has been runtime disabled. (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/sdp_utils.cpp:706.)
+  return F.scaled_dot_product_attention(
+[plain vs p11] 128/256 margin -2.4 wall 142s (1.1s/match, search 0s)
+[plain vs p11] 256/256 margin +2.2 wall 136s (1.1s/match, search 0s)
+[q6_m0 vs p11] 128/256 margin +3.4 wall 143s (1.1s/match, search 2s)
+[q6_m0 vs p11] 256/256 margin +1.9 wall 143s (1.1s/match, search 2s)
+q6_m0          vs p11              n= 256 seeds= 128  search   +2.6  plain   -0.1  diff   +2.7 ±  4.7  win(sign) +0.12 vs +0.05  race w/t/l (18, 234, 4) vs (22, 232, 2)  capped 0.27/0.29  len 149s  wall 1.1s/match (plain 1.09)  e25 w25 m0.0 B6
+                  base share 0.78; alt0 0.05, alt1 0.03, alt2 0.04, alt3 0.05, alt4 0.06
+q6_m0          vs r5               n= 256 seeds= 128  search   +5.7  plain   +0.0  diff   +5.7 ±  3.5  win(sign) +0.10 vs +0.00  race w/t/l (18, 218, 20) vs (23, 210, 23)  capped 0.37/0.35  len 174s  wall 0.5s/match (plain 0.24)  e25 w25 m0.0 B6
+                  base share 0.82; alt0 0.04, alt1 0.02, alt2 0.03, alt3 0.04, alt4 0.05
+QEVAL DONE

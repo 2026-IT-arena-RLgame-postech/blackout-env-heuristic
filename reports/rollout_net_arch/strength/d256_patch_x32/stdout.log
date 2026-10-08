@@ -1,0 +1,89 @@
+60 chunks, 3000 games, 6 workers
+[1/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 0 50 games, 176s, elapsed 180s
+[2/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 0 50 games, 195s, elapsed 199s
+[3/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 0 50 games, 196s, elapsed 200s
+[4/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 0 50 games, 200s, elapsed 204s
+[5/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 0 50 games, 201s, elapsed 205s
+[6/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 0 50 games, 234s, elapsed 238s
+[7/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 1 50 games, 90s, elapsed 295s
+[8/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 0 50 games, 188s, elapsed 369s
+[9/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 0 50 games, 171s, elapsed 371s
+[10/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 0 50 games, 173s, elapsed 378s
+[11/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 0 50 games, 178s, elapsed 378s
+[12/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 1 50 games, 211s, elapsed 449s
+[13/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 1 50 games, 161s, elapsed 456s
+[14/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 1 50 games, 95s, elapsed 466s
+[15/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 1 50 games, 187s, elapsed 565s
+[16/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 1 50 games, 199s, elapsed 568s
+[17/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 1 50 games, 231s, elapsed 609s
+[18/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 1 50 games, 215s, elapsed 664s
+[19/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 1 50 games, 221s, elapsed 677s
+[20/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19 side 1 50 games, 289s, elapsed 755s
+[21/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 0 50 games, 613s, elapsed 1290s
+[22/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 0 50 games, 696s, elapsed 1306s
+[23/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 0 50 games, 752s, elapsed 1320s
+[24/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 0 50 games, 663s, elapsed 1327s
+[25/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 0 50 games, 591s, elapsed 1346s
+[26/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 0 50 games, 789s, elapsed 1354s
+[27/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 0 50 games, 363s, elapsed 1653s
+[28/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 0 50 games, 381s, elapsed 1687s
+[29/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 0 50 games, 400s, elapsed 1727s
+[30/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 0 50 games, 426s, elapsed 1746s
+[31/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 1 50 games, 411s, elapsed 1757s
+[32/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 1 50 games, 513s, elapsed 1867s
+[33/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 1 50 games, 364s, elapsed 2016s
+[34/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 1 50 games, 411s, elapsed 2168s
+[35/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 1 50 games, 450s, elapsed 2318s
+[36/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 1 50 games, 624s, elapsed 2370s
+[37/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 1 50 games, 694s, elapsed 2381s
+[38/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 1 50 games, 483s, elapsed 2500s
+[39/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 0 50 games, 191s, elapsed 2509s
+[40/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 0 50 games, 206s, elapsed 2577s
+[41/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 0 50 games, 204s, elapsed 2585s
+[42/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 1 50 games, 930s, elapsed 2658s
+[43/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 0 50 games, 234s, elapsed 2734s
+[44/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 0 50 games, 236s, elapsed 2745s
+[45/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 0 50 games, 121s, elapsed 2779s
+[46/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 0 50 games, 238s, elapsed 2815s
+[47/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 0 50 games, 245s, elapsed 2830s
+[48/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23 side 1 50 games, 714s, elapsed 2882s
+[49/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 0 50 games, 243s, elapsed 2988s
+[50/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 0 50 games, 257s, elapsed 2991s
+[51/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 1 50 games, 241s, elapsed 3020s
+[52/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 1 50 games, 63s, elapsed 3051s
+[53/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 1 50 games, 255s, elapsed 3070s
+[54/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 1 50 games, 264s, elapsed 3095s
+[55/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 1 50 games, 261s, elapsed 3143s
+[56/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 1 50 games, 239s, elapsed 3230s
+[57/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 1 50 games, 238s, elapsed 3258s
+[58/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 1 50 games, 214s, elapsed 3266s
+[59/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 1 50 games, 231s, elapsed 3301s
+[60/60] small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a side 1 50 games, 215s, elapsed 3310s
+candidate  opponent       n  margin   ±se        W/D/L %     race W/T/L   Δ vs p11   ±se same race
+p11        p5a         1000   +72.6   0.4  100/  0/  0         998/2/0 
+p11        v19         1000   +76.7   0.7   97/  0/  3        1000/0/0 
+p11        v23         1000    +0.9   2.1   51/  0/ 49       18/935/47 
+r5         p5a         1000   +64.9   0.7   98/  0/  2         998/1/1       -7.7   0.7     0.998
+r5         v19         1000   +67.8   1.0   93/  0/  7        1000/0/0       -8.9   1.0     1.000
+r5         v23         1000    -2.1   2.0   50/  0/ 50       79/878/43       -3.0   2.1     0.915
+small:checkpoints/rollout_net_arch/d256_patch_x32.pt p5a         1000   +70.0   0.5   99/  0/  0         999/1/0       -2.6   0.5     0.999
+small:checkpoints/rollout_net_arch/d256_patch_x32.pt v19         1000   +73.6   0.8   96/  0/  4        1000/0/0       -3.1   0.9     1.000
+small:checkpoints/rollout_net_arch/d256_patch_x32.pt v23         1000    +1.1   2.0   53/  0/ 47       41/912/47       +0.2   2.1     0.969
+
+paired Δ lead vs p11 by match time (s):        10        20        30        45        60        90       120       150       240       300      final
+r5         vs p5a                               -4.4±0.5 -14.3±0.9 -15.2±0.9 -11.8±0.8  -9.7±0.8  -8.4±0.7  -8.1±0.7  -7.9±0.7  -7.8±0.7  -7.8±0.7  -7.7±0.7
+r5         vs v19                               -3.8±0.4 -12.6±0.8 -12.2±0.8 -10.1±0.9  -9.3±1.0  -9.2±1.0  -9.1±1.0  -9.0±1.0  -8.9±1.0  -8.9±1.0  -8.9±1.0
+r5         vs v23                               -2.4±0.5  -4.5±1.3  -5.1±1.7  -5.2±2.0  -4.2±2.1  -3.5±2.1  -3.3±2.1  -3.1±2.1  -3.0±2.1  -3.0±2.1  -3.0±2.1
+small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a                               -1.8±0.5  -4.9±0.9  -5.2±0.8  -3.6±0.6  -3.0±0.6  -2.7±0.5  -2.6±0.5  -2.6±0.5  -2.6±0.5  -2.6±0.5  -2.6±0.5
+small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19                               -1.2±0.4  -3.8±0.7  -4.1±0.7  -3.6±0.8  -3.2±0.8  -3.2±0.9  -3.2±0.9  -3.2±0.9  -3.2±0.9  -3.2±0.9  -3.1±0.9
+small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23                               -0.4±0.5  -2.4±1.3  -2.4±1.7  -1.2±2.0  -0.3±2.0  +0.0±2.1  -0.0±2.1  +0.1±2.1  +0.2±2.1  +0.2±2.1  +0.2±2.1
+
+p11        vs p5a        length  34.5s (p90  50.3) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +72.6(n998) raceT +82.0(n2)
+p11        vs v19        length  34.0s (p90  47.5) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +76.7(n1000)
+p11        vs v23        length  68.2s (p90  95.5) target/timeout 0.85 exhausted 0.15 | margin by race: raceW +79.9(n18) raceT +3.1(n935) raceL -74.0(n47)
+r5         vs p5a        length  81.8s (p90 220.0) target/timeout 0.95 exhausted 0.05 | margin by race: raceW +65.0(n998) raceT +78.0(n1) raceL -75.0(n1)
+r5         vs v19        length  93.4s (p90 420.0) target/timeout 0.94 exhausted 0.06 | margin by race: raceW +67.8(n1000)
+r5         vs v23        length 119.7s (p90 420.0) target/timeout 0.89 exhausted 0.11 | margin by race: raceW +71.4(n79) raceT -5.1(n878) raceL -77.3(n43)
+small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs p5a        length  52.1s (p90  60.0) target/timeout 0.96 exhausted 0.04 | margin by race: raceW +70.0(n999) raceT +80.0(n1)
+small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v19        length  55.6s (p90  80.0) target/timeout 0.96 exhausted 0.04 | margin by race: raceW +73.6(n1000)
+small:checkpoints/rollout_net_arch/d256_patch_x32.pt vs v23        length 108.1s (p90 420.0) target/timeout 0.90 exhausted 0.10 | margin by race: raceW +74.0(n41) raceT +1.8(n912) raceL -76.4(n47)

@@ -3,6 +3,8 @@ from .bottleneck_block import BottleNeckBlock
 from .ffn_block import SwiGLUBlock
 from .graphic_encoder import GraphicEncoder
 from .iqn_head import IQNHead, quantile_huber_loss
+from .logits_head import LogitsHead
+from .map_cross_attention import MAP_SOURCES, MapCrossAttention
 from .qmix_mixer import DistributionalQMixer, QMixer, clamp_pressure_stats
 from .rotary import RotaryEmbedding2D, build_grid_position_ids
 from .spr_predictor import SPRPredictor
@@ -17,6 +19,9 @@ __all__ = [
     "GraphicEncoder",
     "IQNHead",
     "quantile_huber_loss",
+    "LogitsHead",
+    "MAP_SOURCES",
+    "MapCrossAttention",
     "QMixer",
     "DistributionalQMixer",
     "clamp_pressure_stats",

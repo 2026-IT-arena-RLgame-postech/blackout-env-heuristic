@@ -2,42 +2,7 @@
 
 이 문서는 BlackOut의 BC(Behavior Cloning), offline RL, 온라인 강화학습 부트스트랩에 사용할 수 있는
 휴리스틱 정책들의 차이, 검증 결과, 혼합 방법과 데이터 기록 규약을 한곳에 정리한다. 구현 세부와
-이동 복구 원리는 `heuristic_policy_ko.md`(V1 설계 문서)를, 각 버전의 결정 규칙은
-`blackout_env/heuristics/*.py`의 모듈·메서드 docstring을 함께 참고한다.
-
-## 처음 보는 사람을 위한 안내
-
-등록된 정책은 20개다: `blackout_env/heuristics/mixture.py`의 `POLICY_REGISTRY`에 있는
-`strategic_v1` … `strategic_v19`(19개)와 `strategic_v4_near`(`V4PolicyFamily`, V4 파라미터 근접 변형).
-`make_heuristic("strategic_v17")`처럼 ID로 생성한다. Elo는 `blackout_env/train/policy_strength.py`의
-`ELO_20260916`(64초 절단 경기, 20정책 전체 적합, 평균 1500 기준)이다.
-
-| 용도 | 정책 | 비고 |
-|---|---|---|
-| 표준 평가 상대 | `strategic_v4` (`RecommendedStrategicHeuristic`) | `periodic_eval`, `offline_pretrain`의 평가, on-policy 기본 상대. Elo 1500으로 중간 강도 |
-| 가장 강한 상대 | `strategic_v19` (2059) > `strategic_v17` (1832) ≈ `strategic_v18` (1831) | 나머지는 모두 1550 이하. V18/V19는 각각 V17/V18 전용 카운터라 상성이 비이행적이며, V1–V16 상대로 가장 확실한 것은 V17(151승 9패) |
-| 오프라인 데이터 수집 | `HeuristicPolicyMixture` | 매치마다 policy_id 하나를 기본 가중치로 뽑아 끝까지 유지(아래 "기본 정책 혼합"). `collect_heuristic_dataset(_parallel).py`가 팀마다 독립 seed로 사용 |
-| 약한 대조군 | `strategic_v1` (1192), `strategic_v14` (1220), `strategic_v2`, `strategic_v5` | 스모크 테스트나 쉬운 상대 |
-
-빠른 휴리스틱 대 휴리스틱 확인(저장소 루트에서, 기본은 창 없는 headless 실행, Unity 빌드 기본 경로는
-`build/mac/BlackOut.app`이며 다르면 `--build`로 지정):
-
-```bash
-# 1) 후보 하나 대 여러 상대, 420초 전체 경기. 시드마다 양 진영을 모두 플레이한다.
-#    --candidate/--opponents는 policy_id(기본 상대는 strategic_v1–v16), --output은 선택.
-./.venv/bin/python examples/gauntlet_heuristics.py --candidate strategic_v19 \
-    --opponents strategic_v4 strategic_v17 strategic_v18 --n-seeds 2 --workers 6
-
-# 2) 두 정책 1:1 비교 + 이동 실패(idle/blocked) 진단. 짧은 이름(v4, v9, v4-near)을 쓰며
-#    v1–v12와 v4-near만 지원한다(v1은 --baseline 전용). 시드는 5개 이상.
-./.venv/bin/python examples/benchmark_heuristics.py --candidate v9 --baseline v4 --n-seeds 5
-
-# 3) 전체(또는 --policies로 고른 부분군) Elo: 64초 절단 경기의 적응형 Bradley-Terry 적합.
-./.venv/bin/python examples/elo_active.py --workers 18 --target-se 40 --output reports/elo_active_new
-```
-
-설계 비교용 64초 근사 gauntlet은 `examples/race_gauntlet.py`, 전체 쌍 승률 히트맵은
-`examples/tournament_heuristics.py`(아래 "정책 상성 히트맵")를 쓴다.
+이동 복구 원리는 `heuristic_policy_ko.md`를 함께 참고한다.
 
 ## 빠른 결론
 
@@ -46,9 +11,8 @@
 - 역할 배정 다양성은 `strategic_v7`, 의도적인 역할 리셋 궤적은 `strategic_v9`에서 얻는다.
 - `strategic_v5`, `strategic_v6`, `strategic_v8`은 성능 최적점이 아니라 각각 공격적 요격,
   저정체 위험 회피, 보수적 역할 리셋이라는 희귀 상태 분포를 제공한다.
-- 한 매치(420초) 안에서는 `policy_id`(어떤 버전인지)를 바꾸지 않는다. `HeuristicPolicyMixture`는
-  매치 시작 시 `policy_id`를 한 번만 고르고, 자체적으로 action noise를 넣지 않는다(수집기의
-  `--noise-frac` action noise는 수집 스크립트가 별도로 적용한다).
+- 한 매치(420초) 안에서는 `policy_id`(어떤 버전인지)를 바꾸거나 action noise를 넣지 않는다.
+  `HeuristicPolicyMixture`는 매치 시작 시 `policy_id`를 한 번만 고른다.
 - 다만 세부 파라미터(작은 근접 변형)는 기본적으로(`resample_each_absorption=True`) 흡수
   경계(absorption boundary, qmix_trainer가 말하는 이 게임의 실제 "에피소드" 경계, 20초)마다
   다시 샘플링한다 — 같은 `policy_id`를 유지한 채 V4-near 스타일의 좁은 구름 안에서만 값을 바꿔,
@@ -62,29 +26,33 @@
 ## 정책 계보
 
 ```text
-StrategicHeuristicV1                         strategic.py
-└── V2  전역 경로 기반 작업 배정              advanced.py
-    └── V3  위험 인지 적재소 선택             safe_storage.py
-        └── V4  적재 타일 분산 ← 권장 기준    spread_deposit.py
-            ├── V5  예측 요격                 intercept.py
-            ├── V6  위험 비용 A*              risk_path.py
-            │   └── V17  차단 중심 팀 planner: Hunter 3기(1기 적 본진 출구 진치기 + 2기 추격)   v17_planner.py
-            │       └── V18  V17 전용 카운터: 아이템 회피 변신 경로 + 우리 출구 경비 Hunter     v18_counter.py
-            │           └── V19  V18 전용 카운터: 성소 소탕 + 성소 보초 + 가까운 성소 칸 경로 v19_counter.py
-            ├── V7  동적 역할 배분            dynamic_roles.py
-            │   ├── V8  보수적 사망 리셋      lifecycle_roles.py
-            │   │   └── V9  적극적 사망 리셋  opportunistic_respec.py
-            │   ├── V10 국면 전환: opening economy / pressure raid / closeout defend   phase_strategies.py
-            │   │   └── V16 V10 + storage siege / home guard / convoy rush             counterplay_strategies.py
-            │   ├── V12 리드 시 fortress, 그 외 catch-up                                 phase_strategies.py
-            │   ├── V14 초반 Hunter 1기로 아군 창고 주변만 방어                          counterplay_strategies.py
-            │   └── V15 Hunter 없이 Carrier 1기의 고가 필드 배터리 운송                  counterplay_strategies.py
-            └── V11 흡수 직전 외부 창고 약탈 창(raid-window)                            phase_strategies.py
-                └── V13 외부 창고가 보이면 지속하는 3기 공성 약탈                        counterplay_strategies.py
+StrategicHeuristicV1
+└── StrategicHeuristicV2
+    └── StrategicHeuristicV3
+        └── StrategicHeuristicV4  ← 현재 권장 기준
+            ├── StrategicHeuristicV5  (예측 요격)
+            ├── StrategicHeuristicV6  (위험 비용 경로)
+            └── StrategicHeuristicV7  (동적 역할 배분)
+                └── StrategicHeuristicV8  (보수적 사망 리셋)
+                    └── StrategicHeuristicV9  (적극적 사망 리셋)
 
-V4PolicyFamily (strategic_v4_near) ── V4의 작은 근접 파라미터 변형 (기본은 매치 단위,
-                                      `resample_each_absorption=True`면 흡수 단위)       v4_family.py
-HeuristicPolicyMixture ── 위 20개 policy_id를 함께 샘플링                                 mixture.py
+StrategicHeuristicV10  ── 국면 전환: opening economy / pressure raid / closeout defend
+StrategicHeuristicV11  ── 흡수 직전 외부 창고 약탈 창(raid-window) 전담
+StrategicHeuristicV12  ── 점수 리드 시 fortress, 열세/초반에는 catch-up
+StrategicHeuristicV13  ── 외부 창고가 보이면 지속하는 3기 공성 약탈
+StrategicHeuristicV14  ── 초반 Hunter 1기로 아군 창고 주변만 방어하는 counter-raid sentinel
+StrategicHeuristicV15  ── Hunter를 포기하고 Carrier 1기의 고가 필드 배터리 운송에 올인
+StrategicHeuristicV16  ── V10 director + storage siege / home guard / convoy rush 선택
+StrategicHeuristicV17  ── V6 이동 계층 위의 팀 단위 planner: Hunter 3기(1기 적 본진 출구 진치기 + 2기 추격)로 운반 차단
+    └── StrategicHeuristicV18  ── V17 전용 카운터: 아이템을 피하는 변신 경로 + 우리 출구 경비 Hunter
+        └── StrategicHeuristicV19  ── V18 전용 카운터: 성소 소탕 + 성소 보초 Hunter + 가까운 성소 칸 경로
+    └── StrategicHeuristicV17Teach  ── V17의 편성·가치를 상태만의 함수로 라벨하는 증류 교사 (heuristics/v17_teach.py)
+        └── StrategicHeuristicV20  ── V17-teach + 스폰 진치기 대응: 위험 구역 우회, 본진 대기 후 함께 돌파, 빈손 Collector 회피
+            └── StrategicHeuristicV21  ── V20 + 안전한 경로가 있을 때만 Hunter 변신 (모든 적 Hunter 3칸을 피하는 경로)
+    └── StrategicRaider·CargoHunter·EarlyRush·Fortress·Duelist  ── V17 planner 위의 보류 상대 (약탈 우선, 화물 요격, 초반 소탕 후 편성 전환, 지역 방어, Hunter 사냥)
+
+V4PolicyFamily  ── V4의 작은 근접 파라미터 변형 (기본은 매치 단위, `resample_each_absorption=True`면 흡수 단위)
+HeuristicPolicyMixture ── 위 policy_id와 V4PolicyFamily를 함께 샘플링
 ```
 
 하위 버전은 표시된 부모의 경제 목표 선택과 이동 복구를 상속한다. 예를 들어 V9는 V8의 역할 리셋
@@ -110,10 +78,10 @@ HeuristicPolicyMixture ── 위 20개 policy_id를 함께 샘플링           
 | `strategic_v2` | `StrategicHeuristicV2` | 경로 거리 기반 팀 전역 greedy 작업 배정; 흡수 전에 도착 불가능한 약탈 제외 | 수집 목표 중복 감소 | 안전한 적재 위치와 동시 창고 진입 고려가 부족 |
 | `strategic_v3` | `StrategicHeuristicV3` | V2 + 흡수 시각, 보호 창고, 적 위협을 반영한 적재소 선택 | 운반 중 사망과 노출 감소 | 여러 운반자가 같은 진입 타일에 몰릴 수 있음 |
 | `strategic_v4` | `StrategicHeuristicV4` | V3 + 동시 적재 진입 타일 예약·분산 | 현재 가장 검증된 균형형 교사 | 행동 분포가 하나의 모드에 집중됨 |
-| `strategic_v5` | `StrategicHeuristicV5` | 적 위치 EMA와 가능한 저장소 경로 ensemble로 Hunter 요격점 예측 | 미래 위치를 향하는 공격적 전투 샘플 | V4 대비 직접 대전 성능과 막힘이 나빠 기본 비중 2% |
+| `strategic_v5` | `StrategicHeuristicV5` | 적 위치 EMA와 가능한 저장소 경로 ensemble로 Hunter 요격점 예측 | 미래 위치를 향하는 공격적 전투 샘플 | V4 대비 직접 대전 성능과 막힘이 나빠 기본 비중 3% |
 | `strategic_v6` | `StrategicHeuristicV6` | 운반자 A* 비용에 적 위협장을 통합 | 벽/막힌 길로 회피하는 비율이 낮고 저정체 경로 제공 | 우회가 길어져 점수 성능이 낮을 수 있음 |
 | `strategic_v7` | `StrategicHeuristicV7` | Carrier 최대 1기; 성소까지 실제 경로가 가까운 빈 Collector 배정; Hunter 투입 지연 | 역할과 운반 능력을 명시적으로 고려 | V4보다 짧은 막힘이 많아 기준판 대신 역할 변주용 |
-| `strategic_v8` | `StrategicHeuristicV8` | 열세·수송 부재·필드 자원·시간·적 Hunter 조건을 모두 만족할 때 상호사망으로 역할 리셋 | 불필요한 자살을 강하게 억제 | 10경기에서 리셋 0회; 보수적 대조군. 기본 3%(V7/V9/V12와 한 몫을 나눔) |
+| `strategic_v8` | `StrategicHeuristicV8` | 열세·수송 부재·필드 자원·시간·적 Hunter 조건을 모두 만족할 때 상호사망으로 역할 리셋 | 불필요한 자살을 강하게 억제 | 10경기에서 리셋 0회; 보수적 대조군, 기본 1% |
 | `strategic_v9` | `StrategicHeuristicV9` | V8 조건을 완화해 실제 Hunter→사망→Collector trajectory 생성 | 리셋 4/4 성공, V7과 동률 성능 및 비슷한 신뢰성 | 승격판은 아니며 희귀 전략 데이터용 기본 3% |
 | `strategic_v10` | `StrategicHeuristicV10` | 공개 점수·시간·흡수·상대 외부창고 가치로 `opening_economy`→`pressure_raid`→`closeout_defend` 전환; Hunter의 목표도 국면별로 변경 | 같은 지도에서도 경제 확장, 약탈 압박, 리드 보호 궤적을 모두 제공 | 새 다양성 정책; V4와의 대전·신뢰성 평가는 별도 기록 후 비중 조정 |
 | `strategic_v11` | `StrategicHeuristicV11` | 흡수 직전 또는 열세일 때 최대 2기 Collector를 상대 외부 창고의 고가 배터리에 배정 | 약탈 타이밍과 다중-unit 협공 상태를 의도적으로 많이 생성 | 정상 수집보다 약탈에 치우친 policy support; 교사 주력으로는 사용하지 않음 |
@@ -122,10 +90,7 @@ HeuristicPolicyMixture ── 위 20개 policy_id를 함께 샘플링           
 | `strategic_v14` | `StrategicHeuristicV14` | 초반부터 Hunter 1기를 만들고, 적 화물이 아군 창고 반경 안에 들어올 때만 요격; 그 외에는 홈 순찰 | V13/V11 같은 약탈형을 상대로 한 home-defense와 반격 관측을 제공 | 공격·운반 인력 하나를 고정 소비하므로 수동적 경제형에게 점수 손해 가능 |
 | `strategic_v15` | `StrategicHeuristicV15` | Carrier 1기와 Hunter 0기를 고정하고 Carrier가 고가 필드 배터리를 우선 운반 | 약탈 대신 처리량을 택하는 장거리 convoy trajectory를 제공 | 적 Hunter·약탈을 막지 못하므로 전투형 정책과 뚜렷한 상성 차이를 만들 수 있음 |
 | `strategic_v16` | `StrategicHeuristicV16` | V10의 `opening_economy`·`pressure_raid`·`closeout_defend`에, 공개 창고 가치/위협/필드 자원으로 `storage_siege`·`home_guard`·`convoy_rush`를 추가 | 하나의 에피소드 안에서 조건부 대전략 전환을 관측할 수 있어 장기 horizon BC와 offline RL에 유용 | 각 모드의 조건이 드문 지도에서는 V10과 유사하게 보일 수 있으므로 모드 provenance를 반드시 저장 |
-| `strategic_v17` | `StrategicHeuristicV17` | V6 이동 위의 팀 planner: Carrier 1기(필드 가치 25 이상일 때), Hunter 3기(1기 적 본진 출구 진치기 + 2기 추격), 흡수·약탈 위험을 따지는 적재와 초당 가치 기반 경제 배정 | V1–V16 상대 151승 9패; 출구 봉쇄·Hunter 회피 부재를 노리는 차단 플레이 | 아래 V17 절 참조. 틱당 연산이 더 큼 |
-| `strategic_v18` | `StrategicHeuristicV18` | V17 + Hunter 4기, 아이템을 피하는 변신 경로, 우리 본진 출구 경비 Hunter | V17 상대 78% | V17 전용 카운터로 일반 강도는 목표가 아님 |
-| `strategic_v19` | `StrategicHeuristicV19` | V18 + 성소 소탕, 성소 보초 Hunter, 경로상 가장 가까운 성소 칸 | V18 상대 72%, 전체 Elo 1위(2059) | V18 전용 카운터 |
-| `strategic_v4_near` | `V4PolicyFamily` | V4 exact와 세 종류의 좁은 파라미터 변형을 매치 단위 샘플링(혼합 안에서는 흡수마다 재샘플링) | V4 주변 decision boundary를 조밀하게 커버 | 완전히 다른 전략 상태는 거의 만들지 않음 |
+| `strategic_v4_near` | `V4PolicyFamily` | V4 exact와 세 종류의 좁은 파라미터 변형을 에피소드 단위 샘플링 | V4 주변 decision boundary를 조밀하게 커버 | 완전히 다른 전략 상태는 거의 만들지 않음 |
 
 ## 주요 평가 결과
 
@@ -163,10 +128,9 @@ Bradley–Terry/Elo 값이며 전체 평균은 1,500으로 고정했다.
 | V15 수송 러시 | 1444 | 41.6% | -2.73 | 0 | 0.573 | V1/V2에는 55~65%지만 V4-near/V7/V8/V9/V11/V12에는 20~30%다. 의도적으로 취약한 throughput/전투회피 상태를 만든다. |
 | V16 확장 V10 director | 1498 | 49.7% | +1.14 | 0 | 0.517 | V2/V4/V13에는 60~70%지만 V4-near/V7/V8/V9/V12에는 35~45%다. 단일 강도보다 장기 조건부 모드 전환 evidence가 목적이다. |
 
-당시에는 기본 혼합에서 V14와 V16을 각각 3%, 4%로 유지하고, V13/V15는 약점과 반례를 충분히
-수집하기 위한 3% 희귀 정책으로 유지했다. 이 결과는 성능만으로 V13/V15를 제거하지 않는 근거이기도
-하다. (이 표의 Elo와 가중치는 당시 17정책 풀·가드 수정 전 코드 기준이다. 현재 값은 아래 "기본 정책 혼합"의
-2026-09-16 적합을 따른다. 예: V14는 현재 1220, 가중치 1%.) 완성된 원시 결과와 히트맵은 `reports/heuristic_tournament_all17_workers18_20260913/`에 보관한다.
+따라서 기본 혼합에서는 V14와 V16을 각각 3%, 4%로 유지하고, V13/V15는 약점과 반례를 충분히
+수집하기 위한 3% 희귀 정책으로 유지한다. 이 결과는 성능만으로 V13/V15를 제거하지 않는 근거이기도
+하다. 완성된 원시 결과와 히트맵은 `reports/heuristic_tournament_all17_workers18_20260913/`에 보관한다.
 
 ## V17: 차단 중심 팀 planner (2026-09-16)
 
@@ -187,7 +151,7 @@ mixture 기본 가중치에 넣지 않았다가, 2026-09-16 Elo 재조정 때 14
 
 | 구성 요소 | 내용 |
 |---|---|
-| 역할 | Carrier 1기, Hunter 3기, Collector 1기 (`carrier_quota=1`, `hunter_quota=3`). Carrier는 필드 배터리 가치가 25 이상 남아 있을 때만 새로 만든다 |
+| 역할 | Carrier 1기, Hunter 3기, Collector 1기 (`carrier_quota=1`, `hunter_quota=3`) |
 | 진치기 Hunter | 적 본진(스폰을 포함한 코너 4×4, 적은 못 들어가는 바닥)의 중앙 쪽 출구 칸에 서서 `camp_engage_radius`(4.5칸) 안의 비-Hunter 적을 처치. 화물·Carrier 우선, 적 Hunter와는 교환하지 않음 |
 | 추격 Hunter | 화물 가치/요격 시간으로 목표 선택. 적 Hunter는 우리 스폰 앞이나 노출 창고를 막을 때만 교환 |
 | 경제 | 팀 전체를 한 번에 배정. 필드 배터리는 왕복 시간당 가치, 약탈은 흡수 전에 도착 가능할 때만, 속도 아이템은 효과 지속 시간으로 평가. 적재 창고는 이동 시간과 다음 흡수 전 약탈 위험을 함께 비교 |
@@ -239,8 +203,7 @@ V17 거울전은 **먼저 상대 본진 출구에 진치기 Hunter를 세운 쪽
 
 - V17의 변신 대기 유닛은 중앙 성소로 가는 최단 경로에서 배터리를 밟으면 자동으로 줍고, 짐이 있으면
   먼저 적재하러 돌아가 몇 초를 잃는다.
-- V17 진치기 Hunter는 적 Hunter를 공격하지 않고, 추격 Hunter도 자기 스폰 7칸 밖의 적 Hunter는
-  (자기 노출 창고 3칸 안에 있는 경우를 빼면) 무시한다.
+- V17 진치기 Hunter는 적 Hunter를 공격하지 않고, 추격 Hunter도 자기 스폰 7칸 밖의 적 Hunter는 무시한다.
 
 ### 동작
 
@@ -287,7 +250,7 @@ V18의 변신 대기 유닛 4기는 한 덩어리로 중앙 성소에 간다. �
 
 | 구성 요소 | 내용 |
 |---|---|
-| 성소 소탕 | 모든 Hunter가 자기 자리로 가기 전에, 성소 중심과 자기 자신 모두에서 `sweep_radius`(9칸) 안에 있는 적 Collector부터 처치 |
+| 성소 소탕 | 모든 Hunter가 자기 자리로 가기 전에 성소 `sweep_radius`(9칸) 안의 적 Collector부터 처치 |
 | 성소 보초 | Hunter 하나(진치기·출구 경비 다음 순번)가 성소의 적 스폰 쪽에 상주. V18의 어떤 규칙도 그 위치의 Hunter를 공격하지 않으며, 교환으로 Hunter를 잃은 V18 유닛은 다시 변신하려면 보초 앞을 지나야 함 |
 | 변신 경로 | 경로상 가장 가까운 성소 칸으로. 아이템 회피 경로는 길이가 같을 때만 쓰고, 도중에 짐을 주우면 버리고 변신 |
 | 나머지 | V18과 동일(Hunter 4기, 진치기 1 + 출구 경비 1) |
@@ -305,6 +268,151 @@ V18의 변신 대기 유닛 4기는 한 덩어리로 중앙 성소에 간다. �
 대기 유닛을 서로 다른 성소 칸으로 분산(36%)하거나 적 Hunter를 보면 물러나게(20%) 하면 오히려 졌다.
 최종 420초 전체 경기(새 시드 64개 × 양 진영, 128경기)에서 **V19 대 V18은 92승 36패(72%), 평균 점수차
 +25.7**이었다(보초 추가 전 구성은 77승 51패, +5.3). 원시 결과는 `reports/gauntlet_v19_vs_v18_full/`에 있다.
+
+## V20: 스폰 진치기 대응 (2026-09-29)
+
+`heuristics/v20_anticamp.py`. 증류 교사 V17-teach(`StrategicHeuristicV20Teach`, `--teacher v20-teach`)이자 그 라벨을
+따라 움직이는 휴리스틱(`strategic_v20`)이다. mixture 기본 가중치에는 넣지 않았다(기존 수집 재현).
+
+### 문제
+
+적은 우리 본진에 못 들어오므로 출구 바로 밖의 Hunter 하나가 나오는 Collector·Carrier를 전부 잡는다(Hunter는 접촉만으로
+둘 다 처치하고, 속도 6 대 4라 쫓기면 못 빠져나간다). V17-teach로 V19를 상대하면 1000 유닛틱당 8.16기가 죽었고(V17 상대
+0.98), 그 81%가 본진 4칸 안, 경기의 32% 동안 출구가 막혀 있었다 — V19 상대 −38.9의 원인.
+
+### 동작 (적 Hunter가 우리 본진 3칸 안에 있을 때, Collector·Carrier만)
+
+| 구성 요소 | 내용 |
+|---|---|
+| 우회 | 진치는 Hunter 3칸 안 칸(우리 본진 제외)을 피해 목표에 갈 수 있으면 그 경로 |
+| 대기 후 함께 돌파 | 본진 안에서 안전 경로가 없는 유닛은 혼자면 본진에서 대기, 2기 이상이면 동시에 출발 — Hunter는 하나만 쫓는다 |
+| 추격 회피 | V4의 위협 반발을 빈손 Collector에도 적용(V17-teach는 짐·Carrier만) |
+| 나머지 | V17-teach 그대로. 우리 Hunter는 이미 스폰 진치기 적 Hunter를 최우선 교환 대상으로 본다(V17 가치 12) |
+
+### 평가 (교사가 직접 조종, 보류 시드 900000–900011 × 양 진영 = 상대당 24경기, `reports/anticamp/`)
+
+| 상대 | V17-teach | V20 | 짝 차이 (V20 − V17-teach) | 사망/1000틱 | 본진 근처 사망 |
+|---|---:|---:|---:|---|---|
+| V19 | −38.9 | −23.3 | **+15.6 ± 6.7** | 8.16 → **3.75** | 81% → 55% |
+| V17 | +17.8 | +14.7 | −3.1 ± 13.7 | 0.98 → 0.63 | 66% → 44% |
+| V4 | +49.8 | +48.5 | −1.3 ± 5.0 | 1.08 → 0.96 | 25% → 18% |
+
+V19 상대만 좋아지고(2.3 SE) 나머지는 그대로. V17 도입 때 "Hunter 주변을 막는 이동 변형은 20–27% 손해"였던 것과 달리,
+출구가 막혔을 때만 켜지는 규칙이라 경제를 멈추지 않는다.
+
+## V21: 안전한 변신만 (2026-09-30)
+
+`heuristics/v21_safe_transform.py`, 교사 `--teacher v21-teach`, 휴리스틱 `strategic_v21`(mixture 기본 가중치에는 없음).
+
+### 문제 (V20 교사 대 V19, 보류 시드 24경기의 샤드 분석, `reports/v19_analysis/`)
+
+V17-teach의 편성 라벨은 무엇이 가로막든 Hunter 3기를 채운다. V19는 Hunter 4기(우리 출구 1, 중앙 성소 보초 1, 성소 주변
+소탕 2)를 둬서, 성소로 가는 변신 시도 2,491회 중 2%만 Hunter가 되고 17%가 가는 길에 죽었다. 경기당 사망 35회의 70%가
+변신하러 가던 중이었고, Hunter는 평균 0.5기 — 경제 유닛을 성과 없이 소모했다.
+
+### 동작
+
+Hunter 변신 후보는 **모든 적 Hunter(자기 본진 밖) 3칸 안을 피해 성소까지 가는 경로가 있는 Collector만**이고, 그 경로로
+간다(우리 본진은 위험 구역에서 제외). 없으면 Collector로 남아 경제를 한다. Carrier 성소는 본진 안이라 그대로. 나머지는 V20.
+
+### 평가 (교사 직접 조종, 보류 시드 × 양 진영, 상대당 24경기, `reports/anticamp/`)
+
+| 상대 | V17-teach | V20 | **V21** | V21 − V20 (짝) |
+|---|---:|---:|---:|---:|
+| V19 | −38.9 | −23.3 | **+3.4** (승 46%) | **+26.7 ± 10.2** |
+| V17 | +17.8 | +14.7 | +12.8 | −1.9 ± 7.6 |
+| V4 | +49.8 | +48.5 | +49.7 | +1.2 ± 6.7 |
+
+V19 상대: 변신 중 사망 70% → 0%, 변신 성공 2% → 6%(사망 0%), 평균 Hunter 0.50 → 1.04, 사망/1000틱 3.75 → 2.44.
+V21 − V17-teach는 V19 상대 +42.3 ± 9.3.
+
+약탈 가치: V17 계열은 이미 상대 창고 배터리를 필드 배터리의 `steal_weight` 1.8배로 매기고(흡수 전 도착 가능할 때만),
+할 일 없는 Collector는 상대 외부 창고 옆에서 대기한다.
+
+## 새 상대 정책과 신경망식 실행 오류 래퍼 (2026-09-30)
+
+학생이 교사(V21-teach)와 기존 상대 풀을 모두 넘어서서, 증류용 보류(held-out) 상대로 추가했다. 전부 `POLICY_REGISTRY`에
+등록했지만 mixture 기본 가중치에는 넣지 않았다. 목표는 강도보다 **기존 정책군에 없는 전략 축**이다.
+
+### 기존 정책의 행동군 (비교 대표 선정 근거)
+
+V1–V19 44,732경기 결합 승률표(`reports/elo_augment_20260918/combined_tournament.json`)에서 두 정책의 "제3자 상대 승률
+행"의 RMS 차이와 상호 승률을 비교했다. 쌍당 승률 SE ≤ 0.05라서, 같은 정책끼리라도 RMS 차이는 약 0.068까지 나온다(잡음 바닥).
+
+| 행동군 | 정책 | 근거 | 비교 대표 |
+|---|---|---|---|
+| 중위권 V4 군 | v3, v4, v6, v7, v8, v9, v10, v11, v12, v13 | 모든 쌍의 행 차이 0.021–0.069 (잡음 바닥 이하), 상호 승률 0.44–0.57, Elo 1460–1510. 안에서 v7·v8·v12(0.021–0.031)와 v3·v11(0.034)이 특히 붙어 있다 | `strategic_v4` |
+| V15 / V16 | 각각 단독 | 행은 비슷하지만(0.062) v16이 v15를 62% 이김. v4 대비 행 차이 0.11–0.13, v4에 59–68% 짐 | — |
+| V2 / V5 | 각각 단독 | 행 차이 0.090, 상호 36:64 | — |
+| V1, V14 | 각각 단독 | 최하위권, 다른 모든 정책과 행 차이 0.13 이상 | — |
+| V17 | 단독 | V18/V19와 행 차이 0.128, 두 정책에 16–21% | `strategic_v17` |
+| V18 / V19 | 각각 단독 | 제3자 행은 거의 같지만(0.034) V19가 V18을 69% 이김 — 카운터 관계라 합치지 않는다 | `strategic_v19` |
+
+즉 "비슷한 계열"은 V4–V10+V16이 아니라 **v3·v4·v6–v13**이다(v5는 약한 별도 정책, v16은 v4에 68% 지는 별도 정책). V20/V21은
+이 토너먼트에 없고 V17-teach 기반이다. 아래 비교는 V4 군을 `strategic_v4` 하나로 대표한다.
+
+### 전략 정책 (모두 V17 planner 위, `heuristics/<모듈>.py`)
+
+| ID | 모듈 | 전략 축 | 동작 |
+|---|---|---|---|
+| `strategic_raider` | `raider.py` | 약탈 우선 경제 | Collector 2기(`raid_squad`)는 필드 배터리를 아예 안 줍고 적 외부 창고 옆에서 대기·약탈, 나머지는 약탈 가치 3.5배(`steal_weight`), 필드 0.6배(`field_weight`). 적재는 보호 창고 우선(`exposure_cost` 2.0). Hunter 2기 중 1기는 약탈 중인 창고와 도둑 주변 5칸 안의 적(수비자·적 Hunter·적재하러 오는 화물)을 처치하는 호위 |
+| `strategic_cargo_hunter` | `cargo_hunter.py` | 화물만 파괴 | Hunter 3기가 빈손 Collector와 적 Hunter(우리 스폰 진치기 제외)는 무시하고 화물·Carrier만 노림. 추격 대신 적의 가장 가까운 창고까지 최단 경로 위에서 우리가 먼저 닿는 첫 칸으로 요격(속도 6 Carrier도 잡음). 화물이 없으면 적 본진 출구와 적 외부 창고에서 매복 |
+| `strategic_early_rush` | `early_rush.py` | 경기 중 편성 전환 | 첫 35초(`rush_seconds`)는 Hunter 4기, Carrier 0기로 적 Collector를 가까운 순으로 소탕(대상이 없으면 적 본진 출구). 이후 Hunter 1기 + Carrier 1기를 원하고, 남는 Hunter는 적 Hunter와 교환해 죽어 Collector로 돌아옴 — 편성을 되돌리는 유일한 정책 |
+| `strategic_fortress` | `fortress.py` | 지역 방어 + 무위험 경제 | Hunter 2기가 우리 본진 출구와 우리 외부 창고(가치 순)에 서서 반경 6칸(`guard_radius`) 안만 교전. 적 Hunter 5칸(`danger_tiles`) 안의 작업은 아예 제외, 적재는 보호 창고(`exposure_cost` 3.0), 약탈 가치 1.0, 할 일 없는 유닛은 본진으로 귀환 |
+| `strategic_duelist` | `duelist.py` | Hunter 사냥 | Hunter 2기가 맵 어디든 적 Hunter를 가까운 순으로 찾아가 맞교환(양쪽 사망 → 적은 다시 성소까지 걸어가야 함). 적 Hunter가 없으면 우리 화물/Carrier를 적 쪽에서 1.5칸 떨어져 호위하고 4칸 안의 적을 처치 |
+
+### 신경망식 실행 오류 래퍼 (`train/distill/perturb.py`)
+
+서술자 `perturb:<key=value,...>:<기본 서술자>` — 기본은 `self`를 뺀 모든 서술자(`strategic_v19`,
+`teacher:v21-teach`, `ckpt:<경로>`, 중첩 `perturb:` 포함). 전략은 기본 정책 그대로, 실행만 망가뜨린다. 매치 seed로 시드되고
+`reset()`마다 같은 난수열을 다시 쓴다. 적용 순서: lag → 정책 → sticky → dither → eps → freeze.
+
+| 키 | 의미 |
+|---|---|
+| `eps=p` | 유닛·틱마다 확률 p로 무작위 8방향 |
+| `dither=f` | 유닛틱의 f 비율을 `dither_ticks`(12)틱 역전 구간으로: `dither_period`(3)틱마다 정방향/역방향 교대(f/2가 역방향) |
+| `sticky=k` | 유닛마다(무작위 위상) k틱에 한 번만 새 action, 그 사이 반복 |
+| `lag=k` | k틱 전 팀 관측으로 행동 |
+| `freeze=f` | 유닛틱의 f 비율을 `freeze_ticks`(50틱, 약 2초) 길이 정지 구간으로 |
+| `seed=s` | 매치 seed에 더할 값 |
+
+구간 시작 확률은 `f / (L·(1−f))`라서 장기 비율이 f다(테스트에서 확인). 예:
+`perturb:eps=0.2:strategic_v21`, `perturb:sticky=4,lag=3:teacher:v21-teach`.
+
+### 강도 확인 (V21 교사 직접 조종, 보류 시드 900000–900003 × 양 진영 = 상대당 8경기, `reports/new_opponents/`)
+
+교사 관점 점수차(음수일수록 상대가 강함). 8경기라 ±SE가 크다 — 대략의 서열만 본다.
+
+| 상대 | 교사 점수차 | 교사 승률 | 같은 시드 짝 차이 |
+|---|---:|---:|---:|
+| `strategic_v17` (참고) | +4.1 ± 19.8 | 62% | v4 대비 −32.5 ± 18.9 |
+| `strategic_v19` (참고) | +23.9 ± 14.5 | 62% | v4 대비 −12.8 ± 1.8 |
+| `strategic_v4` (V4 군 대표) | +36.6 ± 10.5 | 75% | — |
+| `strategic_cargo_hunter` | +38.8 ± 12.5 | 88% | v4 대비 +2.1 ± 12.9 |
+| `strategic_duelist` | +44.8 ± 14.9 | 88% | v4 대비 +8.1 ± 21.3 |
+| `strategic_fortress` | +54.1 ± 8.0 | 100% | v4 대비 +17.5 ± 18.3 |
+| `strategic_early_rush` | +58.9 ± 6.2 | 100% | v4 대비 +22.2 ± 9.4 |
+| `strategic_raider` | +59.9 ± 6.1 | 100% | v4 대비 +23.2 ± 9.8 |
+| `perturb:freeze=0.2:strategic_v19` | +24.6 ± 15.3 | 62% | v19 대비 +0.8 ± 20.0 |
+| `perturb:dither=0.2:strategic_v19` | +48.5 ± 12.2 | 88% | v19 대비 +24.6 ± 23.8 |
+| `perturb:sticky=6:strategic_v19` | +49.2 ± 9.3 | 88% | v19 대비 +25.4 ± 21.0 |
+| `perturb:eps=0.2:strategic_v19` | +67.6 ± 5.4 | 100% | v19 대비 +43.8 ± 12.6 |
+| `perturb:lag=6:strategic_v19` | +71.5 ± 8.4 | 100% | v19 대비 +47.6 ± 16.0 |
+| `perturb:eps=0.1,dither=0.1,sticky=3,lag=3,freeze=0.1:strategic_v19` | +79.2 ± 3.0 | 100% | v19 대비 +55.4 ± 14.5 |
+
+- 새 전략 5개는 모두 V17/V19보다 약하고 V4 군과 비슷하거나(cargo_hunter, duelist) 더 약하다(raider, early_rush, fortress).
+  V17 계열의 강점인 적 본진 출구 진치기를 전부 버렸기 때문이다(교사 사망/1000틱: V19 상대 2.41, 새 전략 상대 0.38–0.51).
+  V21 교사가 이미 Hunter를 피해 다니므로 소탕(early_rush)과 약탈(raider, 교사는 보호 창고 위주로 적재)이 잘 먹히지 않는다.
+  목적은 다양성이라 강화 튜닝은 하지 않았다.
+- 래퍼는 V19를 크게 약화한다. lag 6틱과 eps 0.2가 가장 치명적(V19의 요격·진치기가 늦거나 흩어짐)이고, freeze 0.2는
+  영향이 거의 없다(Hunter가 서서 진치는 정책이라 멈춤이 곧 대기). 학생 평가에는 강한 기본 정책에 약한 오류(eps 0.05–0.1,
+  lag 2–3)를 거는 편이 "강하지만 엉성한" 상대를 만든다.
+
+```bash
+./.venv/bin/python examples/distill_heldout_eval.py --teacher v21-teach --seeds 4 --workers 4 --out reports/new_opponents \
+    --opponents strategic_v4 strategic_v17 strategic_v19 strategic_raider strategic_cargo_hunter strategic_early_rush \
+    strategic_fortress strategic_duelist perturb:eps=0.2:strategic_v19 perturb:lag=6:strategic_v19 ...
+```
 
 ## V4 근접 변형군
 
@@ -512,20 +620,18 @@ teacher = make_heuristic("strategic_v9")
 - V16 추가: 모드 확인 지연 8–17틱, 공성 전환 상대 창고 가치 5.0–11.0,
   홈 수비 반경 5.5–8.5, convoy 전환 필드 배터리 가치 40.0–70.0
 - `strategic_v4_near`: 일반 변형 대신 V4 profile을 중첩 샘플링
-- 그 밖의 정책(V1–V4, V7–V9, V17–V19)은 위의 공통 세 파라미터만 변형한다.
 
 `perturb=False`이면 정책 버전은 계속 가중치에 따라 샘플링하지만 공통 파라미터는
 `use_specialists=True`, `replan_interval=10`, `threat_radius=0.16`으로 고정되고 V4-near는 exact만
 사용한다.
 
-주의: V7–V10/V12/V14–V16는 `_role()`을 동적 역할 배분으로 재정의하고, V17–V19는 자체 역할 배정
-(`carrier_quota`/`hunter_quota`)을 쓰므로 일반 혼합의 `use_specialists=False`가 역할을 끄는 스위치로
-동작하지 않는다(V17–V19에서는 아예 쓰이지 않는다). 이 정책들의 역할을 끄거나 수량을 조절하려면 직접 생성해
+주의: V7–V10/V12/V14–V16는 `_role()`을 동적 역할 배분으로 재정의하므로 일반 혼합의 `use_specialists=False`가
+동적 역할을 끄는 스위치로 동작하지 않는다. 이 정책들의 역할을 끄거나 수량을 조절하려면 직접 생성해
 `carrier_quota`, `hunter_quota`를 설정하거나 해당 정책을 혼합에서 제외한다.
 
 ## 상태 전환 정책(V10–V12, V16)의 사용법
 
-이 정책들(그리고 V11을 상속한 V13)은 매 tick 무작위로 역할을 바꾸지 않는다. 관측된 조건이 연속 `mode_confirm_ticks`번 유지될
+세 정책은 매 tick 무작위로 역할을 바꾸지 않는다. 관측된 조건이 연속 `mode_confirm_ticks`번 유지될
 때만 새 모드로 전이하는 hysteresis를 사용한다. 조건은 모두 공개 `team_state`와 semantic map에서만
 계산한다. 즉 BC 교사나 대회 정책으로 써도 특권 정보 누출이 없다.
 
@@ -534,7 +640,7 @@ teacher = make_heuristic("strategic_v9")
 | V10 | `opening_economy` | 기본 초반 | 새 Hunter 변신을 늦추고 경제/Carrier를 우선 |
 | V10 | `pressure_raid` | 상대 외부 창고에 가치가 있고 흡수 임박, 또는 크게 열세 | Hunter가 고가 화물/Carrier를 우선 추격하고 화물이 없으면 외부 창고를 순찰 |
 | V10 | `closeout_defend` | 리드 상태 + 후반 | Hunter가 빈 Collector를 추격하지 않고 아군 창고를 순찰; 적 화물이 보일 때만 요격 |
-| V16 | `storage_siege` | 보호되지 않은 적 외부 창고 가치가 `siege_value` 이상이고 남은 시간 20% 이상 | V13처럼 최대 3기 약탈조를 쓴다. 모드 우선순위는 `home_guard` > `storage_siege` > `convoy_rush` > V10의 세 모드 |
+| V16 | `storage_siege` | 보호되지 않은 적 외부 창고 가치가 `siege_value` 이상 | V13처럼 최대 3기 약탈조를 쓰되, 수비 위협이나 초반 field-rush 조건이 오면 다음 모드로 전환 |
 | V16 | `home_guard` | 적 화물이 아군 창고 `guard_radius` 안으로 진입 | V14처럼 Hunter가 그 화물만 요격하고, 화물이 없으면 아군 창고를 순찰 |
 | V16 | `convoy_rush` | 초반 + 필드 배터리 가치가 `convoy_field_battery` 이상 | V15처럼 Hunter 변신을 미루고 Carrier가 고가 필드 배터리를 우선 운반 |
 | V11 | `harvest` | 기본 | V4의 전역 경제 배정 |
@@ -621,7 +727,8 @@ episode_metadata = {
 최소 승격 평가는 5개 이상의 seed를 양 진영에서 실행한다.
 
 ```bash
-# 저장소 루트(blackout-env/)에서
+cd /Users/mac/project/26rl/blackout-env
+
 ./.venv/bin/python examples/benchmark_heuristics.py \
   --candidate v9 \
   --baseline v7 \
@@ -670,8 +777,7 @@ episode_metadata = {
 
 완료 시 `reports/heuristic_tournament_20260913/win_rate_heatmap.png`에 히트맵을 저장하고,
 동일 폴더에 재분석 가능한 `pair_results.csv`, `tournament.json`도 함께 저장한다. 기본 전체 정책군은
-20개(`v1`–`v19`, `v4-near`)이므로 190개 비대각 쌍 × 5 seed × 양 진영 = 1,900경기다. 전체 정책 Elo만
-필요하면 훨씬 적은 경기로 끝나는 `examples/elo_active.py`를 쓴다. `--policies v4 v7 v10 v11 v12`처럼
+17개이므로 136개 비대각 쌍 × 5 seed × 양 진영 = 1,360경기다. `--policies v4 v7 v10 v11 v12`처럼
 부분군을 먼저 확인한 뒤 전체를 돌릴 수도 있다.
 
 ## 재현성과 성능 주의사항
@@ -688,10 +794,7 @@ episode_metadata = {
 ## 새 정책 추가 체크리스트
 
 1. 기존 클래스를 변경해 의미를 덮어쓰기보다 새 버전 클래스로 상속한다.
-2. `POLICY_REGISTRY`, package export(`heuristics/__init__.py`), `HeuristicPolicyMixture`의 기본 가중치,
-   `examples/tournament_heuristics.py`의 `POLICIES`, `train/policy_strength.py`의 Elo 표와 이 문서에 새 ID를
-   추가한다. `POLICY_IDS`는 Elo 표 키를 (길이, 이름)으로 정렬한 순서라 새 ID가 기존 인덱스를 밀 수 있으므로,
-   이미 저장된 데이터셋의 policy index와 호환되는지 확인한다.
+2. `POLICY_REGISTRY`, package export, benchmark 선택지와 이 문서에 새 ID를 추가한다.
 3. 상태 메모리가 있으면 `reset()`에서 전부 초기화한다.
 4. 공개 관측만 사용하고 Unity privileged state를 읽지 않는다.
 5. 최소 5 seed × 양 진영 대전을 기존 권장판 또는 직접 부모와 수행한다.

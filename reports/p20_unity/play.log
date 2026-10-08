@@ -1,0 +1,364 @@
+start Tue Oct  6 12:29:54 PM UTC 2026
+2400 matches to play (0 done), 8 workers
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+[20/2400] 165s 7.3 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000001 side 1 margin +64 first 99/99 desync 0
+[40/2400] 287s 8.4 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000001 side 0 margin -40 first 99/99 desync 0
+[60/2400] 419s 8.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000004 side 0 margin +49 first 99/99 desync 0
+[80/2400] 502s 9.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000005 side 1 margin +61 first 99/99 desync 0
+[100/2400] 591s 10.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000006 side 1 margin +64 first 99/99 desync 0
+[120/2400] 691s 10.4 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000007 side 1 margin -89 first 99/99 desync 0
+[140/2400] 748s 11.2 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000008 side 1 margin +83 first 99/99 desync 0
+[160/2400] 819s 11.7 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000010 side 1 margin +61 first 99/99 desync 0
+[180/2400] 906s 11.9 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000011 side 1 margin +69 first 99/99 desync 0
+[200/2400] 1049s 11.4 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000012 side 0 margin +51 first 99/99 desync 0
+[220/2400] 1126s 11.7 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000013 side 1 margin -85 first 99/99 desync 0
+[240/2400] 1232s 11.7 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000015 side 0 margin +75 first 99/99 desync 0
+[260/2400] 1321s 11.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000016 side 1 margin +90 first 99/99 desync 0
+[280/2400] 1428s 11.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000017 side 0 margin +81 first 99/99 desync 0
+[300/2400] 1503s 12.0 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000018 side 1 margin +53 first 99/99 desync 0
+[320/2400] 1576s 12.2 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000019 side 1 margin +64 first 99/99 desync 0
+[340/2400] 1728s 11.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000021 side 0 margin +2 first 99/99 desync 0
+[360/2400] 1827s 11.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000022 side 1 margin +72 first 99/99 desync 0
+[380/2400] 1910s 11.9 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000023 side 1 margin +74 first 99/99 desync 0
+[400/2400] 1974s 12.2 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000025 side 0 margin -85 first 99/99 desync 0
+[420/2400] 2049s 12.3 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000026 side 1 margin +65 first 99/99 desync 0
+[440/2400] 2151s 12.3 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000027 side 1 margin -78 first 99/99 desync 0
+[460/2400] 2221s 12.4 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000028 side 1 margin +80 first 99/99 desync 0
+[480/2400] 2284s 12.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000030 side 0 margin +75 first 99/99 desync 0
+[500/2400] 2351s 12.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000031 side 0 margin +83 first 99/99 desync 0
+[520/2400] 2425s 12.9 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000032 side 0 margin +62 first 99/99 desync 0
+[540/2400] 2498s 13.0 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000033 side 1 margin +81 first 99/99 desync 0
+[560/2400] 2548s 13.2 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v25 seed 4000034 side 1 margin +78 first 99/99 desync 0
+[580/2400] 2610s 13.3 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000036 side 0 margin +13 first 99/99 desync 0
+[600/2400] 2670s 13.5 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000037 side 1 margin +76 first 99/99 desync 0
+[620/2400] 2737s 13.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000038 side 1 margin -47 first 99/99 desync 0
+[640/2400] 2810s 13.7 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000040 side 0 margin -86 first 99/99 desync 0
+[660/2400] 2897s 13.7 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000041 side 0 margin -59 first 99/99 desync 0
+[680/2400] 2957s 13.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000042 side 0 margin +57 first 99/99 desync 0
+[700/2400] 3007s 14.0 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000043 side 1 margin +71 first 99/99 desync 0
+[720/2400] 3077s 14.0 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000045 side 0 margin +50 first 99/99 desync 0
+[740/2400] 3163s 14.0 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000046 side 0 margin +89 first 99/99 desync 0
+[760/2400] 3234s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000047 side 0 margin -74 first 99/99 desync 0
+[780/2400] 3299s 14.2 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000048 side 0 margin +82 first 99/99 desync 0
+[800/2400] 3382s 14.2 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000050 side 0 margin +85 first 99/99 desync 0
+[820/2400] 3480s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000051 side 1 margin -76 first 99/99 desync 0
+[840/2400] 3538s 14.2 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000052 side 0 margin +62 first 99/99 desync 0
+[860/2400] 3626s 14.2 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v25 seed 4000050 side 1 margin +16 first 99/99 desync 0
+[880/2400] 3691s 14.3 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000055 side 0 margin -64 first 99/99 desync 0
+[900/2400] 3773s 14.3 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000056 side 1 margin +85 first 99/99 desync 0
+[920/2400] 3855s 14.3 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000057 side 0 margin +69 first 99/99 desync 0
+[940/2400] 3926s 14.4 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000058 side 0 margin +79 first 99/99 desync 0
+[960/2400] 3983s 14.5 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v25 seed 4000059 side 1 margin +75 first 99/99 desync 0
+[980/2400] 4067s 14.5 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000061 side 0 margin +67 first 99/99 desync 0
+[1000/2400] 4159s 14.4 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000062 side 1 margin -76 first 99/99 desync 0
+[1020/2400] 4261s 14.4 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000064 side 1 margin +77 first 99/99 desync 0
+[1040/2400] 4327s 14.4 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v25 seed 4000064 side 0 margin -2 first 99/99 desync 0
+[1060/2400] 4413s 14.4 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000066 side 0 margin +67 first 99/99 desync 0
+[1080/2400] 4487s 14.4 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000067 side 1 margin +70 first 99/99 desync 0
+[1100/2400] 4540s 14.5 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000068 side 1 margin +67 first 99/99 desync 0
+[1120/2400] 4597s 14.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000070 side 1 margin +74 first 99/99 desync 0
+[1140/2400] 4691s 14.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000071 side 0 margin +45 first 99/99 desync 0
+[1160/2400] 4756s 14.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000072 side 1 margin +70 first 99/99 desync 0
+[1180/2400] 4813s 14.7 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000073 side 0 margin +56 first 99/99 desync 0
+[1200/2400] 4870s 14.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000075 side 0 margin -77 first 99/99 desync 0
+[1220/2400] 4926s 14.9 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000076 side 1 margin +72 first 99/99 desync 0
+[1240/2400] 4997s 14.9 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000077 side 0 margin +76 first 99/99 desync 0
+[1260/2400] 5102s 14.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000078 side 1 margin +81 first 99/99 desync 0
+[1280/2400] 5190s 14.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000080 side 1 margin +73 first 99/99 desync 0
+[1300/2400] 5276s 14.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000081 side 0 margin -72 first 99/99 desync 0
+[1320/2400] 5370s 14.7 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000082 side 0 margin -81 first 99/99 desync 0
+[1340/2400] 5445s 14.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000083 side 0 margin +57 first 99/99 desync 0
+[1360/2400] 5530s 14.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000084 side 0 margin +83 first 99/99 desync 0
+[1380/2400] 5599s 14.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000086 side 1 margin +49 first 99/99 desync 0
+[1400/2400] 5711s 14.7 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000087 side 0 margin +72 first 99/99 desync 0
+[1420/2400] 5795s 14.7 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000088 side 0 margin +65 first 99/99 desync 0
+[1440/2400] 5908s 14.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000090 side 0 margin -68 first 99/99 desync 0
+[1460/2400] 6015s 14.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000091 side 0 margin +82 first 99/99 desync 0
+[1480/2400] 6097s 14.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000092 side 1 margin +66 first 99/99 desync 0
+[1500/2400] 6164s 14.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v25 seed 4000093 side 1 margin +84 first 99/99 desync 0
+[1520/2400] 6245s 14.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000095 side 0 margin -84 first 99/99 desync 0
+[1540/2400] 6308s 14.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000096 side 1 margin -69 first 99/99 desync 0
+[1560/2400] 6386s 14.7 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000097 side 0 margin +83 first 99/99 desync 0
+[1580/2400] 6496s 14.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v25 seed 4000098 side 1 margin +79 first 99/99 desync 0
+[1600/2400] 6615s 14.5 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v25 seed 4000099 side 0 margin +51 first 99/99 desync 0
+[1620/2400] 6714s 14.5 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000101 side 0 margin -54 first 99/99 desync 0
+[1640/2400] 6894s 14.3 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000102 side 1 margin -84 first 99/99 desync 0
+[1660/2400] 7005s 14.2 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000103 side 1 margin +40 first 99/99 desync 0
+[1680/2400] 7089s 14.2 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000105 side 0 margin +75 first 99/99 desync 0
+[1700/2400] 7226s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000106 side 1 margin -25 first 99/99 desync 0
+[1720/2400] 7335s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000107 side 0 margin -61 first 99/99 desync 0
+[1740/2400] 7415s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000108 side 1 margin +86 first 99/99 desync 0
+[1760/2400] 7473s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000110 side 1 margin -73 first 99/99 desync 0
+[1780/2400] 7540s 14.2 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000111 side 1 margin +80 first 99/99 desync 0
+[1800/2400] 7618s 14.2 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000112 side 0 margin +57 first 99/99 desync 0
+[1820/2400] 7735s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v25 seed 4000113 side 0 margin +74 first 99/99 desync 0
+[1840/2400] 7821s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000115 side 0 margin +80 first 99/99 desync 0
+[1860/2400] 7906s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000112 side 1 margin +66 first 99/99 desync 0
+[1880/2400] 7997s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000117 side 0 margin +80 first 99/99 desync 0
+[1900/2400] 8073s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000118 side 1 margin +66 first 99/99 desync 0
+[1920/2400] 8152s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000120 side 1 margin -79 first 99/99 desync 0
+[1940/2400] 8248s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000121 side 0 margin +74 first 99/99 desync 0
+[1960/2400] 8338s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000122 side 1 margin +70 first 99/99 desync 0
+[1980/2400] 8427s 14.1 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000123 side 1 margin -67 first 99/99 desync 0
+[2000/2400] 8570s 14.0 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000124 side 0 margin -74 first 99/99 desync 0
+[2020/2400] 8683s 14.0 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000126 side 1 margin +62 first 99/99 desync 0
+[2040/2400] 8774s 14.0 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000127 side 1 margin +84 first 99/99 desync 0
+[2060/2400] 8866s 13.9 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v25 seed 4000128 side 1 margin +80 first 99/99 desync 0
+[2080/2400] 8968s 13.9 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000130 side 0 margin -68 first 99/99 desync 0
+[2100/2400] 9089s 13.9 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000131 side 0 margin +79 first 99/99 desync 0
+[2120/2400] 9196s 13.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000132 side 1 margin +84 first 99/99 desync 0
+[2140/2400] 9279s 13.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000133 side 1 margin +59 first 99/99 desync 0
+[2160/2400] 9402s 13.8 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v25 seed 4000134 side 0 margin +81 first 99/99 desync 0
+[2180/2400] 9605s 13.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000136 side 1 margin +82 first 99/99 desync 0
+[2200/2400] 9710s 13.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000137 side 0 margin +72 first 99/99 desync 0
+[2220/2400] 9790s 13.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000138 side 1 margin -47 first 99/99 desync 0
+[2240/2400] 9896s 13.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000140 side 0 margin +64 first 99/99 desync 0
+[2260/2400] 9972s 13.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000141 side 1 margin -46 first 99/99 desync 0
+[2280/2400] 10045s 13.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000142 side 1 margin +85 first 99/99 desync 0
+[2300/2400] 10118s 13.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v25 seed 4000143 side 1 margin +79 first 99/99 desync 0
+[2320/2400] 10214s 13.6 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true seed 4000145 side 0 margin +74 first 99/99 desync 0
+[2340/2400] 10282s 13.7 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs strategic_v28:reserve_stage=0.5,trade_hold=advance seed 4000146 side 1 margin +85 first 99/99 desync 0
+[2360/2400] 10356s 13.7 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v25 seed 4000146 side 1 margin +35 first 99/99 desync 0
+[2380/2400] 10431s 13.7 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt vs strategic_v25 seed 4000148 side 0 margin +72 first 99/99 desync 0
+[2400/2400] 10832s 13.3 matches/min  last: ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt vs ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt seed 4000149 side 0 margin +75 first 99/99 desync 0
+done 2400 matches in 10832s
+done Tue Oct  6 03:30:29 PM UTC 2026

@@ -1,0 +1,126 @@
+{
+ "strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true/ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt": {
+  "n": 300,
+  "margin": 33.416666666666664,
+  "se": 3.483998965595502,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1
+ },
+ "strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5/ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p17_v28.pt": {
+  "n": 300,
+  "margin": 38.553333333333335,
+  "se": 3.441024300242143,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 0,
+  "paired": 5.136666666666667,
+  "paired_se": 1.515150162496854,
+  "seeds": 150
+ },
+ "strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true/ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt": {
+  "n": 300,
+  "margin": -15.553333333333333,
+  "se": 3.4640567956463113,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 0
+ },
+ "strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5/ckpt:/home/cucumbersaurus/blackout-env/checkpoints/distill/frozen/p20_v30.pt": {
+  "n": 300,
+  "margin": -15.94,
+  "se": 3.4934321558353965,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 0,
+  "paired": -0.38666666666666666,
+  "paired_se": 2.03995957030312,
+  "seeds": 150
+ },
+ "strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true/strategic_v25": {
+  "n": 300,
+  "margin": 61.13,
+  "se": 1.9534776752936487,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 2
+ },
+ "strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5/strategic_v25": {
+  "n": 300,
+  "margin": 64.66666666666667,
+  "se": 1.7434721909353317,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1,
+  "paired": 3.5366666666666666,
+  "paired_se": 1.468689600436737,
+  "seeds": 150
+ },
+ "strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true/strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true": {
+  "n": 300,
+  "margin": 0.0,
+  "se": 3.4703361507043047,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 4
+ },
+ "strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5/strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true": {
+  "n": 300,
+  "margin": 6.226666666666667,
+  "se": 3.430872666510518,
+  "race": [
+   0,
+   300,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 300
+  },
+  "desync_matches": 1,
+  "paired": 6.226666666666667,
+  "paired_se": 1.8464524706375844,
+  "seeds": 150
+ }
+}

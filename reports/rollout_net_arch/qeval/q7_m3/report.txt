@@ -1,0 +1,4 @@
+q7_m3          vs p11              n= 256 seeds= 128  search   +3.6  plain   -0.1  diff   +3.7 ±  3.1  win(sign) +0.09 vs +0.05  race w/t/l (23, 230, 3) vs (22, 232, 2)  capped 0.28/0.29  len 145s  wall 0.7s/match (plain 0.81)  e25 w25 m3.0 B6
+                  base share 0.99; alt0 0.00, alt1 0.00, alt2 0.00, alt3 0.00, alt4 0.01
+q7_m3          vs r5               n= 256 seeds= 128  search   +5.6  plain   +0.0  diff   +5.6 ±  2.3  win(sign) +0.11 vs +0.00  race w/t/l (23, 209, 24) vs (23, 210, 23)  capped 0.35/0.35  len 167s  wall 0.4s/match (plain 0.15)  e25 w25 m3.0 B6
+                  base share 0.99; alt0 0.00, alt1 0.00, alt2 0.00, alt3 0.00, alt4 0.00

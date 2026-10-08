@@ -1,0 +1,64 @@
+{
+ "strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5/ckpt:/home/cucumbersaurus/blackout-env-v32/checkpoints/distill/frozen/p22_v31.pt": {
+  "n": 100,
+  "margin": -9.7,
+  "se": 6.303910923331082,
+  "race": [
+   0,
+   100,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 100
+  },
+  "desync_matches": 0
+ },
+ "strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true/ckpt:/home/cucumbersaurus/blackout-env-v32/checkpoints/distill/frozen/p22_v31.pt": {
+  "n": 100,
+  "margin": 13.12,
+  "se": 5.767573584316462,
+  "race": [
+   0,
+   100,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 100
+  },
+  "desync_matches": 0,
+  "paired": 22.82,
+  "paired_se": 7.354573198954205,
+  "seeds": 50
+ },
+ "strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5/strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5": {
+  "n": 100,
+  "margin": 0.0,
+  "se": 6.744934500359615,
+  "race": [
+   0,
+   100,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 100
+  },
+  "desync_matches": 0
+ },
+ "strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true/strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5": {
+  "n": 100,
+  "margin": 25.36,
+  "se": 5.070304116952339,
+  "race": [
+   0,
+   100,
+   0
+  ],
+  "first_ours_hist": {
+   "99": 100
+  },
+  "desync_matches": 1,
+  "paired": 25.36,
+  "paired_se": 5.267614570686254,
+  "seeds": 50
+ }
+}

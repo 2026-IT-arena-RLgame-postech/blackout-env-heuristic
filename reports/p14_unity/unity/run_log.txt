@@ -1,0 +1,20 @@
+start Sun Oct  4 04:28:08 AM UTC 2026
+[heldout] 40 matches to play (0 already done), 10 workers
+replay done Sun Oct  4 04:30:18 AM UTC 2026
+[heldout] 2000 matches to play (0 already done), 10 workers
+part1 done Sun Oct  4 06:31:36 AM UTC 2026
+[heldout] 400 matches to play (2000 already done), 10 workers
+RUN DONE Sun Oct  4 06:47:46 AM UTC 2026
+run2 start Sun Oct  4 06:47:53 AM UTC 2026
+[heldout] 1200 matches to play (2400 already done), 10 workers
+RUN2 DONE Sun Oct  4 07:11:24 AM UTC 2026
+backoff to 6 workers (load 29) Sun Oct  4 07:11:32 AM UTC 2026
+run2 start Sun Oct  4 07:11:32 AM UTC 2026
+[heldout] 815 matches to play (2785 already done), 6 workers
+backoff to 3 workers (load 39, other user) Sun Oct  4 07:31:11 AM UTC 2026
+run2 start Sun Oct  4 07:31:11 AM UTC 2026
+[heldout] 443 matches to play (3157 already done), 3 workers
+back to 6 workers (load 13) Sun Oct  4 07:41:12 AM UTC 2026
+run2 start Sun Oct  4 07:41:12 AM UTC 2026
+[heldout] 360 matches to play (3240 already done), 6 workers
+RUN2 DONE Sun Oct  4 08:24:27 AM UTC 2026

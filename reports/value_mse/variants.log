@@ -1,0 +1,14 @@
+== ctl:  (Sat Oct  3 03:59:24 PM UTC 2026)
+checkpoints/value_mse/ctl/iter5.pt
+== mse: --final-loss mse (Sat Oct  3 04:13:00 PM UTC 2026)
+checkpoints/value_mse/mse/iter5.pt
+== quant: --final-loss quantile --n-quantiles 32 (Sat Oct  3 04:24:53 PM UTC 2026)
+checkpoints/value_mse/quant/iter5.pt
+== asym: --antisym --final-loss mse (Sat Oct  3 04:36:28 PM UTC 2026)
+checkpoints/value_mse/asym/iter5.pt
+== hub3: --final-loss huber --final-beta 3 (Sat Oct  3 04:54:55 PM UTC 2026)
+== hub3: --final-loss huber --final-beta 3 (Sat Oct  3 05:04:19 PM UTC 2026)
+checkpoints/value_mse/hub3/iter5.pt
+== pair: --pair-weight 1 --final-loss mse (Sat Oct  3 05:25:29 PM UTC 2026)
+checkpoints/value_mse/pair/iter5.pt
+VARIANTS DONE Sat Oct 3 05:56:07 PM UTC 2026

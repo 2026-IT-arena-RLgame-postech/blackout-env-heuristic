@@ -1,0 +1,24 @@
+== strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve  - strategic_v28:reserve_stage=0.5,trade_hold=advance
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance    +19.88 ±  4.36  (64 seeds, z  +4.6) 
+   vs p17                                                   +64.76 ±  7.64  (64 seeds, z  +8.5) 
+   vs p16                                                    +3.76 ±  4.61  (64 seeds, z  +0.8) 
+   vs strategic_v27:reserve_stage=1.5                        -0.61 ±  0.82  (64 seeds, z  -0.7) 
+   vs strategic_v25                                          +0.00 ±  0.00  (64 seeds, z  +0.0) 
+   vs p14b                                                   -0.05 ±  0.05  (64 seeds, z  -1.0) 
+   vs strategic_v23                                          +0.00 ±  0.00  (64 seeds, z  +0.0) 
+   vs perturb:eps=0.1:strategic_v28:reserve_stage=0.5,trade_hold=advance   +0.00 ±  0.00  (64 seeds, z  +0.0) 
+   vs strategic_v27:reserve_stage=1.0                        +6.14 ±  2.75  (64 seeds, z  +2.2) 
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve  +19.88 ±  4.36  (64 seeds, z  +4.6) 
+   POOL (8 opponents, 64 seeds): +10.97 ± 1.51; worst strategic_v27:reserve_stage=1.5 -0.61 ± 0.82; rule -> adopt
+== strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,join_reach=1.25  - strategic_v28:reserve_stage=0.5,trade_hold=advance
+   vs strategic_v28:reserve_stage=0.5,trade_hold=advance    +19.88 ±  4.36  (64 seeds, z  +4.6) 
+   vs p17                                                   +64.76 ±  7.64  (64 seeds, z  +8.5) 
+   vs p16                                                    +4.40 ±  4.60  (64 seeds, z  +1.0) 
+   vs strategic_v27:reserve_stage=1.5                        -7.41 ±  2.81  (64 seeds, z  -2.6) REGRESS>1SE
+   vs strategic_v25                                          +0.00 ±  0.00  (64 seeds, z  +0.0) 
+   vs p14b                                                   -0.04 ±  0.05  (64 seeds, z  -0.8) 
+   vs strategic_v23                                          +0.00 ±  0.00  (64 seeds, z  +0.0) 
+   vs perturb:eps=0.1:strategic_v28:reserve_stage=0.5,trade_hold=advance   +0.00 ±  0.00  (64 seeds, z  +0.0) 
+   vs strategic_v27:reserve_stage=1.0                        +6.14 ±  2.75  (64 seeds, z  +2.2) 
+   vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve  +19.88 ±  4.36  (64 seeds, z  +4.6) 
+   POOL (8 opponents, 64 seeds): +10.20 ± 1.47; worst strategic_v27:reserve_stage=1.5 -7.41 ± 2.81; rule -> more seeds

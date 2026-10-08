@@ -1,0 +1,25 @@
+24 chunks
+[v28d256 vs p17] 32 matches margin +11.7 wall 71s
+[v28d256 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 32 matches margin +32.5 wall 81s
+[v28d256 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 32 matches margin +31.2 wall 88s
+[v28d256 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 32 matches margin +6.6 wall 89s
+[v28d256 vs p17] 32 matches margin +10.2 wall 117s
+[v28d256 vs p17] 32 matches margin -4.7 wall 117s
+[v28d256 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 32 matches margin +31.9 wall 124s
+[v28d256 vs p17] 32 matches margin +9.9 wall 124s
+[v28d256 vs strategic_v27:reserve_stage=1.5] 32 matches margin +6.2 wall 73s
+[v28d256 vs p16] 32 matches margin +22.4 wall 133s
+[v28d256 vs p16] 32 matches margin +33.7 wall 138s
+[v28d256 vs strategic_v27:reserve_stage=1.5] 32 matches margin +19.7 wall 97s
+[v28d256 vs strategic_v27:reserve_stage=1.5] 32 matches margin +32.1 wall 107s
+[v28d256 vs p16] 32 matches margin +62.6 wall 144s
+[v28d256 vs strategic_v27:reserve_stage=1.5] 32 matches margin +32.1 wall 139s
+[v28d256 vs p16] 32 matches margin +35.8 wall 194s
+[v28d256 vs strategic_v25] 32 matches margin +36.9 wall 101s
+[v28d256 vs strategic_v25] 32 matches margin +63.2 wall 73s
+[v28d256 vs strategic_v25] 32 matches margin +65.4 wall 92s
+[v28d256 vs strategic_v25] 32 matches margin +62.2 wall 94s
+[v28d256 vs p14b] 32 matches margin +54.7 wall 112s
+[v28d256 vs p14b] 32 matches margin +68.0 wall 79s
+[v28d256 vs p14b] 32 matches margin +71.4 wall 139s
+[v28d256 vs p14b] 32 matches margin +58.8 wall 156s

@@ -1,0 +1,28 @@
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4"], "every": 25, "window": 25, "margin": 0.0, "net": "checkpoints/rollout_net_arch/q6.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": "checkpoints/rollout_net_arch/q6.pt"}
+[plain vs r5] 128/256 margin +0.0 wall 21s (0.2s/match, search 0s)
+[plain vs r5] 256/256 margin +0.0 wall 19s (0.1s/match, search 0s)
+[rand0.01 vs r5] 128/256 margin -0.1 wall 60s (0.5s/match, search 0s)
+[rand0.01 vs r5] 256/256 margin -2.7 wall 46s (0.4s/match, search 0s)
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4"], "every": 25, "window": 25, "margin": 0.0, "net": "checkpoints/rollout_net_arch/q6.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": "checkpoints/rollout_net_arch/q6.pt"}
+[plain vs p11] 128/256 margin -2.4 wall 87s (0.7s/match, search 0s)
+[plain vs p11] 256/256 margin +2.2 wall 109s (0.8s/match, search 0s)
+[rand0.01 vs p11] 128/256 margin -5.1 wall 84s (0.7s/match, search 0s)
+[rand0.01 vs p11] 256/256 margin +3.1 wall 80s (0.6s/match, search 0s)
+rand0.01       vs p11              n= 256 seeds= 128  search   -1.0  plain   -0.1  diff   -1.0 ±  1.3  win(sign) +0.02 vs +0.05  race w/t/l (22, 232, 2) vs (22, 232, 2)  capped 0.30/0.29  len 154s  wall 0.6s/match (plain 0.77)  e25 w25 m0.0 B6
+                  base share 0.99; alt0 0.00, alt1 0.00, alt2 0.00, alt3 0.00, alt4 0.00
+rand0.01       vs r5               n= 256 seeds= 128  search   -1.4  plain   +0.0  diff   -1.4 ±  1.1  win(sign) -0.04 vs +0.00  race w/t/l (23, 210, 23) vs (23, 210, 23)  capped 0.33/0.35  len 164s  wall 0.4s/match (plain 0.16)  e25 w25 m0.0 B6
+                  base share 0.99; alt0 0.00, alt1 0.00, alt2 0.00, alt3 0.00, alt4 0.00
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4"], "every": 25, "window": 25, "margin": 0.0, "net": "checkpoints/rollout_net_arch/q6.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": "checkpoints/rollout_net_arch/q6.pt"}
+[plain vs r5] 128/256 margin +0.0 wall 20s (0.2s/match, search 0s)
+[plain vs r5] 256/256 margin +0.0 wall 18s (0.1s/match, search 0s)
+[rand0.2 vs r5] 128/256 margin -19.7 wall 40s (0.3s/match, search 0s)
+[rand0.2 vs r5] 256/256 margin -10.5 wall 42s (0.3s/match, search 0s)
+{"branches": ["base", "alt0", "alt1", "alt2", "alt3", "alt4"], "every": 25, "window": 25, "margin": 0.0, "net": "checkpoints/rollout_net_arch/q6.pt", "value": "checkpoints/value/frozen/s2v_iter5.pt", "cap_s": 150, "qhead": "checkpoints/rollout_net_arch/q6.pt"}
+[plain vs p11] 128/256 margin -2.4 wall 86s (0.7s/match, search 0s)
+[plain vs p11] 256/256 margin +2.2 wall 82s (0.6s/match, search 0s)
+[rand0.2 vs p11] 128/256 margin -15.0 wall 83s (0.6s/match, search 0s)
+[rand0.2 vs p11] 256/256 margin -16.7 wall 83s (0.6s/match, search 0s)
+rand0.2        vs p11              n= 256 seeds= 128  search  -15.8  plain   -0.1  diff  -15.7 ±  3.8  win(sign) -0.16 vs +0.05  race w/t/l (20, 232, 4) vs (22, 232, 2)  capped 0.27/0.29  len 142s  wall 0.6s/match (plain 0.66)  e25 w25 m0.0 B6
+                  base share 0.80; alt0 0.04, alt1 0.04, alt2 0.04, alt3 0.04, alt4 0.04
+rand0.2        vs r5               n= 256 seeds= 128  search  -15.1  plain   +0.0  diff  -15.1 ±  3.3  win(sign) -0.20 vs +0.00  race w/t/l (16, 217, 23) vs (23, 210, 23)  capped 0.29/0.35  len 155s  wall 0.3s/match (plain 0.15)  e25 w25 m0.0 B6
+                  base share 0.80; alt0 0.04, alt1 0.04, alt2 0.04, alt3 0.04, alt4 0.04

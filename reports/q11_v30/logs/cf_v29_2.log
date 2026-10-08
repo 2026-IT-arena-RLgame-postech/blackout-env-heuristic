@@ -1,0 +1,4 @@
+200 of 682 deviation roots -> /home/cucumbersaurus/blackout-env-q11/reports/q11_v30/cf_v29_c0p2.npz
+chunk 0: roots 200 replay-mismatch 0 cont 800 games 4202s total 4389s
+wrote /home/cucumbersaurus/blackout-env-q11/reports/q11_v30/cf_v29_c0p2.npz
+CF DONE v29 2/3

@@ -1,0 +1,18 @@
+[plain vs strategic_v23] 128/256 39s
+[plain vs strategic_v23] 256/256 41s
+wrote /Users/mac/project/26rl/blackout-env/.claude/worktrees/teacher-race/reports/race_analysis/plain_strategic_v23.npz
+[search vs strategic_v23] 128/256 72s
+[search vs strategic_v23] 256/256 78s
+wrote /Users/mac/project/26rl/blackout-env/.claude/worktrees/teacher-race/reports/race_analysis/search_strategic_v23.npz
+[plain vs p11] 128/256 10s
+[plain vs p11] 256/256 9s
+wrote /Users/mac/project/26rl/blackout-env/.claude/worktrees/teacher-race/reports/race_analysis/plain_p11.npz
+[search vs p11] 128/256 43s
+[search vs p11] 256/256 41s
+wrote /Users/mac/project/26rl/blackout-env/.claude/worktrees/teacher-race/reports/race_analysis/search_p11.npz
+[plain vs r5] 128/256 2s
+[plain vs r5] 256/256 1s
+wrote /Users/mac/project/26rl/blackout-env/.claude/worktrees/teacher-race/reports/race_analysis/plain_r5.npz
+[search vs r5] 128/256 34s
+[search vs r5] 256/256 34s
+wrote /Users/mac/project/26rl/blackout-env/.claude/worktrees/teacher-race/reports/race_analysis/search_r5.npz

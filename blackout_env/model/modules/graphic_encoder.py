@@ -7,13 +7,6 @@ from .ffn_block import SwiGLUBlock
 
 
 class GraphicEncoder(nn.Module):
-    """
-    Small conv stack turning the [B, 19, 24, 24] semantic map into 36 vision tokens [B, 36, H]:
-    one per cell of a 6x6 grid (each covering 4x4 map tiles), in row-major order so they line
-    up with rotary.build_grid_position_ids. Downsampling is two stride-2 convs; a per-token
-    SwiGLU lifts the 128 conv channels to the trunk width H.
-    """
-
     def __init__(self, hidden_size : int = 256, in_channels : int = 13 + N_DERIVED_MAP_CHANNELS) -> None:
         super(GraphicEncoder, self).__init__()
 
@@ -41,6 +34,7 @@ class GraphicEncoder(nn.Module):
         # 256-channel-wide ResNet-style stack is built for; halving channel widths and dropping
         # a block per stage is a bet that a smaller encoder is easier for training to actually
         # rely on (less to get lost in) rather than a capacity increase being what's missing.
+        # to be flipped by setting tensor format
         # in -> [B, 19, 24, 24] = [B, C, H, W]
         self.pre_conv = nn.Sequential(
             nn.Conv2d(in_channels, 32, kernel_size=5, stride=1, padding=2), # -> [B, 32, 24, 24]
@@ -61,12 +55,16 @@ class GraphicEncoder(nn.Module):
         self.tokenize_ffn = SwiGLUBlock(128, 512, self.hidden_size)
 
 
-    def forward(self, graphic):
-        """graphic: [B, 19, 24, 24] -- env channels with the derived ones already appended."""
+    def forward(self, graphic, features: bool = False):
+        """graphic: [B, 19, 24, 24] -- env channels with the derived ones already appended.
+        ``features``: also return the feature maps ``{"f2": [B, 64, 12, 12], "f3": [B, 128, 6, 6]}``
+        (MyModel's map-token cross-attention reads them)."""
         x = self.pre_conv(graphic)
-        x = self.conv64(x)
-        x = self.pool(x)
+        f2 = self.conv64(x)
+        x = self.pool(f2)
         x = self.conv128(x)
 
         tokens = self.tokenize_ffn(x.flatten(2).transpose(1, 2))
+        if features:
+            return tokens, {"f2": f2, "f3": x}
         return tokens

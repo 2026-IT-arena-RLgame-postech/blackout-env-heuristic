@@ -1,0 +1,8 @@
+== 09:12:40 v31 o4f_r21,plain
+[o4f_r21 vs v31] 128/384 margin +21.8 wall 2325s (search 1682s, 6501 roots)
+[o4f_r21 vs v31] 256/384 margin +22.4 wall 2257s (search 1591s, 5931 roots)
+[o4f_r21 vs v31] 384/384 margin +24.0 wall 2104s (search 1522s, 5770 roots)
+[plain vs v31] 128/384 margin +16.2 wall 569s (search 0s, 0 roots)
+[plain vs v31] 256/384 margin +15.3 wall 624s (search 0s, 0 roots)
+[plain vs v31] 384/384 margin +21.3 wall 636s (search 0s, 0 roots)
+== 11:34:41 lane x1b done

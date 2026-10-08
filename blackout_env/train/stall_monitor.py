@@ -23,6 +23,7 @@ observation, so "the model could have known" is measured, not assumed.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -71,16 +72,15 @@ class StallCounts:
         }
 
 
-def _component_capacity(graphic: np.ndarray, component: np.ndarray) -> int:
-    """Free battery slots in one storage component, by Unity's per-tile rule."""
-    special = np.any(graphic[..., FIRST_SPECIAL:] > 0.5, axis=-1)
-    capacity = 0
-    for row, col in component:
-        if special[row, col]:
-            continue  # a special parked on the tile blocks it for batteries entirely
-        amount = int(round(float(graphic[row, col, BATTERY]) * BATTERY_SCALE))
-        capacity += max(0, MAX_ITEM_AMOUNT - amount) if amount > 0 else MAX_ITEM_AMOUNT
-    return capacity
+def _component_capacity(graphic: np.ndarray, component: np.ndarray, special: np.ndarray | None = None) -> int:
+    """Free battery slots in one storage component, by Unity's per-tile rule.  ``special``: the
+    [H, W] special-item mask, when the caller already has it for this tick."""
+    if special is None:
+        special = np.any(graphic[..., FIRST_SPECIAL:] > 0.5, axis=-1)
+    rows, cols = component[:, 0], component[:, 1]
+    amount = np.rint(graphic[rows, cols, BATTERY].astype(np.float64) * BATTERY_SCALE).astype(np.int64)  # round half to even, like round()
+    free = np.where(amount > 0, np.maximum(0, MAX_ITEM_AMOUNT - amount), MAX_ITEM_AMOUNT)
+    return int(np.where(special[rows, cols], 0, free).sum())  # a special parked on a tile blocks it for batteries
 
 
 class StallMonitor:
@@ -115,13 +115,14 @@ class StallMonitor:
         walkable = graphic[..., WALL] < 0.5
         storage_any = (graphic[..., STORAGE_ALLY] > 0.5) | (graphic[..., STORAGE_ENEMY] > 0.5)
         components = self._storage_components(graphic)
-        capacities = [_component_capacity(graphic, c) for c in components]
+        special = np.any(graphic[..., FIRST_SPECIAL:] > 0.5, axis=-1)
+        capacities = [_component_capacity(graphic, c, special) for c in components]
 
         for agent, action in actions.items():
             row = rows[agent]
             cell = StrategicHeuristic._to_pixel(before[row, :2], (height, width))
-            movement = float(np.linalg.norm(after[row, :2] - before[row, :2]))
-            transition = movement > TRANSITION_MOVEMENT or not np.array_equal(before[row, 3:], after[row, 3:])
+            movement = math.hypot(float(after[row, 0] - before[row, 0]), float(after[row, 1] - before[row, 1]))
+            transition = movement > TRANSITION_MOVEMENT or not (before[row, 3:] == after[row, 3:]).all()
             still = movement <= BLOCKED_MOVEMENT and not transition
             carrying = float(before[row, CARGO_COL]) > 1e-3
             self.counts.unit_ticks += 1
@@ -142,9 +143,9 @@ class StallMonitor:
                     if any(cap >= held for i, cap in enumerate(capacities) if i != nearest):
                         self.counts.cargo_wait_with_room_elsewhere += 1
 
-            if still and float(np.linalg.norm(action)) >= BLOCKED_ACTION_NORM:
+            if still and math.hypot(float(action[0]), float(action[1])) >= BLOCKED_ACTION_NORM:
                 self.counts.blocked += 1
-                commanded = int(np.argmax(np.stack(_unit_directions()) @ np.asarray(action, dtype=np.float64)))
+                commanded = int(np.argmax(_UNIT_DIRECTIONS @ np.asarray(action, dtype=np.float64)))
                 # Escapable corner: the commanded step is into a wall, but a direction within a
                 # quarter turn either way is open -- sidestepping clears the snag. The 45-degree
                 # neighbours alone are not enough to test: with a wall straight ahead, both
@@ -157,8 +158,7 @@ class StallMonitor:
                     self.counts.corner_block += 1
 
 
-def _unit_directions() -> list[np.ndarray]:
-    return [np.array([np.cos(i * np.pi / 4), np.sin(i * np.pi / 4)]) for i in range(8)]
+_UNIT_DIRECTIONS = np.array([[np.cos(i * np.pi / 4), np.sin(i * np.pi / 4)] for i in range(8)])
 
 
 def _steps_free(walkable: np.ndarray, cell: tuple[int, int], direction: int) -> bool:

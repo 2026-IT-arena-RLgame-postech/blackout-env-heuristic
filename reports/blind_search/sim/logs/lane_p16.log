@@ -1,0 +1,17 @@
+== 16:21:42 p16 plain,o4f_v25r,o4f
+[plain vs p16] 64/64 margin +0.0 wall 210s (search 0s, 0 roots)
+[o4f_v25r vs p16] 64/64 margin +13.4 wall 1545s (search 1311s, 3054 roots)
+[o4f vs p16] 64/64 margin +17.2 wall 1518s (search 1282s, 3212 roots)
+== 17:16:20 v27 plain,o4f_v25r,o4f
+[plain vs v27] 64/64 margin +38.3 wall 512s (search 0s, 0 roots)
+[o4f_v25r vs v27] 64/64 margin +56.7 wall 1408s (search 984s, 2325 roots)
+[o4f vs v27] 64/64 margin +55.5 wall 1544s (search 1040s, 2589 roots)
+== 18:14:10 v25 plain,o4f_v25r,o4f
+[plain vs v25] 64/64 margin +58.9 wall 584s (search 0s, 0 roots)
+[o4f_v25r vs v25] 64/64 margin +62.3 wall 1519s (search 1048s, 2505 roots)
+[o4f vs v25] 64/64 margin +69.6 wall 1399s (search 875s, 2488 roots)
+== 19:12:37 p14b plain,o4f_v25r,o4f
+[plain vs p14b] 64/64 margin +61.1 wall 223s (search 0s, 0 roots)
+[o4f_v25r vs p14b] 64/64 margin +73.1 wall 1394s (search 1149s, 2725 roots)
+[o4f vs p14b] 64/64 margin +69.5 wall 1327s (search 1081s, 2652 roots)
+== 20:01:47 lane p16 done

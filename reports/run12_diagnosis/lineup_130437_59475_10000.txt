@@ -1,0 +1,3 @@
+margins [-88. -95. -82. -89. -78. -75. -87. -89.] mean -85.37500062957406
+  model      all                  collector 2.15 hunter 1.99 carrier 0.87  (decisions 3842)
+  V4         all                  collector 3.46 hunter 0.56 carrier 0.98  (decisions 3842)

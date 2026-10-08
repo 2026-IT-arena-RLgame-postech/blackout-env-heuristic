@@ -1,0 +1,42 @@
+games 23634 (pending 40 in 4 chunks), pairs with games 276/276
+(A) pair win-rate stopping SE <= 5%: 276/276 pass, worst 5.0%
+(B) top-10 Elo SE (vs their mean) <= 12: 10/10 pass, max 10.8, mean 9.0 [V28 10.8, V31 8.6, V32.1 9.0, P17 9.0, P18bp2 8.6, P19 8.9, P20 8.6, P21e 8.8, P22 8.7, P24c 9.4]; all-24 SE max 31.5
+games by host: gpu1 2016 (16.9 s/game in chunk), mac 19370 (4.6 s/game in chunk), wsl 2248 (20.4 s/game in chunk)
+
+rank policy        Elo    SE
+   1 P24c         2666  22.5
+   2 V32.1        2611  22.3
+   3 P21e         2567  22.1
+   4 P22          2566  22.1
+   5 P20          2518  22.0
+   6 P18bp2       2448  21.7
+   7 V31          2447  21.7
+   8 P19          2348  21.6
+   9 P17          2315  21.6
+  10 V28          2210  21.3
+  11 P16          2205  21.3
+  12 P14          1899  22.2
+  13 V25          1897  22.2
+  14 P11          1338  24.3
+  15 V22          1207  25.1
+  16 P5a           837  25.9
+  17 D6            647  27.6
+  18 V19           532  28.0
+  19 V17           492  28.3
+  20 V7            161  29.6
+  21 V4            145  29.7
+  22 V15           118  29.9
+  23 V5              2  30.4
+  24 V1           -174  31.5
+
+largest BT residuals (non-transitivity)
+       V17 vs V19      observed 20% predicted 44% (35 seeds)
+       P17 vs P18bp2   observed 19% predicted 32% (86 seeds)
+        V5 vs V19      observed 15% predicted 5% (39 seeds)
+       P16 vs P17      observed 24% predicted 35% (100 seeds)
+       V28 vs P16      observed 60% predicted 51% (61 seeds)
+       V28 vs P17      observed 26% predicted 35% (102 seeds)
+        V4 vs V17      observed 4% predicted 12% (110 seeds)
+       V19 vs D6       observed 42% predicted 34% (104 seeds)
+     V32.1 vs P24c     observed 35% predicted 42% (136 seeds)
+        V7 vs V17      observed 5% predicted 13% (114 seeds)

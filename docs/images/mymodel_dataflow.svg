@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1130" width="960" height="1130" font-family="-apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#555"/>
+    </marker>
+    <marker id="ad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/>
+    </marker>
+    <style>
+      .t  { font-size: 14px; font-weight: 600; fill: #1f2937; }
+      .s  { font-size: 12px; fill: #374151; }
+      .m  { font-size: 11.5px; fill: #4b5563; font-family: ui-monospace, Menlo, monospace; }
+      .h  { font-size: 12px; font-weight: 700; fill: #6b7280; letter-spacing: .5px; }
+      .ln { stroke: #555; stroke-width: 1.5; fill: none; marker-end: url(#a); }
+      .dl { stroke: #c2410c; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; marker-end: url(#ad); }
+    </style>
+  </defs>
+  <rect width="960" height="1130" fill="#ffffff"/>
+
+  <text x="24" y="30" style="font-size:18px;font-weight:700;fill:#111827">MyModel 데이터 흐름 (hidden = 128, 파라미터 약 1.7M)</text>
+
+  <!-- ===== Row 1: inputs ===== -->
+  <text x="24" y="62" class="h">입력 (canonical frame)</text>
+  <rect x="60"  y="72" width="220" height="52" rx="8" fill="#f3f4f6" stroke="#9ca3af"/>
+  <text x="170" y="94" text-anchor="middle" class="t">graphic</text>
+  <text x="170" y="113" text-anchor="middle" class="m">[B, 13, 24, 24]</text>
+
+  <rect x="340" y="72" width="220" height="52" rx="8" fill="#f3f4f6" stroke="#9ca3af"/>
+  <text x="450" y="94" text-anchor="middle" class="t">agent_states</text>
+  <text x="450" y="113" text-anchor="middle" class="m">[B, 10, 12]</text>
+
+  <rect x="600" y="72" width="140" height="52" rx="8" fill="#f3f4f6" stroke="#9ca3af"/>
+  <text x="670" y="94" text-anchor="middle" class="t">team_state</text>
+  <text x="670" y="113" text-anchor="middle" class="m">[B, 4]</text>
+
+  <!-- ===== Row 2: derived obs ===== -->
+  <text x="24" y="156" class="h">파생 특징</text><text x="182" y="156" class="h">derived_obs · 학습 파라미터 없음</text>
+  <rect x="40" y="166" width="540" height="84" rx="8" fill="#fff7ed" stroke="#f59e0b"/>
+  <text x="150" y="188" text-anchor="middle" class="s">+ 유닛 수·운반량 4ch</text>
+  <text x="150" y="204" text-anchor="middle" class="s">+ 창고 여유 용량, 주울 배터리</text>
+  <text x="170" y="236" text-anchor="middle" class="m">→ [B, 19, 24, 24]</text>
+  <text x="475" y="188" text-anchor="middle" class="s">+ 5×5 벽 패치 (쌍선형 보간)</text>
+  <text x="475" y="204" text-anchor="middle" class="s">실제 위치 중심, 0.5칸 간격</text>
+  <text x="450" y="236" text-anchor="middle" class="m">→ [B, 10, 37]</text>
+
+  <path d="M170,124 V166" class="ln"/>
+  <path d="M450,124 V166" class="ln"/>
+  <!-- units painted onto map / walls sampled from map -->
+  <path d="M385,196 H250" class="dl"/>
+  <text x="318" y="190" text-anchor="middle" style="font-size:10.5px;fill:#c2410c">유닛 위치</text>
+  <path d="M250,214 H385" class="dl"/>
+  <text x="318" y="230" text-anchor="middle" style="font-size:10.5px;fill:#c2410c">wall ch</text>
+
+  <!-- ===== Row 3: encoders ===== -->
+  <text x="24" y="282" class="h">인코더</text>
+  <path d="M170,250 V292" class="ln"/>
+  <path d="M450,250 V292" class="ln"/>
+  <path d="M670,124 V292" class="ln"/>
+
+  <rect x="40" y="292" width="260" height="176" rx="8" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="170" y="314" text-anchor="middle" class="t">GraphicEncoder (CNN)</text>
+  <text x="56" y="338" class="m">Conv5×5  19→32      24×24</text>
+  <text x="56" y="356" class="m">Conv3×3 s2  32→64   12×12</text>
+  <text x="56" y="374" class="m">Bottleneck(64→16)×1</text>
+  <text x="56" y="392" class="m">Conv3×3 s2  64→128   6×6</text>
+  <text x="56" y="410" class="m">Bottleneck(128→32)×2</text>
+  <text x="56" y="428" class="m">flatten → SwiGLU 128→128</text>
+  <text x="170" y="456" text-anchor="middle" class="s">GroupNorm + SiLU, residual</text>
+
+  <rect x="320" y="292" width="260" height="176" rx="8" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="450" y="314" text-anchor="middle" class="t">VectorEncoder</text>
+  <text x="336" y="338" class="s">그룹별 Linear + SiLU (폭 비율 9:4:2:1)</text>
+  <text x="336" y="358" class="m">· 공간  pos2+patch25 → 72</text>
+  <text x="336" y="376" class="m">· 아이템  6 → 32</text>
+  <text x="336" y="394" class="m">· 클래스  3 → 16</text>
+  <text x="336" y="412" class="m">· 팀  1 → 8</text>
+  <text x="336" y="436" class="s">concat 128 → SwiGLU (유닛 병합)</text>
+  <text x="450" y="456" text-anchor="middle" class="s">10개 유닛이 가중치 공유</text>
+
+  <rect x="600" y="292" width="140" height="176" rx="8" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="670" y="314" text-anchor="middle" class="t">team MLP</text>
+  <text x="670" y="350" text-anchor="middle" class="m">Linear 4→128</text>
+  <text x="670" y="368" text-anchor="middle" class="m">SiLU</text>
+  <text x="670" y="386" text-anchor="middle" class="m">SwiGLU</text>
+
+  <rect x="770" y="292" width="160" height="176" rx="8" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="850" y="314" text-anchor="middle" class="t">SPR CLS</text>
+  <text x="850" y="350" text-anchor="middle" class="s">학습되는 embedding</text>
+  <text x="850" y="368" text-anchor="middle" class="s">1개 (입력 없음)</text>
+
+  <!-- ===== Row 4: tokens ===== -->
+  <text x="24" y="500" class="h">토큰 시퀀스 [B, 48, 128]</text>
+  <path d="M170,468 V512" class="ln"/>
+  <path d="M450,468 V512" class="ln"/>
+  <path d="M670,468 V512" class="ln"/>
+  <path d="M850,468 V512" class="ln"/>
+
+  <rect x="40"  y="512" width="360" height="40" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="220" y="537" text-anchor="middle" class="s"><tspan font-weight="700">vision ×36</tspan>  (6×6 격자)</text>
+  <rect x="400" y="512" width="220" height="40" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="510" y="537" text-anchor="middle" class="s"><tspan font-weight="700">unit ×10</tspan>  (0–4 내 팀)</text>
+  <rect x="620" y="512" width="110" height="40" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="675" y="537" text-anchor="middle" class="s"><tspan font-weight="700">global ×1</tspan></text>
+  <rect x="730" y="512" width="200" height="40" fill="#fae8ff" stroke="#a21caf"/>
+  <text x="830" y="537" text-anchor="middle" class="s"><tspan font-weight="700">spr_cls ×1</tspan></text>
+
+  <rect x="40" y="566" width="890" height="74" rx="8" fill="#f9fafb" stroke="#d1d5db"/>
+  <text x="56" y="588" class="s"><tspan font-weight="700">+ token-type emb</tspan> (4종: graphic / unit / global / cls, 모든 토큰에 더함)</text>
+  <text x="56" y="607" class="s"><tspan font-weight="700">+ slot emb</tspan> (unit 10개 + global 1개, 고정 인덱스 → 같은 자리에 겹친 유닛도 구분)</text>
+  <text x="56" y="626" class="s"><tspan font-weight="700">2D RoPE 좌표</tspan>: vision = 격자 칸, unit = 실제 위치(6×6 좌표로 환산한 소수값), global·cls = 격자 중앙</text>
+
+  <!-- ===== Row 5: trunk ===== -->
+  <path d="M485,640 V670" class="ln"/>
+  <rect x="160" y="670" width="650" height="150" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="485" y="694" text-anchor="middle" class="t">Attention trunk  × 4층</text>
+  <rect x="190" y="708" width="290" height="96" rx="6" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="335" y="728" text-anchor="middle" class="s" font-weight="700">RMSNorm → GQA → + residual</text>
+  <text x="206" y="748" class="m">q head 8 / kv head 2, head_dim 16</text>
+  <text x="206" y="766" class="m">RoPE: 앞 8 dim (row4+col4)</text>
+  <text x="206" y="784" class="m">      뒤 8 dim은 회전 없음</text>
+  <text x="206" y="800" class="m">XSA: 자기 value 방향 성분 제거</text>
+  <rect x="500" y="708" width="290" height="96" rx="6" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="645" y="728" text-anchor="middle" class="s" font-weight="700">RMSNorm → SwiGLU → + residual</text>
+  <text x="516" y="756" class="m">128 → 384×2 (gate) → 128</text>
+  <text x="516" y="780" class="m">mask 없음, 48 토큰 전체 attention</text>
+  <path d="M480,756 H500" class="ln"/>
+
+  <!-- ===== Row 6: heads ===== -->
+  <text x="24" y="852" class="h">출력</text>
+  <path d="M300,820 V870" class="ln"/>
+  <path d="M600,820 V870" class="ln"/>
+  <path d="M810,790 H850 V870" class="ln"/>
+  <text x="300" y="846" x2="0" text-anchor="end" dx="-8" class="m">unit_out [B,10,128]</text>
+  <text x="608" y="846" class="m">global_out [B,128]</text>
+  <text x="858" y="846" class="m">cls_out</text>
+
+  <rect x="40" y="870" width="440" height="150" rx="8" fill="#ecfdf5" stroke="#059669"/>
+  <text x="260" y="892" text-anchor="middle" class="t">IQN head (Q-value)</text>
+  <text x="56" y="916" class="m">τ ~ U(0,1) → cos(πkτ), k=0..63 → Linear+ReLU</text>
+  <text x="56" y="934" class="m">unit_out ⊙ τ_emb → SwiGLU → Linear 128→8</text>
+  <text x="56" y="956" class="m">quantiles [B,10,Q,8]   (학습 Q=8, 기본 32)</text>
+  <text x="56" y="974" class="m">mean over Q → q_values [B,10,8]</text>
+  <text x="56" y="1004" class="s">→ 추론: 내 팀 5행에서 각자 argmax → 8방향 (dx,dy)</text>
+
+  <rect x="500" y="870" width="210" height="150" rx="8" fill="#fefce8" stroke="#ca8a04" stroke-dasharray="6 4"/>
+  <text x="605" y="892" text-anchor="middle" class="t">QMIX mixer 입력</text>
+  <text x="605" y="920" text-anchor="middle" class="s">hypernetwork의 state로 사용</text>
+  <text x="605" y="940" text-anchor="middle" class="s">내 팀 5명이 고른 행동의 quantile</text>
+  <text x="605" y="958" text-anchor="middle" class="s">→ Z_tot [B, Q]</text>
+  <text x="605" y="1004" text-anchor="middle" class="s" fill="#92400e">학습에서만 사용</text>
+
+  <rect x="730" y="870" width="200" height="150" rx="8" fill="#fdf4ff" stroke="#a21caf" stroke-dasharray="6 4"/>
+  <text x="830" y="892" text-anchor="middle" class="t">spr_head (SwiGLU)</text>
+  <text x="830" y="920" text-anchor="middle" class="s">vision_latent [B,128]</text>
+  <text x="830" y="940" text-anchor="middle" class="s">→ SPRPredictor</text>
+  <text x="830" y="958" text-anchor="middle" class="s">5스텝 앞 잠재 벡터 예측</text>
+  <text x="830" y="1004" text-anchor="middle" class="s" fill="#86198f">학습에서만 사용</text>
+
+  <!-- legend -->
+  <g transform="translate(40,1050)">
+    <rect width="890" height="60" rx="8" fill="#f9fafb" stroke="#e5e7eb"/>
+    <text x="16" y="24" class="s"><tspan font-weight="700">파라미터</tspan>  graphic_encoder 344k · vector_encoder 298k · attention 755k · q_head 157k · spr_head 148k · emb 2k</text>
+    <line x1="16" y1="44" x2="46" y2="44" stroke="#c2410c" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text x="54" y="48" class="s">derived_obs에서 두 입력이 서로를 참조</text>
+    <rect x="330" y="37" width="24" height="14" fill="#fff" stroke="#6b7280" stroke-dasharray="4 3"/>
+    <text x="362" y="48" class="s">점선 상자 = 추론에서는 쓰지 않음 (학습 손실 전용)</text>
+  </g>
+</svg>

@@ -1,0 +1,123 @@
+{
+ "policies": [
+  "strategic_v1",
+  "strategic_v2",
+  "strategic_v3",
+  "strategic_v4",
+  "strategic_v5",
+  "strategic_v6",
+  "strategic_v7",
+  "strategic_v8",
+  "strategic_v9",
+  "strategic_v10",
+  "strategic_v11",
+  "strategic_v12",
+  "strategic_v13",
+  "strategic_v14",
+  "strategic_v15",
+  "strategic_v16",
+  "strategic_v17",
+  "strategic_v18",
+  "strategic_v19"
+ ],
+ "target_se": 8.0,
+ "prior_games": 13244,
+ "added_games": 31488,
+ "ratings": {
+  "strategic_v19": {
+   "elo": 2006.0311987264918,
+   "se": 7.999702760217725,
+   "games": 4430
+  },
+  "strategic_v18": {
+   "elo": 1866.5929734772,
+   "se": 6.637382137740983,
+   "games": 6108
+  },
+  "strategic_v17": {
+   "elo": 1829.0457114472233,
+   "se": 6.48491297579345,
+   "games": 5778
+  },
+  "strategic_v7": {
+   "elo": 1509.5855066677418,
+   "se": 5.2812213816208535,
+   "games": 5002
+  },
+  "strategic_v12": {
+   "elo": 1504.580515202801,
+   "se": 5.28894260784186,
+   "games": 4936
+  },
+  "strategic_v8": {
+   "elo": 1503.8415033949846,
+   "se": 5.289194875849944,
+   "games": 4936
+  },
+  "strategic_v4": {
+   "elo": 1500.56320643395,
+   "se": 5.293613348313832,
+   "games": 4926
+  },
+  "strategic_v9": {
+   "elo": 1491.7808639299526,
+   "se": 5.307963527620133,
+   "games": 4714
+  },
+  "strategic_v6": {
+   "elo": 1474.2302740991613,
+   "se": 5.332798623913192,
+   "games": 4470
+  },
+  "strategic_v13": {
+   "elo": 1469.667054590143,
+   "se": 5.338589697847207,
+   "games": 4402
+  },
+  "strategic_v3": {
+   "elo": 1468.411778425685,
+   "se": 5.338823393311326,
+   "games": 4400
+  },
+  "strategic_v10": {
+   "elo": 1465.2073521009984,
+   "se": 5.344630140020109,
+   "games": 4330
+  },
+  "strategic_v11": {
+   "elo": 1459.5900730457386,
+   "se": 5.350720781591475,
+   "games": 4240
+  },
+  "strategic_v15": {
+   "elo": 1418.3705632104065,
+   "se": 5.3424353948803605,
+   "games": 4396
+  },
+  "strategic_v16": {
+   "elo": 1404.000284110858,
+   "se": 5.350866832486594,
+   "games": 4432
+  },
+  "strategic_v2": {
+   "elo": 1341.8359906119554,
+   "se": 5.461269365395236,
+   "games": 4608
+  },
+  "strategic_v14": {
+   "elo": 1322.6148572141901,
+   "se": 5.527691904339103,
+   "games": 4516
+  },
+  "strategic_v5": {
+   "elo": 1313.870988485976,
+   "se": 5.5604302178386655,
+   "games": 4594
+  },
+  "strategic_v1": {
+   "elo": 1150.179304824543,
+   "se": 6.612551593288923,
+   "games": 4246
+  }
+ }
+}

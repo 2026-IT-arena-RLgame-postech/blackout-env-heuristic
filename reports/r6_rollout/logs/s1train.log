@@ -1,0 +1,14 @@
+12 jobs (12 to do): {'teacher': 1, 'net:/home/cucumbersaurus/blackout-env-r5/checkpoints/distill/frozen/p17_v28.pt': 1, 'net:/home/cucumbersaurus/blackout-env-r5/checkpoints/distill/frozen/p16_v27.pt': 1, 'net:/home/cucumbersaurus/blackout-env-r5/checkpoints/distill/frozen/p14_v25.pt': 1, 'heur:strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true': 1, 'heur:strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=3': 1, 'heur:strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,hunter_quota=4': 1, 'heur:strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true': 1, 'heur:strategic_v28:reserve_stage=0.5,trade_hold=advance': 1, 'heur:strategic_v27:reserve_stage=1.5': 1, 'heur:strategic_v25': 1, 'heur:strategic_v23': 1}
+/home/cucumbersaurus/r6runs/s1train/part_004.npz 137474 over 0.88 net 101s 1149s
+/home/cucumbersaurus/r6runs/s1train/part_005.npz 145762 over 0.85 net 104s 1213s
+/home/cucumbersaurus/r6runs/s1train/part_006.npz 150060 over 0.81 net 100s 1213s
+/home/cucumbersaurus/r6runs/s1train/part_007.npz 151446 over 0.77 net 103s 1246s
+/home/cucumbersaurus/r6runs/s1train/part_008.npz 112712 over 0.95 net 91s 1246s
+/home/cucumbersaurus/r6runs/s1train/part_009.npz 112628 over 0.94 net 91s 1246s
+/home/cucumbersaurus/r6runs/s1train/part_010.npz 122584 over 0.91 net 70s 1876s
+/home/cucumbersaurus/r6runs/s1train/part_011.npz 116976 over 0.94 net 71s 1876s
+/home/cucumbersaurus/r6runs/s1train/part_000.npz 138930 over 0.88 net 120s 1876s
+/home/cucumbersaurus/r6runs/s1train/part_001.npz 119294 over 0.95 net 96s 1876s
+/home/cucumbersaurus/r6runs/s1train/part_002.npz 128612 over 0.89 net 89s 1876s
+/home/cucumbersaurus/r6runs/s1train/part_003.npz 133588 over 0.87 net 81s 1876s
+rows 1570066 1901s

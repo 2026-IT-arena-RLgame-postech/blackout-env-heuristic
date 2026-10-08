@@ -1,0 +1,13 @@
+== strategic_v23
+               strategic_v17  n= 48  margin  +78.4  W-L +1.00  unfinished 0.02
+               strategic_v19  n= 48  margin  +74.0  W-L +0.88  unfinished 0.04
+      strategic_v21_anyangle  n= 48  margin  +62.3  W-L +0.88  unfinished 0.04
+               strategic_v22  n= 48  margin  +30.3  W-L +0.38  unfinished 0.17
+               strategic_v23  n= 48  margin   +0.0  W-L +0.00  unfinished 0.08
+== strategic_v24
+               strategic_v17  n= 48  margin  +77.8  W-L +1.00  unfinished 0.00  gap  -0.65±0.68 (+6/-4)
+               strategic_v19  n= 48  margin  +77.5  W-L +0.92  unfinished 0.02  gap  +3.48±3.16 (+4/-2)
+      strategic_v21_anyangle  n= 48  margin  +60.5  W-L +0.83  unfinished 0.04  gap  -1.81±1.87 (+6/-5)
+               strategic_v22  n= 48  margin  +30.1  W-L +0.40  unfinished 0.12  gap  -0.17±4.96 (+4/-12)
+               strategic_v23  n= 48  margin   -5.8  W-L -0.08  unfinished 0.08  gap  -5.77±3.74 (+7/-11)
+                         all  pairs 240  gap  -0.98±1.45 (+27/-34)

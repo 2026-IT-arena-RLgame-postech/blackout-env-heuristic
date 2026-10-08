@@ -1,0 +1,9 @@
+== 01:59:24 v27 o4f_r20
+[o4f_r20 vs v27] 128/384 margin +59.1 wall 1572s (search 1077s, 4827 roots)
+[o4f_r20 vs v27] 256/384 margin +65.8 wall 1512s (search 1050s, 4658 roots)
+[o4f_r20 vs v27] 384/384 margin +66.0 wall 1509s (search 967s, 3856 roots)
+== 03:16:03 v25 o4f_r20
+[o4f_r20 vs v25] 128/384 margin +69.6 wall 1854s (search 1186s, 4770 roots)
+[o4f_r20 vs v25] 256/384 margin +74.0 wall 1403s (search 957s, 4624 roots)
+[o4f_r20 vs v25] 384/384 margin +72.9 wall 1357s (search 957s, 4586 roots)
+== 04:33:04 lane m done

@@ -1,0 +1,14 @@
+p20                                                  vs p17            n=  32 margin  +17.2±12.4 win 0.66 race (0, 32, 0) 2nd (8, 15, 9) H-s 55/46 res100 7.8 (p10 3.7) first 98-:0 99:32 100:0 101+:0 none:0
+ev1                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  48 margin  +44.9± 7.5 win 0.83 race (0, 48, 0) 2nd (34, 7, 7) H-s 156/49 res100 7.8 (p10 3.4) first 98-:0 99:48 100:0 101+:0 none:0
+                                                        - p20:   +0.0 ±  0.0 (24 seeds); both race-tied 48:   +0.0 ±  0.0; identical 1.00
+ev2                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  48 margin  +58.0± 6.3 win 0.90 race (0, 48, 0) 2nd (44, 0, 4) H-s 115/12 res100 7.8 (p10 3.5) first 98-:0 99:48 100:0 101+:0 none:0
+                                                        - p20:  +13.1 ±  5.5 (24 seeds); both race-tied 48:  +13.1 ±  5.5; identical 0.00
+ev3                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  48 margin  +42.8± 8.0 win 0.79 race (0, 48, 0) 2nd (39, 4, 5) H-s 150/24 res100 7.7 (p10 3.4) first 98-:0 99:48 100:0 101+:0 none:0
+                                                        - p20:   -2.1 ±  6.6 (24 seeds); both race-tied 48:   -2.1 ±  6.6; identical 0.00
+ev4                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  48 margin  +55.5± 6.5 win 0.92 race (0, 48, 0) 2nd (44, 0, 4) H-s 130/47 res100 7.7 (p10 3.5) first 98-:0 99:48 100:0 101+:0 none:0
+                                                        - p20:  +10.5 ±  5.6 (24 seeds); both race-tied 48:  +10.5 ±  5.6; identical 0.00
+ev5                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  48 margin  +55.3± 6.2 win 0.92 race (0, 48, 0) 2nd (44, 0, 4) H-s 104/9 res100 7.7 (p10 3.5) first 98-:0 99:48 100:0 101+:0 none:0
+                                                        - p20:  +10.4 ±  4.6 (24 seeds); both race-tied 48:  +10.4 ±  4.6; identical 0.00
+ev6                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  48 margin  +55.3± 6.2 win 0.92 race (0, 48, 0) 2nd (44, 0, 4) H-s 104/9 res100 7.7 (p10 3.5) first 98-:0 99:48 100:0 101+:0 none:0
+                                                        - p20:  +10.4 ±  4.6 (24 seeds); both race-tied 48:  +10.4 ±  4.6; identical 0.00
+p20                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n=  48 margin  +44.9± 7.5 win 0.83 race (0, 48, 0) 2nd (34, 7, 7) H-s 156/49 res100 7.8 (p10 3.4) first 98-:0 99:48 100:0 101+:0 none:0

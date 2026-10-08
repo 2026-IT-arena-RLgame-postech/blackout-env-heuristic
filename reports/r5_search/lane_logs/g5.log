@@ -1,0 +1,9 @@
+== 21:52:32 p14b o4f_r22
+[o4f_r22 vs p14b] 128/384 margin +73.1 wall 2725s (search 2369s, 5691 roots)
+[o4f_r22 vs p14b] 256/384 margin +77.1 wall 1671s (search 1404s, 5237 roots)
+[o4f_r22 vs p14b] 384/384 margin +73.4 wall 1554s (search 1298s, 4969 roots)
+== 23:31:51 v25 o4f_r22
+[o4f_r22 vs v25] 128/384 margin +68.7 wall 1867s (search 1254s, 5038 roots)
+[o4f_r22 vs v25] 256/384 margin +73.4 wall 2086s (search 1372s, 4864 roots)
+[o4f_r22 vs v25] 384/384 margin +74.0 wall 1461s (search 961s, 4124 roots)
+== 01:02:11 lane g5 done

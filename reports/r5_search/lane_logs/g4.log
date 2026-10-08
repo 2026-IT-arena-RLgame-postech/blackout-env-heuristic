@@ -1,0 +1,15 @@
+== 21:24:55 p17 o4f_r22
+[o4f_r22 vs p17] 128/384 margin +45.8 wall 1878s (search 1557s, 5538 roots)
+[o4f_r22 vs p17] 256/384 margin +52.2 wall 1779s (search 1492s, 5273 roots)
+[o4f_r22 vs p17] 384/384 margin +58.0 wall 1649s (search 1377s, 5277 roots)
+== 22:53:27 v28 o4f_r22
+[o4f_r22 vs v28] 128/384 margin +61.9 wall 1890s (search 1257s, 4827 roots)
+[o4f_r22 vs v28] 256/384 margin +63.9 wall 1844s (search 1245s, 4908 roots)
+[o4f_r22 vs v28] 384/384 margin +65.2 wall 1823s (search 1199s, 4288 roots)
+== 00:26:10 v27 o4f_r22
+[o4f_r22 vs v27] 128/384 margin +58.1 wall 2014s (search 1370s, 5270 roots)
+[o4f_r22 vs v27] 256/384 margin +65.5 wall 1892s (search 1353s, 5187 roots)
+[o4f_r22 vs v27] 384/384 margin +67.7 wall 1598s (search 1177s, 4120 roots)
+== 01:58:08 v25 o4f_r22
+== 01:58:17 p14b o4f_r22
+== 01:58:26 lane g4 done

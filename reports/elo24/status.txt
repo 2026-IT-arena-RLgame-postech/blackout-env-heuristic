@@ -1,0 +1,4 @@
+games 5520 (pending 0 in 0 chunks), pairs with games 276/276
+(A) pair win-rate stopping SE <= 5%: 0/276 pass, worst 13.5%
+(B) Elo SE <= 12: 0/24 pass, max 59.0, mean 42.9
+games by host: mac 5520 (4.1 s/game in chunk)

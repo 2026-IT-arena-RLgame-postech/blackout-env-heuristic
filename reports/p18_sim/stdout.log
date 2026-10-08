@@ -1,0 +1,101 @@
+64 chunks
+[p18 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 32 matches margin -17.8 wall 420s
+[p18 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 32 matches margin -22.8 wall 444s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 32 matches margin +0.0 wall 775s
+[p17 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 32 matches margin -15.0 wall 826s
+[p18 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 32 matches margin -26.3 wall 838s
+[p18 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 32 matches margin -31.9 wall 864s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 32 matches margin +0.0 wall 532s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 32 matches margin +0.0 wall 640s
+[p17 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 32 matches margin -31.2 wall 1121s
+[p18 vs p17] 32 matches margin +12.9 wall 362s
+[p17 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 32 matches margin -8.9 wall 1343s
+[p17 vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 32 matches margin -21.3 wall 1349s
+[p17 vs p17] 32 matches margin +0.0 wall 364s
+[p18 vs p17] 32 matches margin +7.3 wall 787s
+[p17 vs p17] 32 matches margin +0.0 wall 377s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve] 32 matches margin +0.0 wall 1156s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs p17] 32 matches margin +15.0 wall 793s
+[p18 vs p17] 32 matches margin +14.3 wall 1799s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs p17] 32 matches margin +31.2 wall 1106s
+[p18 vs p17] 32 matches margin -0.3 wall 1799s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs p17] 32 matches margin +21.3 wall 1328s
+[p17 vs p17] 32 matches margin +0.0 wall 1776s
+[p18 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 32 matches margin +29.1 wall 1009s
+[p17 vs p17] 32 matches margin +0.0 wall 1751s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs p17] 32 matches margin +8.9 wall 1272s
+[p18 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 32 matches margin +33.8 wall 1286s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 32 matches margin +24.1 wall 594s
+[p18 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 32 matches margin +43.0 wall 864s
+[p18 vs strategic_v27:reserve_stage=1.5] 32 matches margin +38.3 wall 500s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 32 matches margin +29.2 wall 773s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 32 matches margin +16.7 wall 711s
+[p18 vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 32 matches margin +37.9 wall 946s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v28:reserve_stage=0.5,trade_hold=advance] 32 matches margin +19.6 wall 762s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v27:reserve_stage=1.5] 32 matches margin +31.6 wall 478s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v27:reserve_stage=1.5] 32 matches margin +35.2 wall 451s
+[p18 vs strategic_v25] 32 matches margin +61.2 wall 454s
+[p18 vs strategic_v27:reserve_stage=1.5] 32 matches margin +46.7 wall 1182s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v27:reserve_stage=1.5] 32 matches margin +34.9 wall 637s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v27:reserve_stage=1.5] 32 matches margin +37.8 wall 697s
+[p18 vs strategic_v27:reserve_stage=1.5] 32 matches margin +51.6 wall 920s
+[p18 vs strategic_v25] 32 matches margin +49.5 wall 883s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v25] 32 matches margin +57.7 wall 479s
+[p18 vs strategic_v27:reserve_stage=1.5] 32 matches margin +39.4 wall 1184s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v25] 32 matches margin +49.3 wall 613s
+[p18 vs strategic_v25] 32 matches margin +64.5 wall 888s
+[p18 vs strategic_v25] 32 matches margin +54.5 wall 935s
+[p18 vs p14b] 32 matches margin +65.3 wall 331s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v25] 32 matches margin +48.9 wall 879s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v25] 32 matches margin +50.1 wall 937s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs p14b] 32 matches margin +56.2 wall 824s
+[p18 vs strategic_v23] 32 matches margin +72.8 wall 488s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs p14b] 32 matches margin +65.7 wall 773s
+[p18 vs p14b] 32 matches margin +57.2 wall 1066s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs p14b] 32 matches margin +58.1 wall 923s
+[p18 vs p14b] 32 matches margin +61.7 wall 1323s
+[p18 vs strategic_v23] 32 matches margin +68.0 wall 940s
+[p18 vs p14b] 32 matches margin +56.8 wall 1635s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v23] 32 matches margin +76.1 wall 358s
+[p18 vs strategic_v23] 32 matches margin +76.0 wall 421s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs p14b] 32 matches margin +46.7 wall 1124s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v23] 32 matches margin +74.2 wall 424s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v23] 32 matches margin +76.4 wall 334s
+[strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v23] 32 matches margin +75.4 wall 328s
+[p18 vs strategic_v23] 32 matches margin +73.1 wall 801s
+p17                                                  vs p14b           n= 128 margin  +61.1± 3.3 win 0.93 race (0, 128, 0) 2nd (91, 3, 34) H-s 169/47 res100 7.8 (p10 4.9) first 98-:0 99:128 100:0 101+:0 none:0
+p18                                                  vs p14b           n= 128 margin  +60.3± 3.3 win 0.92 race (0, 128, 0) 2nd (91, 3, 34) H-s 168/51 res100 7.9 (p10 4.9) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:   -0.8 ±  3.1 (64 seeds); both race-tied 128:   -0.8 ±  3.1; identical 0.00
+strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs p14b           n= 128 margin  +56.7± 3.7 win 0.91 race (0, 128, 0) 2nd (85, 2, 41) H-s 182/52 res100 7.7 (p10 4.3) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:   -4.4 ±  3.7 (64 seeds); both race-tied 128:   -4.4 ±  3.7; identical 0.00
+p17                                                  vs p17            n= 128 margin   +0.0± 5.9 win 0.50 race (0, 128, 0) 2nd (21, 86, 21) H-s 103/103 res100 7.8 (p10 4.3) first 98-:0 99:128 100:0 101+:0 none:0
+p18                                                  vs p17            n= 128 margin   +8.6± 5.8 win 0.58 race (0, 128, 0) 2nd (18, 86, 24) H-s 95/102 res100 7.9 (p10 4.3) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:   +8.6 ±  4.4 (64 seeds); both race-tied 128:   +8.6 ±  4.4; identical 0.00
+strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs p17            n= 128 margin  +19.1± 5.8 win 0.64 race (0, 128, 0) 2nd (19, 76, 33) H-s 107/119 res100 7.7 (p10 4.1) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:  +19.1 ±  6.2 (64 seeds); both race-tied 128:  +19.1 ±  6.2; identical 0.00
+p17                                                  vs strategic_v23  n= 128 margin  +75.1± 0.9 win 1.00 race (122, 6, 0) 2nd (9, 114, 5) H-s 151/2 res100 7.8 (p10 4.9) first 98-:0 99:128 100:0 101+:0 none:0
+p18                                                  vs strategic_v23  n= 128 margin  +72.5± 1.5 win 0.98 race (122, 6, 0) 2nd (15, 110, 3) H-s 214/24 res100 8.0 (p10 5.0) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:   -2.6 ±  1.7 (64 seeds); both race-tied 6:   -9.7 ±  6.7; identical 0.00
+strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v23  n= 128 margin  +75.5± 1.0 win 1.00 race (122, 6, 0) 2nd (25, 98, 5) H-s 142/11 res100 7.7 (p10 4.3) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:   +0.4 ±  1.3 (64 seeds); both race-tied 6:   -2.8 ±  3.3; identical 0.00
+p17                                                  vs strategic_v25  n= 128 margin  +57.9± 3.6 win 0.90 race (0, 128, 0) 2nd (78, 0, 50) H-s 130/34 res100 7.8 (p10 4.7) first 98-:0 99:128 100:0 101+:0 none:0
+p18                                                  vs strategic_v25  n= 128 margin  +57.4± 3.5 win 0.92 race (0, 128, 0) 2nd (77, 0, 51) H-s 166/43 res100 8.0 (p10 4.9) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:   -0.5 ±  3.5 (64 seeds); both race-tied 128:   -0.5 ±  3.5; identical 0.00
+strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v25  n= 128 margin  +51.5± 3.9 win 0.86 race (0, 128, 0) 2nd (78, 0, 50) H-s 172/75 res100 7.7 (p10 4.1) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:   -6.4 ±  4.5 (64 seeds); both race-tied 128:   -6.4 ±  4.5; identical 0.00
+p17                                                  vs strategic_v27:reserve_stage=1.5 n= 128 margin  +44.1± 4.9 win 0.80 race (0, 128, 0) 2nd (60, 1, 67) H-s 140/82 res100 7.8 (p10 4.3) first 98-:0 99:128 100:0 101+:0 none:0
+p18                                                  vs strategic_v27:reserve_stage=1.5 n= 128 margin  +44.0± 4.8 win 0.80 race (0, 128, 0) 2nd (65, 0, 63) H-s 152/60 res100 7.9 (p10 4.7) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:   -0.1 ±  3.8 (64 seeds); both race-tied 128:   -0.1 ±  3.8; identical 0.00
+strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v27:reserve_stage=1.5 n= 128 margin  +34.9± 5.4 win 0.73 race (0, 128, 0) 2nd (67, 0, 61) H-s 114/66 res100 7.7 (p10 4.1) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:   -9.3 ±  6.3 (64 seeds); both race-tied 128:   -9.3 ±  6.3; identical 0.00
+p17                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n= 128 margin  +46.9± 5.0 win 0.82 race (0, 128, 0) 2nd (61, 0, 67) H-s 159/60 res100 7.8 (p10 4.3) first 98-:0 99:128 100:0 101+:0 none:0
+p18                                                  vs strategic_v28:reserve_stage=0.5,trade_hold=advance n= 128 margin  +35.9± 5.1 win 0.73 race (0, 128, 0) 2nd (56, 1, 71) H-s 168/83 res100 7.9 (p10 4.7) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:  -11.0 ±  5.6 (64 seeds); both race-tied 128:  -11.0 ±  5.6; identical 0.00
+strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v28:reserve_stage=0.5,trade_hold=advance n= 128 margin  +22.4± 5.7 win 0.65 race (0, 128, 0) 2nd (55, 0, 73) H-s 147/109 res100 7.7 (p10 4.1) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:  -24.5 ±  5.5 (64 seeds); both race-tied 128:  -24.5 ±  5.5; identical 0.00
+p17                                                  vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve n= 128 margin  -19.1± 5.8 win 0.36 race (0, 128, 0) 2nd (33, 76, 19) H-s 119/107 res100 7.8 (p10 4.3) first 98-:0 99:128 100:0 101+:0 none:0
+p18                                                  vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve n= 128 margin  -24.7± 5.8 win 0.32 race (0, 128, 0) 2nd (30, 72, 26) H-s 62/73 res100 7.9 (p10 4.7) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:   -5.6 ±  4.6 (64 seeds); both race-tied 128:   -5.6 ±  4.6; identical 0.00
+strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve vs strategic_v29:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve n= 128 margin   +0.0± 5.1 win 0.50 race (0, 128, 0) 2nd (32, 64, 32) H-s 119/119 res100 7.7 (p10 4.1) first 98-:0 99:128 100:0 101+:0 none:0
+                                                        - p17:  +19.1 ±  6.2 (64 seeds); both race-tied 128:  +19.1 ±  6.2; identical 0.00
+P18 EVAL DONE

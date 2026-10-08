@@ -1,0 +1,6 @@
+checkpoints/rollout_net_arch/selfstate_r5/part_000.npz 31624 over 0.69 254s
+checkpoints/rollout_net_arch/selfstate_r5/part_001.npz 38512 over 0.50 298s
+checkpoints/rollout_net_arch/selfstate_r5/part_002.npz 29708 over 0.75 298s
+checkpoints/rollout_net_arch/selfstate_r5/part_003.npz 25536 over 0.81 298s
+rows 125380 299s
+checkpoints/rollout_net/r5.pt {"val": {"hit": 0.9005688619341305, "err": 10.867142356291824, "w2": 0.6545987756358371, "hit_open": 0.9275688527838319, "err_open": 7.2645325347979, "w2_open": 0.682076481077868, "hit_late": 0.9173755916592043, "err_late": 10.242407530855, "p11_agree": 0.7825169852193036, "p11_err": 11.62629751621938}, "simval/val": {"hit": 0.807151564990947, "err": 15.328283079324374, "w2": 0.5488252649195323, "hit_open": 0.8553191489361702, "err_open": 12.42397914504411, "w2_open": 0.6180851063829788, "hit_late": 0.8048087179635022, "err_late": 14.768450446132556, "p11_agree": 0.6941228552237895, "p11_err": 15.258388288453318}, "selfstate_r5/train": {"hit": 0.780311550206063, "err": 21.04057502460122, "w2": 0.5222968019303728, "hit_open": 0.8586811266447368, "err_open": 12.746735296751323, "w2_open": 0.6234323601973685, "hit_late": 0.7643281280516777, "err_late": 23.256701689299486, "p11_agree": NaN, "p11_err": NaN}, "params": 674336}

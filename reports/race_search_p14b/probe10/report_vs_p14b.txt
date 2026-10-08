@@ -1,0 +1,30 @@
+paired differences vs 'p14b' (same opponent, seed, side); +-SE over seeds (both sides averaged)
+
+opponent tag               n    race W/T/L  ours@99  opp@99   margin       d margin    d lead@10s    d lead@30s  nonbase  s/match  first Hunter (ours)
+p14b     p14b            256       0/256/0     1.00    1.00     +0.0              —             —             —     0.00      0.0  99:256
+p14b     p14b_r10        256       0/255/1     1.00    1.00     -6.1    -6.1± 1.1   -6.1± 1.1   -6.1± 1.1     0.67      1.1  99:255 none:1
+p14b     p14b_r10_team   256      0/245/11     0.96    1.00     -5.6    -5.6± 1.0   -5.6± 1.0   -5.6± 1.0     0.63      0.9  99:245 101+:4 none:7
+p14b     p14b_s5_10      256       0/256/0     1.00    1.00     -0.7    -0.7± 0.5   -0.7± 0.5   -0.7± 0.5     0.70      0.5  99:256
+
+v23      p14b            256      243/13/0     1.00    0.05    +14.6              —             —             —     0.00      0.0  99:256
+v23      p14b_r10        256      242/14/0     1.00    0.05     +9.9    -4.7± 1.0   -4.7± 1.0   -4.7± 1.0     0.52      1.0  99:255 100:1
+v23      p14b_r10_team   256      239/17/0     0.98    0.05    +10.1    -4.6± 1.1   -4.6± 1.1   -4.6± 1.1     0.49      1.1  99:251 100:5
+v23      p14b_s5_10      256      243/13/0     1.00    0.05    +14.3    -0.4± 0.6   -0.4± 0.6   -0.4± 0.6     0.45      0.6  99:256
+
+Hunters (ours / opponent's, mean over matches) at 4.2 s, 5 s, 10 s; lead at 5 s, 10 s
+  p14b     p14b           n= 256  4.2s 0.41/0.41  5s 0.61/0.61  10s 1.66/1.66  lead  +0.0  +0.0
+  v23      p14b           n= 256  4.2s 2.90/0.02  5s 2.91/0.02  10s 2.98/0.06  lead  +0.2 +14.6
+  p14b     p14b_r10       n= 256  4.2s 0.33/0.66  5s 0.57/0.75  10s 1.93/1.45  lead  -1.9  -6.1
+  v23      p14b_r10       n= 256  4.2s 2.67/0.03  5s 2.92/0.04  10s 3.13/0.06  lead  -2.6  +9.9
+  p14b     p14b_r10_team  n= 256  4.2s 0.30/0.87  5s 0.57/0.96  10s 1.62/1.70  lead  -2.1  -5.6
+  v23      p14b_r10_team  n= 256  4.2s 2.66/0.05  5s 2.89/0.06  10s 3.08/0.06  lead  -2.9 +10.1
+  p14b     p14b_s5_10     n= 256  4.2s 0.41/0.41  5s 0.61/0.61  10s 1.78/1.56  lead  +0.0  -0.7
+  v23      p14b_s5_10     n= 256  4.2s 2.90/0.02  5s 2.91/0.02  10s 2.98/0.04  lead  +0.2 +14.3
+
+race outcome transitions vs 'p14b' (ref -> tag: count)
+  p14b     p14b_r10       changed   1/256  {'T->L': 1}  same first-Hunter decision 0.996
+  p14b     p14b_r10_team  changed  11/256  {'T->L': 11}  same first-Hunter decision 0.957
+  p14b     p14b_s5_10     changed   0/256  {}  same first-Hunter decision 1.000
+  v23      p14b_r10       changed   1/256  {'W->T': 1}  same first-Hunter decision 0.996
+  v23      p14b_r10_team  changed   4/256  {'W->T': 4}  same first-Hunter decision 0.980
+  v23      p14b_s5_10     changed   0/256  {}  same first-Hunter decision 1.000

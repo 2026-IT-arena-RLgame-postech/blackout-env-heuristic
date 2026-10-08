@@ -1,0 +1,17 @@
+candidate                                  inference opponent                                       n  margin   ±se   win H<30s H<60s H<120 Ca<60 end_s  agree deliv/1k  rev/1k die/1k @base camped
+teacher:act:strategic_v17                  -         ckpt-d6-latest                                 8    -6.9  15.9  0.50   1.4   0.1   0.0   0.3    54    nan      2.4      75  16.01  0.93   0.66
+teacher:act:strategic_v17                  -         strategic_cargo_hunter                         8   +41.4  13.5  0.75   1.7   1.7   0.0   0.7    41    nan      3.8      95   4.62  0.57   0.18
+teacher:act:strategic_v17                  -         strategic_duelist                              8   +54.0   7.5  1.00   2.2   3.3   3.3   1.0    44    nan      4.1     100   1.25  0.00   0.00
+teacher:act:strategic_v17                  -         strategic_early_rush                           8   +44.0  14.0  0.88   1.2   1.7   2.7   0.9    56    nan      3.0      88   7.29  0.65   0.18
+teacher:act:strategic_v17                  -         strategic_fortress                             8   +64.8   4.6  1.00   2.2   3.0   nan   1.0    27    nan      5.3      95   1.76  0.02   0.00
+teacher:act:strategic_v17                  -         strategic_raider                               8   +63.2   6.1  1.00   1.9   3.1   2.4   1.0    36    nan      4.7     121   2.24  0.25   0.01
+teacher:act:strategic_v17                  -         strategic_v14                                  8   +67.5   5.1  1.00   2.3   3.0   nan   1.0    30    nan      5.2     119   1.36  0.02   0.00
+teacher:act:strategic_v17                  -         strategic_v17                                  8    +0.0  22.6  0.50   1.1   1.5   nan   0.8    34    nan      3.9      78  10.73  0.84   0.39
+teacher:act:strategic_v17                  -         strategic_v18                                  8   -17.4  14.8  0.25   0.7   0.2   0.2   0.5   101    nan      1.2      53  22.28  0.95   0.84
+teacher:act:strategic_v17                  -         strategic_v19                                  8   -51.1   6.7  0.00   0.2   0.0   0.0   0.7    58    nan      1.9      49  22.89  0.93   0.80
+teacher:act:strategic_v17                  -         strategic_v21                                  8    -4.1  19.8  0.38   1.1   0.3   0.2   0.5    98    nan      1.2      51  24.97  0.98   0.86
+teacher:act:strategic_v17                  -         strategic_v21_anyangle                         8   -27.5  20.3  0.25   1.1   0.3   0.0   0.5    42    nan      1.9      72  17.59  0.92   0.62
+teacher:act:strategic_v17                  -         strategic_v4                                   8   +49.4   7.3  1.00   2.4   2.6   2.6   0.5    50    nan      3.2     122   2.34  0.49   0.06
+teacher:act:strategic_v17                  -         strategic_v5                                   8   +62.5   6.5  1.00   2.3   2.7   2.5   0.7    42    nan      4.0     124   1.37  0.14   0.02
+
+paired gap (candidate - teacher)           inference opponent                                     seeds     gap   ±se

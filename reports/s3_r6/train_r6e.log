@@ -1,0 +1,11 @@
+train rows 496916 labelled 496916 val 24088
+params 674336 {}
+/home/cucumbersaurus/blackout-env-s3/examples/rollout_net_train.py:239: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:836.)
+  row = {"step": step, "loss": float(loss), "ce": float(st["ce"]), "acc": float(st["accuracy"]),
+{"step": 250, "loss": 0.3033964931964874, "ce": 0.15072880685329437, "acc": 0.9600174427032471, "angle_loss": 0.13530126214027405, "s": 6.764734506607056}
+{"step": 500, "loss": 0.2745404839515686, "ce": 0.14116095006465912, "acc": 0.9601040482521057, "angle_loss": 0.11471974849700928, "s": 12.88804006576538, "val_hit": 0.9569661242112255, "val_err": 5.127286083838426, "val_w2": 0.9106941215543009, "val_hit_open": 0.935072, "val_err_open": 6.7456696875, "val_w2_open": 0.890464, "val_p11_agree": 0.9479823978744603, "val_p11_err": 2.82455942793092}
+{"step": 750, "loss": 0.285009503364563, "ce": 0.1531529575586319, "acc": 0.9583187103271484, "angle_loss": 0.11196621507406235, "s": 19.57676362991333}
+{"step": 1000, "loss": 0.2821856737136841, "ce": 0.15074732899665833, "acc": 0.961036741733551, "angle_loss": 0.11114837229251862, "s": 26.34546661376953, "val_hit": 0.9573231484556626, "val_err": 5.1327001515277315, "val_w2": 0.9093241448023912, "val_hit_open": 0.935552, "val_err_open": 6.740609875, "val_w2_open": 0.89008, "val_p11_agree": 0.9481235469943541, "val_p11_err": 2.850855100309283}
+{"step": 1250, "loss": 0.2571163773536682, "ce": 0.13140134513378143, "acc": 0.9644656777381897, "angle_loss": 0.10532595962285995, "s": 33.39769148826599}
+{"step": 1500, "loss": 0.2688843607902527, "ce": 0.14291928708553314, "acc": 0.9620674848556519, "angle_loss": 0.10650265216827393, "s": 40.42233729362488, "val_hit": 0.957638658253072, "val_err": 5.047419163587678, "val_w2": 0.9108933909000332, "val_hit_open": 0.935488, "val_err_open": 6.704042125, "val_w2_open": 0.890816, "val_p11_agree": 0.9492693457323148, "val_p11_err": 2.76211887791639}

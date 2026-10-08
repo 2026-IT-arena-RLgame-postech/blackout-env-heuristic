@@ -1,0 +1,28 @@
+candidate  opponent       n  margin   ±se        W/D/L %     race W/T/L    Δ vs r5   ±se same race
+p11        p5a         1000   +72.6   0.4  100/  0/  0         998/2/0       +7.7   0.7     0.998
+p11        v19         1000   +76.7   0.7   97/  0/  3        1000/0/0       +8.9   1.0     1.000
+p11        v23         1000    +0.9   2.1   51/  0/ 49       18/935/47       +3.0   2.1     0.915
+r5         p5a         1000   +64.9   0.7   98/  0/  2         998/1/1 
+r5         v19         1000   +67.8   1.0   93/  0/  7        1000/0/0 
+r5         v23         1000    -2.1   2.0   50/  0/ 50       79/878/43 
+small:checkpoints/rollout_net_arch/base_seed1.pt p5a         1000   +65.9   0.6   98/  0/  2         996/3/1       +1.0   0.8     0.996
+small:checkpoints/rollout_net_arch/base_seed1.pt v19         1000   +69.9   0.9   95/  0/  5        1000/0/0       +2.0   1.1     1.000
+small:checkpoints/rollout_net_arch/base_seed1.pt v23         1000    -7.2   2.0   46/  0/ 54       28/925/47       -5.1   2.4     0.909
+
+paired Δ lead vs r5 by match time (s):        10        20        30        45        60        90       120       150       240       300      final
+p11        vs p5a                               +4.4±0.5 +14.3±0.9 +15.2±0.9 +11.8±0.8  +9.7±0.8  +8.4±0.7  +8.1±0.7  +7.9±0.7  +7.8±0.7  +7.8±0.7  +7.7±0.7
+p11        vs v19                               +3.8±0.4 +12.6±0.8 +12.2±0.8 +10.1±0.9  +9.3±1.0  +9.2±1.0  +9.1±1.0  +9.0±1.0  +8.9±1.0  +8.9±1.0  +8.9±1.0
+p11        vs v23                               +2.4±0.5  +4.5±1.3  +5.1±1.7  +5.2±2.0  +4.2±2.1  +3.5±2.1  +3.3±2.1  +3.1±2.1  +3.0±2.1  +3.0±2.1  +3.0±2.1
+small:checkpoints/rollout_net_arch/base_seed1.pt vs p5a                               -0.2±0.5  +0.2±1.0  +0.7±1.0  +0.7±1.0  +0.8±0.9  +0.9±0.9  +1.0±0.8  +1.0±0.8  +1.1±0.8  +1.1±0.8  +1.0±0.8
+small:checkpoints/rollout_net_arch/base_seed1.pt vs v19                               -0.9±0.4  +0.1±0.8  +0.2±0.9  +1.4±1.0  +1.7±1.0  +2.0±1.0  +1.9±1.1  +2.0±1.0  +1.9±1.0  +2.0±1.1  +2.0±1.1
+small:checkpoints/rollout_net_arch/base_seed1.pt vs v23                               -0.5±0.6  -4.0±1.4  -5.3±1.8  -5.5±2.2  -5.4±2.3  -5.2±2.4  -5.2±2.4  -5.2±2.4  -5.2±2.4  -5.2±2.4  -5.1±2.4
+
+p11        vs p5a        length  34.5s (p90  50.3) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +72.6(n998) raceT +82.0(n2)
+p11        vs v19        length  34.0s (p90  47.5) target/timeout 0.97 exhausted 0.03 | margin by race: raceW +76.7(n1000)
+p11        vs v23        length  68.2s (p90  95.5) target/timeout 0.85 exhausted 0.15 | margin by race: raceW +79.9(n18) raceT +3.1(n935) raceL -74.0(n47)
+r5         vs p5a        length  81.8s (p90 220.0) target/timeout 0.95 exhausted 0.05 | margin by race: raceW +65.0(n998) raceT +78.0(n1) raceL -75.0(n1)
+r5         vs v19        length  93.4s (p90 420.0) target/timeout 0.94 exhausted 0.06 | margin by race: raceW +67.8(n1000)
+r5         vs v23        length 119.7s (p90 420.0) target/timeout 0.89 exhausted 0.11 | margin by race: raceW +71.4(n79) raceT -5.1(n878) raceL -77.3(n43)
+small:checkpoints/rollout_net_arch/base_seed1.pt vs p5a        length  83.2s (p90 240.0) target/timeout 0.94 exhausted 0.07 | margin by race: raceW +66.1(n996) raceT +73.0(n3) raceL -91.0(n1)
+small:checkpoints/rollout_net_arch/base_seed1.pt vs v19        length  92.3s (p90 420.0) target/timeout 0.96 exhausted 0.04 | margin by race: raceW +69.9(n1000)
+small:checkpoints/rollout_net_arch/base_seed1.pt vs v23        length 117.6s (p90 420.0) target/timeout 0.88 exhausted 0.12 | margin by race: raceW +73.6(n28) raceT -6.2(n925) raceL -76.2(n47)

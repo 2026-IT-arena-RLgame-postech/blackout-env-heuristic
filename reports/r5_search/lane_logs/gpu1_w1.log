@@ -1,0 +1,22 @@
+== 16:21:40 rush_all
+[plain vs rush_all] 64/64 margin +96.6 wall 452s (search 0s, 0 roots)
+== 16:29:17 v31
+[plain vs v31] 64/64 margin +19.9 wall 677s (search 0s, 0 roots)
+== 16:40:40 cpu lane w1 done
+== 16:40:40 p20
+[plain vs p20] 64/512 margin +14.4 wall 1156s (search 0s, 0 roots)
+[plain vs p20] 128/512 margin +6.4 wall 1128s (search 0s, 0 roots)
+[plain vs p20] 192/512 margin +16.0 wall 1172s (search 0s, 0 roots)
+[plain vs p20] 256/512 margin +12.7 wall 1113s (search 0s, 0 roots)
+[plain vs p20] 320/512 margin +14.8 wall 1270s (search 0s, 0 roots)
+[plain vs p20] 384/512 margin +10.6 wall 1239s (search 0s, 0 roots)
+[plain vs p20] 448/512 margin +20.2 wall 1263s (search 0s, 0 roots)
+[plain vs p20] 512/512 margin +7.4 wall 1349s (search 0s, 0 roots)
+== 19:22:13 v31
+[plain vs v31] 64/384 margin +26.8 wall 740s (search 0s, 0 roots)
+[plain vs v31] 128/384 margin +21.4 wall 631s (search 0s, 0 roots)
+[plain vs v31] 192/384 margin +27.9 wall 700s (search 0s, 0 roots)
+[plain vs v31] 256/384 margin +24.2 wall 919s (search 0s, 0 roots)
+[plain vs v31] 320/384 margin +21.3 wall 783s (search 0s, 0 roots)
+[plain vs v31] 384/384 margin +38.2 wall 787s (search 0s, 0 roots)
+== 20:38:18 cpu lane w1 done

@@ -47,16 +47,6 @@ SOURCE_NAMES = ("dataset", "self_vs_heuristic", "self_play")
 
 
 class SequentialReplayBuffer:
-    """
-    One team stream's circular timeline (see the module docstring). Row i is one tick seen from
-    this team: the observation at that tick, the action all 10 units then took, and what followed
-    (reward, done, potential, terminal). Consecutive rows are consecutive ticks until a `done`.
-
-    QMIXTrainer keeps buffer_a / buffer_b (team A / team B streams; in offline_pretrain.py the
-    static dataset) plus one pair per enabled on-policy source (onpolicy_buffers). Rows are stored
-    in world coordinates; team-B batches are mirrored at sample time, not here.
-    """
-
     def __init__(
         self,
         capacity: int,
@@ -67,13 +57,6 @@ class SequentialReplayBuffer:
         per_alpha: float = 0.6,
         per_eps: float = 1e-3,
     ) -> None:
-        """
-        capacity: rows, rounded up to the next power of 2 (the sum tree needs it; read
-        self.capacity for the real size). Arrays are preallocated with np.zeros, which the OS maps
-        lazily, so an unused on-policy buffer costs little. graphic_shape is (H, W, C) = (24, 24,
-        n_channels); agent_states rows are [pos_x, pos_y, team, item one-hot, class one-hot].
-        per_alpha / per_eps: PER exponent and the floor added to |TD| before it (update_priorities).
-        """
         pow2 = 1
         while pow2 < capacity:
             pow2 *= 2
@@ -103,6 +86,10 @@ class SequentialReplayBuffer:
         # Which heuristic played this stream's own team (train/policy_strength.POLICY_IDS index,
         # -1 = the net or unrecorded): weights the row's behaviour-cloning term.
         self.policy = np.full((self.capacity,), -1, dtype=np.int16)
+        # DAgger relabelling (train/onpolicy_collect.py): per unit, a bit mask of the compass
+        # directions a teacher labels correct in this state (bit i = DIRECTION_VECTORS[i], world
+        # frame, physical unit order like `actions`); 0 = no label.  Only rows the net played.
+        self.teach = np.zeros((self.capacity, n_units), dtype=np.uint8)
         self.source_counts = np.zeros(len(SOURCE_NAMES), dtype=np.int64)
 
         self._sum_tree = SumSegmentTree(self.capacity)
@@ -127,31 +114,8 @@ class SequentialReplayBuffer:
         potential: float = 0.0,
         terminal: bool | None = None,
         policy: int = -1,
+        teach: np.ndarray | None = None,
     ) -> None:
-        """
-        Appends one row at the write head (overwriting the oldest once full) with max priority,
-        so a new row is sampled at least once before its TD error is known.
-
-        graphic [H, W, C], team_state [team_state_size], agent_states [n_units, agent_state_size]:
-            the observation BEFORE the step, from this stream's team perspective (world frame).
-        actions [n_units]: direction index 0-7 of every unit, physical order, both teams -- the
-            trainer trains on its own team's 5 and feeds all 10 to the SPR transition model.
-        reward: this team's reward for the step (Unity reward, or reward v2 without its potential
-            term), blocked penalty already included.
-        done: ends a training segment -- an absorption (20 s) or a match end. n-step returns and
-            SPR windows never read past it.
-        potential: reward v2 team potential of this row's state; train/returns.py adds
-            gamma**k * P(s_{t+k}) - P(s_t) inside the n-step return. 0 for the Unity reward.
-        terminal: this row ends a match (None = same as done). Only a terminal cut drops the
-            bootstrap potential; an absorption `done` keeps it, since the next row is the same
-            match.
-        source: SOURCE_* tag (dataset / self_vs_heuristic / self_play); only for per-source stats,
-            because offline_pretrain.py already keeps each source in its own buffer.
-        demo: this team's actions came from a heuristic, so the row is a behaviour-cloning
-            target. False for rows the net played (their BC term is masked to 0).
-        policy: train/policy_strength.POLICY_IDS index of the heuristic that played this team,
-            -1 if the net or unrecorded; selects the BC weight when bc_policy_weighting is on.
-        """
         i = self._pos
         if self._size == self.capacity:
             self.source_counts[self.source[i]] -= 1
@@ -166,6 +130,7 @@ class SequentialReplayBuffer:
         self.source[i] = source
         self.demo[i] = demo
         self.policy[i] = policy
+        self.teach[i] = 0 if teach is None else teach
         self.source_counts[source] += 1
 
         self._sum_tree[i] = self._max_priority ** self._per_alpha
@@ -272,6 +237,7 @@ class SequentialReplayBuffer:
             "source": self.source[indices],
             "demo": self.demo[indices],
             "policy": self.policy[indices],
+            "teach": self.teach[indices],
         }
 
     def update_priorities(self, indices: np.ndarray, priorities: np.ndarray) -> None:

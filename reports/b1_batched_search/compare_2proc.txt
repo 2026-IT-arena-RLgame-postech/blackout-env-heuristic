@@ -1,0 +1,18 @@
+B1 old vs new (o4f_v28r): per-game identity and throughput
+
+[p20] games new 128, common with old 128, with ref 128
+  differing fields vs old: {'margin': 0, 'ours': 0, 'opp': 0, 'ticks': 0, 'first_ours': 0, 'first_opp': 0, 'searches': 0, 'chosen': 0, 'gain_sum': 0, 'lead_at': 0}
+  differing fields vs ref: {'margin': 0, 'ours': 0, 'opp': 0, 'ticks': 0, 'first_ours': 0, 'first_opp': 0, 'searches': 0, 'chosen': 0, 'gain_sum': 0, 'lead_at': 0}
+  margin mean old -8.28 new -8.28  identical games 128/128
+  old: 128 games, wall 3515 s (27.5 s/game, search 25.6 s/game, 0.452 s/root) = 131 games/h/process; process CPU 3454 s (0.98 cores) = 133 games per CPU-core-hour
+  new: 128 games, wall 2637 s (20.6 s/game, search 18.2 s/game, 0.322 s/root) = 175 games/h/process; process CPU 2608 s (0.99 cores) = 177 games per CPU-core-hour
+  speed-up: wall 1.33x, search 1.41x, per CPU core 1.32x
+
+[v30] games new 128, common with old 128, with ref 128
+  differing fields vs old: {'margin': 0, 'ours': 0, 'opp': 0, 'ticks': 0, 'first_ours': 0, 'first_opp': 0, 'searches': 0, 'chosen': 0, 'gain_sum': 0, 'lead_at': 0}
+  differing fields vs ref: {'margin': 0, 'ours': 0, 'opp': 0, 'ticks': 0, 'first_ours': 0, 'first_opp': 0, 'searches': 0, 'chosen': 0, 'gain_sum': 0, 'lead_at': 0}
+  margin mean old -10.88 new -10.88  identical games 128/128
+  old: 128 games, wall 3839 s (30.0 s/game, search 23.2 s/game, 0.414 s/root) = 120 games/h/process; process CPU 3781 s (0.98 cores) = 122 games per CPU-core-hour
+  new: 128 games, wall 3320 s (25.9 s/game, search 17.9 s/game, 0.319 s/root) = 139 games/h/process; process CPU 3286 s (0.99 cores) = 140 games per CPU-core-hour
+  speed-up: wall 1.16x, search 1.30x, per CPU core 1.15x
+

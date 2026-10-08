@@ -8,6 +8,32 @@ BlackOut is a 2-team competitive game. Each team controls 5 units on a 24×24 gr
 
 For full game rules see [docs/gameplay_en.md](docs/gameplay_en.md) / [docs/gameplay_ko.md](docs/gameplay_ko.md).
 
+## This branch: `policy-v2-2026-10-08` (distillation + search, 2026-09-20 – 10-08)
+
+Snapshot of the policy-v2 line on top of `run11-80k`: heuristics V20–V32.1, distilled students D1 → **P24c**,
+search (rollout nets + value nets), OOD suite and the 24-policy Elo evaluation. Pair it with the Unity project's
+branch of the same name:
+
+```bash
+git clone -b policy-v2-2026-10-08 https://github.com/2026-IT-arena-RLgame-postech/blackout-env-heuristic.git blackout-env
+git clone -b policy-v2-2026-10-08 https://github.com/2026-IT-arena-RLgame-postech/blackout-fixed.git blackout
+cd blackout-env && scripts/fetch_checkpoints.sh   # 33 nets (~1 GB) from the release ckpt-2026-10-08
+```
+
+| What | Where |
+|---|---|
+| Status at a glance, champions, all experiments (KO) | [docs/experiments_summary_ko.md](docs/experiments_summary_ko.md), [docs/experiments_index_ko.md](docs/experiments_index_ko.md) |
+| Full design / experiment log §1–§62 (KO) | [docs/policy_v2_design_ko.md](docs/policy_v2_design_ko.md) |
+| Next candidate experiments (KO) | [docs/next_experiments_ko.md](docs/next_experiments_ko.md) |
+| Checkpoints and how to fetch them | [docs/checkpoints.md](docs/checkpoints.md) |
+| Decision history and working rules (agent memory snapshot) | [docs/agent_memory/README.md](docs/agent_memory/README.md) |
+| Final Elo / win-rate heatmap (24 policies) | [reports/elo24/](reports/elo24/) |
+
+Champions: student **P24c** (`checkpoints/distill/frozen/p24c_v321.pt`), heuristic **V32.1**
+(`blackout_env.heuristics.v32_four_hunters.V32_1`), search **P21e + r21d256 + o4f** (candidate P24c + r24cd256).
+
+The Run 11 (QMIX) material below is kept unchanged.
+
 ## Start here: the Run 11 80k checkpoint
 
 This branch (`run11-80k`) packages our strongest model so far and everything needed to rebuild,

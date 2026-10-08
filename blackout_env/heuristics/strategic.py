@@ -1,20 +1,8 @@
-"""V1 (``strategic_v1``): the root of the StrategicHeuristic line and its shared machinery.
+"""A coordinated, stateful full-game heuristic for BlackOut.
 
 The policy deliberately consumes only the public competition observation.  It is therefore
 usable both as a baseline in ``run_match`` and as a behaviour-cloning teacher without giving
 the learner privileged Unity state.
-
-V1's own strategy is simple: fixed roles by team-local order (unit 0 Carrier, unit 1 Hunter,
-the rest Collectors) and a per-unit greedy target score (``_choose_target``).  It is the
-weakest version (Elo 1192) and only a 1% contrast case in HeuristicPolicyMixture.  What every
-later version (V2-V19) inherits from here matters more:
-
-* observation helpers: class/cargo decoding, world <-> graphic-pixel conversion, connected
-  storage components, protected (in-base, unraidable) storage inference;
-* ``_storage_target``: capacity-aware deposit choice that mirrors Storage.TryDistributeItem;
-* ``_navigate``: cached 8-neighbour A*, arrival dead-zone, stuck/oscillation detection with
-  multi-tick escapes, and local threat repulsion for cargo holders and Carriers;
-* ``retune`` (in-place parameter change used by the mixture) and reset-on-new-match detection.
 """
 
 from __future__ import annotations
@@ -45,8 +33,6 @@ ABSORPTION_INTERVAL_SECONDS = 20.0
 
 @dataclass
 class _UnitMemory:
-    """Per-unit navigation state carried across ticks (current path, stuck/escape/arrival timers)."""
-
     target: tuple[int, int] | None = None
     target_kind: str = ""
     path: list[tuple[int, int]] = field(default_factory=list)
@@ -122,11 +108,6 @@ class StrategicHeuristic(BaseModel):
             setattr(self, name, getattr(template, name))
 
     def act(self, obs: dict[str, dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
-        """One team decision tick: pick a (target, kind) per unit, then steer towards it.
-
-        Units are processed in physical-index order; each claimed battery/special/steal pixel
-        is added to ``reservations`` so later teammates pick something else.
-        """
         if not obs:
             return {}
         sample = next(iter(obs.values()))
@@ -168,7 +149,6 @@ class StrategicHeuristic(BaseModel):
         return actions
 
     def _role(self, local_index: int) -> str:
-        """Desired role by team-local order (V7+ override this with dynamic assignment)."""
         if not self.use_specialists:
             return "collector"
         if local_index == 0:
@@ -180,13 +160,16 @@ class StrategicHeuristic(BaseModel):
     @staticmethod
     def _class_id(state: np.ndarray) -> int:
         # np.argmax setup dominates the comparison for a fixed three-element one-hot.
-        a, b, c = float(state[-3]), float(state[-2]), float(state[-1])
+        a, b, c = state[-3:].tolist()  # = float(state[-3]), float(state[-2]), float(state[-1])
         return 0 if a >= b and a >= c else 1 if b >= c else 2
 
     @staticmethod
     def _is_holding(state: np.ndarray) -> bool:
         # item encoding begins at 3: slot 0=none, slot 1=battery, 2+=specials.
-        return any(float(state[i]) > 1e-5 for i in range(4, 9))
+        for value in state[4:9].tolist():  # = any(float(state[i]) > 1e-5 for i in range(4, 9))
+            if value > 1e-5:
+                return True
+        return False
 
     def _choose_target(
         self,
@@ -198,18 +181,6 @@ class StrategicHeuristic(BaseModel):
         local_index: int,
         team_state: np.ndarray,
     ) -> tuple[tuple[int, int] | None, str]:
-        """V1's per-unit target rule, in priority order.
-
-        1. A Collector assigned a specialist role walks to its sanctuary ("transform").
-        2. Any unit holding cargo deposits it (``_storage_target``; "wait_storage" when full).
-        3. A Hunter chases the enemy maximising cargo(2) + Carrier(1.5) - distance, ignoring
-           units inside the enemy base; with none visible it guards own storage.
-        4. Otherwise the best of: field batteries / steals from exposed enemy storage
-           (amount-weighted, steals boosted as absorption nears) and special items (only while
-           the win is not within reach); falling back to rotating raids of enemy storage.
-
-        Returns (pixel target or None, kind); ``kind`` drives arrival/replan rules in _navigate.
-        """
         pos = self._to_pixel(state[:2], graphic.shape[:2])
         cls = self._class_id(state)
         holding = self._is_holding(state)
@@ -306,15 +277,6 @@ class StrategicHeuristic(BaseModel):
         walkable: np.ndarray,
         shape: tuple[int, int],
     ) -> np.ndarray:
-        """Turn a pixel target into a unit-length (x, y) move action.
-
-        Order of precedence: an active escape manoeuvre; the arrival dead-zone (stop, and if
-        an interaction has not fired after 24 ticks step out for 12 ticks and re-enter);
-        replanning A* when the target changes, the path runs out, the unit is stuck or
-        oscillating, or ``replan_interval`` expires (every 4 ticks for moving "hunt" targets);
-        then following the path cell by cell, with a local repulsion from dangerous enemies
-        for cargo holders and Carriers, and a 6-tick perpendicular escape when stuck.
-        """
         if target is None:
             return np.zeros(2, dtype=np.float32)
         mem = self._memory.get(name)
@@ -470,7 +432,6 @@ class StrategicHeuristic(BaseModel):
 
     @staticmethod
     def _to_pixel_float(position: np.ndarray, shape: tuple[int, int]) -> np.ndarray:
-        """Normalized world (x, y) in [-1, 1] -> fractional graphic (row, col); rows grow downward."""
         h, w = shape
         return np.array([(1.0 - float(position[1])) * 0.5 * h - 0.5,
                          (float(position[0]) + 1.0) * 0.5 * w - 0.5], dtype=np.float32)
@@ -479,12 +440,19 @@ class StrategicHeuristic(BaseModel):
     def _to_pixel(cls, position: np.ndarray, shape: tuple[int, int]) -> tuple[int, int]:
         # Same float32 rounding as _to_pixel_float, without building the array.
         h, w = shape
+        y = (1.0 - float(position[1])) * 0.5 * h - 0.5
+        x = (float(position[0]) + 1.0) * 0.5 * w - 0.5
+        # Fast path: rounding to float32 moves a value below 100 by < 1e-5, which changes round() only
+        # within 1e-5 of a half-integer; everything else (and NaN) takes the float32 path below.
+        if abs(y) < 100.0 and abs(x) < 100.0:
+            ry, rx = round(y), round(x)
+            if abs(abs(y - ry) - 0.5) > 1e-5 and abs(abs(x - rx) - 0.5) > 1e-5:
+                return (min(h - 1, max(0, ry)), min(w - 1, max(0, rx)))
         y = float(np.float32((1.0 - float(position[1])) * 0.5 * h - 0.5))
         x = float(np.float32((float(position[0]) + 1.0) * 0.5 * w - 0.5))
         return (min(h - 1, max(0, int(round(y)))), min(w - 1, max(0, int(round(x)))))
 
     def _cached_protected_ally_storage_mask(self, graphic: np.ndarray) -> np.ndarray:
-        """Our in-base storage component (the enemy cannot reach it), cached per episode."""
         cached = self._static_masks.get("protected_ally_storage")
         if cached is None:
             cached = self._protected_storage_mask(graphic, STORAGE_ALLY, SPAWN_ALLY)
@@ -567,7 +535,6 @@ class StrategicHeuristic(BaseModel):
 
     @staticmethod
     def _nearest_pixel(mask: np.ndarray, origin: tuple[int, int]) -> tuple[int, int] | None:
-        """Straight-line nearest set pixel of ``mask`` (None if empty)."""
         ys, xs = np.nonzero(mask)
         if len(ys) == 0:
             return None
@@ -604,7 +571,6 @@ class StrategicHeuristic(BaseModel):
 
     @staticmethod
     def _components(mask: np.ndarray) -> list[list[tuple[int, int]]]:
-        """4-connected components of a boolean mask (e.g. one storage cluster each)."""
         remaining = mask.copy()
         components: list[list[tuple[int, int]]] = []
         h, w = mask.shape
@@ -628,7 +594,6 @@ class StrategicHeuristic(BaseModel):
 
     @staticmethod
     def _component_center(component: list[tuple[int, int]]) -> tuple[int, int]:
-        """Member cell closest to the centroid, so the target is always inside the region."""
         cy = sum(p[0] for p in component) / len(component)
         cx = sum(p[1] for p in component) / len(component)
         return min(component, key=lambda p: (p[0] - cy) ** 2 + (p[1] - cx) ** 2)

@@ -1,27 +1,4 @@
-"""Hand-written policies useful as baselines and behaviour-cloning teachers.
-
-Version -> module (class ``StrategicHeuristicV<N>``, policy_id ``strategic_v<N>``):
-
-  V1       strategic.py               fixed roles, per-unit targets (StrategicHeuristic, alias ...V1)
-  V2       advanced.py                team-wide greedy task assignment
-  V3       safe_storage.py            threat/absorption-aware deposit choice
-  V4       spread_deposit.py          deposit-tile reservation; = RecommendedStrategicHeuristic,
-                                      the eval and on-policy reference opponent
-  V4-near  v4_family.py               V4PolicyFamily (strategic_v4_near): V4 parameter variants
-  V5       intercept.py               predictive Hunter intercepts
-  V6       risk_path.py               enemy-threat cost in carrier A*
-  V7       dynamic_roles.py           dynamic role assignment
-  V8       lifecycle_roles.py         conservative death-respec
-  V9       opportunistic_respec.py    eager death-respec
-  V10-V12  phase_strategies.py        phase switching / absorption-window raids / fortress on a lead
-  V13-V16  counterplay_strategies.py  storage siege / home sentinel / carrier convoy / extended V10
-  V17      v17_planner.py             team planner that blocks the enemy base exit
-  V18      v18_counter.py             counter to V17
-  V19      v19_counter.py             counter to V18 (highest Elo)
-
-HeuristicPolicyMixture (mixture.py) samples among all of them for data collection.
-docs/heuristic_policy_catalog_ko.md has the lineage, per-version behaviour and Elo ratings.
-"""
+"""Hand-written policies useful as baselines and behaviour-cloning teachers."""
 
 from .strategic import StrategicHeuristic
 from .advanced import StrategicHeuristicV2
@@ -40,6 +17,27 @@ from .counterplay_strategies import (
 from .v17_planner import StrategicHeuristicV17
 from .v18_counter import StrategicHeuristicV18
 from .v19_counter import StrategicHeuristicV19
+from .teach import StrategicHeuristicV4Teach, TeachLabel, TeachLabeller
+from .v17_teach import StrategicHeuristicV17Teach
+from .v20_anticamp import StrategicHeuristicV20, StrategicHeuristicV20Teach
+from .v21_safe_transform import StrategicHeuristicV21, StrategicHeuristicV21Teach
+from .any_angle import AnyAngleFieldMixin, AnyAngleMixin, StrategicHeuristicV21AnyAngle, StrategicHeuristicV21AnyAngleED
+from .v22_teacher import StrategicHeuristicV22, StrategicHeuristicV22Teach
+from .v23_opening import StrategicHeuristicV23
+from .v24_late import StrategicHeuristicV24
+from .v25_race import StrategicHeuristicV25
+from .v26_trade import StrategicHeuristicV26
+from .v27_reserve import StrategicHeuristicV27
+from .v28_trade_hold import StrategicHeuristicV28
+from .v29_reserve_join import StrategicHeuristicV29
+from .v30_solo_sentry import StrategicHeuristicV30
+from .v31_carrier_evade import StrategicHeuristicV31
+from .v32_four_hunters import StrategicHeuristicV32
+from .raider import StrategicRaider
+from .cargo_hunter import StrategicCargoHunter
+from .early_rush import StrategicEarlyRush
+from .fortress import StrategicFortress
+from .duelist import StrategicDuelist
 from .mixture import HeuristicPolicyMixture, POLICY_REGISTRY, PolicySample, make_heuristic
 
 StrategicHeuristicV1 = StrategicHeuristic
@@ -56,8 +54,10 @@ __all__ = [
     "StrategicHeuristicV9",
     "StrategicHeuristicV10", "StrategicHeuristicV11", "StrategicHeuristicV12",
     "StrategicHeuristicV13", "StrategicHeuristicV14", "StrategicHeuristicV15", "StrategicHeuristicV16",
-    "StrategicHeuristicV17", "StrategicHeuristicV18", "StrategicHeuristicV19",
+    "StrategicHeuristicV17", "StrategicHeuristicV18", "StrategicHeuristicV19", "StrategicHeuristicV20", "StrategicHeuristicV21", "StrategicHeuristicV21AnyAngle", "StrategicHeuristicV21AnyAngleED", "AnyAngleMixin", "AnyAngleFieldMixin", "StrategicHeuristicV22", "StrategicHeuristicV22Teach", "StrategicHeuristicV23", "StrategicHeuristicV24", "StrategicHeuristicV25", "StrategicHeuristicV26", "StrategicHeuristicV27", "StrategicHeuristicV28", "StrategicHeuristicV29", "StrategicHeuristicV30", "StrategicHeuristicV31", "StrategicHeuristicV32",
+    "StrategicRaider", "StrategicCargoHunter", "StrategicEarlyRush", "StrategicFortress", "StrategicDuelist",
     "RecommendedStrategicHeuristic",
+    "StrategicHeuristicV4Teach", "StrategicHeuristicV17Teach", "StrategicHeuristicV20Teach", "StrategicHeuristicV21Teach", "TeachLabel", "TeachLabeller",
     "V4FamilySample", "V4PolicyFamily",
     "HeuristicPolicyMixture", "POLICY_REGISTRY", "PolicySample", "make_heuristic",
 ]

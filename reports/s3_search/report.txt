@@ -1,0 +1,14 @@
+s6e50          vs p11              n= 256 seeds= 128  search  +11.2  plain   +1.7  diff   +9.5 ±  4.5  win(sign) +0.20 vs +0.05  race w/t/l (54, 199, 3) vs (24, 231, 1)  capped 0.31/0.25  len 156s  wall 6.8s/match (plain 1.33)  e50 w50 m0.0 B6
+                  base share 0.19; alt0 0.16, alt1 0.16, alt2 0.17, alt3 0.16, alt4 0.16
+s6e50          vs r5               n= 128 seeds=  64  search  +77.5  plain   +0.0  diff  +77.5 ±  1.8  win(sign) +0.94 vs +0.00  race w/t/l (30, 94, 4) vs (9, 110, 9)  capped 0.04/0.42  len 91s  wall 2.6s/match (plain 0.30)  e50 w50 m0.0 B6
+                  base share 0.34; alt0 0.14, alt1 0.12, alt2 0.12, alt3 0.14, alt4 0.14
+s8e12          vs p11              n= 128 seeds=  64  search  +23.7  plain   +3.9  diff  +19.8 ±  7.4  win(sign) +0.35 vs +0.08  race w/t/l (28, 98, 2) vs (14, 114, 0)  capped 0.25/0.25  len 143s  wall 7.5s/match (plain 1.50)  e12 w12 m0.0 B8
+                  base share 0.15; alt0 0.13, alt1 0.12, alt2 0.12, alt3 0.12, alt4 0.12, samp1s0 0.12, samp1s1 0.12
+s8e25          vs p11              n= 256 seeds= 128  search  +25.0  plain   +1.7  diff  +23.3 ±  4.7  win(sign) +0.36 vs +0.05  race w/t/l (73, 179, 4) vs (24, 231, 1)  capped 0.25/0.25  len 138s  wall 6.4s/match (plain 1.33)  e25 w25 m0.0 B8
+                  base share 0.16; alt0 0.13, alt1 0.12, alt2 0.12, alt3 0.11, alt4 0.12, samp1s0 0.12, samp1s1 0.12
+s8e25          vs r5               n= 512 seeds= 256  search  +84.2  plain   +0.0  diff  +84.2 ±  0.3  win(sign) +1.00 vs +0.00  race w/t/l (144, 361, 7) vs (27, 458, 27)  capped 0.01/0.38  len 85s  wall 3.2s/match (plain 0.26)  e25 w25 m0.0 B8
+                  base share 0.30; alt0 0.11, alt1 0.09, alt2 0.10, alt3 0.10, alt4 0.11, samp1s0 0.10, samp1s1 0.10
+s8e25m3        vs p11              n= 256 seeds= 128  search  +27.9  plain   +1.7  diff  +26.2 ±  4.8  win(sign) +0.41 vs +0.05  race w/t/l (68, 184, 4) vs (24, 231, 1)  capped 0.26/0.25  len 139s  wall 2.7s/match (plain 1.33)  e25 w25 m3.0 B8
+                  base share 0.74; alt0 0.04, alt1 0.04, alt2 0.04, alt3 0.04, alt4 0.04, samp1s0 0.04, samp1s1 0.03
+s8e25m3        vs r5               n=  64 seeds=  32  search  +82.3  plain   +0.0  diff  +82.3 ±  0.9  win(sign) +1.00 vs +0.00  race w/t/l (21, 41, 2) vs (4, 56, 4)  capped 0.02/0.41  len 79s  wall 2.4s/match (plain 0.30)  e25 w25 m3.0 B8
+                  base share 0.80; alt0 0.04, alt1 0.03, alt2 0.02, alt3 0.03, alt4 0.03, samp1s0 0.02, samp1s1 0.03
