@@ -138,7 +138,7 @@
    "dir": "blackout-env-elo24",
    "python": "~/blackout-env/.venv/bin/python",
    "nice": 10,
-   "max_workers": 12,
+   "max_workers": 7,
    "min_free_cores": 2,
    "enabled": true
   },
