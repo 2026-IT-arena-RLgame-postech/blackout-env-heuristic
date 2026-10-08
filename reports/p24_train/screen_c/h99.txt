@@ -1,0 +1,54 @@
+cv2  vs V28  n=64 margin   -0.9 ticks   252 | H@99 {(4, 3): 64}
+cv3  vs V28  n=64 margin   +0.1 ticks   252 | H@99 {(4, 3): 64}
+cv4  vs V28  n=64 margin   -0.1 ticks   252 | H@99 {(4, 3): 64}
+cv5  vs V28  n=64 margin   -0.0 ticks   252 | H@99 {(4, 3): 64}
+cv6  vs V28  n=64 margin   -0.5 ticks   252 | H@99 {(4, 3): 64}
+cv7  vs V28  n=64 margin   -0.4 ticks   252 | H@99 {(4, 3): 64}
+cv8  vs V28  n=64 margin   -0.1 ticks   252 | H@99 {(4, 3): 64}
+cv9  vs V28  n=64 margin   -0.2 ticks   252 | H@99 {(4, 3): 64}
+p22  vs V28  n=64 margin   +0.8 ticks   252 | H@99 {(4, 3): 41, (3, 3): 22, (2, 3): 1}
+cv2  vs V30  n=64 margin   -0.6 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+cv3  vs V30  n=64 margin   +0.3 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+cv4  vs V30  n=64 margin   -0.2 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+cv5  vs V30  n=64 margin   -0.1 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+cv6  vs V30  n=64 margin   -0.5 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+cv7  vs V30  n=64 margin   -0.2 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+cv8  vs V30  n=64 margin   -0.0 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+cv9  vs V30  n=64 margin   -0.1 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+p22  vs V30  n=64 margin   +1.0 ticks   252 | H@99 {(4, 4): 41, (3, 3): 22, (2, 3): 1}
+cv2  vs p17  n=64 margin   -0.9 ticks   252 | H@99 {(4, 4): 54, (4, 3): 9, (4, 2): 1}
+cv3  vs p17  n=64 margin   +0.2 ticks   252 | H@99 {(4, 4): 54, (4, 3): 9, (4, 2): 1}
+cv4  vs p17  n=64 margin   -0.2 ticks   252 | H@99 {(4, 4): 54, (4, 3): 9, (4, 2): 1}
+cv5  vs p17  n=64 margin   +0.0 ticks   252 | H@99 {(4, 4): 54, (4, 3): 9, (4, 2): 1}
+cv6  vs p17  n=64 margin   -0.7 ticks   252 | H@99 {(4, 4): 54, (4, 3): 9, (4, 2): 1}
+cv7  vs p17  n=64 margin   -0.4 ticks   252 | H@99 {(4, 4): 54, (4, 3): 9, (4, 2): 1}
+cv8  vs p17  n=64 margin   -0.3 ticks   252 | H@99 {(4, 4): 54, (4, 3): 9, (4, 2): 1}
+cv9  vs p17  n=64 margin   -0.1 ticks   252 | H@99 {(4, 4): 54, (4, 3): 9, (4, 2): 1}
+p22  vs p17  n=64 margin   +0.9 ticks   252 | H@99 {(4, 4): 43, (3, 4): 10, (3, 3): 9, (2, 4): 1}
+cv2  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,hunter_quota=4 n=64 margin   -0.3 ticks   252 | H@99 {(4, 4): 64}
+cv3  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,hunter_quota=4 n=64 margin   +0.6 ticks   252 | H@99 {(4, 4): 64}
+cv4  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,hunter_quota=4 n=64 margin   +0.2 ticks   252 | H@99 {(4, 4): 64}
+cv5  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,hunter_quota=4 n=64 margin   +0.2 ticks   252 | H@99 {(4, 4): 64}
+cv6  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,hunter_quota=4 n=64 margin   -0.2 ticks   252 | H@99 {(4, 4): 64}
+cv7  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,hunter_quota=4 n=64 margin   +0.1 ticks   252 | H@99 {(4, 4): 64}
+cv8  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,hunter_quota=4 n=64 margin   +0.3 ticks   252 | H@99 {(4, 4): 64}
+cv9  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,hunter_quota=4 n=64 margin   +0.2 ticks   252 | H@99 {(4, 4): 64}
+p22  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,hunter_quota=4 n=64 margin   +1.5 ticks   252 | H@99 {(4, 4): 46, (3, 4): 17, (2, 4): 1}
+cv2  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 n=64 margin   -0.7 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+cv3  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 n=64 margin   +0.2 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+cv4  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 n=64 margin   -0.2 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+cv5  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 n=64 margin   -0.2 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+cv6  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 n=64 margin   -0.6 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+cv7  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 n=64 margin   -0.3 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+cv8  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 n=64 margin   -0.1 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+cv9  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 n=64 margin   -0.2 ticks   252 | H@99 {(4, 4): 53, (4, 3): 11}
+p22  vs strategic_v30:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5 n=64 margin   +1.0 ticks   252 | H@99 {(4, 4): 41, (3, 3): 22, (2, 3): 1}
+cv2  vs strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true n=64 margin   -0.5 ticks   252 | H@99 {(4, 4): 64}
+cv3  vs strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true n=64 margin   +0.4 ticks   252 | H@99 {(4, 4): 64}
+cv4  vs strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true n=64 margin   -0.0 ticks   252 | H@99 {(4, 4): 64}
+cv5  vs strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true n=64 margin   +0.1 ticks   252 | H@99 {(4, 4): 64}
+cv6  vs strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true n=64 margin   -0.3 ticks   252 | H@99 {(4, 4): 64}
+cv7  vs strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true n=64 margin   -0.0 ticks   252 | H@99 {(4, 4): 64}
+cv8  vs strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true n=64 margin   +0.2 ticks   252 | H@99 {(4, 4): 64}
+cv9  vs strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true n=64 margin   +0.2 ticks   252 | H@99 {(4, 4): 64}
+p22  vs strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,solo_sentry=false,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true n=64 margin   +1.3 ticks   252 | H@99 {(4, 4): 46, (3, 4): 17, (2, 4): 1}
