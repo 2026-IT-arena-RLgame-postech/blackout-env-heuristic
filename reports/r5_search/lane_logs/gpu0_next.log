@@ -1,0 +1,5 @@
+== 22:00:12 v32b o4f_r22
+[o4f_r22 vs v32b] 128/384 margin -12.9 wall 3647s (search 2631s, 8882 roots)
+[o4f_r22 vs v32b] 256/384 margin -13.8 wall 3312s (search 2449s, 8536 roots)
+[o4f_r22 vs v32b] 384/384 margin -7.2 wall 3635s (search 2632s, 9159 roots)
+== 00:56:54 lane v2 done

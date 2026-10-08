@@ -1,0 +1,41 @@
+== 14:23:01 v31 plain
+[plain vs v31] 128/128 margin +27.8 wall 1021s (search 0s, 0 roots)
+== 14:40:26 v30 plain
+[plain vs v30] 128/128 margin +31.1 wall 572s (search 0s, 0 roots)
+== 14:50:03 p22 plain
+[plain vs p22] 128/128 margin +0.0 wall 525s (search 0s, 0 roots)
+== 14:58:57 p21e plain
+[plain vs p21e] 128/128 margin +7.7 wall 526s (search 0s, 0 roots)
+== 15:07:58 p20 plain
+Traceback (most recent call last):
+  File "/home/cucumbersaurus/blackout-env-r5/examples/blind_search_eval.py", line 397, in <module>
+    main()
+  File "/home/cucumbersaurus/blackout-env-r5/examples/blind_search_eval.py", line 393, in main
+    {"play": cmd_play, "report": cmd_report}[args.cmd](args)
+  File "/home/cucumbersaurus/blackout-env-r5/examples/blind_search_eval.py", line 237, in cmd_play
+    opp = make_opponent(args.opponent, args.device)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-r5/examples/blind_search_eval.py", line 181, in make_opponent
+    return NetPolicy.from_checkpoint(str(REPO / BASES[name]), device=device)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-r5/blackout_env/sim/batch.py", line 521, in from_checkpoint
+    ck = torch.load(path, map_location="cpu", weights_only=True)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-r5/.venv/lib/python3.12/site-packages/torch/serialization.py", line 1530, in load
+    with _open_file_like(f, "rb") as opened_file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-r5/.venv/lib/python3.12/site-packages/torch/serialization.py", line 795, in _open_file_like
+    return _open_file(name_or_buffer, mode)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-r5/.venv/lib/python3.12/site-packages/torch/serialization.py", line 776, in __init__
+    super().__init__(open(name, mode))  # noqa: SIM115
+                     ^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/cucumbersaurus/blackout-env-r5/checkpoints/distill/frozen/p20_v30.pt'
+FAILED p20
+== 15:08:08 p17 plain
+[plain vs p17] 128/128 margin +44.2 wall 538s (search 0s, 0 roots)
+== 15:17:19 v28 plain
+[plain vs v28] 128/128 margin +56.2 wall 1083s (search 0s, 0 roots)
+== 15:35:29 v27 plain
+[plain vs v27] 128/128 margin +56.9 wall 1277s (search 0s, 0 roots)
+== 15:57:04 v25 plain

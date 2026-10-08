@@ -1,0 +1,15 @@
+== 16:44:04 v30_h4 o4f_r22
+[o4f_r22 vs v30_h4] 64/64 margin -10.7 wall 2326s (search 1762s, 3666 roots)
+== 17:22:59 v30_h4hunt o4f_r22
+[o4f_r22 vs v30_h4hunt] 64/64 margin -3.2 wall 2789s (search 2161s, 5066 roots)
+== 18:09:36 v30_c0 o4f_r22
+[o4f_r22 vs v30_c0] 64/64 margin +17.9 wall 2467s (search 1889s, 3691 roots)
+== 18:50:49 v30_h2 o4f_r22
+[o4f_r22 vs v30_h2] 64/64 margin +73.6 wall 1477s (search 1049s, 1976 roots)
+== 19:15:34 v30_camp o4f_r22
+[o4f_r22 vs v30_camp] 64/64 margin +23.8 wall 2139s (search 1577s, 3248 roots)
+== 19:51:21 v30_stage3 o4f_r22
+[o4f_r22 vs v30_stage3] 64/64 margin +26.2 wall 1926s (search 1404s, 2851 roots)
+== 20:23:33 v30_nostage o4f_r22
+[o4f_r22 vs v30_nostage] 64/64 margin +74.7 wall 1484s (search 1061s, 1979 roots)
+== 20:48:24 v30_hunt o4f_r22

@@ -1,0 +1,24 @@
+== 16:21:40 v25
+[plain vs v25] 64/512 margin +69.3 wall 767s (search 0s, 0 roots)
+[plain vs v25] 128/512 margin +68.2 wall 698s (search 0s, 0 roots)
+[plain vs v25] 192/512 margin +66.0 wall 683s (search 0s, 0 roots)
+[plain vs v25] 256/512 margin +64.5 wall 711s (search 0s, 0 roots)
+[plain vs v25] 320/512 margin +67.9 wall 777s (search 0s, 0 roots)
+[plain vs v25] 384/512 margin +67.8 wall 657s (search 0s, 0 roots)
+[plain vs v25] 448/512 margin +67.9 wall 660s (search 0s, 0 roots)
+[plain vs v25] 512/512 margin +72.8 wall 621s (search 0s, 0 roots)
+== 17:54:39 p21e
+[plain vs p21e] 64/384 margin +4.8 wall 1183s (search 0s, 0 roots)
+[plain vs p21e] 128/384 margin +5.6 wall 1342s (search 0s, 0 roots)
+[plain vs p21e] 192/384 margin +7.9 wall 1344s (search 0s, 0 roots)
+[plain vs p21e] 256/384 margin +6.2 wall 1254s (search 0s, 0 roots)
+[plain vs p21e] 320/384 margin +6.5 wall 1287s (search 0s, 0 roots)
+[plain vs p21e] 384/384 margin +10.0 wall 984s (search 0s, 0 roots)
+== 19:57:56 p17
+[plain vs p17] 64/384 margin +40.5 wall 1009s (search 0s, 0 roots)
+[plain vs p17] 128/384 margin +50.7 wall 1100s (search 0s, 0 roots)
+[plain vs p17] 192/384 margin +54.0 wall 1045s (search 0s, 0 roots)
+[plain vs p17] 256/384 margin +49.0 wall 942s (search 0s, 0 roots)
+[plain vs p17] 320/384 margin +54.1 wall 919s (search 0s, 0 roots)
+[plain vs p17] 384/384 margin +59.7 wall 859s (search 0s, 0 roots)
+== 21:35:55 cpu lane w3 done

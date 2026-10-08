@@ -1,0 +1,10 @@
+== 18:42:33 v32b
+[plain vs v32b] 64/512 margin -4.5 wall 1079s (search 0s, 0 roots)
+[plain vs v32b] 128/512 margin -22.5 wall 1046s (search 0s, 0 roots)
+[plain vs v32b] 192/512 margin -12.6 wall 902s (search 0s, 0 roots)
+[plain vs v32b] 256/512 margin -8.6 wall 764s (search 0s, 0 roots)
+[plain vs v32b] 320/512 margin -27.1 wall 864s (search 0s, 0 roots)
+[plain vs v32b] 384/512 margin -18.6 wall 944s (search 0s, 0 roots)
+[plain vs v32b] 448/512 margin -3.5 wall 998s (search 0s, 0 roots)
+[plain vs v32b] 512/512 margin -15.4 wall 950s (search 0s, 0 roots)
+== 20:48:24 cpu lane w5 done
