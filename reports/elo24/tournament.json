@@ -1,0 +1,2514 @@
+{
+ "policy_ids": [
+  "V1",
+  "V4",
+  "V5",
+  "V7",
+  "V15",
+  "V17",
+  "V19",
+  "V22",
+  "V25",
+  "V28",
+  "V31",
+  "V32.1",
+  "D6",
+  "P5a",
+  "P11",
+  "P14",
+  "P16",
+  "P17",
+  "P18bp2",
+  "P19",
+  "P20",
+  "P21e",
+  "P22",
+  "P24c"
+ ],
+ "results": [
+  {
+   "row": "V1",
+   "column": "V4",
+   "games": 234,
+   "wins": 30,
+   "draws": 3,
+   "losses": 201,
+   "win_rate": 0.1346153846153846
+  },
+  {
+   "row": "V1",
+   "column": "V5",
+   "games": 324,
+   "wins": 70,
+   "draws": 2,
+   "losses": 252,
+   "win_rate": 0.2191358024691358
+  },
+  {
+   "row": "V1",
+   "column": "V7",
+   "games": 156,
+   "wins": 21,
+   "draws": 1,
+   "losses": 134,
+   "win_rate": 0.13782051282051283
+  },
+  {
+   "row": "V1",
+   "column": "V15",
+   "games": 298,
+   "wins": 51,
+   "draws": 0,
+   "losses": 247,
+   "win_rate": 0.17114093959731544
+  },
+  {
+   "row": "V1",
+   "column": "V17",
+   "games": 52,
+   "wins": 5,
+   "draws": 0,
+   "losses": 47,
+   "win_rate": 0.09615384615384616
+  },
+  {
+   "row": "V1",
+   "column": "V19",
+   "games": 52,
+   "wins": 4,
+   "draws": 1,
+   "losses": 47,
+   "win_rate": 0.08653846153846154
+  },
+  {
+   "row": "V1",
+   "column": "V22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V1",
+   "column": "V25",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V1",
+   "column": "V28",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V1",
+   "column": "V31",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V1",
+   "column": "V32.1",
+   "games": 66,
+   "wins": 0,
+   "draws": 0,
+   "losses": 66,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V1",
+   "column": "D6",
+   "games": 42,
+   "wins": 1,
+   "draws": 0,
+   "losses": 41,
+   "win_rate": 0.023809523809523808
+  },
+  {
+   "row": "V1",
+   "column": "P5a",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V1",
+   "column": "P11",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V1",
+   "column": "P14",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V1",
+   "column": "P16",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V1",
+   "column": "P17",
+   "games": 42,
+   "wins": 1,
+   "draws": 0,
+   "losses": 41,
+   "win_rate": 0.023809523809523808
+  },
+  {
+   "row": "V1",
+   "column": "P18bp2",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V1",
+   "column": "P19",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V1",
+   "column": "P20",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V1",
+   "column": "P21e",
+   "games": 46,
+   "wins": 0,
+   "draws": 0,
+   "losses": 46,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V1",
+   "column": "P22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V1",
+   "column": "P24c",
+   "games": 100,
+   "wins": 1,
+   "draws": 0,
+   "losses": 99,
+   "win_rate": 0.01
+  },
+  {
+   "row": "V4",
+   "column": "V5",
+   "games": 226,
+   "wins": 161,
+   "draws": 0,
+   "losses": 65,
+   "win_rate": 0.7123893805309734
+  },
+  {
+   "row": "V4",
+   "column": "V7",
+   "games": 136,
+   "wins": 65,
+   "draws": 0,
+   "losses": 71,
+   "win_rate": 0.47794117647058826
+  },
+  {
+   "row": "V4",
+   "column": "V15",
+   "games": 162,
+   "wins": 87,
+   "draws": 3,
+   "losses": 72,
+   "win_rate": 0.5462962962962963
+  },
+  {
+   "row": "V4",
+   "column": "V17",
+   "games": 220,
+   "wins": 8,
+   "draws": 0,
+   "losses": 212,
+   "win_rate": 0.03636363636363636
+  },
+  {
+   "row": "V4",
+   "column": "V19",
+   "games": 258,
+   "wins": 39,
+   "draws": 2,
+   "losses": 217,
+   "win_rate": 0.15503875968992248
+  },
+  {
+   "row": "V4",
+   "column": "V22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V4",
+   "column": "V25",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V4",
+   "column": "V28",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V4",
+   "column": "V31",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V4",
+   "column": "V32.1",
+   "games": 40,
+   "wins": 1,
+   "draws": 0,
+   "losses": 39,
+   "win_rate": 0.025
+  },
+  {
+   "row": "V4",
+   "column": "D6",
+   "games": 126,
+   "wins": 1,
+   "draws": 1,
+   "losses": 124,
+   "win_rate": 0.011904761904761904
+  },
+  {
+   "row": "V4",
+   "column": "P5a",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V4",
+   "column": "P11",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V4",
+   "column": "P14",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V4",
+   "column": "P16",
+   "games": 40,
+   "wins": 1,
+   "draws": 0,
+   "losses": 39,
+   "win_rate": 0.025
+  },
+  {
+   "row": "V4",
+   "column": "P17",
+   "games": 40,
+   "wins": 1,
+   "draws": 0,
+   "losses": 39,
+   "win_rate": 0.025
+  },
+  {
+   "row": "V4",
+   "column": "P18bp2",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V4",
+   "column": "P19",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V4",
+   "column": "P20",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V4",
+   "column": "P21e",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V4",
+   "column": "P22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V4",
+   "column": "P24c",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "V7",
+   "games": 250,
+   "wins": 58,
+   "draws": 3,
+   "losses": 189,
+   "win_rate": 0.238
+  },
+  {
+   "row": "V5",
+   "column": "V15",
+   "games": 220,
+   "wins": 66,
+   "draws": 1,
+   "losses": 153,
+   "win_rate": 0.30227272727272725
+  },
+  {
+   "row": "V5",
+   "column": "V17",
+   "games": 40,
+   "wins": 1,
+   "draws": 0,
+   "losses": 39,
+   "win_rate": 0.025
+  },
+  {
+   "row": "V5",
+   "column": "V19",
+   "games": 78,
+   "wins": 12,
+   "draws": 0,
+   "losses": 66,
+   "win_rate": 0.15384615384615385
+  },
+  {
+   "row": "V5",
+   "column": "V22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "V25",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "V28",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "V31",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "V32.1",
+   "games": 66,
+   "wins": 0,
+   "draws": 0,
+   "losses": 66,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "D6",
+   "games": 42,
+   "wins": 1,
+   "draws": 0,
+   "losses": 41,
+   "win_rate": 0.023809523809523808
+  },
+  {
+   "row": "V5",
+   "column": "P5a",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "P11",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "P14",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "P16",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "P17",
+   "games": 42,
+   "wins": 1,
+   "draws": 0,
+   "losses": 41,
+   "win_rate": 0.023809523809523808
+  },
+  {
+   "row": "V5",
+   "column": "P18bp2",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "P19",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "P20",
+   "games": 46,
+   "wins": 0,
+   "draws": 0,
+   "losses": 46,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "P21e",
+   "games": 46,
+   "wins": 0,
+   "draws": 0,
+   "losses": 46,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "P22",
+   "games": 56,
+   "wins": 0,
+   "draws": 0,
+   "losses": 56,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V5",
+   "column": "P24c",
+   "games": 56,
+   "wins": 0,
+   "draws": 0,
+   "losses": 56,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V7",
+   "column": "V15",
+   "games": 154,
+   "wins": 86,
+   "draws": 1,
+   "losses": 67,
+   "win_rate": 0.5616883116883117
+  },
+  {
+   "row": "V7",
+   "column": "V17",
+   "games": 228,
+   "wins": 12,
+   "draws": 1,
+   "losses": 215,
+   "win_rate": 0.05482456140350877
+  },
+  {
+   "row": "V7",
+   "column": "V19",
+   "games": 272,
+   "wins": 36,
+   "draws": 1,
+   "losses": 235,
+   "win_rate": 0.13419117647058823
+  },
+  {
+   "row": "V7",
+   "column": "V22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V7",
+   "column": "V25",
+   "games": 40,
+   "wins": 1,
+   "draws": 0,
+   "losses": 39,
+   "win_rate": 0.025
+  },
+  {
+   "row": "V7",
+   "column": "V28",
+   "games": 40,
+   "wins": 1,
+   "draws": 0,
+   "losses": 39,
+   "win_rate": 0.025
+  },
+  {
+   "row": "V7",
+   "column": "V31",
+   "games": 40,
+   "wins": 1,
+   "draws": 0,
+   "losses": 39,
+   "win_rate": 0.025
+  },
+  {
+   "row": "V7",
+   "column": "V32.1",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V7",
+   "column": "D6",
+   "games": 120,
+   "wins": 1,
+   "draws": 1,
+   "losses": 118,
+   "win_rate": 0.0125
+  },
+  {
+   "row": "V7",
+   "column": "P5a",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V7",
+   "column": "P11",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V7",
+   "column": "P14",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V7",
+   "column": "P16",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V7",
+   "column": "P17",
+   "games": 44,
+   "wins": 2,
+   "draws": 0,
+   "losses": 42,
+   "win_rate": 0.045454545454545456
+  },
+  {
+   "row": "V7",
+   "column": "P18bp2",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V7",
+   "column": "P19",
+   "games": 42,
+   "wins": 1,
+   "draws": 0,
+   "losses": 41,
+   "win_rate": 0.023809523809523808
+  },
+  {
+   "row": "V7",
+   "column": "P20",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V7",
+   "column": "P21e",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V7",
+   "column": "P22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V7",
+   "column": "P24c",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "V17",
+   "games": 222,
+   "wins": 13,
+   "draws": 0,
+   "losses": 209,
+   "win_rate": 0.05855855855855856
+  },
+  {
+   "row": "V15",
+   "column": "V19",
+   "games": 228,
+   "wins": 28,
+   "draws": 1,
+   "losses": 199,
+   "win_rate": 0.125
+  },
+  {
+   "row": "V15",
+   "column": "V22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "V25",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "V28",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "V31",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "V32.1",
+   "games": 46,
+   "wins": 0,
+   "draws": 0,
+   "losses": 46,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "D6",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "P5a",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "P11",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "P14",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "P16",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "P17",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "P18bp2",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "P19",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "P20",
+   "games": 46,
+   "wins": 0,
+   "draws": 0,
+   "losses": 46,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "P21e",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "P22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V15",
+   "column": "P24c",
+   "games": 56,
+   "wins": 0,
+   "draws": 0,
+   "losses": 56,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V17",
+   "column": "V19",
+   "games": 70,
+   "wins": 14,
+   "draws": 0,
+   "losses": 56,
+   "win_rate": 0.2
+  },
+  {
+   "row": "V17",
+   "column": "V22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V17",
+   "column": "V25",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V17",
+   "column": "V28",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V17",
+   "column": "V31",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V17",
+   "column": "V32.1",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V17",
+   "column": "D6",
+   "games": 274,
+   "wins": 59,
+   "draws": 1,
+   "losses": 214,
+   "win_rate": 0.21715328467153286
+  },
+  {
+   "row": "V17",
+   "column": "P5a",
+   "games": 182,
+   "wins": 15,
+   "draws": 0,
+   "losses": 167,
+   "win_rate": 0.08241758241758242
+  },
+  {
+   "row": "V17",
+   "column": "P11",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V17",
+   "column": "P14",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V17",
+   "column": "P16",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V17",
+   "column": "P17",
+   "games": 40,
+   "wins": 1,
+   "draws": 0,
+   "losses": 39,
+   "win_rate": 0.025
+  },
+  {
+   "row": "V17",
+   "column": "P18bp2",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V17",
+   "column": "P19",
+   "games": 40,
+   "wins": 1,
+   "draws": 0,
+   "losses": 39,
+   "win_rate": 0.025
+  },
+  {
+   "row": "V17",
+   "column": "P20",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V17",
+   "column": "P21e",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V17",
+   "column": "P22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V17",
+   "column": "P24c",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V19",
+   "column": "V22",
+   "games": 44,
+   "wins": 2,
+   "draws": 0,
+   "losses": 42,
+   "win_rate": 0.045454545454545456
+  },
+  {
+   "row": "V19",
+   "column": "V25",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V19",
+   "column": "V28",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V19",
+   "column": "V31",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V19",
+   "column": "V32.1",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V19",
+   "column": "D6",
+   "games": 208,
+   "wins": 87,
+   "draws": 1,
+   "losses": 120,
+   "win_rate": 0.4206730769230769
+  },
+  {
+   "row": "V19",
+   "column": "P5a",
+   "games": 258,
+   "wins": 43,
+   "draws": 0,
+   "losses": 215,
+   "win_rate": 0.16666666666666666
+  },
+  {
+   "row": "V19",
+   "column": "P11",
+   "games": 44,
+   "wins": 2,
+   "draws": 0,
+   "losses": 42,
+   "win_rate": 0.045454545454545456
+  },
+  {
+   "row": "V19",
+   "column": "P14",
+   "games": 56,
+   "wins": 0,
+   "draws": 0,
+   "losses": 56,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V19",
+   "column": "P16",
+   "games": 42,
+   "wins": 1,
+   "draws": 0,
+   "losses": 41,
+   "win_rate": 0.023809523809523808
+  },
+  {
+   "row": "V19",
+   "column": "P17",
+   "games": 40,
+   "wins": 1,
+   "draws": 0,
+   "losses": 39,
+   "win_rate": 0.025
+  },
+  {
+   "row": "V19",
+   "column": "P18bp2",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V19",
+   "column": "P19",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V19",
+   "column": "P20",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V19",
+   "column": "P21e",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V19",
+   "column": "P22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V19",
+   "column": "P24c",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V22",
+   "column": "V25",
+   "games": 256,
+   "wins": 1,
+   "draws": 0,
+   "losses": 255,
+   "win_rate": 0.00390625
+  },
+  {
+   "row": "V22",
+   "column": "V28",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V22",
+   "column": "V31",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V22",
+   "column": "V32.1",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V22",
+   "column": "D6",
+   "games": 180,
+   "wins": 179,
+   "draws": 0,
+   "losses": 1,
+   "win_rate": 0.9944444444444445
+  },
+  {
+   "row": "V22",
+   "column": "P5a",
+   "games": 254,
+   "wins": 230,
+   "draws": 0,
+   "losses": 24,
+   "win_rate": 0.905511811023622
+  },
+  {
+   "row": "V22",
+   "column": "P11",
+   "games": 144,
+   "wins": 46,
+   "draws": 0,
+   "losses": 98,
+   "win_rate": 0.3194444444444444
+  },
+  {
+   "row": "V22",
+   "column": "P14",
+   "games": 256,
+   "wins": 0,
+   "draws": 0,
+   "losses": 256,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V22",
+   "column": "P16",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V22",
+   "column": "P17",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V22",
+   "column": "P18bp2",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V22",
+   "column": "P19",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V22",
+   "column": "P20",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V22",
+   "column": "P21e",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V22",
+   "column": "P22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V22",
+   "column": "P24c",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V25",
+   "column": "V28",
+   "games": 248,
+   "wins": 32,
+   "draws": 0,
+   "losses": 216,
+   "win_rate": 0.12903225806451613
+  },
+  {
+   "row": "V25",
+   "column": "V31",
+   "games": 46,
+   "wins": 2,
+   "draws": 0,
+   "losses": 44,
+   "win_rate": 0.043478260869565216
+  },
+  {
+   "row": "V25",
+   "column": "V32.1",
+   "games": 40,
+   "wins": 1,
+   "draws": 0,
+   "losses": 39,
+   "win_rate": 0.025
+  },
+  {
+   "row": "V25",
+   "column": "D6",
+   "games": 80,
+   "wins": 79,
+   "draws": 0,
+   "losses": 1,
+   "win_rate": 0.9875
+  },
+  {
+   "row": "V25",
+   "column": "P5a",
+   "games": 66,
+   "wins": 66,
+   "draws": 0,
+   "losses": 0,
+   "win_rate": 1.0
+  },
+  {
+   "row": "V25",
+   "column": "P11",
+   "games": 256,
+   "wins": 256,
+   "draws": 0,
+   "losses": 0,
+   "win_rate": 1.0
+  },
+  {
+   "row": "V25",
+   "column": "P14",
+   "games": 92,
+   "wins": 43,
+   "draws": 0,
+   "losses": 49,
+   "win_rate": 0.4673913043478261
+  },
+  {
+   "row": "V25",
+   "column": "P16",
+   "games": 244,
+   "wins": 24,
+   "draws": 0,
+   "losses": 220,
+   "win_rate": 0.09836065573770492
+  },
+  {
+   "row": "V25",
+   "column": "P17",
+   "games": 68,
+   "wins": 9,
+   "draws": 0,
+   "losses": 59,
+   "win_rate": 0.1323529411764706
+  },
+  {
+   "row": "V25",
+   "column": "P18bp2",
+   "games": 56,
+   "wins": 3,
+   "draws": 0,
+   "losses": 53,
+   "win_rate": 0.05357142857142857
+  },
+  {
+   "row": "V25",
+   "column": "P19",
+   "games": 48,
+   "wins": 3,
+   "draws": 0,
+   "losses": 45,
+   "win_rate": 0.0625
+  },
+  {
+   "row": "V25",
+   "column": "P20",
+   "games": 46,
+   "wins": 3,
+   "draws": 0,
+   "losses": 43,
+   "win_rate": 0.06521739130434782
+  },
+  {
+   "row": "V25",
+   "column": "P21e",
+   "games": 46,
+   "wins": 2,
+   "draws": 0,
+   "losses": 44,
+   "win_rate": 0.043478260869565216
+  },
+  {
+   "row": "V25",
+   "column": "P22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V25",
+   "column": "P24c",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V28",
+   "column": "V31",
+   "games": 174,
+   "wins": 33,
+   "draws": 0,
+   "losses": 141,
+   "win_rate": 0.1896551724137931
+  },
+  {
+   "row": "V28",
+   "column": "V32.1",
+   "games": 40,
+   "wins": 1,
+   "draws": 0,
+   "losses": 39,
+   "win_rate": 0.025
+  },
+  {
+   "row": "V28",
+   "column": "D6",
+   "games": 40,
+   "wins": 39,
+   "draws": 0,
+   "losses": 1,
+   "win_rate": 0.975
+  },
+  {
+   "row": "V28",
+   "column": "P5a",
+   "games": 36,
+   "wins": 36,
+   "draws": 0,
+   "losses": 0,
+   "win_rate": 1.0
+  },
+  {
+   "row": "V28",
+   "column": "P11",
+   "games": 36,
+   "wins": 36,
+   "draws": 0,
+   "losses": 0,
+   "win_rate": 1.0
+  },
+  {
+   "row": "V28",
+   "column": "P14",
+   "games": 248,
+   "wins": 224,
+   "draws": 0,
+   "losses": 24,
+   "win_rate": 0.9032258064516129
+  },
+  {
+   "row": "V28",
+   "column": "P16",
+   "games": 122,
+   "wins": 73,
+   "draws": 0,
+   "losses": 49,
+   "win_rate": 0.5983606557377049
+  },
+  {
+   "row": "V28",
+   "column": "P17",
+   "games": 204,
+   "wins": 53,
+   "draws": 1,
+   "losses": 150,
+   "win_rate": 0.2622549019607843
+  },
+  {
+   "row": "V28",
+   "column": "P18bp2",
+   "games": 164,
+   "wins": 37,
+   "draws": 0,
+   "losses": 127,
+   "win_rate": 0.22560975609756098
+  },
+  {
+   "row": "V28",
+   "column": "P19",
+   "games": 210,
+   "wins": 63,
+   "draws": 0,
+   "losses": 147,
+   "win_rate": 0.3
+  },
+  {
+   "row": "V28",
+   "column": "P20",
+   "games": 58,
+   "wins": 9,
+   "draws": 0,
+   "losses": 49,
+   "win_rate": 0.15517241379310345
+  },
+  {
+   "row": "V28",
+   "column": "P21e",
+   "games": 52,
+   "wins": 4,
+   "draws": 0,
+   "losses": 48,
+   "win_rate": 0.07692307692307693
+  },
+  {
+   "row": "V28",
+   "column": "P22",
+   "games": 58,
+   "wins": 8,
+   "draws": 0,
+   "losses": 50,
+   "win_rate": 0.13793103448275862
+  },
+  {
+   "row": "V28",
+   "column": "P24c",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "V31",
+   "column": "V32.1",
+   "games": 192,
+   "wins": 51,
+   "draws": 0,
+   "losses": 141,
+   "win_rate": 0.265625
+  },
+  {
+   "row": "V31",
+   "column": "D6",
+   "games": 36,
+   "wins": 36,
+   "draws": 0,
+   "losses": 0,
+   "win_rate": 1.0
+  },
+  {
+   "row": "V31",
+   "column": "P5a",
+   "games": 40,
+   "wins": 39,
+   "draws": 0,
+   "losses": 1,
+   "win_rate": 0.975
+  },
+  {
+   "row": "V31",
+   "column": "P11",
+   "games": 36,
+   "wins": 36,
+   "draws": 0,
+   "losses": 0,
+   "win_rate": 1.0
+  },
+  {
+   "row": "V31",
+   "column": "P14",
+   "games": 40,
+   "wins": 39,
+   "draws": 0,
+   "losses": 1,
+   "win_rate": 0.975
+  },
+  {
+   "row": "V31",
+   "column": "P16",
+   "games": 176,
+   "wins": 136,
+   "draws": 0,
+   "losses": 40,
+   "win_rate": 0.7727272727272727
+  },
+  {
+   "row": "V31",
+   "column": "P17",
+   "games": 176,
+   "wins": 131,
+   "draws": 0,
+   "losses": 45,
+   "win_rate": 0.7443181818181818
+  },
+  {
+   "row": "V31",
+   "column": "P18bp2",
+   "games": 128,
+   "wins": 60,
+   "draws": 0,
+   "losses": 68,
+   "win_rate": 0.46875
+  },
+  {
+   "row": "V31",
+   "column": "P19",
+   "games": 144,
+   "wins": 92,
+   "draws": 0,
+   "losses": 52,
+   "win_rate": 0.6388888888888888
+  },
+  {
+   "row": "V31",
+   "column": "P20",
+   "games": 154,
+   "wins": 65,
+   "draws": 0,
+   "losses": 89,
+   "win_rate": 0.42207792207792205
+  },
+  {
+   "row": "V31",
+   "column": "P21e",
+   "games": 166,
+   "wins": 54,
+   "draws": 0,
+   "losses": 112,
+   "win_rate": 0.3253012048192771
+  },
+  {
+   "row": "V31",
+   "column": "P22",
+   "games": 166,
+   "wins": 46,
+   "draws": 0,
+   "losses": 120,
+   "win_rate": 0.27710843373493976
+  },
+  {
+   "row": "V31",
+   "column": "P24c",
+   "games": 142,
+   "wins": 38,
+   "draws": 0,
+   "losses": 104,
+   "win_rate": 0.2676056338028169
+  },
+  {
+   "row": "V32.1",
+   "column": "D6",
+   "games": 36,
+   "wins": 36,
+   "draws": 0,
+   "losses": 0,
+   "win_rate": 1.0
+  },
+  {
+   "row": "V32.1",
+   "column": "P5a",
+   "games": 42,
+   "wins": 41,
+   "draws": 0,
+   "losses": 1,
+   "win_rate": 0.9761904761904762
+  },
+  {
+   "row": "V32.1",
+   "column": "P11",
+   "games": 42,
+   "wins": 41,
+   "draws": 0,
+   "losses": 1,
+   "win_rate": 0.9761904761904762
+  },
+  {
+   "row": "V32.1",
+   "column": "P14",
+   "games": 36,
+   "wins": 36,
+   "draws": 0,
+   "losses": 0,
+   "win_rate": 1.0
+  },
+  {
+   "row": "V32.1",
+   "column": "P16",
+   "games": 40,
+   "wins": 39,
+   "draws": 0,
+   "losses": 1,
+   "win_rate": 0.975
+  },
+  {
+   "row": "V32.1",
+   "column": "P17",
+   "games": 68,
+   "wins": 60,
+   "draws": 0,
+   "losses": 8,
+   "win_rate": 0.8823529411764706
+  },
+  {
+   "row": "V32.1",
+   "column": "P18bp2",
+   "games": 190,
+   "wins": 125,
+   "draws": 1,
+   "losses": 64,
+   "win_rate": 0.6605263157894737
+  },
+  {
+   "row": "V32.1",
+   "column": "P19",
+   "games": 104,
+   "wins": 93,
+   "draws": 0,
+   "losses": 11,
+   "win_rate": 0.8942307692307693
+  },
+  {
+   "row": "V32.1",
+   "column": "P20",
+   "games": 198,
+   "wins": 130,
+   "draws": 0,
+   "losses": 68,
+   "win_rate": 0.6565656565656566
+  },
+  {
+   "row": "V32.1",
+   "column": "P21e",
+   "games": 206,
+   "wins": 116,
+   "draws": 0,
+   "losses": 90,
+   "win_rate": 0.5631067961165048
+  },
+  {
+   "row": "V32.1",
+   "column": "P22",
+   "games": 198,
+   "wins": 124,
+   "draws": 0,
+   "losses": 74,
+   "win_rate": 0.6262626262626263
+  },
+  {
+   "row": "V32.1",
+   "column": "P24c",
+   "games": 272,
+   "wins": 94,
+   "draws": 0,
+   "losses": 178,
+   "win_rate": 0.34558823529411764
+  },
+  {
+   "row": "D6",
+   "column": "P5a",
+   "games": 142,
+   "wins": 27,
+   "draws": 0,
+   "losses": 115,
+   "win_rate": 0.19014084507042253
+  },
+  {
+   "row": "D6",
+   "column": "P11",
+   "games": 176,
+   "wins": 0,
+   "draws": 0,
+   "losses": 176,
+   "win_rate": 0.0
+  },
+  {
+   "row": "D6",
+   "column": "P14",
+   "games": 56,
+   "wins": 0,
+   "draws": 0,
+   "losses": 56,
+   "win_rate": 0.0
+  },
+  {
+   "row": "D6",
+   "column": "P16",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "D6",
+   "column": "P17",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "D6",
+   "column": "P18bp2",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "D6",
+   "column": "P19",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "D6",
+   "column": "P20",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "D6",
+   "column": "P21e",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "D6",
+   "column": "P22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "D6",
+   "column": "P24c",
+   "games": 40,
+   "wins": 1,
+   "draws": 0,
+   "losses": 39,
+   "win_rate": 0.025
+  },
+  {
+   "row": "P5a",
+   "column": "P11",
+   "games": 256,
+   "wins": 0,
+   "draws": 0,
+   "losses": 256,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P5a",
+   "column": "P14",
+   "games": 56,
+   "wins": 0,
+   "draws": 0,
+   "losses": 56,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P5a",
+   "column": "P16",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P5a",
+   "column": "P17",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P5a",
+   "column": "P18bp2",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P5a",
+   "column": "P19",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P5a",
+   "column": "P20",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P5a",
+   "column": "P21e",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P5a",
+   "column": "P22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P5a",
+   "column": "P24c",
+   "games": 44,
+   "wins": 2,
+   "draws": 0,
+   "losses": 42,
+   "win_rate": 0.045454545454545456
+  },
+  {
+   "row": "P11",
+   "column": "P14",
+   "games": 256,
+   "wins": 1,
+   "draws": 0,
+   "losses": 255,
+   "win_rate": 0.00390625
+  },
+  {
+   "row": "P11",
+   "column": "P16",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P11",
+   "column": "P17",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P11",
+   "column": "P18bp2",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P11",
+   "column": "P19",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P11",
+   "column": "P20",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P11",
+   "column": "P21e",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P11",
+   "column": "P22",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P11",
+   "column": "P24c",
+   "games": 48,
+   "wins": 3,
+   "draws": 0,
+   "losses": 45,
+   "win_rate": 0.0625
+  },
+  {
+   "row": "P14",
+   "column": "P16",
+   "games": 260,
+   "wins": 26,
+   "draws": 0,
+   "losses": 234,
+   "win_rate": 0.1
+  },
+  {
+   "row": "P14",
+   "column": "P17",
+   "games": 66,
+   "wins": 8,
+   "draws": 0,
+   "losses": 58,
+   "win_rate": 0.12121212121212122
+  },
+  {
+   "row": "P14",
+   "column": "P18bp2",
+   "games": 60,
+   "wins": 5,
+   "draws": 0,
+   "losses": 55,
+   "win_rate": 0.08333333333333333
+  },
+  {
+   "row": "P14",
+   "column": "P19",
+   "games": 52,
+   "wins": 5,
+   "draws": 0,
+   "losses": 47,
+   "win_rate": 0.09615384615384616
+  },
+  {
+   "row": "P14",
+   "column": "P20",
+   "games": 46,
+   "wins": 2,
+   "draws": 0,
+   "losses": 44,
+   "win_rate": 0.043478260869565216
+  },
+  {
+   "row": "P14",
+   "column": "P21e",
+   "games": 46,
+   "wins": 2,
+   "draws": 0,
+   "losses": 44,
+   "win_rate": 0.043478260869565216
+  },
+  {
+   "row": "P14",
+   "column": "P22",
+   "games": 42,
+   "wins": 1,
+   "draws": 0,
+   "losses": 41,
+   "win_rate": 0.023809523809523808
+  },
+  {
+   "row": "P14",
+   "column": "P24c",
+   "games": 40,
+   "wins": 1,
+   "draws": 0,
+   "losses": 39,
+   "win_rate": 0.025
+  },
+  {
+   "row": "P16",
+   "column": "P17",
+   "games": 200,
+   "wins": 49,
+   "draws": 0,
+   "losses": 151,
+   "win_rate": 0.245
+  },
+  {
+   "row": "P16",
+   "column": "P18bp2",
+   "games": 172,
+   "wins": 45,
+   "draws": 0,
+   "losses": 127,
+   "win_rate": 0.2616279069767442
+  },
+  {
+   "row": "P16",
+   "column": "P19",
+   "games": 218,
+   "wins": 59,
+   "draws": 0,
+   "losses": 159,
+   "win_rate": 0.2706422018348624
+  },
+  {
+   "row": "P16",
+   "column": "P20",
+   "games": 62,
+   "wins": 12,
+   "draws": 0,
+   "losses": 50,
+   "win_rate": 0.1935483870967742
+  },
+  {
+   "row": "P16",
+   "column": "P21e",
+   "games": 54,
+   "wins": 6,
+   "draws": 0,
+   "losses": 48,
+   "win_rate": 0.1111111111111111
+  },
+  {
+   "row": "P16",
+   "column": "P22",
+   "games": 58,
+   "wins": 9,
+   "draws": 0,
+   "losses": 49,
+   "win_rate": 0.15517241379310345
+  },
+  {
+   "row": "P16",
+   "column": "P24c",
+   "games": 36,
+   "wins": 0,
+   "draws": 0,
+   "losses": 36,
+   "win_rate": 0.0
+  },
+  {
+   "row": "P17",
+   "column": "P18bp2",
+   "games": 172,
+   "wins": 32,
+   "draws": 0,
+   "losses": 140,
+   "win_rate": 0.18604651162790697
+  },
+  {
+   "row": "P17",
+   "column": "P19",
+   "games": 162,
+   "wins": 85,
+   "draws": 0,
+   "losses": 77,
+   "win_rate": 0.5246913580246914
+  },
+  {
+   "row": "P17",
+   "column": "P20",
+   "games": 212,
+   "wins": 49,
+   "draws": 0,
+   "losses": 163,
+   "win_rate": 0.23113207547169812
+  },
+  {
+   "row": "P17",
+   "column": "P21e",
+   "games": 150,
+   "wins": 25,
+   "draws": 0,
+   "losses": 125,
+   "win_rate": 0.16666666666666666
+  },
+  {
+   "row": "P17",
+   "column": "P22",
+   "games": 164,
+   "wins": 33,
+   "draws": 0,
+   "losses": 131,
+   "win_rate": 0.20121951219512196
+  },
+  {
+   "row": "P17",
+   "column": "P24c",
+   "games": 78,
+   "wins": 10,
+   "draws": 0,
+   "losses": 68,
+   "win_rate": 0.1282051282051282
+  },
+  {
+   "row": "P18bp2",
+   "column": "P19",
+   "games": 142,
+   "wins": 85,
+   "draws": 0,
+   "losses": 57,
+   "win_rate": 0.5985915492957746
+  },
+  {
+   "row": "P18bp2",
+   "column": "P20",
+   "games": 152,
+   "wins": 58,
+   "draws": 0,
+   "losses": 94,
+   "win_rate": 0.3815789473684211
+  },
+  {
+   "row": "P18bp2",
+   "column": "P21e",
+   "games": 162,
+   "wins": 43,
+   "draws": 0,
+   "losses": 119,
+   "win_rate": 0.2654320987654321
+  },
+  {
+   "row": "P18bp2",
+   "column": "P22",
+   "games": 168,
+   "wins": 54,
+   "draws": 0,
+   "losses": 114,
+   "win_rate": 0.32142857142857145
+  },
+  {
+   "row": "P18bp2",
+   "column": "P24c",
+   "games": 160,
+   "wins": 39,
+   "draws": 0,
+   "losses": 121,
+   "win_rate": 0.24375
+  },
+  {
+   "row": "P19",
+   "column": "P20",
+   "games": 192,
+   "wins": 50,
+   "draws": 0,
+   "losses": 142,
+   "win_rate": 0.2604166666666667
+  },
+  {
+   "row": "P19",
+   "column": "P21e",
+   "games": 174,
+   "wins": 41,
+   "draws": 0,
+   "losses": 133,
+   "win_rate": 0.23563218390804597
+  },
+  {
+   "row": "P19",
+   "column": "P22",
+   "games": 162,
+   "wins": 42,
+   "draws": 0,
+   "losses": 120,
+   "win_rate": 0.25925925925925924
+  },
+  {
+   "row": "P19",
+   "column": "P24c",
+   "games": 100,
+   "wins": 15,
+   "draws": 0,
+   "losses": 85,
+   "win_rate": 0.15
+  },
+  {
+   "row": "P20",
+   "column": "P21e",
+   "games": 164,
+   "wins": 69,
+   "draws": 0,
+   "losses": 95,
+   "win_rate": 0.42073170731707316
+  },
+  {
+   "row": "P20",
+   "column": "P22",
+   "games": 164,
+   "wins": 73,
+   "draws": 0,
+   "losses": 91,
+   "win_rate": 0.4451219512195122
+  },
+  {
+   "row": "P20",
+   "column": "P24c",
+   "games": 206,
+   "wins": 70,
+   "draws": 0,
+   "losses": 136,
+   "win_rate": 0.33980582524271846
+  },
+  {
+   "row": "P21e",
+   "column": "P22",
+   "games": 170,
+   "wins": 78,
+   "draws": 1,
+   "losses": 91,
+   "win_rate": 0.46176470588235297
+  },
+  {
+   "row": "P21e",
+   "column": "P24c",
+   "games": 236,
+   "wins": 77,
+   "draws": 1,
+   "losses": 158,
+   "win_rate": 0.3283898305084746
+  },
+  {
+   "row": "P22",
+   "column": "P24c",
+   "games": 236,
+   "wins": 91,
+   "draws": 0,
+   "losses": 145,
+   "win_rate": 0.3855932203389831
+  }
+ ]
+}

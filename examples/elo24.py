@@ -73,7 +73,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "examples"))
 
-from blackout_env.rating import ELO, fit_bt, pair_seed_stats, plan_round, rating_se_elo  # noqa: E402
+from blackout_env.rating import ELO, fit_bt, focus_se_elo, pair_seed_stats, plan_round, rating_se_elo  # noqa: E402
 
 THREAD_ENV = {k: "1" for k in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
                                 "NUMBA_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")}
@@ -200,12 +200,18 @@ def plan_stage1(store: Store) -> list[dict]:
     return chunks
 
 
+def focus_idx(cfg: dict, r) -> list[int] | None:
+    """stage2.focus_top = n > 0: the Elo criterion covers only the current top-n ratings (relative to their mean)."""
+    n = int(cfg["stage2"].get("focus_top") or 0)
+    return sorted(np.argsort(-np.asarray(r))[:n].tolist()) if n else None
+
+
 def plan_stage2(store: Store) -> tuple[list[dict], str]:
     s2 = store.cfg["stage2"]
     r, cov, _, _ = store.fit()
     plan, reason = plan_round(store.seed_scores(), r, cov, pair_se=s2["pair_se"], elo_se=s2["elo_se"],
                               min_add=s2["min_add"], max_add=s2["max_add"], elo_pairs=s2["elo_pairs"],
-                              per_policy=s2["per_policy"], elo_seeds=s2["elo_seeds"])
+                              per_policy=s2["per_policy"], elo_seeds=s2["elo_seeds"], focus=focus_idx(store.cfg, r))
     batch = 1 + max([c["batch"] for c in store.plan] + [0])
     chunks = []
     for (i, j), n in sorted(plan.items()):
@@ -548,8 +554,11 @@ def summary(store: Store) -> dict:
     se = rating_se_elo(cov)
     stats = {pair: pair_seed_stats(xs) for pair, xs in store.seed_scores().items()}
     fails = [p for p, st in stats.items() if st["n"] == 0 or st["se_stop"] > s2["pair_se"]]
+    focus = focus_idx(store.cfg, r)
+    fse = None if focus is None else focus_se_elo(cov, focus)
+    crit = se if fse is None else fse
     return {"r": r, "cov": cov, "se": se, "wins": wins, "counts": counts, "stats": stats, "pair_fails": fails,
-            "elo_fails": int((se > s2["elo_se"]).sum())}
+            "elo_fails": int((crit > s2["elo_se"]).sum()), "focus": focus, "focus_se": fse}
 
 
 def status_text(store: Store) -> str:
@@ -569,8 +578,13 @@ def status_text(store: Store) -> str:
              f"pairs with games {sum(x['n'] > 0 for x in st)}/{n_pairs}",
              f"(A) pair win-rate stopping SE <= {s2['pair_se']:.0%}: {n_pairs - len(s['pair_fails'])}/{n_pairs} pass, "
              f"worst {worst:.1%}",
-             f"(B) Elo SE <= {s2['elo_se']:.0f}: {k - s['elo_fails']}/{k} pass, max {s['se'].max():.1f}, "
-             f"mean {s['se'].mean():.1f}",
+             (f"(B) Elo SE <= {s2['elo_se']:.0f}: {k - s['elo_fails']}/{k} pass, max {s['se'].max():.1f}, "
+              f"mean {s['se'].mean():.1f}" if s["focus"] is None else
+              f"(B) top-{len(s['focus'])} Elo SE (vs their mean) <= {s2['elo_se']:.0f}: "
+              f"{len(s['focus']) - s['elo_fails']}/{len(s['focus'])} pass, max {s['focus_se'].max():.1f}, "
+              f"mean {s['focus_se'].mean():.1f} [" + ", ".join(f"{store.names[i]} {v:.1f}" for i, v in
+                                                             zip(s['focus'], s['focus_se'])) + "]; "
+              f"all-24 SE max {s['se'].max():.1f}"),
              "games by host: " + ", ".join(f"{h} {n} ({np.mean(walls[h]):.1f} s/game in chunk)"
                                            for h, n in sorted(hosts.items()))]
     return "\n".join(lines)
@@ -579,6 +593,81 @@ def status_text(store: Store) -> str:
 def cmd_status(args) -> None:
     store = Store(load_cfg(args.config), Path(args.out))
     print(status_text(store))
+
+
+def _heatmap(path: Path, labels: list[str], mat, games, se, title: str, margin: bool = False) -> None:
+    """Same look as examples/tournament_adaptive.py's heatmap (RdYlGn, value / n / SE per cell, row mean)."""
+    import matplotlib.pyplot as plt
+
+    k = len(labels)
+    scale = k / 19.0  # the earlier 19-heuristic figure was 15 x 12.5 in
+    fig, axis = plt.subplots(figsize=(15.0 * scale, 12.5 * scale), constrained_layout=True)
+    shown = np.where(np.eye(k, dtype=bool), np.nan, mat)
+    cmap = plt.get_cmap("RdYlGn").copy()
+    cmap.set_bad("#fffde7")
+    lim = float(np.nanmax(np.abs(shown))) if margin else 1.0
+    image = axis.imshow(shown, vmin=-lim if margin else 0.0, vmax=lim, cmap=cmap)
+    axis.set_xticks(range(k), labels, rotation=45, ha="right")
+    axis.set_yticks(range(k), labels)
+    axis.set_xlabel("column policy (opponent)")
+    axis.set_ylabel("row policy")
+    for i in range(k):
+        for j in range(k):
+            if i == j:
+                axis.text(j, i, "—", ha="center", va="center", color="black", fontsize=9)
+                continue
+            value = mat[i, j]
+            frac = (value + lim) / (2 * lim) if margin else value
+            color = "white" if frac < 0.25 or frac > 0.75 else "black"
+            axis.text(j, i - 0.21, f"{value:+.0f}" if margin else f"{value:.0%}", ha="center", va="center",
+                      color=color, fontsize=9)
+            axis.text(j, i + 0.12, f"n={games[i, j]}", ha="center", va="center", color=color, fontsize=6.2)
+            if se is not None:
+                axis.text(j, i + 0.32, f"SE {se[i, j]:.3f}".replace("0.", "."), ha="center", va="center",
+                          color=color, fontsize=6.2)
+    mean_rate = np.nanmean(shown, axis=1)
+    for i in range(k):
+        axis.text(k - 0.3, i, f"{mean_rate[i]:+.1f}" if margin else f"{mean_rate[i]:.0%}", ha="left",
+                  va="center", fontsize=9)
+    axis.text(k - 0.3, -0.85, "mean", ha="left", va="center", fontsize=8)
+    axis.set_xlim(-0.5, k + 0.7)
+    axis.set_title(title, fontsize=12)
+    colorbar = fig.colorbar(image, ax=axis, shrink=0.86)
+    colorbar.set_label("side-swapped mean margin" if margin else "side-swapped win rate")
+    fig.savefig(path, dpi=170)
+    plt.close(fig)
+
+
+def _elo_plot(path: Path, names: list[str], elo, s: dict, order: list[int], games_total: int,
+              target: float) -> None:
+    """Same look as reports/elo_augment_20260918/elo_ratings.png: dots + 95% intervals, three colour tiers
+    (green = the stage-2 focus group, blue = the rest of the distilled/teacher middle, red = the bottom group)."""
+    import matplotlib.pyplot as plt
+
+    k = len(names)
+    focus = set(s["focus"] or [])
+    fse = dict(zip(s["focus"] or [], s["focus_se"] if s["focus_se"] is not None else []))
+    fig, axis = plt.subplots(figsize=(10.0, 0.37 * k + 1.6), constrained_layout=True)
+    for row, i in enumerate(order):
+        y = k - 1 - row
+        tier = "#1b6e3c" if i in focus else ("#2c6fad" if row < k - 7 else "#b5382f")
+        half = 1.96 * s["se"][i]
+        axis.errorbar(elo[i], y, xerr=half, fmt="none", ecolor="gray", capsize=4, lw=1.5)
+        axis.plot(elo[i], y, "o", color=tier, ms=9)
+        note = f"  (top-group SE {fse[i]:.1f})" if i in fse else ""
+        axis.text(elo[i] + half + 12, y, f"{elo[i]:.0f} ±{half:.0f}  (n={int(s['counts'][i].sum())}){note}",
+                  va="center", fontsize=9, color="#444444")
+    axis.set_yticks(range(k), [names[i] for i in order][::-1])
+    axis.set_xlabel("Elo (Bradley–Terry, draws = 1/2)")
+    axis.grid(axis="x", alpha=0.3)
+    lo, hi = float(np.min(elo - 2.5 * s["se"])), float(np.max(elo + 2.5 * s["se"]))
+    axis.set_xlim(lo - 50, hi + 0.22 * (hi - lo))
+    worst = max(fse.values()) if fse else float(np.max(s["se"]))
+    axis.set_title(f"Elo-24 ratings with 95% intervals (heuristics + distilled students)\n{games_total:,} games; "
+                   f"top-{len(focus)} SE vs their own mean ≤ {target:.0f} Elo (max {worst:.1f}); "
+                   "A-optimal game allocation", fontsize=12)
+    fig.savefig(path, dpi=170)
+    plt.close(fig)
 
 
 def cmd_report(args) -> None:
@@ -631,27 +720,28 @@ def cmd_report(args) -> None:
     (out / "ratings.json").write_text(json.dumps({names[i]: {"elo": float(elo[i]), "se": float(s["se"][i]),
                                                              "spec": store.spec[names[i]]} for i in order},
                                                  indent=1))
-    for name, mat, cmap, vmin, vmax, fmt, title in (
-            ("winrate.png", wr, "RdBu", 0, 1, "{:.0f}", "row win rate % (draw = half)"),
-            ("margin.png", margin, "RdBu", -np.nanmax(np.abs(margin)) if np.isfinite(margin).any() else -1,
-             np.nanmax(np.abs(margin)) if np.isfinite(margin).any() else 1, "{:+.0f}", "row mean margin")):
-        m = mat[np.ix_(order, order)]
-        fig, ax = plt.subplots(figsize=(0.5 * k + 3, 0.5 * k + 2))
-        im = ax.imshow(m, cmap=cmap, vmin=vmin, vmax=vmax)
-        for a in range(k):
-            for b in range(k):
-                if a != b and np.isfinite(m[a, b]):
-                    v = m[a, b] * (100 if name == "winrate.png" else 1)
-                    dark = abs(m[a, b] - (vmin + vmax) / 2) > 0.3 * (vmax - vmin)
-                    ax.text(b, a, fmt.format(v), ha="center", va="center", fontsize=6,
-                            color="white" if dark else "black")
-        ax.set_xticks(range(k), [f"{x}" for x in lab], rotation=90, fontsize=7)
-        ax.set_yticks(range(k), [f"{x} ({elo[i]:.0f})" for x, i in zip(lab, order)], fontsize=7)
-        ax.set_title(f"{title}; {len(store.games)} games", fontsize=9)
-        fig.colorbar(im, ax=ax, fraction=0.04)
-        fig.tight_layout()
-        fig.savefig(out / name, dpi=130)
-        plt.close(fig)
+    games_total = len(store.games)
+    _heatmap(out / "winrate.png", lab, wr[np.ix_(order, order)], ns[np.ix_(order, order)], se[np.ix_(order, order)],
+             "Elo-24 round-robin win rate (row policy wins, draws = 1/2)\n"
+             f"side-swapped, simulator, stopped once no battery remains; per-pair SE ≤ {store.cfg['stage2']['pair_se']:.2f}"
+             f" (max {np.nanmax(se):.3f}), {games_total} games")
+    _heatmap(out / "margin.png", lab, margin[np.ix_(order, order)], ns[np.ix_(order, order)], None,
+             f"Elo-24 mean score margin (row − column), side-swapped, {games_total} games", margin=True)
+    _elo_plot(out / "elo_ratings.png", names, elo, s, order, games_total, store.cfg["stage2"]["elo_se"])
+    results = []
+    for (i, j), st in s["stats"].items():
+        w = d = l = 0
+        for g in store.games.values():
+            if {g["a"], g["b"]} == {names[i], names[j]}:
+                m = g["margin"] if g["a"] == names[i] else -g["margin"]
+                w, d, l = w + (m > 0), d + (m == 0), l + (m < 0)
+        if w + d + l:
+            results.append({"row": names[i], "column": names[j], "games": w + d + l, "wins": w, "draws": d,
+                            "losses": l, "win_rate": (w + 0.5 * d) / (w + d + l)})
+    (out / "tournament.json").write_text(json.dumps({"policy_ids": names, "results": results}, indent=1))
+    diag = REPO / "examples/analyze_elo_diagnostics.py"
+    subprocess.run([sys.executable, str(diag), str(out / "tournament.json"), "--output-dir",
+                    str(out / "elo_diagnostics")], check=False, capture_output=True)
     resid = []
     for (i, j), st in s["stats"].items():
         if st["n"]:

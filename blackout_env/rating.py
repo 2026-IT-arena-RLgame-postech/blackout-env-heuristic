@@ -59,8 +59,19 @@ def rating_se_elo(cov) -> np.ndarray:
     return np.sqrt(np.maximum(np.diag(cov), 0.0)) * ELO
 
 
-def choose_pairs(r, cov, n_pairs: int, per_policy: int, games_per_pair: int, exclude=()):
-    """Greedy A-optimal batch of index pairs (i < j); each policy in at most ``per_policy`` picks."""
+def focus_se_elo(cov, focus) -> np.ndarray:
+    """Elo SEs of the ``focus`` ratings relative to their own mean (how well their order and gaps are known)."""
+    f = np.asarray(focus, int)
+    m = len(f)
+    proj = np.eye(m) - 1.0 / m
+    c = proj @ np.asarray(cov, float)[np.ix_(f, f)] @ proj
+    return np.sqrt(np.maximum(np.diag(c), 0.0)) * ELO
+
+
+def choose_pairs(r, cov, n_pairs: int, per_policy: int, games_per_pair: int, exclude=(), focus=None):
+    """Greedy A-optimal batch of index pairs (i < j); each policy in at most ``per_policy`` picks.
+    ``focus``: indices whose summed variance (relative to their own mean) is minimised instead of all ratings'."""
+    f = None if focus is None else np.asarray(focus, int)
     k = len(r)
     cov = np.array(cov, float, copy=True)
     used = np.zeros(k, int)
@@ -78,7 +89,8 @@ def choose_pairs(r, cov, n_pairs: int, per_policy: int, games_per_pair: int, exc
                 w = games_per_pair * p * (1.0 - p)
                 ce = cov[:, i] - cov[:, j]
                 quad = ce[i] - ce[j]
-                gain = w * float(ce @ ce) / (1.0 + w * quad)
+                v = ce if f is None else ce[f] - ce[f].mean()
+                gain = w * float(v @ v) / (1.0 + w * quad)
                 if best is None or gain > best[0]:
                     best = (gain, i, j, w, ce, quad)
         if best is None:
@@ -126,19 +138,21 @@ def seeds_needed(seed_scores, target_se: float) -> int:
 
 
 def plan_round(seed_scores: dict, r, cov, *, pair_se: float = 0.05, elo_se: float = 12.0, min_add: int = 2,
-               max_add: int = 10, elo_pairs: int = 24, per_policy: int = 3, elo_seeds: int = 4):
+               max_add: int = 10, elo_pairs: int = 24, per_policy: int = 3, elo_seeds: int = 4, focus=None):
     """One stage-2 round: {(i, j): extra seeds}.  Phase A (first): every pair whose stopping SE > ``pair_se`` gets
     clamp(seeds_needed - n, min_add, max_add) seeds.  Phase B (only when every pair passes): ``elo_pairs``
     A-optimal picks of ``elo_seeds`` seeds while some rating SE > ``elo_se``.  {} = both criteria met.
-    ``seed_scores``: {(i, j): [seed scores of i]} for every pair i < j."""
+    ``seed_scores``: {(i, j): [seed scores of i]} for every pair i < j.  ``focus``: phase B targets only these
+    ratings' SEs relative to their own mean (``focus_se_elo``)."""
     plan = {}
     for pair, xs in seed_scores.items():
         if pair_seed_stats(xs)["se_stop"] > pair_se:
             plan[pair] = int(np.clip(seeds_needed(xs, pair_se) - len(xs), min_add, max_add))
     if plan:
         return plan, "pair_se"
-    if rating_se_elo(cov).max() > elo_se:
-        for pair in choose_pairs(r, cov, elo_pairs, per_policy, 2 * elo_seeds):
+    se = rating_se_elo(cov) if focus is None else focus_se_elo(cov, focus)
+    if se.max() > elo_se:
+        for pair in choose_pairs(r, cov, elo_pairs, per_policy, 2 * elo_seeds, focus=focus):
             plan[pair] = elo_seeds
         return plan, "elo_se"
     return {}, "done"

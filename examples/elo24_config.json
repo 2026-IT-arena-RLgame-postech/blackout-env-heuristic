@@ -116,8 +116,9 @@
   "per_policy": 4,
   "elo_seeds": 5,
   "chunk_seeds": 10,
-  "max_rounds": 60,
-  "max_games": 20000
+  "max_rounds": 200,
+  "max_games": 20000,
+  "focus_top": 10
  },
  "prior_sd_elo": 1000.0,
  "hosts": [
@@ -138,7 +139,7 @@
    "dir": "blackout-env-elo24",
    "python": "~/blackout-env/.venv/bin/python",
    "nice": 10,
-   "max_workers": 7,
+   "max_workers": 12,
    "min_free_cores": 2,
    "enabled": true
   },

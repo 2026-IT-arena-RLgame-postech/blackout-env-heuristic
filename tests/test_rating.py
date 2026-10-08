@@ -110,3 +110,15 @@ def test_config_heuristic_specs_match_the_adopted_constants():
     cfg = json.loads((Path(__file__).resolve().parents[1] / "examples/elo24_config.json").read_text())
     spec = {p["name"]: p["spec"] for p in cfg["policies"]}
     assert len(spec) == 24 and spec["V32.1"] == V32_1 and spec["V31"] == V31
+
+
+def test_focus_se_is_relative_to_focus_mean_and_drives_plan():
+    from blackout_env.rating import focus_se_elo
+
+    cov = np.eye(4) * 0.01 + 0.05  # a shared offset term does not affect differences within the group
+    se = focus_se_elo(cov, [0, 1])
+    assert np.allclose(se, np.sqrt(0.01 / 2) * ELO)
+    settled = {(i, j): [1.0, 0.0] * 80 for i in range(4) for j in range(i + 1, 4)}
+    r = np.zeros(4)
+    plan, why = plan_round(settled, r, cov, elo_se=float(se.max()) + 1.0, focus=[0, 1])
+    assert why == "done" and plan == {}
