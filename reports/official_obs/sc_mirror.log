@@ -1,0 +1,82 @@
+seed 300 ticks 3831 scores (100, 66) 3s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 3830, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 301 ticks 1638 scores (34, 100) 1s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 1637, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 302 ticks 4476 scores (103, 58) 4s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 4475, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 303 ticks 2712 scores (101, 51) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2711, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 304 ticks 2818 scores (101, 50) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2817, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 305 ticks 2494 scores (20, 103) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2493, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 306 ticks 3208 scores (101, 62) 3s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 3207, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 307 ticks 2419 scores (102, 50) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2418, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 308 ticks 3164 scores (100, 49) 3s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 3163, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 309 ticks 1901 scores (26, 102) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 1900, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 310 ticks 1948 scores (47, 100) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 1947, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 311 ticks 3627 scores (46, 101) 3s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 3626, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 312 ticks 21001 scores (94, 64) 17s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 21000, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 313 ticks 3030 scores (52, 102) 3s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 3029, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 314 ticks 2408 scores (102, 48) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2407, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 315 ticks 2997 scores (100, 25) 3s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2996, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 316 ticks 4849 scores (100, 62) 4s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 4848, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 317 ticks 3172 scores (103, 46) 3s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 3171, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 318 ticks 2213 scores (65, 102) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2212, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 319 ticks 2601 scores (101, 61) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2600, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 320 ticks 1738 scores (102, 41) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 1737, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 321 ticks 2323 scores (47, 101) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2322, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 322 ticks 2509 scores (105, 57) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2508, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 323 ticks 2836 scores (20, 101) 3s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2835, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 324 ticks 21001 scores (90, 79) 16s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 21000, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 325 ticks 21001 scores (76, 82) 18s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 21000, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 326 ticks 2894 scores (100, 48) 3s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2893, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 327 ticks 2574 scores (106, 57) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2573, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 328 ticks 21001 scores (53, 98) 16s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 21000, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 329 ticks 2662 scores (101, 44) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2661, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 330 ticks 1926 scores (24, 100) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 1925, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 331 ticks 1922 scores (35, 102) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 1921, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 332 ticks 21001 scores (84, 87) 17s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 21000, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 333 ticks 3137 scores (101, 37) 3s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 3136, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 334 ticks 2414 scores (19, 103) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2413, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 335 ticks 1760 scores (28, 102) 2s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 1759, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 336 ticks 3297 scores (101, 79) 3s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 3296, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 337 ticks 2942 scores (72, 100) 3s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 2941, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 338 ticks 3258 scores (46, 104) 3s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 3257, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+seed 339 ticks 841 scores (100, 11) 1s  pos=1.0000 cls=1.0000 held_type=1.0000 held_exact=1.0000 scalars=1.0000 map_base=1.0000 map_items=1.0000 bat_presence=1.0000 bat_exact=1.0000 all_exact=1.0000 bat_l1/tick=0.00
+   stats {'ticks': 840, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'oracle'}
+TOTAL ticks 199544 pos=1.000000 cls=1.000000 held_type=1.000000 held_exact=1.000000 scalars=1.000000 map_base=1.000000 map_items=1.000000 bat_presence=1.000000 bat_exact=1.000000 all_exact=1.000000 bat_l1/tick=0.00
+CASES mutual_kill=469/fail0 multi_kill=1609/fail0 die_after_pickup=0/fail0 die_after_deposit=0/fail0 deposits_same_team=2/fail0 deposit_absorb=0/fail0 steal=181/fail0 spawn_under_unit=0/fail0 kill_carrier=427/fail0 transform=1132/fail0 game_end=35/fail0

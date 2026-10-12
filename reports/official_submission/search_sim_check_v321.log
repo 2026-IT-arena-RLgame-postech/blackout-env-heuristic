@@ -1,0 +1,7 @@
+match 0 side A ticks 2265 scores (101, 45) decisions 1133 differing 125 act 87.55 ms/tick (worst 14922 ms) rng blind init0+startup+0gen backend onnx stats {'ticks': 2264, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'blind init0+startup+0gen', 'hypotheses': 1, 'dropped': 3}
+   search: roots 41 choice differs from true-root search 0 max value err 4.09e-01 2.28 s/root (worst 12.8) chosen [36, 1, 0, 0, 0, 0, 1, 3]
+match 1 side B ticks 3241 scores (100, 46) decisions 1621 differing 648 act 77.90 ms/tick (worst 4267 ms) rng prev+1gen backend onnx stats {'ticks': 3240, 'amount_fix': 0, 'score_override': 0, 'held_fix': 0, 'item_fix': 0, 'class_fix': 0, 'pos_fix': 0, 'spawns': 0, 'seeded': 'prev+1gen', 'hypotheses': 1, 'dropped': 6}
+   search: roots 60 choice differs from true-root search 1 max value err 3.41e+00 2.13 s/root (worst 12.8) chosen [34, 5, 4, 2, 2, 2, 8, 3]
+TOTAL {'decisions': 2754, 'diff': 773, 'ticks': 5506, 'margin_sum': 2} agreement 0.719317
+
+[exited with code 0]
