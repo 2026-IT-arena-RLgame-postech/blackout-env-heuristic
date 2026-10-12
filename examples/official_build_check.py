@@ -106,7 +106,7 @@ def main():
             vectors, ids, terminal, gmap = collect(env, unit_names, map_name)
             if terminal:
                 break
-            if vectors[0] is not None and gmap is not None:
+            if vectors[0] is not None:
                 t1 = time.perf_counter()
                 tr.observe(vectors[0], gmap)
                 t_track += time.perf_counter() - t1

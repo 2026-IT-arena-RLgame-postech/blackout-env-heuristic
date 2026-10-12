@@ -214,6 +214,13 @@ class RngFinder:
                  full_scan: bool = True):
         self.env_seed, self.max_offset, self.prev_window, self.full_scan = env_seed, max_offset, prev_window, full_scan
 
+    def blind(self, prev=None):
+        """No usable map: the stream position itself -- the previous match's end state, else a
+        fresh player's (InitState(env_seed) after the startup throw-away generation)."""
+        if prev is not None:
+            return prev, "blind prev+0"
+        return generate_state(init_state(self.env_seed))[2], f"blind init{self.env_seed}+startup"
+
     def __call__(self, chosen, tiles, prev=None):
         if prev is not None:
             r = find_offset(prev, chosen, tiles, self.prev_window)

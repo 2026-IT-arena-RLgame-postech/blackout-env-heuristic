@@ -87,6 +87,12 @@ def chosen_from_official(gmap) -> tuple[int, ...]:
     return tuple(out)
 
 
+def informative(gmap) -> bool:
+    """False for a missing map or the constant frame a headless (``-nographics``) official build
+    sends (its RenderTexture readback never sees the semantic texture)."""
+    return gmap is not None and int((np.asarray(gmap) == 1).sum()) > 100
+
+
 def tile_ids(gmap) -> np.ndarray:
     """The id at every tile's item pixel (tile centre), int [W, H]; 4/5 = hidden by a unit."""
     g = np.asarray(gmap)
@@ -121,11 +127,15 @@ class OfficialTracker:
 
     # ------------------------------------------------------------------ reset
     def _start(self, p, gmap, elapsed):
-        ids = tile_ids(gmap)
-        chosen = chosen_from_official(gmap)
-        tiles = [(x, y) for y in range(H) for x in range(W) if ids[x, y] == ID_ITEM]
         prev = self.sim.rng.copy() if self.sim is not None and self.seed is not None else None
-        found = self.rng_finder(chosen, tiles, prev) if self.rng_finder else None
+        if informative(gmap):
+            ids = tile_ids(gmap)
+            chosen = chosen_from_official(gmap)
+            tiles = [(x, y) for y in range(H) for x in range(W) if ids[x, y] == ID_ITEM]
+            found = self.rng_finder(chosen, tiles, prev) if self.rng_finder else None
+        else:   # headless official build: the map is a constant -- follow the RNG stream blind
+            chosen, tiles = (0, 1, 2, 3), []
+            found = self.rng_finder.blind(prev) if self.rng_finder else None
         self.seed = None if found is None else found[1]
         if found is not None:
             sim = SimState.from_rng_state(found[0], order=self.order, elapsed_ticks=elapsed)
@@ -187,7 +197,8 @@ class OfficialTracker:
                 continue
             break
         self.stats["ticks"] += 1
-        self._sync_items(gmap)
+        if informative(gmap):
+            self._sync_items(gmap)
         self._sync_held(p)
         self._sync_class(p)
         self._sync_scores(obs_scores)
