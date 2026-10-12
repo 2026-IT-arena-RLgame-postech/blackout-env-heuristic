@@ -34,30 +34,94 @@ PRIOR_AMOUNT = 4           # an unknown stack's amount (initial amounts are unif
 
 
 @njit(cache=True)
-def drive_tick(S, M, pos, dead, order, moved):
+def drive_tick(S, M, pos, dead, order, moved, pre, use_pre, death_turn):
     """One tick with observed end positions: units in AgentAct order, then the world update.
 
-    ``dead[u]``: u teleported (was killed this tick).  Its death is applied first: Unity killed
-    it at a position the observation never shows, and keeping it anywhere on the field would let
-    living units fight a ghost.  Respawned on its own base floor (enemies cannot enter, no items)
-    it interacts with nothing, and its turn then moves it on to the observed position.  What
-    the dying unit did earlier in the tick (a pick-up, rarely) is left to the resync."""
-    g = S[5]
+    ``dead[u]``: u teleported (killed this tick) at turn ``death_turn[u]`` (an index into
+    ``order``: its killer's turn, or its own when it ran into the killer).  Until then it holds
+    what it held (class, item, a sanctuary lock -- later turns before its death still see them)
+    but is out of the tile lists: Unity killed it at a position the observation never shows,
+    and leaving it anywhere would let passing units fight or pick up through a ghost.  With
+    ``use_pre`` (blind mode) its own turn replays its extrapolated last move (``pre``: actions
+    are held for 2 ticks) -- a pick-up just before the death.  A unit killed before its turn moves on from its spawn, as Unity's
+    respawned unit does."""
+    uf, ui, g = S[0], S[1], S[5]
+    died = np.zeros(10, dtype=np.bool_)
     for u in range(10):
-        if dead[u] and g[core.G_OVER] == 0:
-            core._die(S, M, u, -1)
+        if dead[u] and ui[u, core.U_TX] >= 0:
+            core._tile_remove(S, ui[u, core.U_TX], ui[u, core.U_TY], u)
+            ui[u, core.U_TX] = -1
+            ui[u, core.U_TY] = -1
     for j in range(order.shape[0]):
         u = order[j]
         if g[core.G_OVER]:
             break
-        # Unit.Move runs every tick, also for a zero input: the interactions too (a special item
-        # spawned under a standing Collector is picked up on the next tick)
-        if moved[u]:
+        if dead[u] and not died[u]:
+            if use_pre:  # its own (last) move, extrapolated: alive until its death turn
+                core._change_pos(S, M, u, pre[u, 0], pre[u, 1])
+                if g[core.G_OVER] == 0:
+                    core._process_interactions(S, M, u, pre[u, 0], pre[u, 1])
+                died[u] = _just_died(S, u)
+            if death_turn[u] == j and not died[u]:
+                if g[core.G_OVER] == 0:
+                    core._die(S, M, u, -1)
+                died[u] = True
+        elif moved[u] or dead[u]:
             core._change_pos(S, M, u, pos[u, 0], pos[u, 1])
-        if g[core.G_OVER] == 0:
-            core._process_interactions(S, M, u, S[0][u, 0], S[0][u, 1])
+            if g[core.G_OVER] == 0:
+                core._process_interactions(S, M, u, uf[u, 0], uf[u, 1])
+        elif g[core.G_OVER] == 0:
+            # Unit.Move runs every tick, also for a zero input: so do its interactions (a special
+            # item spawned under a standing Collector is picked up on the next tick)
+            core._process_interactions(S, M, u, uf[u, 0], uf[u, 1])
+        for v in range(10):  # victims of this turn
+            if dead[v] and not died[v] and death_turn[v] == j and g[core.G_OVER] == 0:
+                if not _just_died(S, v):
+                    core._die(S, M, v, -1)
+                died[v] = True
+    for u in range(10):
+        if dead[u] and not died[u] and g[core.G_OVER] == 0 and not _just_died(S, u):
+            core._die(S, M, u, -1)
     core.world_update(S, M)
     g[core.G_TICK] += 1
+
+
+@njit(cache=True)
+def _just_died(S, u) -> bool:
+    ev, g = S[8], S[5]
+    for k in range(g[core.G_NEV]):
+        if ev[k, 1] == core.EV_KILL and ev[k, 3] == u:
+            return True
+    return False
+
+
+def death_turns(sim, pos, dead, pre, order) -> np.ndarray:
+    """The turn (index into ``order``) each observed death happened at: walk the AgentAct order
+    with estimated positions (start of tick; after its turn a living unit is at its observed
+    position, a dying one at its extrapolated one) and take the first turn at which the victim
+    overlaps an enemy that beats it.  None found: the victim's own turn."""
+    out = np.full(10, -1, np.int64)
+    if not dead.any():
+        return out
+    cls = sim.ui[:, core.U_CLS].copy()
+    cur = sim.uf.astype(np.float64).copy()
+    turn_of = {int(u): j for j, u in enumerate(order)}
+    half = core.CLS_WIDTH[cls].astype(np.float64) / 2
+    for j, u in enumerate(order):
+        cur[u] = pre[u] if dead[u] else pos[u]
+        for v in np.nonzero(dead & (out < 0))[0]:
+            for k in range(10):
+                if (k < 5) == (v < 5) or not core.BEATS[cls[k], cls[v]]:
+                    continue
+                if turn_of[int(k)] > j and turn_of[int(v)] > j:
+                    continue   # neither has moved yet
+                d = np.hypot(*(cur[k] - cur[v]))
+                if d <= half[k] + half[v] + 0.02:
+                    out[v] = j
+                    break
+    for v in np.nonzero(dead & (out < 0))[0]:
+        out[v] = turn_of[int(v)]
+    return out
 
 
 @njit(cache=True)
@@ -124,6 +188,7 @@ class OfficialTracker:
         self.elapsed = -1
         self.seed = None
         self.stats = {}
+        self._last_uf = None
 
     # ------------------------------------------------------------------ reset
     def _start(self, p, gmap, elapsed):
@@ -189,11 +254,18 @@ class OfficialTracker:
         snap = sim.copy()
         obs_scores = p["scores"]
 
-        def attempt(pv):
+        pre = (sim.uf + (sim.uf - self._last_uf)).astype(F32) if self._last_uf is not None else sim.uf.copy()
+        use_pre = bool(dead.any()) and not informative(gmap)
+        self._last_uf = sim.uf.copy()
+
+        turns = death_turns(sim, pos, dead, pre, sim.order)
+
+        def attempt(pv, extrapolate=use_pre):
             sim.load(snap)
             for _ in range(3):
                 sim.g[core.G_NEV] = 0
-                drive_tick(sim.S, sim.M, pv, dead, sim.order, moved | (pv != sim.uf).any(axis=1))
+                drive_tick(sim.S, sim.M, pv, dead, sim.order, moved | (pv != sim.uf).any(axis=1), pre, extrapolate,
+                           turns)
                 if n_ticks > 1:
                     world_ticks(sim.S, sim.M, n_ticks - 1)
                 if not self._fix_amounts(snap, obs_scores):
@@ -201,6 +273,9 @@ class OfficialTracker:
             return self._inconsistent(p, dead)
 
         bad, suspects = attempt(pos)
+        if bad and use_pre:
+            bad, suspects = attempt(pos, False)
+            use_pre = False
         if bad:
             # Auto-correction: a float32 position is only known up to 1-3 values (pos / 24 is
             # many-to-one); an overlap decided on that edge picks up / kills differently.  Replay
@@ -214,7 +289,7 @@ class OfficialTracker:
                             continue
                         pv = pos.copy()
                         pv[u] = cx, cy
-                        b_, _ = attempt(pv)
+                        b_, _ = attempt(pv, use_pre)
                         if b_ < best[0]:
                             best = (b_, pv)
                         if b_ == 0:
@@ -225,7 +300,7 @@ class OfficialTracker:
                     break
             if best[1] is not pos:
                 self.stats["pos_retry"] = self.stats.get("pos_retry", 0) + 1
-            attempt(best[1])
+            attempt(best[1], use_pre)
         self.stats["ticks"] += 1
         if informative(gmap):
             self._sync_items(gmap)
@@ -254,6 +329,7 @@ class OfficialTracker:
                 sus += [int(e[2]) for e in ev if e[1] == core.EV_KILL and e[3] == u and e[2] >= 0]
         if int(sim.ui[p["me"], core.U_CLS]) != p["my_class"]:
             bad += 1
+        bad += (int(sim.g[core.G_SCORE_A]), int(sim.g[core.G_SCORE_B])) != tuple(p["scores"])
         return bad, list(dict.fromkeys(sus))
 
     # ------------------------------------------------------------------ reconciliation
