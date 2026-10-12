@@ -26,7 +26,7 @@ from mlagents_envs.side_channel.engine_configuration_channel import EngineConfig
 
 from blackout_env.official.render import parse_vector
 from blackout_env.official.seed_search import RngFinder
-from blackout_env.official.tracker import OfficialTracker
+from blackout_env.official.tracker import MultiTracker
 from blackout_env.sim import core
 from blackout_env.train.distill.opponents import make_opponent
 
@@ -86,18 +86,22 @@ def main():
     ap.add_argument("--b", default=V31)
     ap.add_argument("--time-scale", type=float, default=20.0)
     ap.add_argument("--out", default="reports/official_obs/official_build_check.jsonl")
+    ap.add_argument("--worker", type=int, default=0)
     args = ap.parse_args()
 
     eng = EngineConfigurationChannel()
-    env = UnityEnvironment(file_name=args.build, seed=0, no_graphics=True, side_channels=[eng])
+    env = UnityEnvironment(file_name=args.build, seed=0, no_graphics=True, side_channels=[eng], worker_id=args.worker)
     eng.set_configuration_parameters(time_scale=args.time_scale)
     env.reset()
     unit_names = [n for n in env.behavior_specs if n.startswith("BlackOutUnit")]
     map_name = [n for n in env.behavior_specs if n.startswith("BlackOutMap")][0]
-    tr = OfficialTracker(rng_finder=RngFinder(full_scan=False))
+    tr = MultiTracker(RngFinder(full_scan=False))
     rows = []
     for m in range(args.matches):
-        pa, pb = make_opponent(args.a, 2 * m), make_opponent(args.b, 2 * m + 1)
+        descs = [d.strip() for d in (args.a + "|" + args.b).split("|")]
+        da, db = descs[m % (len(descs) - 1)], descs[-1] if m % 2 == 0 else descs[0]
+        pa, pb = make_opponent(da, 100 * args.worker + 2 * m), make_opponent(db, 100 * args.worker + 2 * m + 1)
+        first_bad, settled = None, None
         moves = np.zeros((10, 2), np.float32)
         bad = {"cls": 0, "held": 0, "score": 0}
         ticks, t_track, t0 = 0, 0.0, time.time()
@@ -112,7 +116,12 @@ def main():
                 t_track += time.perf_counter() - t1
                 if stats0 is None:
                     stats0 = tr.seed
+                before = sum(bad.values())
                 check(tr, vectors, bad)
+                if first_bad is None and sum(bad.values()) > before:
+                    first_bad = ticks
+                if settled is None and tr.stats["hypotheses"] == 1:
+                    settled = ticks
                 if ticks % 2 == 0:
                     obs = tr.obs()
                     for pol, units in ((pa, range(5)), (pb, range(5, 10))):
@@ -126,7 +135,10 @@ def main():
             if len(dec):
                 env.set_actions(map_name, ActionTuple(continuous=np.zeros((len(dec), 0), np.float32)))
             env.step()
-        row = {"match": m, "rng": stats0, "ticks": ticks, "scores": list(tr.sim.scores), "mismatch": bad,
+        sc = list(tr.sim.scores)
+        row = {"worker": args.worker, "match": m, "a": da[:20], "b": db[:20], "rng": tr.seed, "settled_tick": settled,
+               "end": "score" if max(sc) >= 100 else "timeout", "first_bad_tick": first_bad,
+               "ticks": ticks, "scores": sc, "mismatch": bad,
                "resync": {k: v for k, v in tr.stats.items() if k not in ("ticks", "seeded")},
                "track_ms_per_tick": 1000 * t_track / max(ticks, 1), "wall_s": time.time() - t0}
         print(json.dumps(row), flush=True)

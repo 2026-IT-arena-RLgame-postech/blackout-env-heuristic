@@ -14,7 +14,7 @@ from numba import njit
 from ..sim import core
 from ..sim.state import SimState
 from .render import official_map, official_vector
-from .tracker import OfficialTracker
+from .tracker import MultiTracker, OfficialTracker
 
 F32 = np.float32
 
@@ -63,7 +63,7 @@ class OracleFinder:
 
 
 def run(seed: int, decisions: int, desc_a: str, desc_b: str, finder: str, observer: int = 0, tr=None,
-        gen_state=None):
+        gen_state=None, blind=False):
     """One match.  ``gen_state``: generation RNG state (default InitState(seed)); ``tr``: a tracker
     carried over from the previous match (chained unseeded runs)."""
     from ..sim.unity_random import init_state
@@ -74,11 +74,12 @@ def run(seed: int, decisions: int, desc_a: str, desc_b: str, finder: str, observ
     sim = SimState.from_rng_state(gen_state)
     pa, pb = make_opponent(desc_a, 2 * seed), make_opponent(desc_b, 2 * seed + 1)
     if tr is None:
-        f = {"none": None, "oracle": OracleFinder(gen_state), "search": RngFinder()}[finder]
-        tr = OfficialTracker(rng_finder=f)
+        f = {"none": None, "oracle": OracleFinder(gen_state), "search": RngFinder(full_scan=False)}[finder]
+        tr = MultiTracker(f) if blind else OfficialTracker(rng_finder=f)
+    see = (lambda s_: None) if blind else official_map
     acc = {k: 0 for k in ("n", "pos", "cls", "held_type", "held_exact", "scalars", "map_base", "map_items",
                           "bat_presence", "bat_exact", "bat_l1", "all_exact")}
-    tr.observe(official_vector(sim, observer), official_map(sim))
+    tr.observe(official_vector(sim, observer), see(sim))
     compare(tr, sim, acc)
     moves = np.zeros((10, 2), F32)
     for _ in range(decisions):
@@ -93,7 +94,7 @@ def run(seed: int, decisions: int, desc_a: str, desc_b: str, finder: str, observ
             true_tick(sim.S, sim.M, moves, sim.order)
             if sim.over:
                 break
-            tr.observe(official_vector(sim, observer), official_map(sim))
+            tr.observe(official_vector(sim, observer), see(sim))
             compare(tr, sim, acc)
     return acc, tr.stats, sim.scores, tr, sim
 
@@ -107,6 +108,9 @@ def main():
     ap.add_argument("--finder", default="oracle", choices=("none", "oracle", "search"))
     ap.add_argument("--chain", action="store_true",
                     help="official unseeded run: matches continue one RNG stream from InitState(0)+109")
+    ap.add_argument("--blind", action="store_true", help="no map (headless official build): MultiTracker")
+    ap.add_argument("--boundary-gens", default="1",
+                    help="wasted generations between chained matches, comma list cycled (official run_match: 1)")
     args = ap.parse_args()
     lo, _, hi = args.seeds.partition("-")
     seeds = range(int(lo), int(hi or lo) + 1)
@@ -118,9 +122,13 @@ def main():
     for s in seeds:
         t0 = time.time()
         acc, stats, scores, tr_, sim = run(s, args.decisions, args.a, args.b, args.finder,
-                                           observer=0 if s % 2 == 0 else 7, tr=tr, gen_state=gen)
+                                           observer=0 if s % 2 == 0 else 7, tr=tr, gen_state=gen, blind=args.blind)
         if args.chain:
+            from ..sim.unity_random import generate_state
             tr, gen = tr_, sim.rng.copy()
+            gens = [int(x) for x in args.boundary_gens.split(",")]
+            for _ in range(gens[(s - seeds[0]) % len(gens)]):
+                gen = generate_state(gen)[2]
         n = acc["n"]
         print(f"seed {s} ticks {n} scores {scores} {time.time() - t0:.0f}s  " +
               " ".join(f"{k}={acc[k] / n:.4f}" for k in acc if k not in ("n", "bat_l1")) +

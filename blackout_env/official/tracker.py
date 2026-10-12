@@ -307,3 +307,106 @@ class OfficialTracker:
 
     def obs(self, agents=None) -> dict:
         return self.sim.obs(agents)
+
+
+class _Fixed:
+    """rng_finder that hands out one fixed generation state."""
+
+    def __init__(self, state, how):
+        self.state, self.how = state, how
+
+    def __call__(self, chosen, tiles, prev=None):
+        return self.state, self.how
+
+    def blind(self, prev=None):
+        return self.state, self.how
+
+
+FIX_KEYS = ("amount_fix", "score_override", "held_fix", "item_fix", "class_fix")
+
+
+class MultiTracker:
+    """Several RNG-stream hypotheses tracked side by side; the ones the observation contradicts
+    are dropped.  Needed when the map cannot pin the stream (the headless official build) and
+    the number of generations between two matches is not certain: a match ending inside Unity
+    restarts it at once (EndEpisode -> OnEpisodeBegin -> a generation) and ``env.reset()`` then
+    generates again, so the next match starts 0..``max_gens`` generations after the last state.
+
+    A wrong hypothesis lays batteries on other tiles: the first pick-up, deposit or score jump
+    contradicts it (a resync fix).  Until then the most likely one (``order``) is served."""
+
+    def __init__(self, rng_finder, max_gens: int = 3, prefer=(1, 0, 2, 3), order=None):
+        self.finder, self.max_gens, self.prefer, self.order = rng_finder, max_gens, prefer, order
+        self.children: list[OfficialTracker] = []
+        self.best: OfficialTracker | None = None
+        self.elapsed = -1
+        self.dropped = 0
+
+    def _candidates(self, gmap):
+        from ..sim.unity_random import generate_state
+
+        if self.best is not None and self.best.seed is not None:
+            base, tag = self.best.sim.rng.copy(), "prev"
+        else:
+            base, tag = self.finder.blind(None)[0], self.finder.blind(None)[1]
+        states, s = [], np.array(base, dtype=np.uint32)
+        for k in range(self.max_gens + 1):
+            states.append((s.copy(), f"{tag}+{k}gen"))
+            s = generate_state(s)[2]
+        # a fresh player's first match generates right after the startup one (k = 0); later
+        # matches follow an in-Unity restart plus env.reset() (k = 1 first)
+        prefer = self.prefer if tag == "prev" else tuple(range(self.max_gens + 1))
+        rank = {k: i for i, k in enumerate(prefer)}
+        return [states[k] for k in sorted(range(len(states)), key=lambda k: rank.get(k, 99))]
+
+    def observe(self, vector, gmap=None):
+        p = parse_vector(vector)
+        el = elapsed_from_time_left(p["time_left"])
+        new = self.best is None or el <= min(self.elapsed, 2) or el < self.elapsed
+        if new and informative(gmap):
+            prev = self.best.sim.rng.copy() if self.best is not None and self.best.seed is not None else None
+            t = OfficialTracker(rng_finder=_PrevFinder(self.finder, prev), order=self.order)
+            self.children = [t]
+        elif new:
+            self.children = [OfficialTracker(rng_finder=_Fixed(st, how), order=self.order)
+                             for st, how in self._candidates(gmap)]
+        for c in self.children:
+            c.observe(vector, gmap)
+        if len(self.children) > 1:
+            score = [sum(c.stats.get(k, 0) for k in FIX_KEYS) for c in self.children]
+            m = min(score)
+            keep = [c for c, s in zip(self.children, score) if s == m]
+            self.dropped += len(self.children) - len(keep)
+            self.children = keep
+        self.best = self.children[0]
+        self.elapsed = el
+        return self
+
+    @property
+    def sim(self):
+        return self.best.sim
+
+    @property
+    def seed(self):
+        return self.best.seed
+
+    @property
+    def stats(self):
+        return dict(self.best.stats, hypotheses=len(self.children), dropped=self.dropped)
+
+    def raw_state(self):
+        return self.best.raw_state()
+
+    def raw_map(self):
+        return self.best.raw_map()
+
+    def obs(self, agents=None):
+        return self.best.obs(agents)
+
+
+class _PrevFinder:
+    def __init__(self, finder, prev):
+        self.finder, self.prev = finder, prev
+
+    def __call__(self, chosen, tiles, prev=None):
+        return self.finder(chosen, tiles, self.prev)
