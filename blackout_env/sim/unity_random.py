@@ -68,9 +68,15 @@ def generate(seed: int):
 
     Returns (chosen candidate indices in shuffle order, batteries [(x, y, amount)] in spawn
     order, RNG state after generation)."""
+    return generate_state(init_state(seed))
+
+
+def generate_state(state):
+    """``generate`` from an arbitrary RNG state (a continued, not re-seeded, Random: Unity
+    without a reset seed starts at InitState(env seed, 0 by default) and runs on)."""
     from .mapdata import build_layout
 
-    s = init_state(seed)
+    s = np.array(state, dtype=np.uint32).copy()
     keys = [float(value(s)) for _ in STORAGE_CANDIDATES]
     order = sorted(range(len(keys)), key=lambda i: keys[i])  # OrderBy is a stable sort
     chosen = tuple(order[:STORAGE_COUNT])

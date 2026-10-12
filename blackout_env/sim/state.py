@@ -32,7 +32,7 @@ import numpy as np
 from . import core
 from .mapdata import (CARRIER, H, R_SANCTUARY, R_STORAGE, SPAWN_CELL, TILE_COLLISION, BLOCK_ALL, W, Layout,
                       SITE_CARRIER, SITE_HUNTER, build_layout, chosen_from_map)
-from .unity_random import generate, init_state
+from .unity_random import generate_state, init_state
 
 F32 = np.float32
 # Agent order of ML-Agents' AgentAct (OnEnable order of the BlackOutAgent components); validated
@@ -244,7 +244,12 @@ class SimState:
         ``elapsed_ticks``: world-update ticks Unity ran before that first observation -- 2 for
         every match but the first one after the player starts (0; that match's first decision
         then moves once).  Read it off the observation with ``elapsed_ticks_of``."""
-        chosen, batteries, rng = generate(seed)
+        return cls.from_rng_state(init_state(seed), order, elapsed_ticks)
+
+    @classmethod
+    def from_rng_state(cls, state, order=None, elapsed_ticks: int = 2) -> "SimState":
+        """``from_seed`` for generation starting at an arbitrary UnityEngine.Random state."""
+        chosen, batteries, rng = generate_state(state)
         sim = cls(build_layout(chosen), order)
         S = sim.S
         for u in range(10):  # MatchManager.ResetAllUnits: Teleport each unit in order
