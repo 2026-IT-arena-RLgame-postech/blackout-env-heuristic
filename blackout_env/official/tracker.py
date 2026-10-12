@@ -25,7 +25,7 @@ from numba import njit
 
 from ..sim import core
 from ..sim.mapdata import CARRIER, H, R_SANCTUARY, SPAWN_CELL, STORAGE_CANDIDATES, STORAGE_COUNT, W
-from ..sim.state import SimState, _timer_after, _timer_table, exact_position
+from ..sim.state import SimState, _timer_after, _timer_table, exact_position, position_candidates
 from .render import HO, ID_ALLY_UNIT, ID_ENEMY_UNIT, ID_ITEM, SCALE, parse_vector
 
 F32 = np.float32
@@ -50,12 +50,12 @@ def drive_tick(S, M, pos, dead, order, moved):
         u = order[j]
         if g[core.G_OVER]:
             break
-        if not moved[u]:
-            continue
-        x, y = pos[u, 0], pos[u, 1]
-        core._change_pos(S, M, u, x, y)
+        # Unit.Move runs every tick, also for a zero input: the interactions too (a special item
+        # spawned under a standing Collector is picked up on the next tick)
+        if moved[u]:
+            core._change_pos(S, M, u, pos[u, 0], pos[u, 1])
         if g[core.G_OVER] == 0:
-            core._process_interactions(S, M, u, x, y)
+            core._process_interactions(S, M, u, S[0][u, 0], S[0][u, 1])
     core.world_update(S, M)
     g[core.G_TICK] += 1
 
@@ -188,14 +188,44 @@ class OfficialTracker:
         moved = (sim.uf != pos).any(axis=1) | dead
         snap = sim.copy()
         obs_scores = p["scores"]
-        for attempt in range(3):
-            sim.g[core.G_NEV] = 0
-            drive_tick(sim.S, sim.M, pos, dead, sim.order, moved)
-            if n_ticks > 1:
-                world_ticks(sim.S, sim.M, n_ticks - 1)
-            if self._fix_amounts(snap, obs_scores):
-                continue
-            break
+
+        def attempt(pv):
+            sim.load(snap)
+            for _ in range(3):
+                sim.g[core.G_NEV] = 0
+                drive_tick(sim.S, sim.M, pv, dead, sim.order, moved | (pv != sim.uf).any(axis=1))
+                if n_ticks > 1:
+                    world_ticks(sim.S, sim.M, n_ticks - 1)
+                if not self._fix_amounts(snap, obs_scores):
+                    break
+            return self._inconsistent(p, dead)
+
+        bad, suspects = attempt(pos)
+        if bad:
+            # Auto-correction: a float32 position is only known up to 1-3 values (pos / 24 is
+            # many-to-one); an overlap decided on that edge picks up / kills differently.  Replay
+            # the tick with the other candidates of the units involved; keep the first variant the
+            # observation agrees with (else the best, then resync).
+            best = (bad, pos)
+            for u in suspects:
+                for cx in position_candidates(p["pos_obs"][u, 0]):
+                    for cy in position_candidates(p["pos_obs"][u, 1]):
+                        if cx == pos[u, 0] and cy == pos[u, 1]:
+                            continue
+                        pv = pos.copy()
+                        pv[u] = cx, cy
+                        b_, _ = attempt(pv)
+                        if b_ < best[0]:
+                            best = (b_, pv)
+                        if b_ == 0:
+                            break
+                    if best[0] == 0:
+                        break
+                if best[0] == 0:
+                    break
+            if best[1] is not pos:
+                self.stats["pos_retry"] = self.stats.get("pos_retry", 0) + 1
+            attempt(best[1])
         self.stats["ticks"] += 1
         if informative(gmap):
             self._sync_items(gmap)
@@ -203,6 +233,28 @@ class OfficialTracker:
         self._sync_class(p)
         self._sync_scores(obs_scores)
         self._sync_positions(p, np.zeros(10, bool))
+
+    def _inconsistent(self, p, dead):
+        """(number of contradictions with the observation, units involved): held item types,
+        deaths (replayed victims vs observed teleports), the observer's class."""
+        sim = self.sim
+        bad, sus = 0, []
+        for u in range(10):
+            h = sim.ui[u, core.U_HELD]
+            have = 0 if h < 0 else int(sim.it[h, core.I_TYPE]) + 1
+            if have != int(p["held"][u]):
+                bad += 1
+                sus.append(u)
+        ev = sim.ev[: sim.g[core.G_NEV]]
+        victims = {int(e[3]) for e in ev if e[1] == core.EV_KILL}
+        for u in range(10):
+            if (u in victims) != bool(dead[u]):
+                bad += 1
+                sus.append(u)
+                sus += [int(e[2]) for e in ev if e[1] == core.EV_KILL and e[3] == u and e[2] >= 0]
+        if int(sim.ui[p["me"], core.U_CLS]) != p["my_class"]:
+            bad += 1
+        return bad, list(dict.fromkeys(sus))
 
     # ------------------------------------------------------------------ reconciliation
     def _fix_amounts(self, snap, obs_scores) -> bool:
@@ -292,8 +344,9 @@ class OfficialTracker:
     def _sync_positions(self, p, force):
         sim = self.sim
         pos = self._targets(p)
+        rendered = (sim.uf / core.BOUNDS * core.F2 - core.F1).astype(F32)
         for u in range(10):
-            if force[u] or (sim.uf[u] != pos[u]).any():
+            if force[u] or (rendered[u] != p["pos_obs"][u]).any():
                 if not force[u]:
                     self.stats["pos_fix"] += 1
                 sim.place_unit(u, float(pos[u, 0]), float(pos[u, 1]))

@@ -207,11 +207,16 @@ class RngFinder:
          UnityEnvironment seed (0 unless given) when the communicator connects; the startup
          ``GameScenario.Initialize`` then generates a throw-away map (109 draws for seed 0) and
          every later match continues the same stream -- measured on the Mac build, amounts too;
-      3. every ``InitState(seed)``: a match reset with an explicit seed (~11 s, 18 threads).
+      3. small explicit reset seeds ``InitState(s)``, |s| < 2^24 (both signs: C# int) -- what a
+         harness passing a match index / small seed uses (~0.1 s);
+      4. only if ``full_scan``: every ``InitState(seed)`` (7-12 s on 18 threads; off by default --
+         the official runner never reseeds, so steps 1-2 always hit there).
     Returns (state, how) or None."""
 
+    SMALL = 1 << 24
+
     def __init__(self, env_seed: int = 0, max_offset: int = 2_000_000, prev_window: int = 100_000,
-                 full_scan: bool = True):
+                 full_scan: bool = False):
         self.env_seed, self.max_offset, self.prev_window, self.full_scan = env_seed, max_offset, prev_window, full_scan
 
     def blind(self, prev=None):
@@ -229,6 +234,10 @@ class RngFinder:
         r = find_offset(init_state(self.env_seed), chosen, tiles, self.max_offset)
         if r is not None:
             return r[1], f"init{self.env_seed}+{r[0]}"
+        for lo, hi in ((0, self.SMALL), ((1 << 32) - self.SMALL, 1 << 32)):
+            seeds = find_seed(chosen, tiles, lo, hi, n_chunks=256)
+            if len(seeds) == 1:
+                return init_state(seeds[0]), f"seed {seeds[0] if seeds[0] < 1 << 31 else seeds[0] - (1 << 32)}"
         if self.full_scan:
             seeds = find_seed(chosen, tiles)
             if len(seeds) == 1:

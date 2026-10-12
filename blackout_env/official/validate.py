@@ -62,6 +62,44 @@ class OracleFinder:
         return self.state, "oracle"
 
 
+CASES = ("mutual_kill", "multi_kill", "die_after_pickup", "die_after_deposit", "deposits_same_team", "deposit_absorb",
+         "steal", "spawn_under_unit", "kill_carrier", "transform", "game_end")
+
+
+def classify(ev, sim) -> list[str]:
+    """Special-case labels of one truth tick's events."""
+    out = []
+    kills = [e for e in ev if e[1] == core.EV_KILL]
+    victims = {int(e[3]) for e in kills}
+    if sum(1 for e in kills if e[2] < 0) >= 2:
+        out.append("mutual_kill")
+    if len(victims) >= 2:
+        out.append("multi_kill")
+    acted = lambda kind: {int(e[2]) for e in ev if e[1] == kind}
+    if victims & (acted(core.EV_PICKUP) | acted(core.EV_STEAL)):
+        out.append("die_after_pickup")
+    if victims & acted(core.EV_DEPOSIT):
+        out.append("die_after_deposit")
+    dep = [int(e[2]) < 5 for e in ev if e[1] == core.EV_DEPOSIT]
+    if dep.count(True) >= 2 or dep.count(False) >= 2:
+        out.append("deposits_same_team")
+    if dep and any(e[1] == core.EV_ABSORB for e in ev):
+        out.append("deposit_absorb")
+    if any(e[1] == core.EV_STEAL for e in ev):
+        out.append("steal")
+    for e in ev:
+        if e[1] == core.EV_SPAWN and any(int(np.floor(sim.uf[u, 0])) == e[3] and int(np.floor(sim.uf[u, 1])) == e[4]
+                                         for u in range(10)):
+            out.append("spawn_under_unit")
+    if any(e[1] == core.EV_KILL and e[4] == 2 for e in kills):
+        out.append("kill_carrier")
+    if any(e[1] == core.EV_TRANSFORM for e in ev):
+        out.append("transform")
+    if any(e[1] == core.EV_END for e in ev):
+        out.append("game_end")
+    return out
+
+
 def run(seed: int, decisions: int, desc_a: str, desc_b: str, finder: str, observer: int = 0, tr=None,
         gen_state=None, blind=False):
     """One match.  ``gen_state``: generation RNG state (default InitState(seed)); ``tr``: a tracker
@@ -79,6 +117,8 @@ def run(seed: int, decisions: int, desc_a: str, desc_b: str, finder: str, observ
     see = (lambda s_: None) if blind else official_map
     acc = {k: 0 for k in ("n", "pos", "cls", "held_type", "held_exact", "scalars", "map_base", "map_items",
                           "bat_presence", "bat_exact", "bat_l1", "all_exact")}
+    acc.update({f"case_{c}": 0 for c in CASES})
+    acc.update({f"fail_{c}": 0 for c in CASES})
     tr.observe(official_vector(sim, observer), see(sim))
     compare(tr, sim, acc)
     moves = np.zeros((10, 2), F32)
@@ -92,10 +132,17 @@ def run(seed: int, decisions: int, desc_a: str, desc_b: str, finder: str, observ
                 moves[int(name.split("_")[1])] = act
         for _ in range(2):
             true_tick(sim.S, sim.M, moves, sim.order)
+            labels = classify(sim.events(), sim)
             if sim.over:
+                for c in labels:
+                    acc[f"case_{c}"] += 1
                 break
             tr.observe(official_vector(sim, observer), see(sim))
+            ok = acc["all_exact"]
             compare(tr, sim, acc)
+            for c in labels:
+                acc[f"case_{c}"] += 1
+                acc[f"fail_{c}"] += acc["all_exact"] == ok
     return acc, tr.stats, sim.scores, tr, sim
 
 
@@ -131,13 +178,15 @@ def main():
                 gen = generate_state(gen)[2]
         n = acc["n"]
         print(f"seed {s} ticks {n} scores {scores} {time.time() - t0:.0f}s  " +
-              " ".join(f"{k}={acc[k] / n:.4f}" for k in acc if k not in ("n", "bat_l1")) +
+              " ".join(f"{k}={acc[k] / n:.4f}" for k in acc if k not in ("n", "bat_l1") and not k.startswith(("case_", "fail_"))) +
               f" bat_l1/tick={acc['bat_l1'] / n:.2f}", flush=True)
         print("   stats", stats, flush=True)
         tot = acc if tot is None else {k: tot[k] + acc[k] for k in acc}
     n = tot["n"]
-    print("TOTAL " + " ".join(f"{k}={tot[k] / n:.4f}" for k in tot if k not in ("n", "bat_l1")) +
+    print("TOTAL ticks", n, " ".join(f"{k}={tot[k] / n:.6f}" for k in tot
+                                       if k not in ("n", "bat_l1") and not k.startswith(("case_", "fail_"))) +
           f" bat_l1/tick={tot['bat_l1'] / n:.2f}")
+    print("CASES " + " ".join(f"{c}={tot['case_' + c]}/fail{tot['fail_' + c]}" for c in CASES))
 
 
 if __name__ == "__main__":
