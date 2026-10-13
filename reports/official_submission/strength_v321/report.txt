@@ -1,0 +1,4 @@
+plain   n=128 margin +26.9 ±4.8  win 0.711 loss 0.289  tracker fixes 395
+search  n=128 margin +29.6 ±4.9  win 0.719 loss 0.281  tracker fixes 543
+paired search - plain: +2.6 ±4.8 over 64 seeds (128 games)
+search cost: 1187 s/match, 1.76 s/root, wall 193 s/match
