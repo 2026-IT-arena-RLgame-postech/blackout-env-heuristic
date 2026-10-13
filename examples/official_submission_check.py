@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import shutil
 import sys
 import tempfile
@@ -71,6 +72,12 @@ def main():
     ap.add_argument("--max-ticks", type=int, default=21000)
     ap.add_argument("--map", action="store_true", help="show the real map (default: the headless build's constant one)")
     ap.add_argument("--two-files", action="store_true", help="load from a copy holding only policy.py + checkpoint.pt")
+    ap.add_argument("--seed0", type=int, default=None,
+                    help="strength eval: seeds seed0 .. seed0+seeds-1 x both sides (SimState.from_seed, map shown so the "
+                         "tracker finds the seed), instead of the unseeded chain; pairs across --dir runs")
+    ap.add_argument("--seeds", type=int, default=8)
+    ap.add_argument("--root-check", action="store_true", help="re-run every search from the true state (2x search cost)")
+    ap.add_argument("--out", default=None, help="append one JSON row per match")
     args = ap.parse_args()
 
     src = Path(args.dir)
@@ -83,14 +90,18 @@ def main():
     Policy = load_policy_class(str(src / "policy.py"))
     model = load_checkpoint(Policy, str(src / "checkpoint.pt"), state_dict_key="policy_state", device="cpu",
                             vector_size=96, n_channels=11)
-    ref = make_student(load_checkpoint_net(args.reference), "iqn")
+    ref = make_student(load_checkpoint_net(args.reference), "iqn") if args.reference else None
+    if args.seed0 is not None:
+        args.map, args.matches = True, 2 * args.seeds
 
     gen = advance(init_state(0), 109)   # Academy InitState(0) + the startup generation
     total = {"decisions": 0, "diff": 0, "ticks": 0}
     for m in range(args.matches):
-        sim = SimState.from_rng_state(gen)
+        seed = None if args.seed0 is None else args.seed0 + m // 2
+        sim = SimState.from_rng_state(gen) if seed is None else SimState.from_seed(seed)
         me = m % 2                         # the submission's side; sides swap like run_series
-        opp = make_opponent(args.opp, m)
+        opp = make_opponent(args.opp, m if seed is None else seed)
+        t_match = time.time()
         mine = [f"unit_{5 * me + k}" for k in range(5)]
         theirs = [f"unit_{5 * (1 - me) + k}" for k in range(5)]
         moves = np.zeros((10, 2), F32)
@@ -110,7 +121,7 @@ def main():
             sp = model._net._search
             n_search = sp.stats["searches"] if sp is not None else 0
             acts = model.act(pre)
-            if sp is not None and sp.stats["searches"] > n_search:   # same search from the true state
+            if args.root_check and sp is not None and sp.stats["searches"] > n_search:   # same search from the true state
                 _, reseed, got = sp.last
                 ref_out = sp.searcher.search([sim.copy()], [me], [reseed])
                 roots += 1
@@ -123,11 +134,12 @@ def main():
                 moves[int(n[5:])] = a
             if tick % 2 == 0:
                 fork = sim.obs()
-                want = ref.act({n: fork[n] for n in mine})
-                got = np.stack([acts[n] for n in mine])
-                exp = np.stack([want[n] for n in mine])
                 decisions += 1
-                diff += int((np.abs(got - exp).max(axis=1) > 1e-3).any())
+                if ref is not None:
+                    want = ref.act({n: fork[n] for n in mine})
+                    got = np.stack([acts[n] for n in mine])
+                    exp = np.stack([want[n] for n in mine])
+                    diff += int((np.abs(got - exp).max(axis=1) > 1e-3).any())
                 for n, a in opp.act({n: fork[n] for n in theirs}).items():
                     moves[int(n[5:])] = a
             true_tick(sim.S, sim.M, moves, sim.order)
@@ -144,6 +156,16 @@ def main():
             print(f"   search: roots {roots} choice differs from true-root search {root_diff} max value err {root_err:.2e} "
                   f"{ss['search_s'] / max(ss['searches'], 1):.2f} s/root (worst {ss['worst_s']:.1f}) chosen {ss['chosen'].tolist()}",
                   flush=True)
+        if args.out:
+            ss = model._net._search.stats if model._net._search is not None else {}
+            row = {"dir": str(args.dir), "opp": args.opp[:40], "seed": seed, "side": me, "ours": int(sim.scores[me]),
+                   "opp_score": int(sim.scores[1 - me]), "margin": int(sim.scores[me] - sim.scores[1 - me]),
+                   "over": bool(sim.over), "ticks": tick, "differing": diff, "decisions": decisions,
+                   "searches": ss.get("searches", 0), "search_s": ss.get("search_s", 0.0),
+                   "chosen": ss["chosen"].tolist() if ss else [], "tracker": {k: v for k, v in st.items()},
+                   "wall_s": time.time() - t_match}
+            with open(args.out, "a") as fh:
+                fh.write(json.dumps(row, default=str) + "\n")
         gen = generate_state(sim.rng.copy())[2]   # in-Unity restart + env.reset(): next match = end + 1 generation
     print("TOTAL", total, f"agreement {1 - total['diff'] / max(total['decisions'], 1):.6f}")
 
