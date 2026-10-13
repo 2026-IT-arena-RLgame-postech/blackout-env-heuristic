@@ -410,7 +410,9 @@ class Searcher:
         self.policy.configure(n_games, team=gteam, kind=[b.kind for b in br], unit=[b.unit for b in br],
                               param=[b.param for b in br], seed=[b.seed for b in br], left=np.full(n_games, left))
 
-    def search(self, roots: list[SimState], teams, reseeds) -> SearchOut:
+    def search(self, roots: list[SimState], teams, reseeds, opp_net_idx=None) -> SearchOut:
+        """``opp_net_idx`` [len(roots), len(opp_branches)] (opponent identification, ``OpponentID.assign``): the
+        net playing each opponent variant, per root -- overrides the constructor's fixed ``opp_net_idx``."""
         if self.children is not None:
             return self._search2(roots, teams, reseeds)
         r, nb = len(roots), len(self.branches)
@@ -426,7 +428,7 @@ class Searcher:
             self.policy.configure_opp([b.kind for b in ob], [b.unit for b in ob], [b.param for b in ob],
                                       [b.seed + 32 * (b.kind == K_SAMP) for b in ob],  # draws other than ours
                                       np.full(len(sims), self.opp_left),
-                                      None if self.opp_net_idx is None else self.opp_net_idx * (r * nb))
+                                      self._net_idx(opp_net_idx, r, nb, no))
         c0 = time.perf_counter()
         res = self.roll.run(sims, self.window + self.leaf_decisions, reseeds=np.repeat(np.asarray(reseeds), per))
         c1 = time.perf_counter()
@@ -436,6 +438,13 @@ class Searcher:
         return SearchOut(choose(vals, self.margin), vals,
                          {"rollout_s": c1 - c0, "leaf_s": c2 - c1, "games": len(sims),
                           "game_decisions": self.roll.timing["game_decisions"], "raw": raw if no > 1 else None})
+
+    def _net_idx(self, per_root, r, nb, no):
+        """Per game (root, branch, variant) opponent net index, or None (every variant = the rollout net)."""
+        if per_root is not None:
+            per_root = np.asarray(per_root, np.int64).reshape(r, no)
+            return np.repeat(per_root[:, None, :], nb, 1).reshape(-1)
+        return None if self.opp_net_idx is None else self.opp_net_idx * (r * nb)
 
     def _search2(self, roots, teams, reseeds) -> SearchOut:
         r, nb, nc = len(roots), len(self.branches), len(self.children)
@@ -631,6 +640,67 @@ class QSearcher:
 # ---------------------------------------------------------------------------------- matches
 
 
+class OpponentID:
+    """Opponent identification (docs §63): a per-game posterior over candidate opponent nets from the moves the
+    opponent actually made, and the search's opponent variants dealt out by it.
+
+    ``nets[j]`` is the net ``ModNetPolicy`` plays for ``onet = j`` (0 = its own rollout net, j = ``opp_nets[j - 1]``).
+    Every decision ``observe`` scores each candidate's log-probability of each opponent unit's move (its bin, STAND
+    for a zero move) on the opponent's canonical view; per game ``ll[b, j] = decay * ll + sum over units``
+    (``half_life`` decisions).  ``assign``: posterior ``softmax(temper * ll)`` (``temper`` < 1 tempers the
+    per-move independence the raw sum assumes); variant 0 (the opponent model's arg max) = the most likely net,
+    the samples dealt in proportion to the posterior (largest remainder, ties to the more likely net)."""
+
+    def __init__(self, nets: list, variants: int, temper: float = 0.1, half_life: float = 750.0):
+        self.nets, self.variants = list(nets), int(variants)
+        self.temper, self.decay = float(temper), 0.5 ** (1.0 / float(half_life))
+        self.ll = np.zeros((0, len(self.nets)))
+
+    def reset(self, n: int) -> None:
+        self.ll = np.zeros((n, len(self.nets)))
+
+    def observe(self, idx, inputs, moves_canonical) -> None:
+        """``inputs``: the opponents' canonical views of games ``idx`` ([m, 13, H, W], [m, 4], [m, 10, 12]);
+        ``moves_canonical`` [m, 5, 2] their moves in that frame."""
+        g, t, a = (np.ascontiguousarray(x) for x in inputs)
+        mv = np.asarray(moves_canonical, np.float64)
+        zero = np.hypot(mv[..., 0], mv[..., 1]) < 1e-3
+        ang = np.arctan2(mv[..., 1], mv[..., 0])
+        score = np.zeros((len(idx), len(self.nets)))
+        for j, net in enumerate(self.nets):
+            q, _ = net.forward(g, t, a)
+            q = np.asarray(q, np.float64)                        # [m, 5, K(+1)]
+            width = q.shape[-1]
+            k, stand = width - width % 2, width % 2 == 1
+            b = np.rint(ang / (2 * math.pi / k)).astype(np.int64) % k
+            ok = ~zero | stand
+            b = np.where(zero, k if stand else 0, b)
+            lp = q - q.max(-1, keepdims=True)
+            lp = lp - np.log(np.exp(lp).sum(-1, keepdims=True))
+            score[:, j] = np.where(ok, np.take_along_axis(lp, b[..., None], -1)[..., 0], 0.0).sum(-1)
+        self.ll[idx] = self.decay * self.ll[idx] + score
+
+    def posterior(self, idx) -> np.ndarray:
+        z = self.temper * self.ll[idx]
+        p = np.exp(z - z.max(-1, keepdims=True))
+        return p / p.sum(-1, keepdims=True)
+
+    def assign(self, idx) -> np.ndarray:
+        p = self.posterior(idx)
+        out = np.zeros((len(idx), self.variants), np.int64)
+        for i, row in enumerate(p):
+            order = np.argsort(-row, kind="stable")
+            out[i, 0] = order[0]
+            share = row * (self.variants - 1)
+            take = np.floor(share).astype(np.int64)
+            left = self.variants - 1 - int(take.sum())
+            rem = share - take
+            for j in sorted(range(len(row)), key=lambda j: (-rem[j], -row[j]))[:left]:
+                take[j] += 1
+            out[i, 1:] = np.concatenate([np.full(take[j], j) for j in order])[: self.variants - 1]
+        return out
+
+
 @dataclass
 class MatchConfig:
     every: int = 25            # decisions between searches (25 = 1 s)
@@ -644,7 +714,8 @@ class MatchConfig:
 
 
 def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searcher: Searcher | None,
-                 cfg: MatchConfig, log=None, base: BatchPolicy | None = None, overlay: bool = True) -> dict:
+                 cfg: MatchConfig, log=None, base: BatchPolicy | None = None, overlay: bool = True,
+                 opp_id: OpponentID | None = None) -> dict:
     """Lockstep matches from ``SimState.from_seed`` (Unity RNG): team ``sides[b]`` is ours (the
     rollout net, searching every ``cfg.every`` decisions when ``searcher`` is given), the other team
     ``opponent``.  ``base`` (docs §32): our team acts with this policy instead of the rollout net
@@ -657,6 +728,9 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
     opponent.reset(n)
     if base is not None:
         base.reset(n)
+    if opp_id is not None:
+        opp_id.reset(n)
+        id_assigned = np.zeros((n, len(opp_id.nets)), np.int64)   # opponent variants dealt to each net
     trace_t = [int(round(x * 25)) for x in cfg.trace_s]
     lead_at = np.full((n, len(trace_t)), np.iinfo(np.int64).min, np.int64)
     hunters_at = np.full((n, len(trace_t), 2), -1, np.int64)   # (ours, opponent's) Hunters then; -1 = over
@@ -685,7 +759,13 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
             c0 = time.perf_counter()
             roots = [bs.state(int(b)) for b in live]
             reseeds = [(int(seeds[b]) * 7919 + t * 104729 + 12345) % (2 ** 31) for b in live]
-            out = searcher.search(roots, sides[live], reseeds)
+            if opp_id is not None:
+                assign = opp_id.assign(live)
+                for j, b in enumerate(live):
+                    np.add.at(id_assigned[b], assign[j], 1)
+                out = searcher.search(roots, sides[live], reseeds, opp_net_idx=assign)
+            else:
+                out = searcher.search(roots, sides[live], reseeds)
             for j, b in enumerate(live):
                 k = int(out.choice[j])
                 our.set_game(b, sides[b], searcher.branches[k], cfg.window)
@@ -728,6 +808,12 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
         for team in (0, 1):
             mine = ours == team
             moves[live, 5 * team:5 * team + 5] = np.where(mine[:, None, None], mo[team], oo[team])
+        if opp_id is not None:  # the opponent's moves this decision, in its own canonical frame
+            ot = 1 - ours
+            j = np.arange(len(live))
+            om = np.where((ot == 0)[:, None, None], moves[live, :5], moves[live, 5:])
+            om = np.where((ot == 1)[:, None, None], om[..., ::-1], om)
+            opp_id.observe(live, (bufs[0][j, ot], bufs[1][j, ot], bufs[2][j, ot]), om)
         if cfg.record_roots and searched_now is not None:  # inputs rendered at the root tick (search used copies)
             sl, so = searched_now
             assert np.array_equal(sl, live)
@@ -782,6 +868,9 @@ def play_matches(seeds, sides, our: ModNetPolicy, opponent: BatchPolicy, searche
            "first_ours": f_ours, "first_opp": f_opp, "searches": searches, "chosen": chosen,
            "gain_sum": gain_sum, "wall_s": time.perf_counter() - t0, "search_s": t_search, "play_s": t_play,
            "search_game_decisions": search_gd}
+    if opp_id is not None:
+        out["id_assigned"] = id_assigned
+        out["id_posterior"] = opp_id.posterior(np.arange(n))
     if trace_t:
         fin = (ours_score - opp_score)[:, None]
         out["lead_at"] = np.where(lead_at == np.iinfo(np.int64).min, fin, lead_at)

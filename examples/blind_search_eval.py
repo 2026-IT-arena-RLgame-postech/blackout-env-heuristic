@@ -141,6 +141,10 @@ VARIANTS = {
     "o4f_r22": {"net": R22, "deep": {**O4, "opp_agg": "mean"}},
     # rollout / opponent model distilled from P24c (R6, docs §61)
     "o4f_r24c": {"net": R24C, "deep": {**O4, "opp_agg": "mean"}},
+    # opponent identification (docs §63): o4f_r24c whose 4 opponent variants are dealt to the candidate nets
+    # {r24c, r22, r21, r20, f3_x_d2} by their posterior on the opponent's moves so far (OpponentID)
+    "o4f_id": {"net": R24C, "deep": {**O4, "opp_agg": "mean", "opp_nets": [R22, R21, R20, F3]},
+               "opp_id": {"temper": 0.1, "half_life": 750}},
     "o4f_r20_V": {"net": R20, "value": "checkpoints/value/s2v_r20d256/iter1.pt", "deep": {**O4, "opp_agg": "mean"}},
     # rollout v27d256 (our continuation), opponent model = v28d256 {base, s0, s1, s2}: separates the two roles
     "o4f_v27r_opp28": {"net": V27R, "deep": {**O4, "opp_agg": "mean", "opp_net_idx": [1, 1, 1, 1], "opp_nets": [V28R]}},
@@ -255,8 +259,14 @@ def cmd_play(args):
         for c in range(0, len(todo), args.chunk):
             chunk = todo[c:c + args.chunk]
             t0 = time.time()
+            opp_id = None
+            if VARIANTS[tag] and VARIANTS[tag].get("opp_id"):
+                from blackout_env.sim.search import OpponentID
+
+                opp_id = OpponentID([searcher.policy.net] + searcher.policy.opp_nets, len(searcher.opp_branches),
+                                    **VARIANTS[tag]["opp_id"])
             res = play_matches([s for s, _ in chunk], [sd for _, sd in chunk], ModNetPolicy(net), opp, searcher, cfg,
-                               log=print if args.verbose else None, base=base, overlay=True)
+                               log=print if args.verbose else None, base=base, overlay=True, opp_id=opp_id)
             wall = time.time() - t0
             with (out / f"matches_{args.opponent}.jsonl").open("a") as fh:
                 for j, (s, sd) in enumerate(chunk):
@@ -269,7 +279,10 @@ def cmd_play(args):
                         "searches": int(res["searches"][j]), "chosen": res["chosen"][j].tolist(),
                         "gain_sum": float(res["gain_sum"][j]), "chunk_wall_s": wall, "chunk_n": len(chunk),
                         "chunk_searches": int(res["searches"].sum()), "search_s": res["search_s"],
-                        "search_game_decisions": int(res["search_game_decisions"]), "meta": meta}) + "\n")
+                        "search_game_decisions": int(res["search_game_decisions"]), "meta": meta,
+                        **({"id_assigned": res["id_assigned"][j].tolist(),
+                            "id_posterior": [round(float(x), 4) for x in res["id_posterior"][j]]}
+                           if "id_assigned" in res else {})}) + "\n")
             m = res["margin"]
             print(f"[{tag} vs {args.opponent}] {c + len(chunk)}/{len(todo)} margin {m.mean():+.1f} wall {wall:.0f}s "
                   f"(search {res['search_s']:.0f}s, {res['searches'].sum()} roots)", flush=True)
