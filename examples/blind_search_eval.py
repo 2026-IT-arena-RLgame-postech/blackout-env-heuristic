@@ -67,7 +67,7 @@ R20 = "checkpoints/rollout_net/r3/r20d256.pt"  # distilled from P20 (R3, docs §
 R21 = "checkpoints/rollout_net/r4/r21d256.pt"  # distilled from P21e, init r20d256 (R4, docs §54)
 R22 = "checkpoints/rollout_net/r5/r22d256.pt"  # distilled from P22, init r21d256 (R5, docs §59)
 R24C = "checkpoints/rollout_net/r6/r24cd256.pt"  # distilled from P24c, init r22d256, V32/V32.1/h4 in the pools (R6, docs §61)
-TRACE_S = (5, 10, 30, 60)
+TRACE_S = (5, 10, 30, 60, 150, 300)
 SEARCH_FROM = 125  # decisions (5 s, docs §32)
 
 # fixed draws from the mixture's V17-family cloud (heuristics/mixture.py _top_tier_parameters + replan / threat),
