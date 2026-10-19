@@ -149,7 +149,7 @@ def main() -> None:
                "batch": args.batch_size, "steps": cli.steps, "median_ms_step": ms[len(ms) // 2],
                "rows_per_s": args.batch_size * 1000 / ms[len(ms) // 2], "heldout": result, "heldout_splits": splits, "clean_splits": final.get("clean"),
                "params": sum(p.numel() for p in learner.net.parameters()), "map_xattn": args.map_xattn,
-               "map_xattn_layers": args.map_xattn_layers, "init": str(cli.init), "seed": cli.seed,
+               "map_xattn_layers": args.map_xattn_layers, "map_encoder": args.map_encoder, "init": str(cli.init), "seed": cli.seed,
                "learner_argv": learner_argv, "evals": evals, "log": log}
     print(json.dumps({k: v for k, v in summary.items() if k != "log"}, indent=1), flush=True)
     if cli.out:
@@ -159,7 +159,7 @@ def main() -> None:
         cli.save.parent.mkdir(parents=True, exist_ok=True)
         meta = {"offline_ab": True, "init": str(cli.init), "steps": cli.steps, "action_bins": args.action_bins,
                 "policy_head": args.policy_head, "angle_head": args.angle_head, "angle_arc_bins": args.angle_arc_bins,
-                "map_xattn": args.map_xattn, "map_xattn_layers": args.map_xattn_layers, "lr": args.lr,
+                "map_xattn": args.map_xattn, "map_xattn_layers": args.map_xattn_layers, "map_encoder": args.map_encoder, "lr": args.lr,
                 "stand_action": args.stand_action, "temporal": args.temporal}
         torch.save({"policy_state": learner.net.state_dict(), "distill": meta}, cli.save)
 
