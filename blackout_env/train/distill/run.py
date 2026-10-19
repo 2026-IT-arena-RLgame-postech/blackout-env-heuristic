@@ -230,6 +230,10 @@ def parse_args(argv=None) -> argparse.Namespace:
                    "GraphicEncoder's 6x6 (f3) or 12x12 (f2) features after --map-xattn-layers trunk layers; zero-"
                    "initialised, so an --init without the path starts with identical outputs")
     p.add_argument("--map-xattn-layers", type=int, default=2, help="--map-xattn: cross blocks (spread over the 4 layers)")
+    p.add_argument("--map-encoder", choices=("cnn", "patch4", "patch6"), default="cnn",
+                   help="the map encoder (36 vision tokens either way): cnn = GraphicEncoder's CNN (default, unchanged); "
+                   "patch4 / patch6 = ViT-style linear patch embedding, kernel 4 stride 4 / kernel 6 stride 4 padding 1 "
+                   "(docs/rl_finetune_plan_ko.md A/B).  --init must be a net of the same encoder (or none)")
     p.add_argument("--temporal", action="store_true",
                    help="a student with memory (MyModel(temporal=True): per-slot KDA between trunk and head), trained on "
                    "windows of consecutive ticks; --init from a stateless checkpoint warm-starts it with identical outputs")
@@ -376,7 +380,8 @@ class Learner:
         self.net = MyModel(n_actions=args.action_bins + int(args.stand_action), temporal=args.temporal,
                            policy_head=args.policy_head, angle_head=args.angle_head,
                            angle_arc_bins=args.angle_arc_bins, map_xattn=getattr(args, "map_xattn", None),
-                           map_xattn_layers=getattr(args, "map_xattn_layers", 2)).to(self.device)
+                           map_xattn_layers=getattr(args, "map_xattn_layers", 2),
+                           map_encoder=getattr(args, "map_encoder", "cnn")).to(self.device)
         self.angle = bool(args.angle_head)
         if args.compile:
             compile_modules(self.net)
@@ -694,7 +699,7 @@ class Run:
                         "policy_head": self.args.policy_head, "lr": self.args.lr,
                         "angle_head": self.args.angle_head, "angle_loss_weight": self.args.angle_loss_weight,
                         "angle_arc_bins": self.args.angle_arc_bins, "map_xattn": self.args.map_xattn,
-                        "map_xattn_layers": self.args.map_xattn_layers,
+                        "map_xattn_layers": self.args.map_xattn_layers, "map_encoder": self.args.map_encoder,
                         "opening_weight": self.args.opening_weight, "opening_seconds": self.args.opening_seconds,
                         "window_weight": self.args.window_weight, "stand_seconds": self.args.stand_seconds, "window_seconds": list(self.args.window_seconds),
                         "join_weight": self.args.join_weight, "join_seconds": list(self.args.join_seconds),

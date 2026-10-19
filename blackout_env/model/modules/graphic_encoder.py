@@ -6,11 +6,30 @@ from .bottleneck_block import BottleNeckBlock
 from .ffn_block import SwiGLUBlock
 
 
+# map_encoder -> (kernel, stride, padding) of the ViT-style linear patch embedding.  Both give 6x6 = 36
+# tokens from the 24x24 grid in the CNN's row-major order (so the trunk's RoPE positions are unchanged):
+# patch4 tiles the grid; patch6 overlaps neighbouring patches by 2 cells (padding 1 on each side).
+PATCH_ENCODERS = {"patch4": (4, 4, 0), "patch6": (6, 4, 1)}
+MAP_ENCODERS = ("cnn", *PATCH_ENCODERS)
+
+
 class GraphicEncoder(nn.Module):
-    def __init__(self, hidden_size : int = 256, in_channels : int = 13 + N_DERIVED_MAP_CHANNELS) -> None:
+    def __init__(self, hidden_size : int = 256, in_channels : int = 13 + N_DERIVED_MAP_CHANNELS,
+                 map_encoder : str = "cnn") -> None:
         super(GraphicEncoder, self).__init__()
 
+        if map_encoder not in MAP_ENCODERS:
+            raise ValueError(f"map_encoder must be one of {MAP_ENCODERS}, got {map_encoder!r}")
         self.hidden_size = hidden_size
+        self.map_encoder = map_encoder
+        if map_encoder != "cnn":
+            # ViT-style tokenizer (A/B in docs/rl_finetune_plan_ko.md): one linear patch embedding and a
+            # LayerNorm; no convolutional stages, no feature maps.  Only the "cnn" path creates the CNN
+            # modules, so a default net's parameters and state_dict keys are exactly what they were.
+            k, s, p = PATCH_ENCODERS[map_encoder]
+            self.patch_embed = nn.Conv2d(in_channels, hidden_size, kernel_size=k, stride=s, padding=p)
+            self.patch_norm = nn.LayerNorm(hidden_size)
+            return
 
         # graphic : [24, 24, 19] = [H, W, C] -- 13 channels from
         # MyObsPreprocessor.preprocess_team_graphics (8 base one-hot + 1 battery scalar + 4 item
@@ -59,6 +78,11 @@ class GraphicEncoder(nn.Module):
         """graphic: [B, 19, 24, 24] -- env channels with the derived ones already appended.
         ``features``: also return the feature maps ``{"f2": [B, 64, 12, 12], "f3": [B, 128, 6, 6]}``
         (MyModel's map-token cross-attention reads them)."""
+        if self.map_encoder != "cnn":
+            if features:
+                raise ValueError("feature maps (map-token cross-attention) exist only for map_encoder='cnn'")
+            x = self.patch_embed(graphic)                            # [B, hidden, 6, 6]
+            return self.patch_norm(x.flatten(2).transpose(1, 2))     # [B, 36, hidden]
         x = self.pre_conv(graphic)
         f2 = self.conv64(x)
         x = self.pool(f2)

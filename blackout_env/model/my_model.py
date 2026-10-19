@@ -13,6 +13,7 @@ from blackout_env.model.modules import (
     build_grid_position_ids,
 )
 from blackout_env.model.derived_obs import N_PATCH_FEATURES, derived_map_channels, local_wall_features
+from blackout_env.model.modules.graphic_encoder import PATCH_ENCODERS
 from blackout_env.model.modules.logits_head import arc_bins_of_scale, state_from_iqn
 from blackout_env.model.modules.map_cross_attention import source_of_channels
 from blackout_env.model.modules.temporal_memory import TemporalMemory
@@ -37,6 +38,7 @@ TYPE_GRAPHIC, TYPE_UNIT, TYPE_GLOBAL, TYPE_SPR_CLS = 0, 1, 2, 3
 TEMPORAL_PREFIX = "temporal."  # every temporal-memory parameter's state_dict key starts with this
 
 POLICY_HEADS = ("iqn", "logits")
+_PATCH_KEY = "graphic_encoder.patch_embed.weight"  # only a ViT-style (patch4 / patch6) map encoder has it
 _IQN_KEY = "q_head.tau_proj.0.weight"  # only an IQN head has it (LogitsHead: q_head.in_scale instead)
 ANGLE_KEY_PREFIX = "q_head.angle_"  # only a logits head with an angle head (P11) has them
 _ANGLE_SCALE_KEY = "q_head.angle_scale"
@@ -169,8 +171,11 @@ class MyModel(nn.Module):
         angle_arc_bins: int = 0,
         map_xattn: str | None = None,
         map_xattn_layers: int = 2,
+        map_encoder: str = "cnn",
     ) -> None:
         super().__init__()
+        if map_encoder != "cnn" and map_xattn:
+            raise ValueError("map_xattn reads the CNN's feature maps; it needs map_encoder='cnn'")
         if policy_head not in POLICY_HEADS:
             raise ValueError(f"policy_head must be one of {POLICY_HEADS}, got {policy_head!r}")
         if angle_head and policy_head != "logits":
@@ -181,7 +186,7 @@ class MyModel(nn.Module):
         self.policy_head = policy_head
 
         # encoders
-        self.graphic_encoder = GraphicEncoder(hidden_size)
+        self.graphic_encoder = GraphicEncoder(hidden_size, map_encoder=map_encoder)
         self.vector_encoder = VectorEncoder(
             hidden_size, n_items=n_items, n_classes=n_classes, team_state_size=team_state_size
         )
@@ -288,6 +293,9 @@ class MyModel(nn.Module):
             config["map_xattn"] = source_of_channels(state[MAP_XATTN_PREFIX + "in_proj.weight"].shape[1],
                                                      state[MAP_XATTN_PREFIX + "pos_row"].shape[0])
             config["map_xattn_layers"] = len({k.split(".")[2] for k in state if k.startswith(MAP_XATTN_PREFIX + "blocks.")})
+        if _PATCH_KEY in state:  # ViT-style patch embedding instead of the CNN (kernel 4 or 6)
+            k = state[_PATCH_KEY].shape[-1]
+            config["map_encoder"] = next(n for n, (kk, _, _) in PATCH_ENCODERS.items() if kk == k)
         if any(key.startswith(TEMPORAL_PREFIX) for key in state):
             heads = state["temporal.kda.b_proj.weight"].shape[0]
             config.update(temporal=True, temporal_heads=heads,
