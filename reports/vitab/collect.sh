@@ -21,7 +21,7 @@ setsid nohup nice -n 30 .venv/bin/python -m blackout_env.train.distill.run --bui
   --init $F/p24c_v321.pt --beta-start 0.3 --lr 1e-8 --workers ${WORKERS:-10} --steps ${STEPS:-100000} --max-rows 800000 --max-replay-ratio 2.3 \
   --amp fp16 --compile --policy-head logits --action-bins 32 --teacher act:$V32,adapt_k=3 --act-arc-bins 1 \
   --angle-head --angle-arc-bins 1 --angle-loss-weight 1.0 --opening-weight 1.5 --opening-seconds 10 \
-  --opponents "mixture=0.3 checkpoints=0.1 extra=0.6" --opponent-extra $EXTRA \
+  --opponents mixture=0.3 checkpoints=0.1 extra=0.6 --opponent-extra $EXTRA \
   --opponent-checkpoints "$F/*.pt" --stand-action --stand-seconds 2.5,6 --window-weight 3 --window-seconds 3,5 \
   --reserve-weight 50 --reserve-seconds 3.4,4.04 --join-weight 10 --join-seconds 3.4,4.04 --publish-every 500 --snapshot-every 1000 --eval-every 100000 \
   --out-dir $OUT "$@" >> $OUT/stdout.log 2>&1 < /dev/null &
