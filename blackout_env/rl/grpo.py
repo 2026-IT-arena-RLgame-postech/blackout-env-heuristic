@@ -356,8 +356,9 @@ class GRPOConfig:
     max_grad_norm: float = 1.0
     device: str = "cuda"
     seed: int = 0
-    joint: bool = True         # one policy call per decision step for both teams (JointSeats): one forward per policy, not per team
+    joint: bool = False        # (opt-in: not bit-identical, fp16 batch-composition noise) one policy call per decision step for both teams (JointSeats): one forward per policy, not per team
     heur_workers: int = -1     # heuristic opponents in this many worker processes (-1: 4 on CUDA, else none; 0: in-process)
+    update_fp16: bool = False  # autocast fp16 in update()'s forward/backward (~2x faster; changes numerics slightly, off by default)
     graphs: bool = True        # CUDA-graph replay of the learner / net-opponent forwards (bit-identical, sim/graphfwd.py)
 
 
@@ -559,7 +560,8 @@ class GRPOTrainer:
     # -------- update
     def _logits(self, own, g, t, a):
         g = unpack_graphic(g) if g.dim() == 3 else g
-        q, _ = own(g, t, a)
+        with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.update_fp16 and self.dev.type == "cuda"):
+            q, _ = own(g, t, a)
         return q.float() / self.cfg.temperature
 
     def update(self, batch):

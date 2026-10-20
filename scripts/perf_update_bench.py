@@ -33,3 +33,20 @@ if len(sys.argv) > 2 and sys.argv[2] == "prof":
     with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA]) as prof:
         tr.update(d); torch.cuda.synchronize()
     print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=18, max_name_column_width=60))
+
+# fp16 autocast variant: speed and log-prob difference vs fp32 on the same batch
+import copy
+from torch.nn import functional as F
+n = 4096
+g, t, a = (torch.from_numpy(d[k][:n]).cuda() for k in "gta")
+act = torch.from_numpy(d["act"][:n]).cuda().long()
+def lp(fp16):
+    tr.cfg.update_fp16 = fp16
+    with torch.no_grad():
+        return F.log_softmax(tr._logits(tr.own, g[:1024], t[:1024], a[:1024]), -1)
+x, y = lp(False), lp(True)
+pa = x.exp()
+print("fp16 vs fp32 update forward: max|dlogp|=%.4f  mean|dlogp|=%.5f  argmax agree=%.5f  KL(fp32||fp16)=%.2e" % (
+    (x - y).abs().max(), (x - y).abs().mean(), (x.argmax(-1) == y.argmax(-1)).float().mean(), (pa * (x - y)).sum(-1).mean()))
+tr.cfg.update_fp16 = True
+run("update_fp16", 2)
