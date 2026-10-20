@@ -51,6 +51,8 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--hours", type=float, default=6.0)
     ap.add_argument("--iters", type=int, default=10**9)
+    ap.add_argument("--max-decisions", type=float, default=float("inf"),
+                    help="stop after this many simulator decision steps (equal-experience budget across algorithms)")
     ap.add_argument("--eval-every", type=int, default=10)
     ap.add_argument("--eval-seeds", type=int, default=32, help="seeds per opponent (x2 sides)")
     ap.add_argument("--eval-opps", default=DEFAULT_EVAL)
@@ -78,10 +80,12 @@ def main():
     ev = evaluate()
     log.write(json.dumps({"iter": 0, "eval": ev, "wall_h": 0.0}) + "\n"); log.flush()
     print("eval 0", ev, flush=True)
-    while tr.iter < args.iters and time.time() - t_start < args.hours * 3600:
+    while (tr.iter < args.iters and time.time() - t_start < args.hours * 3600
+           and decisions < args.max_decisions):
         s = tr.step()
         decisions += s.get("decisions", 0)
         s["wall_h"] = (time.time() - t_start) / 3600
+        s["decisions_total"] = decisions
         if tr.iter % args.eval_every == 0:
             tr.save(os.path.join(args.out, f"iter_{tr.iter}.pt"))
             s["eval"] = evaluate()
