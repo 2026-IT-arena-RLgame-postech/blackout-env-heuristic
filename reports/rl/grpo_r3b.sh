@@ -8,6 +8,8 @@
 #   * from the GRPO paper check (Shao et al. 2024, G = 64): K 8 -> 16 at 48 roots (same 768 branches),
 #     and drop near-flat groups (std < 0.005; logged as kept_frac)
 # Usage on poscat_gpu2:  GPU=<0|1|2> reports/rl/grpo_r3b.sh      (never GPU 3)
+#   r3c (same + value-net retraining on finished trunk games, 10 % replay):
+#       GPU=<n> OUT=checkpoints/rl/grpo_r3c EXTRA="value_train=true" reports/rl/grpo_r3b.sh
 set -e
 cd ~/blackout-env
 GPU=${GPU:?set GPU}; [ "$GPU" != 3 ] || { echo "GPU 3 is off limits"; exit 1; }
@@ -23,6 +25,6 @@ W="0.5,1,1,1,1,1,1,1,1"
 export OMP_NUM_THREADS=2 MKL_NUM_THREADS=2
 CUDA_VISIBLE_DEVICES=$GPU setsid nohup nice -n 30 env PYTHONPATH=. .venv/bin/python examples/rl_train.py \
     --algo grpo --out $OUT --hours ${HOURS:-10} --eval-every ${EVAL_EVERY:-30} --eval-seeds ${EVAL_SEEDS:-16} \
-    --set "opponents=$OPPS" "opp_weights=$W" pfsp=hard sample_steps=75 groups=${GROUPS:-48} k=${K:-16} drop_flat=${DROP_FLAT:-0.005} \
+    --set "opponents=$OPPS" "opp_weights=$W" pfsp=hard sample_steps=75 groups=${GROUPS:-48} k=${K:-16} drop_flat=${DROP_FLAT:-0.005} ${EXTRA} \
     > $OUT/run.log 2>&1 &
 echo "launched pid $! on GPU $GPU -> $OUT"

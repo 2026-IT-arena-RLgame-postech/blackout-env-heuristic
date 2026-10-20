@@ -25,6 +25,14 @@ reweighted by PFSP when ``pfsp`` is set: each opponent keeps an EMA of the learn
 (play more against what beats us), ``even`` by ``floor + 4 s (1 - s)``.  Heuristic opponents in the
 branches are separate instances, reset every iteration (a branch never sees another game's state).
 
+Value-net retraining (``value_train``; iterative GRPO, Shao et al. 2024 Alg. 1, where the reward model is
+retrained on the policy's own samples with 10 % historical replay): the trunk is advanced in
+``value_snaps`` chunks and both teams' views of every live trunk game are kept per chunk; when a trunk
+game ends its rows get the final lead and result (in that view's frame) and enter a ring buffer.  Every
+``value_every`` iterations the leaf value net takes ``value_steps`` Adam steps on the final + result heads
+(``value_loss`` with the horizon deltas masked), each batch ``1 - value_replay`` from the newest
+``value_recent`` rows and ``value_replay`` from older ones.
+
 Only stateless MyModel students with a logits head (P24c) are supported.
 """
 
@@ -219,6 +227,16 @@ class GRPOConfig:
     pfsp_ema: float = 0.05     # per-iteration EMA rate of the per-opponent score
     drop_flat: float = 0.0     # drop groups whose reward std is below this (DAPO-style dynamic sampling)
     ref_reset_every: int = 0   # >0: pi_ref <- current policy every N iterations (iterative GRPO, Shao et al. Alg. 1)
+    value_train: bool = False  # retrain the leaf value net on finished trunk games
+    value_snaps: int = 5       # trunk chunks (= view snapshots) per iteration
+    value_every: int = 10
+    value_steps: int = 50
+    value_batch: int = 256
+    value_lr: float = 1e-5
+    value_recent: int = 20000  # rows counted as "new"
+    value_replay: float = 0.1  # share of each batch from older rows
+    value_min_rows: int = 5000
+    value_buffer: int = 400000
     groups: int = 64           # G roots per iteration (= trunk games)
     k: int = 8                 # branches per root
     trunk_step: int = 250      # decisions the trunk games advance between roots (10 s)
@@ -264,6 +282,10 @@ class GRPOTrainer:
         self.trunk_opp = self.rng.choice(len(self.opps), g, p=self.opp_w)
         self.trunk_side = self.rng.integers(0, 2, g)
         self.iter = 0
+        self.vbuf = ValueBuffer(cfg.value_buffer) if cfg.value_train else None
+        if cfg.value_train:
+            self.vopt = torch.optim.AdamW(self.leaf.net.parameters(), lr=cfg.value_lr, weight_decay=0.0)
+            self.pending = {b: [] for b in range(g)}
 
     def _pfsp_weights(self) -> np.ndarray:
         c, s = self.cfg, self.opp_score
@@ -291,11 +313,18 @@ class GRPOTrainer:
         c = self.cfg
         t0 = time.perf_counter()
         greedy = LearnerPolicy(self.own, self.dev, 0)
-        res = self._rollout(self.trunk, greedy, self.trunk_opp, self.trunk_side, c.trunk_step)
-        roots = res.states()
+        n_chunks = c.value_snaps if c.value_train else 1
+        roots, steps = self.trunk, 0
+        for j in range(n_chunks):
+            h = c.trunk_step // n_chunks + (1 if j < c.trunk_step % n_chunks else 0)
+            res = self._rollout(roots, greedy, self.trunk_opp, self.trunk_side, h)
+            roots, steps = res.states(), steps + int(res.steps.sum())
+            if c.value_train:
+                self._snapshot(res)
         # restart finished trunk games (fresh seed, opponent, side); their heuristic state is dropped
         ended = np.nonzero(res.over)[0]
-        live = np.nonzero(~res.over)[0]
+        if c.value_train:
+            self._label(ended, res.bsim.scores)
         for b in ended:
             roots[b] = self._fresh_seed()
             self.trunk_opp[b] = self.rng.choice(len(self.opps), p=self.opp_w)
@@ -344,12 +373,64 @@ class GRPOTrainer:
             "trunk_restarts": len(ended), "R_mean": float(R.mean()), "R_group_std": float(Rg.std(1).mean()),
             "kept_frac": float(keep.mean()),
             "R_dev_std": float(scale), "win_mean": float(win.mean()), "lead_mean": float(lead.mean()),
-            "branch_over": float(br.over.mean()), "decisions": int(res.steps.sum() + br.steps.sum()),
+            "branch_over": float(br.over.mean()), "decisions": int(steps + br.steps.sum()),
             "opp_score": [round(float(x), 4) for x in self.opp_score],
             "opp_w": [round(float(x), 4) for x in self.opp_w],
             "opp_groups": [opp_stats[i] for i in range(len(self.opps))],
         }
         return batch, stats
+
+    # -------- value-net retraining
+    def _snapshot(self, res) -> None:
+        """Both teams' packed views of every live trunk game, kept until the game ends."""
+        from blackout_env.sim.batch import N_AGENT_COLS, H, W
+
+        live = np.nonzero(~res.over)[0]
+        if not len(live):
+            return
+        pk = np.zeros((len(live), 2, H, W), np.int16)   # per team: one packed plane
+        tm = np.zeros((len(live), 2, 4), F32)
+        am = np.zeros((len(live), 2, 10, N_AGENT_COLS), F32)
+        res.bsim.render_packed(live, pk, tm, am)
+        for j, b in enumerate(live):
+            self.pending[int(b)].append((pk[j], tm[j], am[j]))
+
+    def _label(self, ended, scores) -> None:
+        for b in ended:
+            rows = self.pending[int(b)]
+            self.pending[int(b)] = []
+            if not rows:
+                continue
+            lead0 = float(scores[b, 0] - scores[b, 1]) / 100.0
+            for tm in (0, 1):
+                lead = lead0 if tm == 0 else -lead0
+                self.vbuf.add(np.stack([r[0][tm] for r in rows]), np.stack([r[1][tm] for r in rows]),
+                              np.stack([r[2][tm] for r in rows]), lead, int(np.sign(lead)))
+
+    def train_value(self) -> dict:
+        from blackout_env.value.model import value_loss
+
+        c, buf, net = self.cfg, self.vbuf, self.leaf.net
+        if buf.size < c.value_min_rows:
+            return {"v_rows": buf.size}
+        net.train()
+        tot = {"v_loss": 0.0, "v_final": 0.0, "v_ce": 0.0}
+        for _ in range(c.value_steps):
+            idx = buf.sample(self.rng, c.value_batch, c.value_recent, c.value_replay)
+            to = lambda x: torch.from_numpy(x[idx]).to(self.dev)
+            g, t, a = unpack_graphic(to(buf.g)), to(buf.t), to(buf.a)
+            out = net(g, t, a)
+            hh = out.shape[1] - 4
+            tg = {"delta": torch.zeros(len(idx), hh, device=self.dev), "delta_mask": torch.zeros(len(idx), hh, device=self.dev),
+                  "final": to(buf.final), "result": to(buf.result)}
+            loss, st = value_loss(out, tg, t[:, 0] - t[:, 1])
+            self.vopt.zero_grad(set_to_none=True)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(net.parameters(), c.max_grad_norm)
+            self.vopt.step()
+            tot["v_loss"] += loss.item(); tot["v_final"] += st["final"].item(); tot["v_ce"] += st["ce"].item()
+        net.eval()
+        return {**{k: v / c.value_steps for k, v in tot.items()}, "v_rows": buf.size}
 
     # -------- update
     def _logits(self, own, g, t, a):
@@ -406,11 +487,50 @@ class GRPOTrainer:
         self.iter += 1
         if self.cfg.ref_reset_every and self.iter % self.cfg.ref_reset_every == 0:
             self.ref.net.load_state_dict(self.net.state_dict())
+        if self.cfg.value_train and self.iter % self.cfg.value_every == 0:
+            t0 = time.perf_counter()
+            us.update(self.train_value())
+            us["value_s"] = time.perf_counter() - t0
         return {"iter": self.iter, **cs, **us}
 
     def save(self, path: str, extra: dict | None = None) -> None:
         torch.save({"policy_state": self.net.state_dict(),
                     "grpo": {**vars(self.cfg), "iter": self.iter, "opp_score": self.opp_score.tolist(), **(extra or {})}}, path)
+        if self.cfg.value_train:
+            from blackout_env.value.model import save_value_net
+
+            save_value_net(path.replace(".pt", "_value.pt"), self.leaf.net,
+                           {"init": self.cfg.value, "grpo_iter": self.iter, "rows": self.vbuf.size})
+
+
+class ValueBuffer:
+    """Ring buffer of labelled trunk views (packed graphic, team_state, agents, final lead /100, result)."""
+
+    def __init__(self, cap: int):
+        from blackout_env.sim.batch import N_AGENT_COLS, H, W
+
+        self.cap, self.n, self.size = cap, 0, 0   # n = rows ever written
+        self.g = np.zeros((cap, H, W), np.int16)
+        self.t = np.zeros((cap, 4), F32)
+        self.a = np.zeros((cap, 10, N_AGENT_COLS), F32)
+        self.final = np.zeros(cap, F32)
+        self.result = np.zeros(cap, np.int64)
+
+    def add(self, g, t, a, final: float, result: int) -> None:
+        for j in range(len(g)):
+            i = self.n % self.cap
+            self.g[i], self.t[i], self.a[i], self.final[i], self.result[i] = g[j], t[j], a[j], final, result
+            self.n += 1
+        self.size = min(self.n, self.cap)
+
+    def sample(self, rng, k: int, recent: int, replay: float) -> np.ndarray:
+        """Row indices: ``1 - replay`` of them from the newest ``recent`` rows, the rest from older ones."""
+        new = min(recent, self.size)
+        n_old = int(round(k * replay)) if self.size > new else 0
+        back = rng.integers(0, new, k - n_old)                        # 0 = newest
+        if n_old:
+            back = np.concatenate([back, rng.integers(new, self.size, n_old)])
+        return (self.n - 1 - back) % self.cap
 
 
 # ---------------------------------------------------------------------------------- evaluation
