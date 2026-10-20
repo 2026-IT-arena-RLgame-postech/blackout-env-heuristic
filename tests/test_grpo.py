@@ -65,6 +65,17 @@ def test_ppo_step_cpu():
     assert s0["views"] == 24 and "pg" not in s0 and np.isfinite(s1["pg"]) and np.isfinite(s1["vf_loss"])
 
 
+def test_ppo_mixed_pool_pfsp_cpu():
+    """PPO with the r3b-style pool (net + heuristic) and PFSP: steps run and report the opponent weights."""
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    cfg = PPOConfig(init=CKPT, value=VALUE, device="cpu", games=4, segment=6, minibatch=8, epochs=1, critic_warmup=0,
+                    opponents=[f"net:{CKPT}", "random"], opp_weights=[0.5, 1.0], pfsp="hard")
+    tr = PPOTrainer(cfg)
+    s = tr.step()
+    assert np.isfinite(s["pg"]) and len(s["opp_w"]) == 2 and abs(sum(s["opp_w"]) - 1) < 1e-3
+
+
 def test_pfsp_weights():
     cfg = GRPOConfig(init=CKPT, value=VALUE, device="cpu", groups=2, k=2,
                      opponents=[f"net:{CKPT}", "random"], opp_weights=[1.0, 3.0], pfsp="hard")

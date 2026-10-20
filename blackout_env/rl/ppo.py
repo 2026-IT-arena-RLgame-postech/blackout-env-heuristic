@@ -109,6 +109,13 @@ class PPOTrainer(GRPOTrainer):
                 adv[rows[j]] = gae
                 ret[rows[j]] = gae + vb[j]
         ended = np.nonzero(bs.over)[0]
+        # PFSP: per-opponent EMA of the learner's result on the games that ended (no branch leaves here)
+        score = (np.sign(lead) + 1.0) / 2.0
+        for i in range(len(self.opps)):
+            m = ended[self.trunk_opp[ended] == i]
+            if len(m):
+                self.opp_score[i] += c.pfsp_ema * (float(score[m].mean()) - self.opp_score[i])
+        self.opp_w = self._pfsp_weights()
         roots = res.states()
         for b in ended:
             roots[b] = self._fresh_seed()
@@ -123,7 +130,9 @@ class PPOTrainer(GRPOTrainer):
         stats = {"trunk_s": t1 - t0, "leaf_s": time.perf_counter() - t1, "views": len(game),
                  "trunk_restarts": len(ended), "decisions": int(res.steps.sum()), "v_mean": float(v.mean()), "adv_std": float(a_std),
                  "ended_win": float((final_r[ended] > 0).mean()) if len(ended) else float("nan"),
-                 "ended_lead": float(lead[ended].mean()) if len(ended) else float("nan")}
+                 "ended_lead": float(lead[ended].mean()) if len(ended) else float("nan"),
+                 "opp_score": [round(float(x), 4) for x in self.opp_score],
+                 "opp_w": [round(float(x), 4) for x in self.opp_w]}
         return batch, stats
 
     def update(self, batch):
