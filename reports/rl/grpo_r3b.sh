@@ -25,6 +25,6 @@ W="0.5,1,1,1,1,1,1,1,1"
 export OMP_NUM_THREADS=2 MKL_NUM_THREADS=2
 CUDA_VISIBLE_DEVICES=$GPU setsid nohup nice -n 30 env PYTHONPATH=. .venv/bin/python examples/rl_train.py \
     --algo grpo --out $OUT --hours ${HOURS:-10} --eval-every ${EVAL_EVERY:-30} --eval-seeds ${EVAL_SEEDS:-16} \
-    --set "opponents=$OPPS" "opp_weights=$W" pfsp=hard sample_steps=75 groups=${GROUPS:-48} k=${K:-16} drop_flat=${DROP_FLAT:-0.005} ${EXTRA} \
+    --set "opponents=$OPPS" "opp_weights=$W" pfsp=hard sample_steps=75 groups=${NGROUPS:-48} k=${K:-16} drop_flat=${DROP_FLAT:-0.005} ${EXTRA} \
     > $OUT/run.log 2>&1 &
 echo "launched pid $! on GPU $GPU -> $OUT"
