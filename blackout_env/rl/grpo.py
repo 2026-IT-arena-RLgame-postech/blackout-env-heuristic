@@ -73,13 +73,14 @@ class LearnerPolicy(BatchPolicy):
     accepts_packed = True
 
     def __init__(self, own: _OwnQ, device, sample_steps: int = 0, temperature: float = 1.0,
-                 fp16: bool = True, seed: int = 0):
+                 fp16: bool = True, seed: int = 0, graphs=None):
         self.own, self.device = own, torch.device(device)
         self.sample_steps, self.temperature, self.fp16 = int(sample_steps), float(temperature), fp16
         self.rng = torch.Generator(device=self.device)
         self.rng.manual_seed(seed)
         self.t = np.zeros(0, np.int64)
         self.records: list = []
+        self.graphs = graphs   # a sim.graphfwd.GraphForward over ``own`` (fp16 CUDA only), else the eager path
 
     def reset(self, n: int) -> None:
         self.t = np.zeros(n, np.int64)
@@ -87,6 +88,9 @@ class LearnerPolicy(BatchPolicy):
 
     @torch.no_grad()
     def _forward(self, g, t, a):
+        if self.graphs is not None and g.ndim == 3:
+            out = self.graphs(g, t, a)
+            return out[..., :self.graphs.kq], out[..., self.graphs.kq:]
         g = torch.from_numpy(np.ascontiguousarray(g)).to(self.device)
         g = unpack_graphic(g) if g.dim() == 3 else g
         t = torch.from_numpy(np.ascontiguousarray(t)).to(self.device)
@@ -104,19 +108,111 @@ class LearnerPolicy(BatchPolicy):
             q, off = self._forward(g, ts, ag)
             samp = self.t[idx] < self.sample_steps
             chosen = q.argmax(-1)
+            r = None
             if samp.any():
-                rows = torch.from_numpy(np.nonzero(samp)[0]).to(self.device)
+                r = np.nonzero(samp)[0]
+                rows = torch.from_numpy(r).to(self.device)
                 p = torch.softmax(q[rows] / self.temperature, -1)
                 pick = torch.multinomial(p.reshape(-1, p.shape[-1]), 1, generator=self.rng).view(p.shape[:-1])
                 chosen[rows] = pick
-                r = rows.cpu().numpy()
+            chosen_np = chosen.cpu().numpy()
+            if r is not None:
                 self.records.append((idx[r].copy(), g[r].copy(), ts[r].copy(), ag[r].copy(),
-                                     pick.cpu().numpy().astype(np.int8)))
-            onehot = F.one_hot(chosen, q.shape[-1]).float().cpu().numpy()
+                                     chosen_np[r].astype(np.int8)))
+            onehot = np.zeros(q.shape, np.float32)
+            np.put_along_axis(onehot, chosen_np[..., None], 1.0, -1)
             team_b = np.full(n, tm == 1)
             out[tm] = decode_moves(onehot, off.cpu().numpy(), team_b)
             self.t[idx] += 1
         return out
+
+
+def _moves_views(self, idx, g, ts, ag, team, chunks):
+    """The learner on one view per row (row j = game ``idx[j]`` seen as team ``team[j]``) in a single forward.
+    ``chunks`` = [(lo, hi), ...]: contiguous row ranges that the sequential per-team calls would have been; sampling
+    (multinomial draws, ``records``) is done chunk by chunk in that order, so the RNG stream and the record order are
+    those of the per-team ``moves`` calls (only the forward's batch composition differs)."""
+    q, off = self._forward(g, ts, ag)
+    chosen = q.argmax(-1)
+    sampled = []
+    for lo, hi in chunks:
+        if hi <= lo:
+            continue
+        samp = self.t[idx[lo:hi]] < self.sample_steps
+        if samp.any():
+            r = np.nonzero(samp)[0] + lo
+            rows = torch.from_numpy(r).to(self.device)
+            p = torch.softmax(q[rows] / self.temperature, -1)
+            pick = torch.multinomial(p.reshape(-1, p.shape[-1]), 1, generator=self.rng).view(p.shape[:-1])
+            chosen[rows] = pick
+            sampled.append(r)
+    chosen_np = chosen.cpu().numpy()
+    for r in sampled:
+        self.records.append((idx[r].copy(), g[r].copy(), ts[r].copy(), ag[r].copy(), chosen_np[r].astype(np.int8)))
+    self.t[idx] += 1
+    onehot = np.zeros(q.shape, np.float32)
+    np.put_along_axis(onehot, chosen_np[..., None], 1.0, -1)
+    return decode_moves(onehot, off.cpu().numpy(), team == 1)
+
+
+LearnerPolicy.moves_views = torch.no_grad()(_moves_views)
+
+
+class JointSeats(BatchPolicy):
+    """``Seats`` for both teams at once (one policy object for team A and B: ``BatchRollout`` makes a single call per
+    decision step with both teams' views).  Each policy (the learner, every net opponent) then runs one forward over
+    the views of all its games instead of one per team, and heuristic opponents are started on their worker processes
+    before the forwards and collected after them."""
+
+    needs_inputs = True
+    accepts_packed = True
+
+    def __init__(self, learner: LearnerPolicy, opps: list[BatchPolicy], opp_of: np.ndarray, learner_team: np.ndarray):
+        self.learner, self.opps, self.opp_of, self.learner_team = learner, opps, opp_of, learner_team
+
+    def reset(self, n: int) -> None:
+        self.learner.reset(n)
+
+    def moves(self, bsim, idx, teams, inputs):
+        assert tuple(teams) == (0, 1)
+        n = len(idx)
+        graphic, team, agents = (x[:n] for x in inputs)
+        lt = self.learner_team[idx]
+        otm = 1 - lt
+        ok = self.opp_of[idx]
+        out = np.zeros((2, n, 5, 2), F32)
+        later = []
+        pend = []
+        for k, p in enumerate(self.opps):
+            rows = np.nonzero(ok == k)[0]
+            if not len(rows):
+                continue
+            if hasattr(p, "start"):
+                pend.append((rows, p, p.start(bsim, idx[rows], otm[rows])))
+            else:
+                later.append((rows, p))
+        # learner: team-A-seat games first, then team-B-seat games (the order of the per-team calls)
+        r0, r1 = np.nonzero(lt == 0)[0], np.nonzero(lt == 1)[0]
+        lr = np.concatenate([r0, r1])
+        if len(lr):
+            mv = self.learner.moves_views(idx[lr], graphic[lr, lt[lr]], team[lr, lt[lr]], agents[lr, lt[lr]],
+                                          lt[lr], [(0, len(r0)), (len(r0), len(lr))])
+            out[lt[lr], lr] = mv
+        for rows, p in later:
+            tm_rows = otm[rows]
+            if hasattr(p, "forward"):   # NetPolicy: one forward over the views of all its games
+                o = otm[rows]
+                q, off = p.forward(graphic[rows, o], team[rows, o], agents[rows, o])
+                out[o, rows] = decode_moves(q, off, o == 1)
+            else:
+                for tm in (0, 1):
+                    sel = rows[tm_rows == tm]
+                    if len(sel):
+                        sub = tuple(x[sel] for x in (graphic, team, agents))
+                        out[tm, sel] = p.moves(bsim, idx[sel], (tm,), sub)[tm]
+        for rows, p, h in pend:
+            out[otm[rows], rows] = p.finish(h)
+        return {0: out[0], 1: out[1]}
 
 
 class Seats(BatchPolicy):
@@ -153,17 +249,24 @@ def _heuristic_aliases() -> dict:
     return {"V32": V32, "V32.1": V32_1}
 
 
-def make_opponent_policy(spec: str, device: str, seed: int = 0) -> BatchPolicy:
+def make_opponent_policy(spec: str, device: str, seed: int = 0, graphs: bool = False, workers=None) -> BatchPolicy:
     """``net:<checkpoint>`` -> batched ``NetPolicy`` (fp16 on CUDA); anything else -> ``HeuristicPolicy``
     (a ``make_opponent`` descriptor, or an alias ``V32`` / ``V32.1``; slow, per game in Python)."""
     if spec.startswith("net:"):
-        return NetPolicy.from_checkpoint(spec[4:], device=device, fp16=device.startswith("cuda"))
-    return HeuristicPolicy(_heuristic_aliases().get(spec, spec), seed)
+        return NetPolicy.from_checkpoint(spec[4:], device=device, fp16=device.startswith("cuda"), graphs=graphs)
+    desc = _heuristic_aliases().get(spec, spec)
+    if workers is not None:
+        from blackout_env.rl.hpool import ParallelHeuristic
+
+        return ParallelHeuristic(desc, seed, workers)
+    return HeuristicPolicy(desc, seed)
 
 
 def forget(pol: BatchPolicy, games) -> None:
     """Drop a heuristic opponent's per-game state for restarted games."""
-    if isinstance(pol, HeuristicPolicy):
+    if hasattr(pol, "forget_games"):
+        pol.forget_games(games)
+    elif isinstance(pol, HeuristicPolicy):
         for b in games:
             for tm in (0, 1):
                 pol.instances.pop((int(b), tm), None)
@@ -253,6 +356,10 @@ class GRPOConfig:
     max_grad_norm: float = 1.0
     device: str = "cuda"
     seed: int = 0
+    joint: bool = False        # (opt-in: not bit-identical, fp16 batch-composition noise) one policy call per decision step for both teams (JointSeats): one forward per policy, not per team
+    heur_workers: int = -1     # heuristic opponents in this many worker processes (-1: 4 on CUDA, else none; 0: in-process)
+    update_fp16: bool = False  # autocast fp16 in update()'s forward/backward (~2x faster; changes numerics slightly, off by default)
+    graphs: bool = True        # CUDA-graph replay of the learner / net-opponent forwards (bit-identical, sim/graphfwd.py)
 
 
 class GRPOTrainer:
@@ -268,10 +375,24 @@ class GRPOTrainer:
         self.ref = _OwnQ(copy.deepcopy(self.net).eval().requires_grad_(False))
         self.opt = torch.optim.AdamW(self.net.parameters(), lr=cfg.lr, weight_decay=0.0)
         self.leaf = LeafValue(cfg.value, cfg.device)
-        self.opps = [make_opponent_policy(s, cfg.device, cfg.seed + 7 * i) for i, s in enumerate(cfg.opponents)]
+        gr = bool(cfg.graphs) and self.dev.type == "cuda"
+        self.learner_gf = None
+        if gr:
+            from blackout_env.sim.graphfwd import GraphForward
+
+            self.learner_gf = GraphForward(self.own, self.dev, angle=True, max_batch=2048)
+        nw = cfg.heur_workers if cfg.heur_workers >= 0 else (4 if self.dev.type == "cuda" else 0)
+        self.hworkers = None
+        if nw > 0 and any(not s.startswith("net:") for s in cfg.opponents):
+            from blackout_env.rl.hpool import HeuristicWorkers
+
+            self.hworkers = HeuristicWorkers(nw)
+        self.opps = [make_opponent_policy(s, cfg.device, cfg.seed + 7 * i, graphs=gr, workers=self.hworkers)
+                     for i, s in enumerate(cfg.opponents)]
         # branches get their own heuristic instances (nets are stateless and shared)
-        self.branch_opps = [HeuristicPolicy(p.descriptor, p.seed + 1) if isinstance(p, HeuristicPolicy) else p
-                            for p in self.opps]
+        mk = (lambda p: p.__class__(p.descriptor, p.seed + 1, self.hworkers) if self.hworkers is not None
+              else HeuristicPolicy(p.descriptor, p.seed + 1))
+        self.branch_opps = [mk(p) if isinstance(p, HeuristicPolicy) else p for p in self.opps]
         w = np.asarray(cfg.opp_weights if cfg.opp_weights else [1.0] * len(self.opps), np.float64)
         assert len(w) == len(self.opps), "opp_weights must match opponents"
         self.base_w = w / w.sum()
@@ -304,6 +425,9 @@ class GRPOTrainer:
 
     def _rollout(self, roots, learner, opp_of, side, horizon, reseeds=None, opps=None):
         opps = self.opps if opps is None else opps
+        if self.cfg.joint:
+            pj = JointSeats(learner, opps, opp_of, side)
+            return BatchRollout(pj, pj, packed=True).run(roots, horizon, reseeds=reseeds)
         pa = Seats(0, learner, opps, opp_of, side)
         pb = Seats(1, learner, opps, opp_of, side)
         return BatchRollout(pa, pb, packed=True).run(roots, horizon, reseeds=reseeds)
@@ -312,7 +436,7 @@ class GRPOTrainer:
     def collect(self):
         c = self.cfg
         t0 = time.perf_counter()
-        greedy = LearnerPolicy(self.own, self.dev, 0)
+        greedy = LearnerPolicy(self.own, self.dev, 0, graphs=self.learner_gf)
         n_chunks = c.value_snaps if c.value_train else 1
         roots, steps = self.trunk, 0
         for j in range(n_chunks):
@@ -340,7 +464,8 @@ class GRPOTrainer:
         opp_of = np.repeat(self.trunk_opp[g_idx], k)
         side = np.repeat(self.trunk_side[g_idx], k)
         reseeds = np.repeat(self.rng.integers(0, 2**31 - 1, len(g_idx)), k)
-        learner = LearnerPolicy(self.own, self.dev, c.sample_steps, c.temperature, seed=int(self.rng.integers(2**31)))
+        learner = LearnerPolicy(self.own, self.dev, c.sample_steps, c.temperature, seed=int(self.rng.integers(2**31)),
+                                graphs=self.learner_gf)
         for p in self.branch_opps:
             if isinstance(p, HeuristicPolicy):
                 p.reset(0)
@@ -435,7 +560,8 @@ class GRPOTrainer:
     # -------- update
     def _logits(self, own, g, t, a):
         g = unpack_graphic(g) if g.dim() == 3 else g
-        q, _ = own(g, t, a)
+        with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.update_fp16 and self.dev.type == "cuda"):
+            q, _ = own(g, t, a)
         return q.float() / self.cfg.temperature
 
     def update(self, batch):
