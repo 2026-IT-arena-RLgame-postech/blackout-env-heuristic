@@ -39,6 +39,7 @@ TEMPORAL_PREFIX = "temporal."  # every temporal-memory parameter's state_dict ke
 
 POLICY_HEADS = ("iqn", "logits")
 _PATCH_KEY = "graphic_encoder.patch_embed.weight"  # only a ViT-style (patch4 / patch6) map encoder has it
+_PATCH_STRIDE_KEY = "graphic_encoder.patch_stride"  # marker buffer of the stride-2 patch arms (patch4 vs patch4s2 share a kernel)
 _IQN_KEY = "q_head.tau_proj.0.weight"  # only an IQN head has it (LogitsHead: q_head.in_scale instead)
 ANGLE_KEY_PREFIX = "q_head.angle_"  # only a logits head with an angle head (P11) has them
 _ANGLE_SCALE_KEY = "q_head.angle_scale"
@@ -187,6 +188,7 @@ class MyModel(nn.Module):
 
         # encoders
         self.graphic_encoder = GraphicEncoder(hidden_size, map_encoder=map_encoder)
+        self.n_vision = self.graphic_encoder.n_tokens  # 36 (6x6) for the CNN / patch4 / patch6; 144 (12x12) for the stride-2 patch arms
         self.vector_encoder = VectorEncoder(
             hidden_size, n_items=n_items, n_classes=n_classes, team_state_size=team_state_size
         )
@@ -199,7 +201,7 @@ class MyModel(nn.Module):
         # token-type embedding: one row per type, gathered by a fixed per-position type id.
         n_vector_tokens = N_UNITS + N_TEAM_STATE_TOKENS
         token_type_ids = torch.tensor(
-            [TYPE_GRAPHIC] * N_VISION_TOKENS
+            [TYPE_GRAPHIC] * self.n_vision
             + [TYPE_UNIT] * N_UNITS
             + [TYPE_GLOBAL] * N_TEAM_STATE_TOKENS
             + [TYPE_SPR_CLS] * N_SPR_CLS_TOKENS,
@@ -237,7 +239,18 @@ class MyModel(nn.Module):
         head_dim = hidden_size // N_ATTENTION_HEADS
         self.rope = RotaryEmbedding2D(head_dim, base=ROPE_BASE)
         n_extra_tokens = n_vector_tokens + N_SPR_CLS_TOKENS
+        # The vision grid may be finer than 6x6 (stride-2 patch arms: 12x12).  Its RoPE coordinates stay in the
+        # 6x6 frame the unit tokens are mapped into (token i of G sits at (i + 0.5) * 6 / G - 0.5, its cell centre),
+        # so the frequency range -- fastest pair under one turn across the map -- and the units' positions are
+        # unchanged; at G = 6 these are exactly the integer indices as before.
         row_ids, col_ids = build_grid_position_ids(GRID_H, GRID_W, n_extra_tokens)
+        g = self.graphic_encoder.grid
+        if g != GRID_H:
+            rows, cols = build_grid_position_ids(g, g, n_extra_tokens)
+            scale = GRID_H / g
+            nv = self.n_vision
+            row_ids = torch.cat([(rows[:nv] + 0.5) * scale - 0.5, row_ids[GRID_H * GRID_W:]])
+            col_ids = torch.cat([(cols[:nv] + 0.5) * scale - 0.5, col_ids[GRID_H * GRID_W:]])
         self.register_buffer("rope_row_ids", row_ids, persistent=False)
         self.register_buffer("rope_col_ids", col_ids, persistent=False)
 
@@ -295,7 +308,8 @@ class MyModel(nn.Module):
             config["map_xattn_layers"] = len({k.split(".")[2] for k in state if k.startswith(MAP_XATTN_PREFIX + "blocks.")})
         if _PATCH_KEY in state:  # ViT-style patch embedding instead of the CNN (kernel 4 or 6)
             k = state[_PATCH_KEY].shape[-1]
-            config["map_encoder"] = next(n for n, (kk, _, _) in PATCH_ENCODERS.items() if kk == k)
+            stride = int(state[_PATCH_STRIDE_KEY]) if _PATCH_STRIDE_KEY in state else 4  # only the stride-2 arms store it
+            config["map_encoder"] = next(n for n, (kk, ss, _) in PATCH_ENCODERS.items() if (kk, ss) == (k, stride))
         if any(key.startswith(TEMPORAL_PREFIX) for key in state):
             heads = state["temporal.kda.b_proj.weight"].shape[0]
             config.update(temporal=True, temporal_heads=heads,
@@ -410,8 +424,8 @@ class MyModel(nn.Module):
         x, y = agent_states[..., 0], agent_states[..., 1]  # [B, N_UNITS], normalized [-1, 1]
         unit_rows = ((1.0 - y) * 0.5 * GRID_H - 0.5).clamp(0.0, GRID_H - 1.0)
         unit_cols = ((x + 1.0) * 0.5 * GRID_W - 0.5).clamp(0.0, GRID_W - 1.0)
-        row_ids[:, N_VISION_TOKENS : N_VISION_TOKENS + N_UNITS] = unit_rows
-        col_ids[:, N_VISION_TOKENS : N_VISION_TOKENS + N_UNITS] = unit_cols
+        row_ids[:, self.n_vision : self.n_vision + N_UNITS] = unit_rows
+        col_ids[:, self.n_vision : self.n_vision + N_UNITS] = unit_cols
         return row_ids, col_ids
 
     def forward(
@@ -459,7 +473,7 @@ class MyModel(nn.Module):
                            one before it, None = start of a match).  Stateless: must be None.
         """
         tokens_out = self._trunk(graphic, team_state, agent_states)
-        vec_out = tokens_out[:, N_VISION_TOKENS : N_VISION_TOKENS + N_UNITS + N_TEAM_STATE_TOKENS]
+        vec_out = tokens_out[:, self.n_vision : self.n_vision + N_UNITS + N_TEAM_STATE_TOKENS]
         new_memory = None
         if self.temporal is not None:
             vec_out, new_memory = self.temporal(vec_out.unsqueeze(1), memory)
@@ -499,7 +513,7 @@ class MyModel(nn.Module):
 
     def _trunk_xattn(self, x, rope, feat, agent_states) -> torch.Tensor:
         """The trunk layers with the map-token cross blocks after ``_xattn_after`` (class docstring)."""
-        lo, hi = N_VISION_TOKENS, N_VISION_TOKENS + N_UNITS + N_TEAM_STATE_TOKENS
+        lo, hi = self.n_vision, self.n_vision + N_UNITS + N_TEAM_STATE_TOKENS
         mem, q_pos = self.map_xattn.memory(feat, agent_states[..., :2], hi - lo)
         blocks = iter(self.map_xattn.blocks)
         for i, layer in enumerate(self.attention.layers):
@@ -584,6 +598,6 @@ class MyModel(nn.Module):
         """Trunk on B*T frames, temporal block over T: ((vec_out [B*T, 11, D], spr_cls [B*T, D]), memory)."""
         B, T = graphic.shape[:2]
         tokens_out = self._trunk(graphic.flatten(0, 1), team_state.flatten(0, 1), agent_states.flatten(0, 1))
-        vec_out = tokens_out[:, N_VISION_TOKENS : N_VISION_TOKENS + N_UNITS + N_TEAM_STATE_TOKENS]
+        vec_out = tokens_out[:, self.n_vision : self.n_vision + N_UNITS + N_TEAM_STATE_TOKENS]
         vec_out, memory = self.temporal(vec_out.reshape(B, T, *vec_out.shape[1:]), memory, reset)
         return (vec_out.flatten(0, 1), tokens_out[:, -1]), memory

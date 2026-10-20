@@ -230,10 +230,11 @@ def parse_args(argv=None) -> argparse.Namespace:
                    "GraphicEncoder's 6x6 (f3) or 12x12 (f2) features after --map-xattn-layers trunk layers; zero-"
                    "initialised, so an --init without the path starts with identical outputs")
     p.add_argument("--map-xattn-layers", type=int, default=2, help="--map-xattn: cross blocks (spread over the 4 layers)")
-    p.add_argument("--map-encoder", choices=("cnn", "patch4", "patch6"), default="cnn",
-                   help="the map encoder (36 vision tokens either way): cnn = GraphicEncoder's CNN (default, unchanged); "
+    p.add_argument("--map-encoder", choices=("cnn", "patch4", "patch6", "patch2", "patch4s2", "patch3s2"), default="cnn",
+                   help="the map encoder (36 vision tokens; 144 for the stride-2 patch2 / patch4s2 / patch3s2): cnn = GraphicEncoder's CNN (default, unchanged); "
                    "patch4 / patch6 = ViT-style linear patch embedding, kernel 4 stride 4 / kernel 6 stride 4 padding 1 "
-                   "(docs/rl_finetune_plan_ko.md A/B).  --init must be a net of the same encoder (or none)")
+                   "(docs/rl_finetune_plan_ko.md A/B); patch2 = kernel 2 stride 2, patch4s2 = kernel 4 stride 2 padding 1, patch3s2 = kernel 3 "
+                   "stride 2 padding 1 (12x12 tokens).  --init must be a net of the same encoder (or none)")
     p.add_argument("--temporal", action="store_true",
                    help="a student with memory (MyModel(temporal=True): per-slot KDA between trunk and head), trained on "
                    "windows of consecutive ticks; --init from a stateless checkpoint warm-starts it with identical outputs")

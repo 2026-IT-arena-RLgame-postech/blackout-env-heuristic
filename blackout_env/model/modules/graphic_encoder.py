@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 
 from blackout_env.model.derived_obs import N_DERIVED_MAP_CHANNELS
@@ -6,10 +7,15 @@ from .bottleneck_block import BottleNeckBlock
 from .ffn_block import SwiGLUBlock
 
 
-# map_encoder -> (kernel, stride, padding) of the ViT-style linear patch embedding.  Both give 6x6 = 36
-# tokens from the 24x24 grid in the CNN's row-major order (so the trunk's RoPE positions are unchanged):
-# patch4 tiles the grid; patch6 overlaps neighbouring patches by 2 cells (padding 1 on each side).
-PATCH_ENCODERS = {"patch4": (4, 4, 0), "patch6": (6, 4, 1)}
+# map_encoder -> (kernel, stride, padding) of the ViT-style linear patch embedding, tokens in row-major order.
+# Stride 4 gives 6x6 = 36 tokens (the CNN's grid, so the trunk's RoPE positions are unchanged): patch4 tiles the
+# grid; patch6 overlaps neighbouring patches by 2 cells (padding 1 on each side).  Stride 2 gives 12x12 = 144
+# tokens: patch2 tiles; patch4s2 overlaps by 2 cells (the stride-2 analogue of patch6's 4-stride overlap, pad 1);
+# patch3s2 overlaps by 1 cell (pad 1; odd kernel, so its centres sit half a cell above/left of the cell-centre
+# grid the unit positions use, and the last row/col of cells is covered only by the 3rd pixel of the last patch).
+PATCH_ENCODERS = {"patch4": (4, 4, 0), "patch6": (6, 4, 1),
+                  "patch2": (2, 2, 0), "patch4s2": (4, 2, 1), "patch3s2": (3, 2, 1)}
+MAP_SIDE = 24
 MAP_ENCODERS = ("cnn", *PATCH_ENCODERS)
 
 
@@ -22,11 +28,15 @@ class GraphicEncoder(nn.Module):
             raise ValueError(f"map_encoder must be one of {MAP_ENCODERS}, got {map_encoder!r}")
         self.hidden_size = hidden_size
         self.map_encoder = map_encoder
+        self.grid = 6  # tokens per side (24x24 map)
         if map_encoder != "cnn":
             # ViT-style tokenizer (A/B in docs/rl_finetune_plan_ko.md): one linear patch embedding and a
             # LayerNorm; no convolutional stages, no feature maps.  Only the "cnn" path creates the CNN
             # modules, so a default net's parameters and state_dict keys are exactly what they were.
             k, s, p = PATCH_ENCODERS[map_encoder]
+            self.grid = (MAP_SIDE + 2 * p - k) // s + 1
+            if s != 4:  # marks the stride in the state_dict (patch4 and patch4s2 share a kernel size)
+                self.register_buffer("patch_stride", torch.tensor(s))
             self.patch_embed = nn.Conv2d(in_channels, hidden_size, kernel_size=k, stride=s, padding=p)
             self.patch_norm = nn.LayerNorm(hidden_size)
             return
@@ -74,6 +84,10 @@ class GraphicEncoder(nn.Module):
         self.tokenize_ffn = SwiGLUBlock(128, 512, self.hidden_size)
 
 
+    @property
+    def n_tokens(self) -> int:
+        return self.grid * self.grid
+
     def forward(self, graphic, features: bool = False):
         """graphic: [B, 19, 24, 24] -- env channels with the derived ones already appended.
         ``features``: also return the feature maps ``{"f2": [B, 64, 12, 12], "f3": [B, 128, 6, 6]}``
@@ -82,7 +96,7 @@ class GraphicEncoder(nn.Module):
             if features:
                 raise ValueError("feature maps (map-token cross-attention) exist only for map_encoder='cnn'")
             x = self.patch_embed(graphic)                            # [B, hidden, 6, 6]
-            return self.patch_norm(x.flatten(2).transpose(1, 2))     # [B, 36, hidden]
+            return self.patch_norm(x.flatten(2).transpose(1, 2))     # [B, grid * grid, hidden]
         x = self.pre_conv(graphic)
         f2 = self.conv64(x)
         x = self.pool(f2)
