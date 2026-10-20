@@ -56,6 +56,7 @@ def main():
     ap.add_argument("--hash", action="store_true")
     ap.add_argument("--cprofile", action="store_true")
     ap.add_argument("--no-update", action="store_true")
+    ap.add_argument("--opps", default="", help="comma list of indices into the 9-opponent pool (default all)")
     ap.add_argument("--det", action="store_true", help="deterministic torch kernels (for bitwise A/B comparisons)")
     ap.add_argument("--save-batch", default="", help="np.savez the first collected batch here (for update benchmarks)")
     ap.add_argument("--seed", type=int, default=0)
@@ -65,7 +66,8 @@ def main():
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
         torch.use_deterministic_algorithms(True, warn_only=True)
-    cfg = GRPOConfig(opponents=OPPS, opp_weights=W, pfsp="hard", sample_steps=a.sample_steps, groups=a.groups,
+    sel = [int(x) for x in a.opps.split(",")] if a.opps else list(range(len(OPPS)))
+    cfg = GRPOConfig(opponents=[OPPS[i] for i in sel], opp_weights=[W[i] for i in sel], pfsp="hard", sample_steps=a.sample_steps, groups=a.groups,
                      k=a.k, drop_flat=0.005, seed=a.seed)
     for it in a.set:
         k, v = it.split("=", 1)
@@ -106,6 +108,7 @@ def main():
     out = []
     for it in range(a.iters):
         T.clear(); N.clear(); roll.clear()
+        torch.manual_seed(1000 + it)   # update()'s randperm / dropout-free: reproducible A/B
         torch.cuda.synchronize()
         t0 = time.perf_counter()
         pr = cProfile.Profile() if (a.cprofile and it == a.iters - 1) else None
