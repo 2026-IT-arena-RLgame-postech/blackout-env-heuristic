@@ -11,10 +11,11 @@ import torch
 from torch.utils.flop_counter import FlopCounterMode
 
 from blackout_env.model.derived_obs import N_DERIVED_MAP_CHANNELS
+from blackout_env.model.my_model import MyModel
 from blackout_env.train.distill.loss import set_valued_cross_entropy
 from blackout_env.train.distill.run import Learner, parse_args
 
-ARMS = {"A": "cnn", "B1": "patch4", "B2": "patch6"}
+ARMS = {"A": "cnn", "B1": "patch4", "B2": "patch6", "C1": "patch2", "C2": "patch4s2", "C3": "patch3s2"}
 
 
 def main():
@@ -23,8 +24,10 @@ def main():
     p.add_argument("--steps", type=int, default=60)
     p.add_argument("--warmup", type=int, default=15)
     p.add_argument("--device", default="auto")
+    p.add_argument("--arms", default=",".join(ARMS), help="comma-separated subset of A,B1,B2,C1,C2,C3")
     cli = p.parse_args()
-    for arm, kind in ARMS.items():
+    for arm in cli.arms.split(","):
+        kind = ARMS[arm]
         args = parse_args(["--build", "unused", "--policy-head", "logits", "--action-bins", "32", "--stand-action", "--angle-head",
                            "--angle-arc-bins", "1", "--amp", "fp16", "--compile", "--map-encoder", kind, "--device", cli.device])
         learner = Learner(args)
@@ -38,6 +41,11 @@ def main():
         with FlopCounterMode(display=False) as fc, torch.no_grad():
             cpu_enc(x)
         macs = fc.get_total_flops() / 2
+        cpu_net = MyModel(n_actions=33, policy_head="logits", angle_head=True, angle_arc_bins=1, map_encoder=kind).eval()
+        gb, tb, ab = torch.zeros(1, 13, 24, 24), torch.zeros(1, 4), torch.zeros(1, 10, 12)
+        with FlopCounterMode(display=False) as fc2, torch.no_grad():
+            cpu_net(gb, tb, ab, q_units=5)
+        total_macs = fc2.get_total_flops() / 2
         g = torch.rand(cli.batch, 13, 24, 24, device=dev).round()
         ts = torch.rand(cli.batch, 4, device=dev)
         ag = torch.rand(cli.batch, 10, 12, device=dev) * 2 - 1
@@ -65,7 +73,7 @@ def main():
                 ts_ms.append(1000 * (time.perf_counter() - t0))
         ts_ms.sort()
         mem = torch.cuda.max_memory_allocated() / 2**20 if dev.type == "cuda" else 0
-        print(f"{arm:3s} {kind:7s} enc_params {n_enc:9d} total_params {n_all:9d} enc_MMAC {macs / 1e6:7.2f} "
+        print(f"{arm:3s} {kind:7s} enc_params {n_enc:9d} total_params {n_all:9d} enc_MMAC {macs / 1e6:7.2f} total_MMAC {total_macs / 1e6:7.1f} "
               f"step_ms median {ts_ms[len(ts_ms) // 2]:6.1f} min {ts_ms[0]:6.1f} (B={cli.batch}) peak_alloc {mem:.0f} MiB", flush=True)
         del learner, net
 
