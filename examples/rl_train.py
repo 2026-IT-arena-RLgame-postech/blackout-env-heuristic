@@ -3,7 +3,8 @@
     PYTHONPATH=. .venv/bin/python examples/rl_train.py --algo grpo --out checkpoints/rl/grpo_a \
         --hours 6 --eval-every 10 --set groups=64 k=8
 
-``--set key=value`` overrides any GRPOConfig / PPOConfig field (lists: comma separated).  Logs one JSON
+``--set key=value`` overrides any GRPOConfig / PPOConfig field (lists: comma separated, or ';' separated
+when an item contains commas).  Logs one JSON
 line per iteration to <out>/log.jsonl (eval rows have "eval": {...}); checkpoints <out>/iter_<n>.pt.
 """
 
@@ -23,7 +24,8 @@ from blackout_env.rl.ppo import PPOConfig, PPOTrainer
 
 DEFAULT_OPPS = ",".join(f"net:checkpoints/distill/frozen/{p}.pt" for p in
                         ("p24c_v321", "p22_v31", "p21e_v30", "p20_v30", "p17_v28", "p14_v25"))
-DEFAULT_EVAL = "net:checkpoints/distill/frozen/p24c_v321.pt,net:checkpoints/distill/frozen/p22_v31.pt"
+# p24c / p22 are in the default pool; p5a / p16 are held out of every pool (generalisation check)
+DEFAULT_EVAL = ",".join(f"net:checkpoints/distill/frozen/{p}.pt" for p in ("p24c_v321", "p22_v31", "p5a_v22", "p16_v27"))
 
 
 def parse_set(cfg, items):
@@ -32,7 +34,8 @@ def parse_set(cfg, items):
         k, v = it.split("=", 1)
         cur = getattr(cfg, k)
         if isinstance(cur, list) or (cur is None and k.endswith("weights")):
-            val = [type(cur[0])(x) if cur else float(x) for x in v.split(",")] if v else []
+            sep = ";" if ";" in v else ","   # ';' when an item itself has commas (act:V32,adapt_k=3)
+            val = [type(cur[0])(x) if cur else float(x) for x in v.split(sep)] if v else []
         elif isinstance(cur, bool):
             val = v.lower() in ("1", "true", "yes")
         else:

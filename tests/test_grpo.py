@@ -63,3 +63,38 @@ def test_ppo_step_cpu():
     tr = PPOTrainer(cfg)
     s0, s1 = tr.step(), tr.step()
     assert s0["views"] == 24 and "pg" not in s0 and np.isfinite(s1["pg"]) and np.isfinite(s1["vf_loss"])
+
+
+def test_pfsp_weights():
+    cfg = GRPOConfig(init=CKPT, value=VALUE, device="cpu", groups=2, k=2,
+                     opponents=[f"net:{CKPT}", "random"], opp_weights=[1.0, 3.0], pfsp="hard")
+    tr = GRPOTrainer(cfg)
+    assert np.allclose(tr.opp_w, [0.25, 0.75])            # equal scores: base weights
+    tr.opp_score[:] = [0.2, 0.9]                            # we lose to opponent 0
+    w = tr._pfsp_weights()
+    f = cfg.pfsp_floor + (1 - np.array([0.2, 0.9])) ** 2
+    assert np.allclose(w, np.array([1, 3]) * f / (np.array([1, 3]) * f).sum()) and w[0] > 0.25
+
+
+def test_heuristic_opponent_step_cpu():
+    """A heuristic opponent in the pool: branch instances are separate from the trunk's and reset."""
+    cfg = GRPOConfig(init=CKPT, value=VALUE, device="cpu", groups=2, k=2, trunk_step=300, sample_steps=3,
+                     leaf_steps=4, minibatch=16, epochs=1, opponents=["random"], pfsp="hard")
+    tr = GRPOTrainer(cfg)
+    assert tr.branch_opps[0] is not tr.opps[0]
+    s = tr.step()
+    assert s["views"] == 2 * 2 * 3 and np.isfinite(s["loss"]) and len(s["opp_score"]) == 1
+    assert len(tr.opps[0].instances) == 2 and len(tr.branch_opps[0].instances) == 4
+
+
+def test_drop_flat_and_ref_reset():
+    cfg = GRPOConfig(init=CKPT, value=VALUE, device="cpu", groups=2, k=2, trunk_step=300, sample_steps=3,
+                     leaf_steps=4, minibatch=16, epochs=1, drop_flat=1e9, ref_reset_every=1)
+    tr = GRPOTrainer(cfg)
+    s = tr.step()                                   # every group is "flat": no update, no crash
+    assert s["kept_frac"] == 0.0 and s["loss"] == 0.0
+    tr.cfg.drop_flat = 0.0
+    s = tr.step()
+    assert s["kept_frac"] == 1.0
+    for p, q in zip(tr.net.parameters(), tr.ref.net.parameters()):
+        assert torch.equal(p, q)                    # reset after the step

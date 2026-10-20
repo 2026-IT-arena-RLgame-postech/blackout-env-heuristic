@@ -19,6 +19,12 @@ One iteration:
    + ``beta`` * exact KL(pi || pi_ref) over the bins (pi_ref = the starting student).  The angle
    offsets stay deterministic (no policy gradient through them).
 
+Opponents are drawn per trunk game from ``opponents`` with weights ``opp_weights`` (default uniform),
+reweighted by PFSP when ``pfsp`` is set: each opponent keeps an EMA of the learner's score against it
+(branch leaf winness mapped to [0, 1]); ``hard`` multiplies its base weight by ``floor + (1 - s)**pfsp_p``
+(play more against what beats us), ``even`` by ``floor + 4 s (1 - s)``.  Heuristic opponents in the
+branches are separate instances, reset every iteration (a branch never sees another game's state).
+
 Only stateless MyModel students with a logits head (P24c) are supported.
 """
 
@@ -133,12 +139,18 @@ class Seats(BatchPolicy):
         return {tm: out}
 
 
+def _heuristic_aliases() -> dict:
+    from blackout_env.heuristics.v32_four_hunters import V32, V32_1
+
+    return {"V32": V32, "V32.1": V32_1}
+
+
 def make_opponent_policy(spec: str, device: str, seed: int = 0) -> BatchPolicy:
     """``net:<checkpoint>`` -> batched ``NetPolicy`` (fp16 on CUDA); anything else -> ``HeuristicPolicy``
-    (a ``make_opponent`` descriptor; slow, per game in Python)."""
+    (a ``make_opponent`` descriptor, or an alias ``V32`` / ``V32.1``; slow, per game in Python)."""
     if spec.startswith("net:"):
         return NetPolicy.from_checkpoint(spec[4:], device=device, fp16=device.startswith("cuda"))
-    return HeuristicPolicy(spec, seed)
+    return HeuristicPolicy(_heuristic_aliases().get(spec, spec), seed)
 
 
 def forget(pol: BatchPolicy, games) -> None:
@@ -201,6 +213,12 @@ class GRPOConfig:
     value: str = "checkpoints/value/s2v_f3xd2/iter2.pt"
     opponents: list = field(default_factory=lambda: ["net:checkpoints/distill/frozen/p24c_v321.pt"])
     opp_weights: list | None = None
+    pfsp: str = "none"         # none | hard | even
+    pfsp_p: float = 2.0
+    pfsp_floor: float = 0.1
+    pfsp_ema: float = 0.05     # per-iteration EMA rate of the per-opponent score
+    drop_flat: float = 0.0     # drop groups whose reward std is below this (DAPO-style dynamic sampling)
+    ref_reset_every: int = 0   # >0: pi_ref <- current policy every N iterations (iterative GRPO, Shao et al. Alg. 1)
     groups: int = 64           # G roots per iteration (= trunk games)
     k: int = 8                 # branches per root
     trunk_step: int = 250      # decisions the trunk games advance between roots (10 s)
@@ -233,20 +251,39 @@ class GRPOTrainer:
         self.opt = torch.optim.AdamW(self.net.parameters(), lr=cfg.lr, weight_decay=0.0)
         self.leaf = LeafValue(cfg.value, cfg.device)
         self.opps = [make_opponent_policy(s, cfg.device, cfg.seed + 7 * i) for i, s in enumerate(cfg.opponents)]
+        # branches get their own heuristic instances (nets are stateless and shared)
+        self.branch_opps = [HeuristicPolicy(p.descriptor, p.seed + 1) if isinstance(p, HeuristicPolicy) else p
+                            for p in self.opps]
         w = np.asarray(cfg.opp_weights if cfg.opp_weights else [1.0] * len(self.opps), np.float64)
-        self.opp_w = w / w.sum()
+        assert len(w) == len(self.opps), "opp_weights must match opponents"
+        self.base_w = w / w.sum()
+        self.opp_score = np.full(len(self.opps), 0.5)
+        self.opp_w = self._pfsp_weights()
         g = cfg.groups
         self.trunk = [self._fresh_seed() for _ in range(g)]
         self.trunk_opp = self.rng.choice(len(self.opps), g, p=self.opp_w)
         self.trunk_side = self.rng.integers(0, 2, g)
         self.iter = 0
 
+    def _pfsp_weights(self) -> np.ndarray:
+        c, s = self.cfg, self.opp_score
+        if c.pfsp == "hard":
+            f = c.pfsp_floor + (1.0 - s) ** c.pfsp_p
+        elif c.pfsp == "even":
+            f = c.pfsp_floor + 4.0 * s * (1.0 - s)
+        else:
+            assert c.pfsp == "none", c.pfsp
+            f = np.ones_like(s)
+        w = self.base_w * f
+        return w / w.sum()
+
     def _fresh_seed(self) -> SimState:
         return SimState.from_seed(int(self.rng.integers(0, 2**31 - 1)))
 
-    def _rollout(self, roots, learner, opp_of, side, horizon, reseeds=None):
-        pa = Seats(0, learner, self.opps, opp_of, side)
-        pb = Seats(1, learner, self.opps, opp_of, side)
+    def _rollout(self, roots, learner, opp_of, side, horizon, reseeds=None, opps=None):
+        opps = self.opps if opps is None else opps
+        pa = Seats(0, learner, opps, opp_of, side)
+        pb = Seats(1, learner, opps, opp_of, side)
         return BatchRollout(pa, pb, packed=True).run(roots, horizon, reseeds=reseeds)
 
     # -------- collection
@@ -275,9 +312,22 @@ class GRPOTrainer:
         side = np.repeat(self.trunk_side[g_idx], k)
         reseeds = np.repeat(self.rng.integers(0, 2**31 - 1, len(g_idx)), k)
         learner = LearnerPolicy(self.own, self.dev, c.sample_steps, c.temperature, seed=int(self.rng.integers(2**31)))
-        br = self._rollout(branch_roots, learner, opp_of, side, c.sample_steps + c.leaf_steps, reseeds)
+        for p in self.branch_opps:
+            if isinstance(p, HeuristicPolicy):
+                p.reset(0)
+        br = self._rollout(branch_roots, learner, opp_of, side, c.sample_steps + c.leaf_steps, reseeds,
+                           opps=self.branch_opps)
         t2 = time.perf_counter()
         win, lead = self.leaf(br.bsim, side)
+        # PFSP: per-opponent EMA of the learner's leaf score, then reweight the restart draw
+        score = (win + 1.0) / 2.0
+        opp_stats = {}
+        for i in range(len(self.opps)):
+            m = opp_of == i
+            if m.any():
+                self.opp_score[i] += c.pfsp_ema * (float(score[m].mean()) - self.opp_score[i])
+            opp_stats[i] = int(m.sum() // k)
+        self.opp_w = self._pfsp_weights()
         R = win + c.lam * np.tanh(lead / c.scale)
         Rg = R.reshape(-1, k)
         dev = Rg - Rg.mean(1, keepdims=True)
@@ -285,17 +335,19 @@ class GRPOTrainer:
         adv = (dev / scale).reshape(-1)
         recs = learner.records
         game = np.concatenate([r[0] for r in recs])
-        batch = {
-            "g": np.concatenate([r[1] for r in recs]), "t": np.concatenate([r[2] for r in recs]),
-            "a": np.concatenate([r[3] for r in recs]), "act": np.concatenate([r[4] for r in recs]),
-            "adv": adv[game].astype(np.float32),
-        }
+        keep = np.repeat(Rg.std(1) >= c.drop_flat, k)[game]   # all True when drop_flat = 0
+        cat = lambda j: np.concatenate([r[j] for r in recs])[keep]
+        batch = {"g": cat(1), "t": cat(2), "a": cat(3), "act": cat(4), "adv": adv[game][keep].astype(np.float32)}
         t3 = time.perf_counter()
         stats = {
             "trunk_s": t1 - t0, "branch_s": t2 - t1, "leaf_s": t3 - t2, "views": len(game),
             "trunk_restarts": len(ended), "R_mean": float(R.mean()), "R_group_std": float(Rg.std(1).mean()),
+            "kept_frac": float(keep.mean()),
             "R_dev_std": float(scale), "win_mean": float(win.mean()), "lead_mean": float(lead.mean()),
             "branch_over": float(br.over.mean()), "decisions": int(res.steps.sum() + br.steps.sum()),
+            "opp_score": [round(float(x), 4) for x in self.opp_score],
+            "opp_w": [round(float(x), 4) for x in self.opp_w],
+            "opp_groups": [opp_stats[i] for i in range(len(self.opps))],
         }
         return batch, stats
 
@@ -308,6 +360,8 @@ class GRPOTrainer:
     def update(self, batch):
         c = self.cfg
         n = len(batch["act"])
+        if n == 0:   # every group dropped as flat
+            return {"loss": 0.0, "pg": 0.0, "kl": 0.0, "ent": 0.0, "clipfrac": 0.0, "grad_norm": 0.0}
         to = lambda x: torch.from_numpy(x).to(self.dev)
         g, t, a = to(batch["g"]), to(batch["t"]), to(batch["a"])
         act, adv = to(batch["act"]).long(), to(batch["adv"])
@@ -350,10 +404,13 @@ class GRPOTrainer:
         us = self.update(batch)
         us["update_s"] = time.perf_counter() - t0
         self.iter += 1
+        if self.cfg.ref_reset_every and self.iter % self.cfg.ref_reset_every == 0:
+            self.ref.net.load_state_dict(self.net.state_dict())
         return {"iter": self.iter, **cs, **us}
 
     def save(self, path: str, extra: dict | None = None) -> None:
-        torch.save({"policy_state": self.net.state_dict(), "grpo": {**vars(self.cfg), "iter": self.iter, **(extra or {})}}, path)
+        torch.save({"policy_state": self.net.state_dict(),
+                    "grpo": {**vars(self.cfg), "iter": self.iter, "opp_score": self.opp_score.tolist(), **(extra or {})}}, path)
 
 
 # ---------------------------------------------------------------------------------- evaluation
