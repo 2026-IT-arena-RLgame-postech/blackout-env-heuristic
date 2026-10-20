@@ -23,6 +23,7 @@ F = "checkpoints/distill/frozen"
 OPPS = [f"net:{F}/{p}.pt" for p in ("p24c_v321", "p22_v31", "p21e_v30", "p20_v30", "p17_v28", "p14_v25", "d6_v42")] + ["V32.1", "mixture"]
 W = [0.5] + [1.0] * 8
 
+PHASE = ["trunk"]
 T = defaultdict(float)
 N = defaultdict(int)
 
@@ -33,8 +34,8 @@ def timed(obj, name):
     def w(bsim, idx, teams, inputs):
         t0 = time.perf_counter()
         r = f(bsim, idx, teams, inputs)
-        T[name] += time.perf_counter() - t0
-        N[name] += len(idx) * len(teams)
+        T[PHASE[0] + ":" + name] += time.perf_counter() - t0
+        N[PHASE[0] + ":" + name] += len(idx) * len(teams)
         return r
     obj.moves = w
 
@@ -56,10 +57,21 @@ def main():
     ap.add_argument("--cprofile", action="store_true")
     ap.add_argument("--no-update", action="store_true")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--set", nargs="*", default=[])
     a = ap.parse_args()
     cfg = GRPOConfig(opponents=OPPS, opp_weights=W, pfsp="hard", sample_steps=a.sample_steps, groups=a.groups,
                      k=a.k, drop_flat=0.005, seed=a.seed)
+    for it in a.set:
+        k, v = it.split("=", 1)
+        cur = getattr(cfg, k)
+        setattr(cfg, k, (v.lower() in ("1", "true", "yes")) if isinstance(cur, bool) else type(cur)(v))
     tr = GRPOTrainer(cfg)
+    orig_r = tr._rollout
+
+    def rr(roots, learner, opp_of, side, horizon, *args, **kw):
+        PHASE[0] = "branch" if kw.get("opps") is not None else "trunk"
+        return orig_r(roots, learner, opp_of, side, horizon, *args, **kw)
+    tr._rollout = rr
     for i, p in enumerate(tr.opps):
         timed(p, f"trunk_opp{i}")
     for i, p in enumerate(tr.branch_opps):
@@ -73,8 +85,8 @@ def main():
     def lm(self, bsim, idx, teams, inputs):
         t0 = time.perf_counter()
         r = orig(self, bsim, idx, teams, inputs)
-        T["learner"] += time.perf_counter() - t0
-        N["learner"] += len(idx) * len(teams)
+        T[PHASE[0] + ":learner"] += time.perf_counter() - t0
+        N[PHASE[0] + ":learner"] += len(idx) * len(teams)
         return r
     grpo.LearnerPolicy.moves = lm
     orig_run = sb.BatchRollout.run

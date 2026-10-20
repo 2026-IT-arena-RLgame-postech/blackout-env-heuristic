@@ -73,13 +73,14 @@ class LearnerPolicy(BatchPolicy):
     accepts_packed = True
 
     def __init__(self, own: _OwnQ, device, sample_steps: int = 0, temperature: float = 1.0,
-                 fp16: bool = True, seed: int = 0):
+                 fp16: bool = True, seed: int = 0, graphs=None):
         self.own, self.device = own, torch.device(device)
         self.sample_steps, self.temperature, self.fp16 = int(sample_steps), float(temperature), fp16
         self.rng = torch.Generator(device=self.device)
         self.rng.manual_seed(seed)
         self.t = np.zeros(0, np.int64)
         self.records: list = []
+        self.graphs = graphs   # a sim.graphfwd.GraphForward over ``own`` (fp16 CUDA only), else the eager path
 
     def reset(self, n: int) -> None:
         self.t = np.zeros(n, np.int64)
@@ -87,6 +88,9 @@ class LearnerPolicy(BatchPolicy):
 
     @torch.no_grad()
     def _forward(self, g, t, a):
+        if self.graphs is not None and g.ndim == 3:
+            out = self.graphs(g, t, a)
+            return out[..., :self.graphs.kq], out[..., self.graphs.kq:]
         g = torch.from_numpy(np.ascontiguousarray(g)).to(self.device)
         g = unpack_graphic(g) if g.dim() == 3 else g
         t = torch.from_numpy(np.ascontiguousarray(t)).to(self.device)
@@ -104,15 +108,19 @@ class LearnerPolicy(BatchPolicy):
             q, off = self._forward(g, ts, ag)
             samp = self.t[idx] < self.sample_steps
             chosen = q.argmax(-1)
+            r = None
             if samp.any():
-                rows = torch.from_numpy(np.nonzero(samp)[0]).to(self.device)
+                r = np.nonzero(samp)[0]
+                rows = torch.from_numpy(r).to(self.device)
                 p = torch.softmax(q[rows] / self.temperature, -1)
                 pick = torch.multinomial(p.reshape(-1, p.shape[-1]), 1, generator=self.rng).view(p.shape[:-1])
                 chosen[rows] = pick
-                r = rows.cpu().numpy()
+            chosen_np = chosen.cpu().numpy()
+            if r is not None:
                 self.records.append((idx[r].copy(), g[r].copy(), ts[r].copy(), ag[r].copy(),
-                                     pick.cpu().numpy().astype(np.int8)))
-            onehot = F.one_hot(chosen, q.shape[-1]).float().cpu().numpy()
+                                     chosen_np[r].astype(np.int8)))
+            onehot = np.zeros(q.shape, np.float32)
+            np.put_along_axis(onehot, chosen_np[..., None], 1.0, -1)
             team_b = np.full(n, tm == 1)
             out[tm] = decode_moves(onehot, off.cpu().numpy(), team_b)
             self.t[idx] += 1
@@ -153,11 +161,11 @@ def _heuristic_aliases() -> dict:
     return {"V32": V32, "V32.1": V32_1}
 
 
-def make_opponent_policy(spec: str, device: str, seed: int = 0) -> BatchPolicy:
+def make_opponent_policy(spec: str, device: str, seed: int = 0, graphs: bool = False) -> BatchPolicy:
     """``net:<checkpoint>`` -> batched ``NetPolicy`` (fp16 on CUDA); anything else -> ``HeuristicPolicy``
     (a ``make_opponent`` descriptor, or an alias ``V32`` / ``V32.1``; slow, per game in Python)."""
     if spec.startswith("net:"):
-        return NetPolicy.from_checkpoint(spec[4:], device=device, fp16=device.startswith("cuda"))
+        return NetPolicy.from_checkpoint(spec[4:], device=device, fp16=device.startswith("cuda"), graphs=graphs)
     return HeuristicPolicy(_heuristic_aliases().get(spec, spec), seed)
 
 
@@ -253,6 +261,7 @@ class GRPOConfig:
     max_grad_norm: float = 1.0
     device: str = "cuda"
     seed: int = 0
+    graphs: bool = True        # CUDA-graph replay of the learner / net-opponent forwards (bit-identical, sim/graphfwd.py)
 
 
 class GRPOTrainer:
@@ -268,7 +277,13 @@ class GRPOTrainer:
         self.ref = _OwnQ(copy.deepcopy(self.net).eval().requires_grad_(False))
         self.opt = torch.optim.AdamW(self.net.parameters(), lr=cfg.lr, weight_decay=0.0)
         self.leaf = LeafValue(cfg.value, cfg.device)
-        self.opps = [make_opponent_policy(s, cfg.device, cfg.seed + 7 * i) for i, s in enumerate(cfg.opponents)]
+        gr = bool(cfg.graphs) and self.dev.type == "cuda"
+        self.learner_gf = None
+        if gr:
+            from blackout_env.sim.graphfwd import GraphForward
+
+            self.learner_gf = GraphForward(self.own, self.dev, angle=True, max_batch=2048)
+        self.opps = [make_opponent_policy(s, cfg.device, cfg.seed + 7 * i, graphs=gr) for i, s in enumerate(cfg.opponents)]
         # branches get their own heuristic instances (nets are stateless and shared)
         self.branch_opps = [HeuristicPolicy(p.descriptor, p.seed + 1) if isinstance(p, HeuristicPolicy) else p
                             for p in self.opps]
@@ -312,7 +327,7 @@ class GRPOTrainer:
     def collect(self):
         c = self.cfg
         t0 = time.perf_counter()
-        greedy = LearnerPolicy(self.own, self.dev, 0)
+        greedy = LearnerPolicy(self.own, self.dev, 0, graphs=self.learner_gf)
         n_chunks = c.value_snaps if c.value_train else 1
         roots, steps = self.trunk, 0
         for j in range(n_chunks):
@@ -340,7 +355,8 @@ class GRPOTrainer:
         opp_of = np.repeat(self.trunk_opp[g_idx], k)
         side = np.repeat(self.trunk_side[g_idx], k)
         reseeds = np.repeat(self.rng.integers(0, 2**31 - 1, len(g_idx)), k)
-        learner = LearnerPolicy(self.own, self.dev, c.sample_steps, c.temperature, seed=int(self.rng.integers(2**31)))
+        learner = LearnerPolicy(self.own, self.dev, c.sample_steps, c.temperature, seed=int(self.rng.integers(2**31)),
+                                graphs=self.learner_gf)
         for p in self.branch_opps:
             if isinstance(p, HeuristicPolicy):
                 p.reset(0)

@@ -413,7 +413,8 @@ class NetPolicy(BatchPolicy):
     the single-game path even on CPU (tests/test_sim_batch.py, docs "S3 준비")."""
 
     def __init__(self, net, device: str = "cpu", fp16: bool = False, max_batch: int = 2048,
-                 per_sample: bool = False, cuda_graphs: bool = False, graph_buckets=None, precision: str = "fp32"):
+                 per_sample: bool = False, cuda_graphs: bool = False, graph_buckets=None, precision: str = "fp32",
+                 graphs: bool = False):
         """``precision`` (QZ, sim/fastnet.py): ``"fp32"`` = this exact path; ``"fp16"`` / ``"fp16c"`` (autocast fp16,
         + torch.compile) run ``_own`` through a ``FastCore`` -- faster, not bit-exact."""
         import torch
@@ -438,6 +439,13 @@ class NetPolicy(BatchPolicy):
         self._graphs: dict = {}
         self.precision = precision
         self._fast = None
+        # ``graphs``: per-exact-batch-size CUDA graphs of the *eager fp16 autocast* forward (sim/graphfwd.py):
+        # bit-identical to this class's fp16 path, minus the launch overhead (GRPO's small per-opponent batches)
+        self._gf = None
+        if graphs and self.device.type == "cuda" and self.fp16 and precision == "fp32" and not cuda_graphs:
+            from .graphfwd import GraphForward
+
+            self._gf = GraphForward(self.own, self.device, angle=self.angle, max_batch=max_batch)
         if precision != "fp32":
             from .fastnet import FastCore
 
@@ -531,6 +539,9 @@ class NetPolicy(BatchPolicy):
                 and self._bucket(len(graphic)) is not None):
             return self._graph_forward(np.ascontiguousarray(graphic), np.ascontiguousarray(team),
                                        np.ascontiguousarray(agents))
+        if self._gf is not None and graphic.ndim == 3 and len(graphic) <= self.max_batch:
+            out = self._gf(graphic, team, agents).cpu().numpy()
+            return (out[..., :self._gf.kq], out[..., self._gf.kq:]) if self.angle else (out, None)
         qs, offs = [], []
         for s in range(0, len(graphic), self.max_batch):
             g = torch.from_numpy(graphic[s:s + self.max_batch]).to(self.device)
