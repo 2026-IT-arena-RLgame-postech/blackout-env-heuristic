@@ -56,9 +56,15 @@ def main():
     ap.add_argument("--hash", action="store_true")
     ap.add_argument("--cprofile", action="store_true")
     ap.add_argument("--no-update", action="store_true")
+    ap.add_argument("--det", action="store_true", help="deterministic torch kernels (for bitwise A/B comparisons)")
+    ap.add_argument("--save-batch", default="", help="np.savez the first collected batch here (for update benchmarks)")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--set", nargs="*", default=[])
     a = ap.parse_args()
+    if a.det:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        torch.use_deterministic_algorithms(True, warn_only=True)
     cfg = GRPOConfig(opponents=OPPS, opp_weights=W, pfsp="hard", sample_steps=a.sample_steps, groups=a.groups,
                      k=a.k, drop_flat=0.005, seed=a.seed)
     for it in a.set:
@@ -107,6 +113,8 @@ def main():
             pr.enable()
         batch, cs = tr.collect()
         t1 = time.perf_counter()
+        if a.save_batch and it == 0:
+            np.savez(a.save_batch, **batch)
         if not a.no_update:
             us = tr.update(batch)
             torch.cuda.synchronize()

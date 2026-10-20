@@ -235,6 +235,24 @@ def batch_render_seq(Sb, bg, idx, graphic, team, agents):
         _render_one(S, bg[b], graphic[j], team[j], agents[j], raw, packed)
 
 
+@njit(cache=True, parallel=True)
+def batch_raw_par(Sb, bg, idx, raws, maps):
+    for j in prange(idx.shape[0]):
+        b = idx[j]
+        S = _game_S(Sb, b)
+        core.render_raw_state(S, raws[j])
+        core.render_raw_map(S, bg[b], maps[j])
+
+
+@njit(cache=True)
+def batch_raw_seq(Sb, bg, idx, raws, maps):
+    for j in range(idx.shape[0]):
+        b = idx[j]
+        S = _game_S(Sb, b)
+        core.render_raw_state(S, raws[j])
+        core.render_raw_map(S, bg[b], maps[j])
+
+
 PARALLEL_MIN = 16  # below this many games numba's thread pool costs more than it saves
 
 
@@ -326,6 +344,14 @@ class BatchSim:
             parallel = len(idx) >= PARALLEL_MIN
         fn = batch_render_packed_par if parallel else batch_render_packed_seq
         fn(self.Sb, self.bg, idx, views, team, agents)
+
+    def raw_batch(self, idx) -> tuple[np.ndarray, np.ndarray]:
+        """``raw`` of games ``idx`` at once: float32 [n, 44] broadcasts and uint16 [n, H, W] packed maps."""
+        idx = np.ascontiguousarray(idx, dtype=np.int64)
+        raws = np.zeros((len(idx), 44), dtype=np.float32)
+        maps = np.zeros((len(idx), H, W), dtype=np.uint16)
+        (batch_raw_par if len(idx) >= PARALLEL_MIN else batch_raw_seq)(self.Sb, self.bg, idx, raws, maps)
+        return raws, maps
 
     def raw(self, b: int) -> tuple[np.ndarray, np.ndarray]:
         """Game ``b``'s raw broadcast (44 floats) and packed map, as ``SimState.raw_state/raw_map``."""
