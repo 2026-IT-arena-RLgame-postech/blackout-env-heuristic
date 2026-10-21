@@ -21,6 +21,14 @@ search leaf) reads the quantile mean unchanged.  ``forward_full`` returns (stand
 quantiles).  ``antisym`` (checkpoint flag) marks a net trained only through its antisymmetric
 reading (f(s) - f(mirror s)) / 2: its single-view outputs carry an arbitrary symmetric offset and it
 must be read with ``symmetric=True``.
+
+Optional HL-Gauss final head (``n_bins`` N > 0, ``final_head="hlgauss"``; Farebrother et al. 2024,
+"Stop Regressing"): N logits over equal-width bins of the *remaining* final change
+(``bin_range`` = half-width in REG_SCALE units, default +-140 points), trained with cross-entropy
+against a Gaussian (sigma = ``sigma_ratio`` x bin width) integrated over the bins.  The scalar final
+column is the pmf mean (so decode_outputs and every other consumer read it unchanged);
+``forward_full`` returns the logits as its second value, ``decode_final_dist`` the pmf / mean /
+E[tanh(final / s)].  Default (``n_bins=0``) is the old regression head; old checkpoints load.
 """
 
 from __future__ import annotations
@@ -34,6 +42,9 @@ from blackout_env.model.modules import SwiGLUBlock
 from blackout_env.train.distill.dataset import GRAPHIC_SCALE
 from blackout_env.value.targets import HORIZONS_S
 
+DEFAULT_BINS = 112  # HL-Gauss: bin width 2.5 points over +-140
+DEFAULT_BIN_RANGE = 14.0  # REG_SCALE units (= 140 points)
+DEFAULT_SIGMA_RATIO = 0.75
 REG_SCALE = 10.0  # score/100 -> tenths of points
 HUBER_BETA = 1.0  # = 10 points
 N_TEAM = 5
@@ -42,8 +53,14 @@ TRUNK_MODULES = ("graphic_encoder", "vector_encoder", "attention")
 
 class ValueNet(nn.Module):
     def __init__(self, hidden_size: int = 256, n_horizons: int = len(HORIZONS_S), n_quantiles: int = 0,
-                 antisym: bool = False):
+                 antisym: bool = False, n_bins: int = 0, bin_range: float = DEFAULT_BIN_RANGE,
+                 sigma_ratio: float = DEFAULT_SIGMA_RATIO):
         super().__init__()
+        if n_bins and n_quantiles:
+            raise ValueError("n_bins (HL-Gauss) and n_quantiles are mutually exclusive")
+        self.n_bins = int(n_bins)
+        self.bin_range = float(bin_range)
+        self.sigma_ratio = float(sigma_ratio)
         self.n_horizons = n_horizons
         self.n_quantiles = int(n_quantiles)
         self.antisym = bool(antisym)
@@ -55,6 +72,9 @@ class ValueNet(nn.Module):
         self.head = nn.Sequential(SwiGLUBlock(4 * hidden_size, 2 * hidden_size, hidden_size), nn.GELU(),
                                   nn.Linear(hidden_size, n_horizons + 1 + 3))
         self.q_out = nn.Linear(hidden_size, self.n_quantiles) if self.n_quantiles else None
+        self.bin_out = nn.Linear(hidden_size, self.n_bins) if self.n_bins else None
+        if self.bin_out is not None:
+            self.register_buffer("bin_centers", bin_centers(self.n_bins, self.bin_range), persistent=False)
 
     def init_quantiles_from_final(self) -> None:
         """Every quantile output starts as a copy of the scalar final-change output."""
@@ -80,7 +100,8 @@ class ValueNet(nn.Module):
 
     def head_parameters(self):
         return list(self.head_in.parameters()) + list(self.head.parameters()) + \
-            (list(self.q_out.parameters()) if self.q_out is not None else [])
+            (list(self.q_out.parameters()) if self.q_out is not None else []) + \
+            (list(self.bin_out.parameters()) if self.bin_out is not None else [])
 
     def forward_full(self, graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor):
         """-> (outputs [B, H + 4], quantiles [B, Q] or None); with quantiles the final column = their mean."""
@@ -90,6 +111,11 @@ class ValueNet(nn.Module):
         feats = torch.cat((glob, units[:, :N_TEAM].mean(1), units[:, N_TEAM:].mean(1), tokens[:, -1]), dim=-1)
         hidden = self.head[:-1](self.head_in(feats))
         out = self.head[-1](hidden)
+        if self.bin_out is not None:  # HL-Gauss: the scalar final column = the pmf mean
+            logits = self.bin_out(hidden)
+            mean = (torch.softmax(logits.float(), dim=-1) * self.bin_centers).sum(1, keepdim=True)
+            h = self.n_horizons
+            return torch.cat((out[:, :h], mean.to(out.dtype), out[:, h + 1:]), dim=1), logits
         if self.q_out is None:
             return out, None
         q = self.q_out(hidden)
@@ -116,6 +142,42 @@ class ValueNet(nn.Module):
                               team_state[:, 0] - team_state[:, 1])
 
 
+def bin_edges(n_bins: int, bin_range: float) -> torch.Tensor:
+    return torch.linspace(-bin_range, bin_range, n_bins + 1)
+
+
+def bin_centers(n_bins: int, bin_range: float) -> torch.Tensor:
+    e = bin_edges(n_bins, bin_range)
+    return (e[:-1] + e[1:]) / 2
+
+
+def hlgauss_target(x: torch.Tensor, n_bins: int, bin_range: float, sigma_ratio: float = DEFAULT_SIGMA_RATIO) -> torch.Tensor:
+    """HL-Gauss target pmf [B, N] of values ``x`` [B] (REG_SCALE units, clipped into the range): the
+    N(x, sigma^2) mass of each bin, renormalised over the support."""
+    edges = bin_edges(n_bins, bin_range).to(x.device, torch.float32)
+    sigma = sigma_ratio * (2 * bin_range / n_bins)
+    x = x.float().clamp(-bin_range, bin_range)
+    cdf = torch.special.erf((edges[None] - x[:, None]) / (sigma * 2 ** 0.5))
+    mass = (cdf[:, 1:] - cdf[:, :-1]) / 2
+    return mass / mass.sum(1, keepdim=True).clamp_min(1e-12)
+
+
+def decode_final_dist(logits: torch.Tensor, lead: torch.Tensor, n_bins: int, bin_range: float,
+                      tanh_scale: float = 30.0) -> dict:
+    """HL-Gauss logits [B, N] (remaining final change) + the current lead [B] (score/100) ->
+    numpy {pmf [B, N] over the final lead, edges/centres in points (final = lead + remaining),
+    mean [B] final lead (score/100), sd [B] (score/100), tanh_mean [B] = E[tanh(final points / tanh_scale)],
+    tanh_of_mean [B] = tanh(E[final points] / tanh_scale)}."""
+    pmf = torch.softmax(logits.detach().float(), dim=-1)
+    c = bin_centers(n_bins, bin_range).to(pmf.device) * (100.0 / REG_SCALE)  # points
+    final_pts = lead.detach().float()[:, None] * 100.0 + c[None]
+    mean = (pmf * final_pts).sum(1)
+    sd = ((pmf * (final_pts - mean[:, None]) ** 2).sum(1)).sqrt()
+    tanh_mean = (pmf * torch.tanh(final_pts / tanh_scale)).sum(1)
+    return {"pmf": pmf.cpu().numpy(), "mean": (mean / 100.0).cpu().numpy(), "sd": (sd / 100.0).cpu().numpy(),
+            "tanh_mean": tanh_mean.cpu().numpy(), "tanh_of_mean": torch.tanh(mean / tanh_scale).cpu().numpy()}
+
+
 def decode_outputs(out: torch.Tensor, lead: torch.Tensor) -> dict:
     """Raw outputs -> {delta [B, H], final [B], p [B, 3] (loss, draw, win), p_win [B]} as numpy."""
     out, lead = out.detach(), lead.detach()
@@ -126,7 +188,9 @@ def decode_outputs(out: torch.Tensor, lead: torch.Tensor) -> dict:
             "p": p.cpu().numpy(), "p_win": p[:, 2].cpu().numpy()}
 
 
-def value_loss(out: torch.Tensor, targets: dict, lead: torch.Tensor) -> tuple[torch.Tensor, dict]:
+def value_loss(out: torch.Tensor, targets: dict, lead: torch.Tensor, final_beta: float | None = None,
+               final_logits: torch.Tensor | None = None, bin_range: float = DEFAULT_BIN_RANGE,
+               sigma_ratio: float = DEFAULT_SIGMA_RATIO) -> tuple[torch.Tensor, dict]:
     """Huber on the masked lead changes (mean over horizons) + Huber on the remaining final change
     + cross-entropy on the result.  ``targets``: delta [B, H], delta_mask [B, H], final [B],
     result [B] (-1/0/1)."""
@@ -136,7 +200,12 @@ def value_loss(out: torch.Tensor, targets: dict, lead: torch.Tensor) -> tuple[to
     reg = F.smooth_l1_loss(out[:, :h], targets["delta"].float() * REG_SCALE, beta=HUBER_BETA, reduction="none")
     per_h = (reg * mask).sum(0) / mask.sum(0).clamp_min(1.0)
     delta_loss = per_h.mean()
-    final_loss = F.smooth_l1_loss(out[:, h], (targets["final"].float() - lead.float()) * REG_SCALE, beta=HUBER_BETA)
+    rem = (targets["final"].float() - lead.float()) * REG_SCALE
+    if final_logits is not None:  # HL-Gauss cross-entropy on the remaining final change
+        tgt = hlgauss_target(rem, final_logits.shape[1], bin_range, sigma_ratio)
+        final_loss = -(tgt * torch.log_softmax(final_logits.float(), dim=-1)).sum(-1).mean()
+    else:
+        final_loss = F.smooth_l1_loss(out[:, h], rem, beta=HUBER_BETA if final_beta is None else final_beta)
     ce = F.cross_entropy(out[:, h + 1:], targets["result"].long() + 1)
     loss = delta_loss + final_loss + ce
     stats = {"loss": loss.detach(), "delta": delta_loss.detach(), "final": final_loss.detach(), "ce": ce.detach()}
@@ -148,7 +217,8 @@ def value_loss(out: torch.Tensor, targets: dict, lead: torch.Tensor) -> tuple[to
 def save_value_net(path, net: ValueNet, extra: dict | None = None) -> None:
     state = {k: v for k, v in net.state_dict().items()}
     torch.save({"value_state": state, "hidden_size": net.trunk.hidden_size, "n_horizons": net.n_horizons,
-                "n_quantiles": net.n_quantiles, "antisym": net.antisym,
+                "n_quantiles": net.n_quantiles, "antisym": net.antisym, "n_bins": net.n_bins,
+                "bin_range": net.bin_range, "sigma_ratio": net.sigma_ratio,
                 "horizons_s": list(HORIZONS_S), **(extra or {})}, path)
 
 
@@ -159,7 +229,9 @@ def load_value_net(path, device="cpu", n_quantiles: int | None = None, antisym: 
     q_ck = int(ckpt.get("n_quantiles", 0))
     q = q_ck if n_quantiles is None else int(n_quantiles)
     net = ValueNet(hidden_size=ckpt["hidden_size"], n_horizons=ckpt["n_horizons"], n_quantiles=q,
-                   antisym=bool(ckpt.get("antisym", False)) if antisym is None else antisym)
+                   antisym=bool(ckpt.get("antisym", False)) if antisym is None else antisym,
+                   n_bins=int(ckpt.get("n_bins", 0)), bin_range=float(ckpt.get("bin_range", DEFAULT_BIN_RANGE)),
+                   sigma_ratio=float(ckpt.get("sigma_ratio", DEFAULT_SIGMA_RATIO)))
     state = _strip_compile(ckpt["value_state"])
     if q != q_ck:
         if q_ck:

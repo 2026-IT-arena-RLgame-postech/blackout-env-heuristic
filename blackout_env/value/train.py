@@ -130,7 +130,13 @@ def train(args) -> None:
     if args.batch_size % dist.world:
         raise SystemExit(f"--batch-size {args.batch_size} is not divisible by {dist.world} ranks")
 
-    net = ValueNet().to(device)
+    final_head = getattr(args, "final_head", "reg")
+    if final_head == "hlgauss":
+        if dist.world > 1:
+            raise SystemExit("--final-head hlgauss is single-process (forward_full is not DDP-wrapped)")
+        net = ValueNet(n_bins=args.n_bins, bin_range=args.bin_range, sigma_ratio=args.sigma_ratio).to(device)
+    else:
+        net = ValueNet().to(device)
     if args.init is not None:
         init = torch.load(args.init, map_location="cpu", weights_only=True)
         net.load_trunk(init["policy_state"])
@@ -197,9 +203,13 @@ def train(args) -> None:
         batch = to_device(prefetch.next(), device)
         ctx = torch.autocast(device.type, dtype=amp) if amp else contextlib.nullcontext()
         with ctx:
-            out = model(u8_graphic(batch["graphic"]), batch["team_state"], batch["agent_states"])
+            if net.n_bins:
+                out, logits = net.forward_full(u8_graphic(batch["graphic"]), batch["team_state"], batch["agent_states"])
+            else:
+                out, logits = model(u8_graphic(batch["graphic"]), batch["team_state"], batch["agent_states"]), None
         lead = batch["team_state"][:, 0] - batch["team_state"][:, 1]
-        loss, stats = value_loss(out, batch, lead)
+        loss, stats = value_loss(out, batch, lead, final_beta=getattr(args, "final_beta", None), final_logits=logits,
+                                 bin_range=net.bin_range, sigma_ratio=net.sigma_ratio)
         opt.zero_grad(set_to_none=True)
         scaler.scale(loss).backward()
         scaler.unscale_(opt)
