@@ -1,0 +1,22 @@
+........F..                                                              [100%]
+=================================== FAILURES ===================================
+____________ test_every_knob_is_a_constructor_keyword_of_some_base _____________
+
+    def test_every_knob_is_a_constructor_keyword_of_some_base():
+        covered = set()
+        for base in ALIASES:
+            covered |= set(base_values(base)[1])
+>       assert covered == set(KNOBS)
+E       AssertionError: assert {'adapt_at', ...ansform', ...} == {'adapt_at', ...ansform', ...}
+E         
+E         Extra items in the right set:
+E         'relief_seconds'
+E         'relief_min_hunters'
+E         'relief'
+E         'relief_radius'
+E         Use -v to get more diff
+
+tests/test_heuristic_params.py:52: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_heuristic_params.py::test_every_knob_is_a_constructor_keyword_of_some_base
+1 failed, 10 passed in 19.37s

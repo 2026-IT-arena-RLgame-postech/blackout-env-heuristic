@@ -124,7 +124,7 @@ class StrategicHeuristicV17Teach(TeachLabeller, StrategicHeuristicV17):
 
     def _composition_targets(self, graphic, states, row_for) -> tuple[int, int]:
         ctx = self._teach_ctx
-        carriers = self.carrier_quota if ctx["field_value"] >= CARRIER_FIELD_VALUE else 0
+        carriers = self.carrier_quota if ctx["field_value"] >= self.carrier_field_value else 0
         return self.hunter_quota, min(1, carriers)
 
     # --------------------------------------------------------------------------------- economy
@@ -139,7 +139,7 @@ class StrategicHeuristicV17Teach(TeachLabeller, StrategicHeuristicV17):
 
         def best(scored: list[tuple[float, int]]) -> list[int]:
             top = max(score for score, _ in scored)
-            return [task for score, task in scored if score * SCORE_BAND >= top]
+            return [task for score, task in scored if score * self.score_band >= top]
 
         wanted = {name: set(best(scored)) for name, scored in by_unit.items() if scored}
         goals: dict[str, tuple[Goal, ...]] = {}
@@ -150,7 +150,7 @@ class StrategicHeuristicV17Teach(TeachLabeller, StrategicHeuristicV17):
                 for other, tasks_wanted in wanted.items() if other != unit.name
                 for task in tasks_wanted
                 if (unit.name, task) in pickup
-                and pickup[(other, task)] + EXCLUSION_MARGIN <= pickup[(unit.name, task)]
+                and pickup[(other, task)] + self.exclusion_margin <= pickup[(unit.name, task)]
             }
             free = [(score, task) for score, task in scored if task not in taken]
             if free:
@@ -178,7 +178,7 @@ class StrategicHeuristicV17Teach(TeachLabeller, StrategicHeuristicV17):
         if not scored:
             return ()
         top = max(score for score, _ in scored)
-        return tuple(((center,), "patrol_raid") for score, center in scored if score >= top - IDLE_BAND)
+        return tuple(((center,), "patrol_raid") for score, center in scored if score >= top - self.idle_band)
 
     def _deposit_goals(self, ctx, unit) -> tuple[Goal, ...]:
         costs = self._deposit_costs(ctx, unit)
@@ -186,7 +186,7 @@ class StrategicHeuristicV17Teach(TeachLabeller, StrategicHeuristicV17):
             target, can_deposit = self._storage_target(ctx["graphic"], ctx["states"][unit.row], unit.pos)
             return () if target is None else (((tuple(target),), "deposit" if can_deposit else "wait_storage"),)
         cheapest = min(cost for cost, _, _ in costs)
-        return tuple((tuple(store.cells), "deposit") for cost, _, store in costs if cost <= cheapest + DEPOSIT_BAND)
+        return tuple((tuple(store.cells), "deposit") for cost, _, store in costs if cost <= cheapest + self.deposit_band)
 
     # --------------------------------------------------------------------------------- hunters
 
@@ -226,7 +226,7 @@ class StrategicHeuristicV17Teach(TeachLabeller, StrategicHeuristicV17):
                     for other in chasers if other.name != hunter.name and choices[other.name][1] == "hunt"
                     for target in choices[other.name][0]
                     if target in chosen
-                    and float(fields[other.name][target] / speed32) + EXCLUSION_MARGIN
+                    and float(fields[other.name][target] / speed32) + self.exclusion_margin
                     <= float(fields[hunter.name][target] / speed32)
                 }
                 if faster:
@@ -238,9 +238,9 @@ class StrategicHeuristicV17Teach(TeachLabeller, StrategicHeuristicV17):
         """StrategicHeuristicV17._hunt_plan with near-tied chase targets kept."""
         scored, exposed = self._hunt_scores(ctx, hunter, claimed)
         top = max((score for score, _ in scored), default=0.0)
-        if top > HUNT_THRESHOLD:
+        if top > self.hunt_threshold:
             targets = tuple(dict.fromkeys(
-                tuple(enemy.pos) for score, enemy in scored if score * SCORE_BAND >= top))
+                tuple(enemy.pos) for score, enemy in scored if score * self.score_band >= top))
             return targets, "hunt"
         if exposed:
             store = max(exposed, key=lambda s: s.battery + 6 * s.specials)

@@ -162,7 +162,7 @@ class StrategicHeuristicV22Teach(StrategicHeuristicV21Teach):
         mult = 1.0 + SPEED_BUFF * count[mine, BUFF_SPEED]
         if cls == COLLECTOR:
             mult += SPEED_DEBUFF * count[theirs, DEBUFF_SPEED]
-        return BASE_SPEED[cls] * max(0.1, mult)  # Unity clamps at 0; 0.1 keeps times finite (as V17)
+        return (self.hunter_speed if cls == HUNTER else BASE_SPEED[cls]) * max(0.1, mult)  # Unity clamps at 0; 0.1 keeps times finite (as V17)
 
     def contact_distance(self, ctx, cls_a: int, a_is_enemy: bool, cls_b: int, b_is_enemy: bool) -> float:
         """Centre distance at which two units touch (tiles), with the current size modifiers."""

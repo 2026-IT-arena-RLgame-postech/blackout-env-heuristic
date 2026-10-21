@@ -244,9 +244,9 @@ class Seats(BatchPolicy):
 
 
 def _heuristic_aliases() -> dict:
-    from blackout_env.heuristics.v32_four_hunters import V32, V32_1
+    from blackout_env.heuristics.params import ALIASES
 
-    return {"V32": V32, "V32.1": V32_1}
+    return dict(ALIASES)
 
 
 def make_opponent_policy(spec: str, device: str, seed: int = 0, graphs: bool = False, workers=None) -> BatchPolicy:
