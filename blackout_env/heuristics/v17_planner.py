@@ -50,10 +50,11 @@ except ImportError:  # pragma: no cover
 
 
 def _economy_kernel_py(task_y, task_x, kind, value, extra, home, has_home, hy, hx, cy, cx, c_speed,
-                       dist, speed, carrier, absorb, remaining, steal_weight, special_weights, buff_speed, interval):
+                       dist, speed, carrier, absorb, remaining, steal_weight, special_weights, buff_speed, interval, knobs):
     """``StrategicHeuristicV17._economy_pairs_py``'s arithmetic over arrays: (scores, pickup times, kept)
     [units, tasks].  ``math.dist`` between grid cells is ``sqrt(dy * dy + dx * dx)`` exactly."""
     n = task_y.shape[0]
+    hunter_r, collector_r, danger_weight, contest_factor = knobs[0], knobs[1], knobs[2], knobs[3]
     hunter_danger = np.zeros(n)
     carrier_danger = np.zeros(n)
     contest = np.empty(n)
@@ -63,15 +64,15 @@ def _economy_kernel_py(task_y, task_x, kind, value, extra, home, has_home, hy, h
             ddy = float(task_y[i] - hy[j])
             ddx = float(task_x[i] - hx[j])
             separation = math.sqrt(ddy * ddy + ddx * ddx)
-            if separation < 4.0:
-                danger = max(danger, (4.0 - separation) / 4.0)
+            if separation < hunter_r:
+                danger = max(danger, (hunter_r - separation) / hunter_r)
         hunter_danger[i] = danger
         for j in range(cy.shape[0]):
             ddy = float(task_y[i] - cy[j])
             ddx = float(task_x[i] - cx[j])
             separation = math.sqrt(ddy * ddy + ddx * ddx)
-            if separation < 2.5:
-                danger = max(danger, (2.5 - separation) / 2.5)
+            if separation < collector_r:
+                danger = max(danger, (collector_r - separation) / collector_r)
         carrier_danger[i] = danger
         fastest = math.inf
         if kind[i] == 0:
@@ -118,9 +119,9 @@ def _economy_kernel_py(task_y, task_x, kind, value, extra, home, has_home, hy, h
                     gain += weight * max(0.0, absorb - t_pick)
                 if carrier[u]:
                     gain *= 0.8
-            gain *= 1.0 - 0.6 * (carrier_danger[i] if carrier[u] else hunter_danger[i])
+            gain *= 1.0 - danger_weight * (carrier_danger[i] if carrier[u] else hunter_danger[i])
             if contest[i] + 1.0 < t_pick:
-                gain *= 0.75
+                gain *= contest_factor
             scores[u, i] = gain / (t_pick + t_home + 1.0)
             picks[u, i] = t_pick
             keep[u, i] = True
@@ -169,9 +170,41 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
         special_weights: tuple[float, float, float, float] = (0.45, 0.8, 0.12, 0.12),
         hunter_mode: str = "mixed",
         camp_engage_radius: float = 4.5,
+        hunt_threshold: float = 0.35,
+        carrier_field_value: float = 25.0,
+        danger_hunter_radius: float = 4.0,
+        danger_collector_radius: float = 2.5,
+        danger_weight: float = 0.6,
+        contest_factor: float = 0.75,
+        score_band: float = 1.12,
+        exclusion_margin: float = 1.0,
+        deposit_band: float = 0.25,
+        idle_band: float = 0.3,
+        hunt_spawn_radius: float = 7.0,
+        hunt_spawn_value: float = 12.0,
+        hunt_camp_radius: float = 3.0,
+        hunt_camp_value: float = 4.0,
+        chase_equal: float = 2.5,
+        hunter_speed: float = 6.0,
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.hunt_threshold = float(hunt_threshold)
+        self.carrier_field_value = float(carrier_field_value)
+        self.danger_hunter_radius = float(danger_hunter_radius)
+        self.danger_collector_radius = float(danger_collector_radius)
+        self.danger_weight = float(danger_weight)
+        self.contest_factor = float(contest_factor)
+        self.score_band = float(score_band)
+        self.exclusion_margin = float(exclusion_margin)
+        self.deposit_band = float(deposit_band)
+        self.idle_band = float(idle_band)
+        self.hunt_spawn_radius = float(hunt_spawn_radius)
+        self.hunt_spawn_value = float(hunt_spawn_value)
+        self.hunt_camp_radius = float(hunt_camp_radius)
+        self.hunt_camp_value = float(hunt_camp_value)
+        self.chase_equal = float(chase_equal)
+        self.hunter_speed = float(hunter_speed)
         self.carrier_quota = int(carrier_quota)
         self.hunter_quota = int(hunter_quota)
         self.exposure_cost = float(exposure_cost)
@@ -446,7 +479,7 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             mult += 0.5 * ctx["own_buff"]
             if cls == COLLECTOR:
                 mult -= 0.9 * ctx["own_slowed"]
-        return BASE_SPEED[cls] * max(0.1, mult)
+        return (self.hunter_speed if cls == HUNTER else BASE_SPEED[cls]) * max(0.1, mult)
 
     def _dist(self, ctx, start, goal) -> float:
         return float(self._cached_distance_map(ctx["walkable"], start)[goal])
@@ -497,7 +530,7 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
                     if r == role and i < len(own) and own[i].cls == COLLECTOR]
 
         # Carrier: cheap (sanctuary next to spawn) and 50% faster while field value remains.
-        want_carrier = self.carrier_quota > 0 and ctx["field_value"] >= 25.0
+        want_carrier = self.carrier_quota > 0 and ctx["field_value"] >= self.carrier_field_value
         if want_carrier and not carriers:
             keep = [i for i in pending("carrier") if not own[i].holding]
             choice = keep[0] if keep else self._closest_to_site(ctx, SITE_CARRIER, set(roles))
@@ -694,7 +727,8 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             dist, np.array([self._speed(ctx, u.cls) for u in units], dtype=np.float64),
             np.array([u.cls == CARRIER for u in units], dtype=np.bool_),
             float(ctx["absorb"]), float(ctx["remaining"]), float(self.steal_weight),
-            np.array(self.special_weights, dtype=np.float64), BUFF_SPEED, float(ABSORPTION_INTERVAL_SECONDS))
+            np.array(self.special_weights, dtype=np.float64), BUFF_SPEED, float(ABSORPTION_INTERVAL_SECONDS),
+            np.array([self.danger_hunter_radius, self.danger_collector_radius, self.danger_weight, self.contest_factor]))
         scores, picks, keep = scores.tolist(), picks.tolist(), keep.tolist()
         for k, unit in enumerate(units):
             name = unit.name
@@ -740,13 +774,13 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             danger = 0.0
             for hunter in enemy_hunters:
                 separation = math.dist(target, hunter.pos)
-                if separation < 4.0:
-                    danger = max(danger, (4.0 - separation) / 4.0)
+                if separation < self.danger_hunter_radius:
+                    danger = max(danger, (self.danger_hunter_radius - separation) / self.danger_hunter_radius)
             hunter_danger.append(danger)
             for enemy in enemy_collectors:
                 separation = math.dist(target, enemy.pos)
-                if separation < 2.5:
-                    danger = max(danger, (2.5 - separation) / 2.5)
+                if separation < self.danger_collector_radius:
+                    danger = max(danger, (self.danger_collector_radius - separation) / self.danger_collector_radius)
             carrier_danger.append(danger)
             # Contest: an enemy much closer to a field battery will usually take it first.
             fastest = math.inf
@@ -789,12 +823,12 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
                         gain += weight * max(0.0, ctx["absorb"] - t_pick)
                     if unit.cls == CARRIER:
                         gain *= 0.8
-                gain *= 1.0 - 0.6 * dangers[task_index]
+                gain *= 1.0 - self.danger_weight * dangers[task_index]
                 if contest[task_index] + 1.0 < t_pick:
-                    gain *= 0.75
+                    gain *= self.contest_factor
                 score = gain / (t_pick + t_home + 1.0)
                 if old_target == target:
-                    score *= 1.12
+                    score *= self.score_band
                 pairs.append((score, unit.name, task_index))
                 pickup[(unit.name, task_index)] = t_pick
         return tasks, pairs, pickup
@@ -860,7 +894,7 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
     def _hunt_plan(self, ctx, hunter, claimed):
         scored, exposed = self._hunt_scores(ctx, hunter, claimed)
         best = max(scored, key=lambda p: p[0]) if scored else None
-        if best is not None and best[0] > 0.35:
+        if best is not None and best[0] > self.hunt_threshold:
             return best[1].pos, "hunt"
         if exposed:
             store = max(exposed, key=lambda s: s.battery + 6 * s.specials)
@@ -902,13 +936,14 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             if enemy.cls == HUNTER:
                 # Trading Hunters (both die) only helps when theirs blocks our economy: camping
                 # our spawn exit or our exposed value.  Theirs respawns far away as a Collector.
-                camping = any(min(math.dist(enemy.pos, c) for c in s.cells) <= 3.0 for s in exposed)
-                at_spawn = ctx["ally_spawn"] is not None and math.dist(enemy.pos, ctx["ally_spawn"]) <= 7.0
-                value = 12.0 if at_spawn else 4.0 if camping else 0.0
+                camping = any(min(math.dist(enemy.pos, c) for c in s.cells) <= self.hunt_camp_radius for s in exposed)
+                at_spawn = (ctx["ally_spawn"] is not None
+                            and math.dist(enemy.pos, ctx["ally_spawn"]) <= self.hunt_spawn_radius)
+                value = self.hunt_spawn_value if at_spawn else self.hunt_camp_value if camping else 0.0
             if value <= 0:
                 continue
             enemy_speed = self._speed(ctx, enemy.cls, enemy=True)
-            chase = 1.0 if enemy_speed < speed else 2.5  # equal speed chases rarely close
+            chase = 1.0 if enemy_speed < speed else self.chase_equal  # equal speed chases rarely close
             t = distance / speed
             score = value / (t * chase + 1.0)
             if enemy.pos in claimed:
