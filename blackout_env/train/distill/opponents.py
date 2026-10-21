@@ -129,6 +129,10 @@ def make_opponent(descriptor: str, seed: int):
         parameters, base = split_descriptor(descriptor)
         offset = parameters.pop("seed", 0)
         return PerturbedPolicy(make_opponent(base, seed), seed=seed + offset, **parameters)
+    from blackout_env.heuristics.params import ALIASES, resolve_descriptor
+
+    if descriptor.replace(",", ":", 1).split(":", 1)[0] in ALIASES:  # V32.1[:k=v,...] (heuristics/params.py)
+        descriptor = resolve_descriptor(descriptor)
     policy_id, _, parameters = descriptor.partition(":")
     return make_heuristic(policy_id, **_parse_parameters(parameters))
 

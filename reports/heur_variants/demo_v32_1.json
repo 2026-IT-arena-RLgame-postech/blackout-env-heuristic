@@ -1,0 +1,116 @@
+{
+ "base": "V32.1",
+ "ref": "V31",
+ "scale": 1.0,
+ "seed": 1,
+ "results": {
+  "base": {
+   "desc": "strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=3",
+   "games": 32,
+   "win": 0.8125,
+   "margin": 37.21875,
+   "margin_se": 7.2831588666025855,
+   "dis": 0.0,
+   "idle": 0.17244315399612645,
+   "fired": 0.0,
+   "ndiff": 0.0,
+   "steps": 3589.96875
+  },
+  "v0": {
+   "desc": "strategic_v32:reserve_stage=0.5363,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1343,camp_engage_radius=6.5,hunter_quota=4,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=3,guard_radius=7.446,sentry_radius=7.028,late_after=8.48,adapt_at=5.561,hunter_speed=5.871,hunt_spawn_radius=8.294,camp_tiles=2.444,commit_margin=-0.02998,join_reach=0.7638,steal_weight=2.018,danger_hunter_radius=4.427,danger_collector_radius=2.866,deposit_band=0.2545",
+   "games": 32,
+   "win": 0.84375,
+   "margin": 40.03125,
+   "margin_se": 6.236623869925287,
+   "dis": 0.030001712815212456,
+   "idle": 0.18789300370324233,
+   "fired": 1.0,
+   "ndiff": 1182.1875,
+   "steps": 4219.0625
+  },
+  "v1": {
+   "desc": "strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1394,camp_engage_radius=6.5,hunter_quota=4,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,sentry_offset=3.112,hunt_spawn_value=12.45,hunt_camp_radius=2.402,hunt_camp_value=4.793,chase_equal=2.499,carrier_hunter_scale=0.9784,danger_tiles=2.931,join_reach=1.096,trade_radius=0.5,trade_reach=0.9536,trade_floor=0.2132,carrier_field_value=25.07",
+   "games": 32,
+   "win": 0.65625,
+   "margin": 25.78125,
+   "margin_se": 8.888604710592764,
+   "dis": 0.07873273684548,
+   "idle": 0.1468698081344253,
+   "fired": 1.0,
+   "ndiff": 1806.875,
+   "steps": 2947.1875
+  },
+  "v2": {
+   "desc": "strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=3,guard_radius=6.652,hunter_speed=5.454,hunt_threshold=0.3451,hunt_camp_radius=2.886,chase_equal=1.92,carrier_col_scale=0.824,camp_tiles=2.805,danger_tiles=2.412,join_reach=1.493,danger_hunter_radius=3.025,danger_weight=0.4827,score_band=1.141,exclusion_margin=0.7359,idle_band=0.3734",
+   "games": 32,
+   "win": 0.75,
+   "margin": 27.03125,
+   "margin_se": 8.189942905473876,
+   "dis": 0.06669759074350952,
+   "idle": 0.18870587663613475,
+   "fired": 1.0,
+   "ndiff": 1370.53125,
+   "steps": 2502.15625
+  },
+  "v3": {
+   "desc": "strategic_v32:reserve_stage=0.7511,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.13,camp_engage_radius=4.883,hunter_quota=4,sentry_min_hunters=4,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=3,hunt_camp_radius=2.663,hunt_camp_value=2.523,danger_tiles=2.718,commit_margin=-0.01207,commit_reach=1.014,join_margin=0.05367,join_reach=1.13,danger_collector_radius=1.912,contest_factor=0.6562,score_band=1.113,exclusion_margin=0.545",
+   "games": 32,
+   "win": 0.75,
+   "margin": 23.34375,
+   "margin_se": 8.32184734963018,
+   "dis": 0.14072089209120328,
+   "idle": 0.13759007059590184,
+   "fired": 1.0,
+   "ndiff": 4590.75,
+   "steps": 3642.25
+  },
+  "v4": {
+   "desc": "strategic_v32:reserve_stage=0.03597,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.13,camp_engage_radius=6.271,hunter_quota=4,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=2,guard_radius=6.94,sweep_radius=8.129,hunt_threshold=0.3526,hunt_spawn_value=9.865,hunt_camp_radius=3.167,chase_equal=2.151,carrier_col_scale=0.9934,camp_tiles=3.428,commit_reach=1.05,join_reach=1.036,trade_radius=1.056,trade_reach=0.6738,contest_factor=0.7615,deposit_band=0.277",
+   "games": 32,
+   "win": 0.875,
+   "margin": 41.4375,
+   "margin_se": 6.546250343111504,
+   "dis": 0.027970833917328894,
+   "idle": 0.1996354730519137,
+   "fired": 1.0,
+   "ndiff": 288.75,
+   "steps": 2768.90625
+  },
+  "v5": {
+   "desc": "strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.13,camp_engage_radius=6.277,hunter_quota=4,sentry_min_hunters=2,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=3,guard_radius=6.885,sentry_offset=2.46,sentry_radius=6.092,adapt_at=5.219,hunt_spawn_radius=7.474,hunt_camp_radius=2.985,hunt_camp_value=5.867,camp_tiles=2.752,danger_tiles=3.307,opening_seconds=8.708,join_margin=0.1237,join_reach=1.207,steal_weight=2.169,danger_weight=0.4781,exclusion_margin=0.5242",
+   "games": 32,
+   "win": 0.625,
+   "margin": 19.9375,
+   "margin_se": 8.906078671597701,
+   "dis": 0.06786625322279405,
+   "idle": 0.13127941538564158,
+   "fired": 1.0,
+   "ndiff": 2043.40625,
+   "steps": 3268.28125
+  },
+  "v6": {
+   "desc": "strategic_v32:reserve_stage=0.5,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1127,camp_engage_radius=6.5,hunter_quota=4,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=3,sweep_radius=9.63,sentry_radius=7.99,hunt_threshold=0.4125,hunt_spawn_value=11.4,carrier_col_scale=0.7712,opening_seconds=12.2,commit_margin=0.06894,commit_reach=0.5,join_margin=0.02106,trade_floor=0.2111,steal_weight=1.821,carrier_field_value=26.55,deposit_band=0.3953",
+   "games": 32,
+   "win": 0.65625,
+   "margin": 19.1875,
+   "margin_se": 9.055971517026071,
+   "dis": 0.06719331234613968,
+   "idle": 0.2067412667130873,
+   "fired": 1.0,
+   "ndiff": 1717.65625,
+   "steps": 3519.3125
+  },
+  "v7": {
+   "desc": "strategic_v32:reserve_stage=0.4969,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.13,camp_engage_radius=6.5,hunter_quota=4,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,sentry_radius=7.869,late_after=10.51,hunt_threshold=0.3058,hunt_camp_radius=3.918,hunt_camp_value=5.584,danger_tiles=3.011,trade_radius=1.119,trade_reach=0.7229,trade_floor=0.2468,steal_weight=1.945,danger_hunter_radius=4.739,score_band=1.166,idle_band=0.3468",
+   "games": 32,
+   "win": 0.75,
+   "margin": 33.28125,
+   "margin_se": 7.459818715201588,
+   "dis": 0.03742862876714975,
+   "idle": 0.20848683973906867,
+   "fired": 1.0,
+   "ndiff": 427.96875,
+   "steps": 3876.5625
+  }
+ }
+}
