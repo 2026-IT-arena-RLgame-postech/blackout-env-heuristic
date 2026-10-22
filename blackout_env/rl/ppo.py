@@ -47,7 +47,7 @@ class PPOTrainer(GRPOTrainer):
         self.critic = load_value_net(cfg.value, device=self.dev)
         self.critic.train(False)
         self.copt = torch.optim.AdamW(self.critic.parameters(), lr=cfg.critic_lr, weight_decay=0.0)
-        self.cscaler = torch.amp.GradScaler("cuda", enabled=bool(cfg.critic_fp16) and self.dev.type == "cuda")
+        self.cscaler = torch.amp.GradScaler("cuda", init_scale=1024.0, growth_interval=10**9, enabled=bool(cfg.critic_fp16) and self.dev.type == "cuda")
 
     def _value(self, g, t, a):
         """Critic V for canonical own-team views (differentiable)."""

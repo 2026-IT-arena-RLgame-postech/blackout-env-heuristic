@@ -414,6 +414,9 @@ class GRPOTrainer:
         self.own = _OwnQ(self.net)
         self.ref = _OwnQ(copy.deepcopy(self.net).eval().requires_grad_(False))
         self.opt = torch.optim.AdamW(self.net.parameters(), lr=cfg.lr, weight_decay=0.0)
+        # fp16 update: loss scaling (static 1024 unless a step overflows, then halved) -- without it ~10 % of the fp16 gradients underflow
+        self.scaler = torch.amp.GradScaler("cuda", init_scale=1024.0, growth_interval=10**9,
+                                           enabled=bool(cfg.update_fp16) and self.dev.type == "cuda")
         self.leaf = LeafValue(cfg.value, cfg.device)
         gr = bool(cfg.graphs) and self.dev.type == "cuda"
         self.learner_gf = None
@@ -634,9 +637,16 @@ class GRPOTrainer:
                 kl = (p * (lp_all - ref_lp[mb])).sum(-1).mean()
                 loss = pg + c.beta * kl
                 self.opt.zero_grad(set_to_none=True)
-                loss.backward()
-                gn = torch.nn.utils.clip_grad_norm_(self.net.parameters(), c.max_grad_norm)
-                self.opt.step()
+                if self.scaler.is_enabled():
+                    self.scaler.scale(loss).backward()
+                    self.scaler.unscale_(self.opt)
+                    gn = torch.nn.utils.clip_grad_norm_(self.net.parameters(), c.max_grad_norm)
+                    self.scaler.step(self.opt)
+                    self.scaler.update()
+                else:
+                    loss.backward()
+                    gn = torch.nn.utils.clip_grad_norm_(self.net.parameters(), c.max_grad_norm)
+                    self.opt.step()
                 with torch.no_grad():
                     st["loss"] += loss.item(); st["pg"] += pg.item(); st["kl"] += kl.item()
                     st["ent"] += -(p * lp_all).sum(-1).mean().item()
