@@ -68,6 +68,15 @@ def main():
         setattr(cfg, k, (v.lower() in ("1", "true", "yes")) if isinstance(cur, bool) else type(cur)(v))
     tr = PPOTrainer(cfg)
     wrap(tr, "values_np", "_values_np")
+    for i, o in enumerate(tr.opps):
+        wrap(o, f"pol:opp{i}", "moves")
+    om = grpo.LearnerPolicy.moves
+    def lm(self, *args, **kw):
+        sync(); t0 = time.perf_counter()
+        r = om(self, *args, **kw)
+        T["pol:learner"] += time.perf_counter() - t0
+        return r
+    grpo.LearnerPolicy.moves = lm
     wrap(tr, "rollout", "_rollout")
     orig_gu = GRPOTrainer.update
     def gu(self, batch):
