@@ -52,7 +52,7 @@ class PPOTrainer(GRPOTrainer):
     def _value(self, g, t, a):
         """Critic V for canonical own-team views (differentiable)."""
         g = unpack_graphic(g) if g.dim() == 3 else g
-        if self.critic.training and self.cfg.update_compile and self.dev.type == "cuda":
+        if self.critic.training and self.cfg.update_compile and self.dev.type == "cuda" and g.shape[0] == self.cfg.minibatch:
             out = self._compiled_fwd(self.critic, self.cfg.critic_fp16, logits=False)(g, t, a)
         else:
             with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.critic_fp16 and self.dev.type == "cuda"):

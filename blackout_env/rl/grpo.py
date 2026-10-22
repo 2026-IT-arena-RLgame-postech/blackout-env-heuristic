@@ -618,19 +618,20 @@ class GRPOTrainer:
     # -------- update
     def _compiled_fwd(self, mod, fp16: bool, logits: bool = True):
         """The (autocast +) forward of ``mod`` returning float32 (logits only for ``_OwnQ``), torch.compile'd once per
-        (module, fp16), dynamic batch dim (the last minibatch of an epoch has a different size every
-        iteration; static shapes recompiled for ~2 min each time).  autocast is entered *inside* the compiled function (outside, inductor mis-compiles the fp16
-        RMSNorm with fp32 weights)."""
+        (module, fp16), static shapes, used only for full-size minibatches (the shorter last minibatch of an epoch
+        varies per iteration: recompiles cost ~2 min, and dynamic=True crashes inductor on this net).  autocast is entered
+        *inside* the compiled function (outside, inductor mis-compiled the fp16 RMSNorm with fp32 weights)."""
         key = (id(mod), fp16)
         if key not in self._compiled:
-            self._compiled[key] = torch.compile(_AutocastFwd(mod, fp16, self.dev.type, logits), dynamic=True)
+            self._compiled[key] = torch.compile(_AutocastFwd(mod, fp16, self.dev.type, logits), dynamic=False)
         return self._compiled[key]
 
     def _logits(self, own, g, t, a):
         g = unpack_graphic(g) if g.dim() == 3 else g
         # compiled only where gradients flow: inductor's fp16 graphs for parameter-free-grad / no_grad forwards were wrong
         # (max |dlogit| ~ 10, NaN) on torch 2.11 -- the old / ref log-probs stay eager
-        if self.cfg.update_compile and self.dev.type == "cuda" and torch.is_grad_enabled() and own is self.own:
+        if self.cfg.update_compile and self.dev.type == "cuda" and torch.is_grad_enabled() and own is self.own \
+                and g.shape[0] == self.cfg.minibatch:
             return self._compiled_fwd(own, self.cfg.update_fp16)(g, t, a) / self.cfg.temperature
         with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.update_fp16 and self.dev.type == "cuda"):
             q, _ = own(g, t, a)
