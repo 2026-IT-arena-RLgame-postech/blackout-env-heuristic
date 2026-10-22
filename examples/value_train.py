@@ -155,6 +155,12 @@ def main(argv=None) -> None:
     t.add_argument("--eval-every", type=int, default=2000)
     t.add_argument("--eval-rows", type=int, default=40_000, help="held-out rows scored at each eval")
     t.add_argument("--seed", type=int, default=0)
+    t.add_argument("--final-head", choices=["reg", "hlgauss"], default="reg",
+                   help="remaining-final-change head: Huber regression (default) or HL-Gauss histogram (model.py)")
+    t.add_argument("--final-beta", type=float, default=None, help="reg head Huber beta in REG_SCALE units (default 1; 10 ~ MSE)")
+    t.add_argument("--n-bins", type=int, default=112)
+    t.add_argument("--bin-range", type=float, default=14.0, help="HL-Gauss half-range, REG_SCALE units (14 = 140 points)")
+    t.add_argument("--sigma-ratio", type=float, default=0.75)
     t.add_argument("--num-threads", type=int, default=4)
     t.set_defaults(fn=cmd_train)
 
