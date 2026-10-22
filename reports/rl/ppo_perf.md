@@ -23,7 +23,7 @@ Which GRPO perf work PPO already had: heuristic workers (`heur_workers=-1` -> 4)
 |---|---|---|---|---|
 | 1 | learner CUDA graphs in PPO's trunk rollout (`LearnerPolicy(graphs=self.learner_gf)`, same `graphs` flag as GRPO) | default | learner 4.3 -> 2.1 s | bitwise (graph == eager fp16 forward) |
 | 2 | `overlap_heur` (PPOConfig default True; GRPOConfig default False): `JointSeats(split=True)` = what the two per-team `Seats` calls compute, but both teams' heuristic opponents are `start`ed on the workers before any net forward and `finish`ed after; every learner / net forward keeps its per-team batch composition, RNG stream and record order | default (PPO) | trunk 24.0 -> ~12.7 s | bitwise: batch hash, policy and critic parameter hashes identical to baseline over 4 full iterations (collect + update, `--det`, pool without d6_v42); unit test `test_ppo_overlap_heur_is_bit_identical_cpu` (in-process and worker heuristics) |
-| 3 | `critic_fp16` (PPO, **opt-in**): autocast + GradScaler for critic epochs and the leaf/bootstrap value reads | opt-in | leaf 2.2 -> 1.4, critic epochs ~13.4 -> ~6 | not bitwise: critic gradient cos 0.99999 / rel. err 0.5 % vs fp32, value mean abs diff 8e-4 (std of V 0.38) |
+| 3 | `critic_fp16` (PPO, **opt-in**): autocast + GradScaler for critic epochs and the leaf/bootstrap value reads | opt-in | leaf 2.2 -> 1.4, critic epochs ~13.4 -> ~6 (estimated from the combined numbers) | not bitwise: critic gradient cos 0.99999 / rel. err 0.5 % vs fp32, value mean abs diff 8e-4 (std of V 0.38) |
 | 4 | `update_fp16` (existing, opt-in) now with loss scaling (`GradScaler(init_scale=1024, no growth)`; applies to GRPO too, still off by default) | opt-in | policy update 17.8 -> ~10 | without scaling ~10 % of fp16 policy gradients underflowed (rel. err 1.8 %, cos 0.99984); with scaling rel. err 0.07 %, cos 1.00000; logp mean abs diff 0.004, argmax agreement 1.0 |
 | 5 | `update_compile` (opt-in, GRPO+PPO): torch.compile (static shape, full-size minibatches only, grad-mode forwards only; autocast entered inside the compiled fn) | opt-in | fp32: update 31.4 -> 24.3; with fp16: 19 -> 10.6 | fp32 compile: logits within 2e-5 of eager, losses equal to ~4 digits. **One-off compile ~60-90 s** at the first update. Inductor on torch 2.11 gives wrong/NaN fp16 outputs for no-grad forwards and crashes with `dynamic=True`, hence the restrictions (old/ref log-probs stay eager) |
 
@@ -37,8 +37,8 @@ run-to-run (atomics), as before. Tests: `tests/test_grpo.py` + `tests/test_sim_b
 |---|---|---|---|---|---|
 | baseline 2521ff6 | 24.0 | 2.2 | 31.2 | 57.4 | 1.0x |
 | new defaults (bit-identical) | 12.7 | 2.2 | 31.4 | 46.4 | 1.24x |
-| + `update_compile=true` (fp32) | 12.7 | 2.2 | ~24.3 | ~39 | 1.5x |
-| + `update_fp16 critic_fp16` | 12.7 | 1.4 | ~19 | ~33 | 1.7x |
+| + `update_compile=true` (fp32; update measured on a saved batch, total estimated) | 12.7 | 2.2 | ~24.3 | ~39 | 1.5x |
+| + `update_fp16 critic_fp16` (update measured on a saved batch, total estimated) | 12.7 | 1.4 | ~19 | ~33 | 1.7x |
 | + all three (recommended) | 13.0 | 1.4 | 10.7 | 25.1 | 2.3x |
 
 Not worth it / rejected (measured): `minibatch=2048` with fp16+compile 10.2 vs 10.6 s (GPU compute bound; and it would change the
