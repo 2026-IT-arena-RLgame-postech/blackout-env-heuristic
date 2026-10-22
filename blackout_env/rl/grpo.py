@@ -399,6 +399,7 @@ class GRPOConfig:
     heur_workers: int = -1     # heuristic opponents in this many worker processes (-1: 4 on CUDA, else none; 0: in-process)
     update_fp16: bool = False  # autocast fp16 in update()'s forward/backward (~2x faster; changes numerics slightly, off by default)
     overlap_heur: bool = False  # heuristic opponents of both teams run on the workers during the network forwards (bit-identical to the per-team Seats calls; ignored with joint)
+    update_compile: bool = False  # (opt-in, numerics differ at fp rounding level) torch.compile (inductor) of the update-phase forwards
     graphs: bool = True        # CUDA-graph replay of the learner / net-opponent forwards (bit-identical, sim/graphfwd.py)
 
 
@@ -413,6 +414,7 @@ class GRPOTrainer:
         self.net = net.to(self.dev).eval()   # no dropout: eval mode also while training
         self.own = _OwnQ(self.net)
         self.ref = _OwnQ(copy.deepcopy(self.net).eval().requires_grad_(False))
+        self._compiled: dict = {}
         self.opt = torch.optim.AdamW(self.net.parameters(), lr=cfg.lr, weight_decay=0.0)
         # fp16 update: loss scaling (static 1024 unless a step overflows, then halved) -- without it ~10 % of the fp16 gradients underflow
         self.scaler = torch.amp.GradScaler("cuda", init_scale=1024.0, growth_interval=10**9,
@@ -601,8 +603,17 @@ class GRPOTrainer:
         return {**{k: v / c.value_steps for k, v in tot.items()}, "v_rows": buf.size}
 
     # -------- update
+    def _compiled_fwd(self, mod):
+        """``mod`` itself, or (``update_compile``) its torch.compile'd version, built once per module."""
+        if not (self.cfg.update_compile and self.dev.type == "cuda"):
+            return mod
+        if id(mod) not in self._compiled:
+            self._compiled[id(mod)] = torch.compile(mod)
+        return self._compiled[id(mod)]
+
     def _logits(self, own, g, t, a):
         g = unpack_graphic(g) if g.dim() == 3 else g
+        own = self._compiled_fwd(own)
         with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.update_fp16 and self.dev.type == "cuda"):
             q, _ = own(g, t, a)
         return q.float() / self.cfg.temperature
