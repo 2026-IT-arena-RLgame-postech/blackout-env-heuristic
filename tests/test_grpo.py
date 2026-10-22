@@ -144,3 +144,34 @@ def test_ppo_overlap_heur_is_bit_identical_cpu():
         got = collect(overlap, workers)
         for k in ref:
             assert np.array_equal(ref[k], got[k]), (k, overlap, workers)
+
+
+def test_ppo_hlgauss_critic_cpu():
+    """HL-Gauss critic: pre-fit on the first batch, CE steps run, V within [vmin, vmax], diagnostics finite."""
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    cfg = PPOConfig(init=CKPT, value=VALUE, device="cpu", games=3, segment=8, minibatch=8, epochs=1, critic_warmup=1,
+                    critic_head="hlgauss", critic_bins=21)
+    tr = PPOTrainer(cfg)
+    s0, s1 = tr.step(), tr.step()
+    assert "pg" not in s0 and np.isfinite(s1["pg"]) and np.isfinite(s0["vf_loss"]) and np.isfinite(s1["vf_loss"])
+    for s in (s0, s1):
+        assert np.isfinite(s["expl_var"]) and np.isfinite(s["abs_adv"]) and 0 < s["pmf_entropy"] <= np.log(21) + 1e-4
+    assert np.isfinite(s0["prefit_ce_last"]) and s0["prefit_ce_last"] <= s0["prefit_ce_first"] + 1e-6
+    g = np.random.default_rng(0)
+    batch, _ = tr.collect()
+    v = tr._values_np(batch["g"], batch["t"], batch["a"])
+    assert (v >= cfg.critic_vmin - 1e-5).all() and (v <= cfg.critic_vmax + 1e-5).all()
+    # critic round-trips through the _critic.pt mechanism incl. the new head
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as d:
+        tr.save(os.path.join(d, "x.pt"))
+        sd = torch.load(os.path.join(d, "x_critic.pt"), weights_only=True)
+        assert "bin_out.weight" in sd and sd["bin_out.weight"].shape[0] == 21
+
+
+def test_ppo_reg_critic_diagnostics_cpu():
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    s = PPOTrainer(PPOConfig(init=CKPT, value=VALUE, device="cpu", games=3, segment=8, minibatch=8, epochs=1, critic_warmup=0)).step()
+    assert np.isfinite(s["expl_var"]) and np.isfinite(s["abs_adv"]) and np.isnan(s["pmf_entropy"])

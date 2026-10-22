@@ -9,7 +9,8 @@ where the advantage comes from:
 * a separate critic (a copy of the S1/S2 value net) reads ``V(s) = (P(win) - P(loss)) + lam *
   tanh(final / scale)`` from its heads (the same quantity GRPO's leaf reads), bootstraps the segment
   end, and is trained on the GAE(gamma = 1, ``gae_lambda``) returns (Huber), the first
-  ``critic_warmup`` iterations critic only.
+  ``critic_warmup`` iterations critic only.  ``critic_head='hlgauss'``: a categorical pmf over the return (HL-Gauss CE),
+  V = its mean (see reports/rl/ppo_r2_setup.md).
 """
 
 from __future__ import annotations
@@ -38,6 +39,27 @@ class PPOConfig(GRPOConfig):
     vf_huber: float = 0.1
     critic_fp16: bool = False  # (opt-in, changes numerics) fp16 autocast + GradScaler for the critic (update epochs and value reads)
     overlap_heur: bool = True  # (bit-identical) heuristic opponents overlap the network forwards
+    # distributional critic ("Stop Regressing", Farebrother et al. 2024): categorical pmf over the *return*, HL-Gauss CE loss
+    critic_head: str = "reg"   # "reg" (Huber on the S2 heads' V) | "hlgauss"
+    critic_bins: int = 101
+    critic_vmin: float = -1.4  # returns lie in about [-(1 + lam), 1 + lam] = [-1.2, 1.2]
+    critic_vmax: float = 1.4
+    critic_sigma: float = 0.75  # HL-Gauss sigma in bin widths
+    critic_prefit_epochs: int = 4   # one-off fit of the new head to the S2 heads' V on the first batch (hlgauss only)
+    critic_prefit_lr: float = 1e-3
+
+
+class _HLLogits(torch.nn.Module):
+    """(autocast +) critic forward returning the fp32 bin logits; autocast inside, like grpo._AutocastFwd."""
+
+    def __init__(self, mod, fp16: bool, device_type: str):
+        super().__init__()
+        self.mod, self.fp16, self.dt = mod, fp16, device_type
+
+    def forward(self, g, t, a):
+        with torch.autocast(self.dt, dtype=torch.float16, enabled=self.fp16):
+            lg = self.mod.forward_full(g, t, a)[1]
+        return lg.float()
 
 
 class PPOTrainer(GRPOTrainer):
@@ -46,11 +68,54 @@ class PPOTrainer(GRPOTrainer):
         super().__init__(cfg)
         self.critic = load_value_net(cfg.value, device=self.dev)
         self.critic.train(False)
+        self.hl = cfg.critic_head == "hlgauss"
+        if cfg.critic_head not in ("reg", "hlgauss"):
+            raise ValueError(cfg.critic_head)
+        self._prefit_done = not self.hl
+        self._hl_ent = float("nan")
+        if self.hl:
+            # reuse ValueNet's optional bin head (a Linear on the head's hidden features, fed by forward_full); the centres
+            # buffer is ours (asymmetric ranges allowed).  The new head starts untrained -> _prefit_head in the first collect.
+            cr = self.critic
+            cr.n_bins = cfg.critic_bins
+            cr.bin_out = torch.nn.Linear(cr.head[-1].in_features, cfg.critic_bins).to(self.dev)
+            e = torch.linspace(cfg.critic_vmin, cfg.critic_vmax, cfg.critic_bins + 1, device=self.dev)
+            cr.register_buffer("bin_centers", (e[:-1] + e[1:]) / 2, persistent=False)
+            self.hl_edges = e
+            self.hl_sigma = cfg.critic_sigma * (cfg.critic_vmax - cfg.critic_vmin) / cfg.critic_bins
         self.copt = torch.optim.AdamW(self.critic.parameters(), lr=cfg.critic_lr, weight_decay=0.0)
         self.cscaler = torch.amp.GradScaler("cuda", init_scale=1024.0, growth_interval=10**9, enabled=bool(cfg.critic_fp16) and self.dev.type == "cuda")
 
-    def _value(self, g, t, a):
-        """Critic V for canonical own-team views (differentiable)."""
+    def _hl_target(self, x):
+        """HL-Gauss target pmf [B, bins] of returns x [B]: N(x, sigma^2) mass per bin, renormalised over the support."""
+        x = x.float().clamp(self.cfg.critic_vmin, self.cfg.critic_vmax)
+        cdf = torch.special.erf((self.hl_edges[None] - x[:, None]) / (self.hl_sigma * 2 ** 0.5))
+        mass = (cdf[:, 1:] - cdf[:, :-1]) / 2
+        return mass / mass.sum(1, keepdim=True).clamp_min(1e-12)
+
+    def _hl_logits(self, g, t, a):
+        """fp32 bin logits [B, bins] (compiled in training for full-size minibatches, like the regression critic)."""
+        c = self.cfg
+        if self.critic.training and c.update_compile and self.dev.type == "cuda" and g.shape[0] == c.minibatch:
+            key = (id(self.critic), c.critic_fp16, "hl")
+            if key not in self._compiled:
+                self._compiled[key] = torch.compile(_HLLogits(self.critic, c.critic_fp16, self.dev.type), dynamic=False)
+            return self._compiled[key](g, t, a)
+        with torch.autocast(self.dev.type, dtype=torch.float16, enabled=c.critic_fp16 and self.dev.type == "cuda"):
+            lg = self.critic.forward_full(g, t, a)[1]
+        return lg.float()
+
+    def _value(self, g, t, a, orig=False):
+        """Critic V for canonical own-team views (differentiable).  hlgauss: E[pmf] over the return bins (``orig=True``:
+        the S2 heads' V instead, used by the pre-fit)."""
+        if self.hl and not orig:
+            g = unpack_graphic(g) if g.dim() == 3 else g
+            lg = self._hl_logits(g, t, a)
+            return (torch.softmax(lg, -1) * self.critic.bin_centers).sum(-1), lg
+        v = self._value_reg(g, t, a)
+        return (v, None) if self.hl else v
+
+    def _value_reg(self, g, t, a):
         g = unpack_graphic(g) if g.dim() == 3 else g
         if self.critic.training and self.cfg.update_compile and self.dev.type == "cuda" and g.shape[0] == self.cfg.minibatch:
             out = self._compiled_fwd(self.critic, self.cfg.critic_fp16, logits=False)(g, t, a)
@@ -65,12 +130,52 @@ class PPOTrainer(GRPOTrainer):
         return (p[:, 2] - p[:, 0]) + self.cfg.lam * torch.tanh(final / self.cfg.scale)
 
     @torch.no_grad()
-    def _values_np(self, g, t, a, bs=4096):
-        out = []
+    def _values_np(self, g, t, a, bs=4096, orig=False):
+        out, ent = [], []
         for s in range(0, len(g), bs):
             to = lambda x: torch.from_numpy(np.ascontiguousarray(x[s:s + bs])).to(self.dev)
-            out.append(self._value(to(g), to(t), to(a)).cpu().numpy())
+            v = self._value(to(g), to(t), to(a), orig=orig)
+            if self.hl:
+                v, lg = v
+                if lg is not None:
+                    lp = torch.log_softmax(lg, -1)
+                    ent.append((-(lp.exp() * lp).sum(-1)).cpu().numpy())
+            out.append(v.cpu().numpy())
+        self._hl_ent_last = float(np.concatenate(ent).mean()) if ent else float("nan")
         return np.concatenate(out) if out else np.zeros(0, np.float32)
+
+    def _prefit_head(self, g, t, a):
+        """One-off: fit the fresh bin head (critic body frozen) with HL-Gauss CE to the S2 heads' V of the first batch's
+        views, so the GAE of that very batch (and the policy update after the warm-up) starts from a calibrated critic."""
+        c = self.cfg
+        orig = self._values_np(g, t, a, orig=True)
+        tgt_v = torch.from_numpy(orig).to(self.dev)
+        gt, tt, at = (torch.from_numpy(np.ascontiguousarray(x)).to(self.dev) for x in (g, t, a))
+        params = list(self.critic.bin_out.parameters())
+        for q in self.critic.parameters():
+            q.requires_grad_(False)
+        for q in params:
+            q.requires_grad_(True)
+        opt = torch.optim.Adam(params, lr=c.critic_prefit_lr)
+        n, ce_hist = len(tgt_v), []
+        for _ in range(c.critic_prefit_epochs):
+            perm = torch.randperm(n, device=self.dev)
+            for s in range(0, n, c.minibatch):
+                mb = perm[s:s + c.minibatch]
+                with torch.autocast(self.dev.type, dtype=torch.float16, enabled=c.critic_fp16 and self.dev.type == "cuda"):
+                    lg = self.critic.forward_full(unpack_graphic(gt[mb]) if gt.dim() == 3 else gt[mb], tt[mb], at[mb])[1]
+                loss = -(self._hl_target(tgt_v[mb]) * torch.log_softmax(lg.float(), -1)).sum(-1).mean()
+                opt.zero_grad(set_to_none=True)
+                loss.backward()
+                opt.step()
+                ce_hist.append(loss.item())
+        for q in self.critic.parameters():
+            q.requires_grad_(True)
+        self._prefit_done = True
+        pv = self._values_np(g, t, a)
+        self.prefit_stats = {"prefit_ce_first": ce_hist[0], "prefit_ce_last": ce_hist[-1],
+                             "prefit_v_rmse": float(np.sqrt(np.mean((pv - orig) ** 2))),
+                             "prefit_v_std": float(orig.std())}
 
     def collect(self):
         c = self.cfg
@@ -84,7 +189,10 @@ class PPOTrainer(GRPOTrainer):
         game = np.concatenate([r[0] for r in recs])
         g = np.concatenate([r[1] for r in recs]); ts = np.concatenate([r[2] for r in recs])
         ag = np.concatenate([r[3] for r in recs]); act = np.concatenate([r[4] for r in recs])
+        if not self._prefit_done:
+            self._prefit_head(g, ts, ag)
         v = self._values_np(g, ts, ag)
+        v_ent = self._hl_ent_last
         # bootstrap: the learner's view of every unfinished game's final state
         side = self.trunk_side
         bs = res.bsim
@@ -134,10 +242,13 @@ class PPOTrainer(GRPOTrainer):
             forget(p, ended)
         self.trunk = roots
         a_std = adv.std() + 1e-8
+        ev = 1.0 - float(np.var(ret - v) / (np.var(ret) + 1e-12))
         batch = {"g": g, "t": ts, "a": ag, "act": act, "adv": (adv / a_std).astype(np.float32),
                  "ret": ret.astype(np.float32)}
         stats = {"trunk_s": t1 - t0, "leaf_s": time.perf_counter() - t1, "views": len(game),
                  "trunk_restarts": len(ended), "decisions": int(res.steps.sum()), "v_mean": float(v.mean()), "adv_std": float(a_std),
+                 "ret_mean": float(ret.mean()), "ret_std": float(ret.std()), "expl_var": ev, "abs_adv": float(np.abs(adv).mean()),
+                 "pmf_entropy": v_ent, **getattr(self, "prefit_stats", {}),
                  "ended_win": float((final_r[ended] > 0).mean()) if len(ended) else float("nan"),
                  "ended_lead": float(lead[ended].mean()) if len(ended) else float("nan"),
                  "opp_score": [round(float(x), 4) for x in self.opp_score],
@@ -155,7 +266,11 @@ class PPOTrainer(GRPOTrainer):
             perm = torch.randperm(n, device=self.dev)
             for s in range(0, n, c.minibatch):
                 mb = perm[s:s + c.minibatch]
-                loss = F.smooth_l1_loss(self._value(g[mb], t[mb], a[mb]), ret[mb], beta=c.vf_huber)
+                if self.hl:
+                    _, lg = self._value(g[mb], t[mb], a[mb])
+                    loss = -(self._hl_target(ret[mb]) * torch.log_softmax(lg, -1)).sum(-1).mean()   # fp32 log_softmax
+                else:
+                    loss = F.smooth_l1_loss(self._value(g[mb], t[mb], a[mb]), ret[mb], beta=c.vf_huber)
                 self.copt.zero_grad(set_to_none=True)
                 if self.cscaler.is_enabled():   # loss scaling: fp16 activation gradients of a ~1e-2 Huber loss underflow
                     self.cscaler.scale(loss).backward()
