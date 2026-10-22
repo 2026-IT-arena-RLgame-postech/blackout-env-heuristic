@@ -22,6 +22,8 @@ mkdir -p $OUT
 OPPS="net:$F/p24c_v321.pt;net:$F/p22_v31.pt;net:$F/p21e_v30.pt;net:$F/p20_v30.pt;net:$F/p17_v28.pt;net:$F/p14_v25.pt;net:$F/d6_v42.pt;V32.1;mixture"
 W="0.5,1,1,1,1,1,1,1,1"
 export OMP_NUM_THREADS=2 MKL_NUM_THREADS=2
+# update_compile: inductor otherwise forks a 28-process compile pool per run that idles for the whole run
+export TORCHINDUCTOR_COMPILE_THREADS=${TORCHINDUCTOR_COMPILE_THREADS:-4}
 CUDA_VISIBLE_DEVICES=$GPU setsid nohup nice -n 30 env PYTHONPATH=. .venv/bin/python examples/rl_train.py \
     --algo ppo --out $OUT --hours ${HOURS:-24} --max-decisions ${MAXDEC:?set MAXDEC} --eval-every ${EVAL_EVERY:-150} --eval-seeds ${EVAL_SEEDS:-16} \
     --set "opponents=$OPPS" "opp_weights=$W" update_fp16=true critic_fp16=true update_compile=true critic_warmup=10 critic_head=$CH pfsp=hard games=${GAMES:-256} segment=${SEGMENT:-128} ${EXTRA} \
