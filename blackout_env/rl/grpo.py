@@ -618,11 +618,12 @@ class GRPOTrainer:
     # -------- update
     def _compiled_fwd(self, mod, fp16: bool, logits: bool = True):
         """The (autocast +) forward of ``mod`` returning float32 (logits only for ``_OwnQ``), torch.compile'd once per
-        (module, fp16).  autocast is entered *inside* the compiled function (outside, inductor mis-compiles the fp16
+        (module, fp16), dynamic batch dim (the last minibatch of an epoch has a different size every
+        iteration; static shapes recompiled for ~2 min each time).  autocast is entered *inside* the compiled function (outside, inductor mis-compiles the fp16
         RMSNorm with fp32 weights)."""
         key = (id(mod), fp16)
         if key not in self._compiled:
-            self._compiled[key] = torch.compile(_AutocastFwd(mod, fp16, self.dev.type, logits))
+            self._compiled[key] = torch.compile(_AutocastFwd(mod, fp16, self.dev.type, logits), dynamic=True)
         return self._compiled[key]
 
     def _logits(self, own, g, t, a):
