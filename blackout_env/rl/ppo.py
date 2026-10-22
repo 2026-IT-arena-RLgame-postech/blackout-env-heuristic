@@ -52,9 +52,12 @@ class PPOTrainer(GRPOTrainer):
     def _value(self, g, t, a):
         """Critic V for canonical own-team views (differentiable)."""
         g = unpack_graphic(g) if g.dim() == 3 else g
-        with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.critic_fp16 and self.dev.type == "cuda"):
-            out = self._compiled_fwd(self.critic)(g, t, a) if self.critic.training else self.critic(g, t, a)
-        out = out.float()
+        if self.critic.training and self.cfg.update_compile and self.dev.type == "cuda":
+            out = self._compiled_fwd(self.critic, self.cfg.critic_fp16, logits=False)(g, t, a)
+        else:
+            with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.critic_fp16 and self.dev.type == "cuda"):
+                out = self.critic(g, t, a)
+            out = out.float()
         h = out.shape[1] - 4
         lead = (t[:, 0] - t[:, 1]).float() * 100.0          # team_state scores are /100
         final = lead + out[:, h] / REG_SCALE * 100.0

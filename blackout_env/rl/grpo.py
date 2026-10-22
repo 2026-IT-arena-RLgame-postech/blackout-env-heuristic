@@ -254,6 +254,19 @@ class JointSeats(BatchPolicy):
         return {0: out[0], 1: out[1]}
 
 
+class _AutocastFwd(torch.nn.Module):
+    def __init__(self, mod, fp16: bool, device_type: str, logits: bool):
+        super().__init__()
+        self.mod, self.fp16, self.dt, self.logits = mod, fp16, device_type, logits
+
+    def forward(self, g, t, a):
+        with torch.autocast(self.dt, dtype=torch.float16, enabled=self.fp16):
+            out = self.mod(g, t, a)
+        if self.logits:
+            out = out[0]
+        return out.float()
+
+
 class Seats(BatchPolicy):
     """Plays one team of every game: the learner in the games where ``learner_team[b] == team``,
     otherwise opponent ``opps[opp_of[b]]``.  ``reset`` resets the learner but not the opponents (a trunk game's
@@ -603,17 +616,19 @@ class GRPOTrainer:
         return {**{k: v / c.value_steps for k, v in tot.items()}, "v_rows": buf.size}
 
     # -------- update
-    def _compiled_fwd(self, mod):
-        """``mod`` itself, or (``update_compile``) its torch.compile'd version, built once per module."""
-        if not (self.cfg.update_compile and self.dev.type == "cuda"):
-            return mod
-        if id(mod) not in self._compiled:
-            self._compiled[id(mod)] = torch.compile(mod)
-        return self._compiled[id(mod)]
+    def _compiled_fwd(self, mod, fp16: bool, logits: bool = True):
+        """The (autocast +) forward of ``mod`` returning float32 (logits only for ``_OwnQ``), torch.compile'd once per
+        (module, fp16).  autocast is entered *inside* the compiled function (outside, inductor mis-compiles the fp16
+        RMSNorm with fp32 weights)."""
+        key = (id(mod), fp16)
+        if key not in self._compiled:
+            self._compiled[key] = torch.compile(_AutocastFwd(mod, fp16, self.dev.type, logits))
+        return self._compiled[key]
 
     def _logits(self, own, g, t, a):
         g = unpack_graphic(g) if g.dim() == 3 else g
-        own = self._compiled_fwd(own)
+        if self.cfg.update_compile and self.dev.type == "cuda":
+            return self._compiled_fwd(own, self.cfg.update_fp16)(g, t, a) / self.cfg.temperature
         with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.update_fp16 and self.dev.type == "cuda"):
             q, _ = own(g, t, a)
         return q.float() / self.cfg.temperature
