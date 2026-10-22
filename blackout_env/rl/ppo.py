@@ -36,6 +36,7 @@ class PPOConfig(GRPOConfig):
     critic_lr: float = 1e-5
     critic_warmup: int = 5     # iterations with critic updates only
     vf_huber: float = 0.1
+    critic_fp16: bool = False  # (opt-in, changes numerics) fp16 autocast + GradScaler for the critic (update epochs and value reads)
     overlap_heur: bool = True  # (bit-identical) heuristic opponents overlap the network forwards
 
 
@@ -46,11 +47,14 @@ class PPOTrainer(GRPOTrainer):
         self.critic = load_value_net(cfg.value, device=self.dev)
         self.critic.train(False)
         self.copt = torch.optim.AdamW(self.critic.parameters(), lr=cfg.critic_lr, weight_decay=0.0)
+        self.cscaler = torch.amp.GradScaler("cuda", enabled=bool(cfg.critic_fp16) and self.dev.type == "cuda")
 
     def _value(self, g, t, a):
         """Critic V for canonical own-team views (differentiable)."""
         g = unpack_graphic(g) if g.dim() == 3 else g
-        out = self.critic(g, t, a).float()
+        with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.critic_fp16 and self.dev.type == "cuda"):
+            out = self.critic(g, t, a)
+        out = out.float()
         h = out.shape[1] - 4
         lead = (t[:, 0] - t[:, 1]).float() * 100.0          # team_state scores are /100
         final = lead + out[:, h] / REG_SCALE * 100.0
@@ -150,9 +154,16 @@ class PPOTrainer(GRPOTrainer):
                 mb = perm[s:s + c.minibatch]
                 loss = F.smooth_l1_loss(self._value(g[mb], t[mb], a[mb]), ret[mb], beta=c.vf_huber)
                 self.copt.zero_grad(set_to_none=True)
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.critic.parameters(), c.max_grad_norm)
-                self.copt.step()
+                if self.cscaler.is_enabled():   # loss scaling: fp16 activation gradients of a ~1e-2 Huber loss underflow
+                    self.cscaler.scale(loss).backward()
+                    self.cscaler.unscale_(self.copt)
+                    torch.nn.utils.clip_grad_norm_(self.critic.parameters(), c.max_grad_norm)
+                    self.cscaler.step(self.copt)
+                    self.cscaler.update()
+                else:
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(self.critic.parameters(), c.max_grad_norm)
+                    self.copt.step()
                 vl += loss.item(); nv += 1
         self.critic.eval()
         st = {"vf_loss": vl / max(nv, 1)}
