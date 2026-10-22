@@ -13,8 +13,13 @@ from blackout_env.rl.ppo import PPOConfig, PPOTrainer
 args = sys.argv[1:]
 path = args.pop(0)
 prof = "prof" in args
-sets = args[args.index("--set") + 1:] if "--set" in args else []
+sets = [x for x in args[args.index("--set") + 1:] if "=" in x] if "--set" in args else []
 d = dict(np.load(path))
+if "--det" in args:
+    torch.backends.cudnn.deterministic = True; torch.backends.cudnn.benchmark = False
+    torch.use_deterministic_algorithms(True, warn_only=True)
+if "--n" in args:
+    n_ = int(args[args.index("--n") + 1]); d = {k: v[:n_] for k, v in d.items()}
 F = "checkpoints/distill/frozen"
 cfg = PPOConfig(opponents=[f"net:{F}/p24c_v321.pt"], games=2, heur_workers=0, critic_warmup=0)
 for it in sets:
@@ -28,7 +33,9 @@ for i in range(3):
     torch.cuda.synchronize(); t0 = time.perf_counter()
     st = tr.update(d)
     torch.cuda.synchronize()
-    print(f"update {time.perf_counter() - t0:.2f}s vf={st['vf_loss']:.5f} loss={st['loss']:.5f} kl={st['kl']:.5f}", flush=True)
+    import hashlib
+    ph = lambda m: hashlib.sha256(b"".join(p.detach().float().cpu().numpy().tobytes() for p in m.parameters())).hexdigest()[:12]
+    print(f"update {time.perf_counter() - t0:.2f}s vf={st['vf_loss']:.8f} loss={st['loss']:.8f} kl={st['kl']:.8f} pol={ph(tr.net)} critic={ph(tr.critic)}", flush=True)
 if prof:
     from torch.profiler import ProfilerActivity, profile
     with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA]) as p:
