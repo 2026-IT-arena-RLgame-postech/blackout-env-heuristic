@@ -627,7 +627,9 @@ class GRPOTrainer:
 
     def _logits(self, own, g, t, a):
         g = unpack_graphic(g) if g.dim() == 3 else g
-        if self.cfg.update_compile and self.dev.type == "cuda":
+        # compiled only where gradients flow: inductor's fp16 graphs for parameter-free-grad / no_grad forwards were wrong
+        # (max |dlogit| ~ 10, NaN) on torch 2.11 -- the old / ref log-probs stay eager
+        if self.cfg.update_compile and self.dev.type == "cuda" and torch.is_grad_enabled() and own is self.own:
             return self._compiled_fwd(own, self.cfg.update_fp16)(g, t, a) / self.cfg.temperature
         with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.update_fp16 and self.dev.type == "cuda"):
             q, _ = own(g, t, a)
