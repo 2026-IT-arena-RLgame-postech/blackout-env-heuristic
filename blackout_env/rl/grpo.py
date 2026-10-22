@@ -167,14 +167,18 @@ class JointSeats(BatchPolicy):
     needs_inputs = True
     accepts_packed = True
 
-    def __init__(self, learner: LearnerPolicy, opps: list[BatchPolicy], opp_of: np.ndarray, learner_team: np.ndarray):
+    def __init__(self, learner: LearnerPolicy, opps: list[BatchPolicy], opp_of: np.ndarray, learner_team: np.ndarray,
+                 split: bool = False):
         self.learner, self.opps, self.opp_of, self.learner_team = learner, opps, opp_of, learner_team
+        self.split = split   # keep every network forward's batch composition of the per-team ``Seats`` calls (bit-identical)
 
     def reset(self, n: int) -> None:
         self.learner.reset(n)
 
     def moves(self, bsim, idx, teams, inputs):
         assert tuple(teams) == (0, 1)
+        if self.split:
+            return self._moves_split(bsim, idx, inputs)
         n = len(idx)
         graphic, team, agents = (x[:n] for x in inputs)
         lt = self.learner_team[idx]
@@ -213,6 +217,54 @@ class JointSeats(BatchPolicy):
         for rows, p, h in pend:
             out[otm[rows], rows] = p.finish(h)
         return {0: out[0], 1: out[1]}
+
+
+    def _moves_split(self, bsim, idx, inputs):
+        """What the two per-team ``Seats`` calls (team 0, then team 1) compute, with the heuristic opponents of both
+        teams started on the workers before any network forward and collected after them.  Every learner / net
+        forward sees exactly the rows it would see under ``Seats`` (same batch sizes and order: bit-identical moves,
+        records and RNG stream); heuristic instances are keyed per (game, team), so shipping both teams' rows in one
+        message changes nothing."""
+        n = len(idx)
+        sub_all = tuple(x[:n] for x in inputs)
+        lt = self.learner_team[idx]
+        otm = 1 - lt
+        ok = self.opp_of[idx]
+        out = np.zeros((2, n, 5, 2), F32)
+        pend = []
+        for k, p in enumerate(self.opps):
+            if hasattr(p, "start"):
+                rows = np.nonzero(ok == k)[0]
+                if len(rows):
+                    pend.append((rows, p, p.start(bsim, idx[rows], otm[rows])))
+        for tm in (0, 1):
+            mine = lt == tm
+            if mine.any():
+                sub = tuple(x[mine] for x in sub_all)
+                out[tm, mine] = self.learner.moves(bsim, idx[mine], (tm,), sub)[tm]
+            for k, p in enumerate(self.opps):
+                if hasattr(p, "start"):
+                    continue
+                rows = np.nonzero(~mine & (ok == k))[0]
+                if len(rows):
+                    sub = tuple(x[rows] for x in sub_all)
+                    out[tm, rows] = p.moves(bsim, idx[rows], (tm,), sub)[tm]
+        for rows, p, h in pend:
+            out[otm[rows], rows] = p.finish(h)
+        return {0: out[0], 1: out[1]}
+
+
+class _AutocastFwd(torch.nn.Module):
+    def __init__(self, mod, fp16: bool, device_type: str, logits: bool):
+        super().__init__()
+        self.mod, self.fp16, self.dt, self.logits = mod, fp16, device_type, logits
+
+    def forward(self, g, t, a):
+        with torch.autocast(self.dt, dtype=torch.float16, enabled=self.fp16):
+            out = self.mod(g, t, a)
+        if self.logits:
+            out = out[0]
+        return out.float()
 
 
 class Seats(BatchPolicy):
@@ -359,6 +411,8 @@ class GRPOConfig:
     joint: bool = False        # (opt-in: not bit-identical, fp16 batch-composition noise) one policy call per decision step for both teams (JointSeats): one forward per policy, not per team
     heur_workers: int = -1     # heuristic opponents in this many worker processes (-1: 4 on CUDA, else none; 0: in-process)
     update_fp16: bool = False  # autocast fp16 in update()'s forward/backward (~2x faster; changes numerics slightly, off by default)
+    overlap_heur: bool = False  # heuristic opponents of both teams run on the workers during the network forwards (bit-identical to the per-team Seats calls; ignored with joint)
+    update_compile: bool = False  # (opt-in, numerics differ at fp rounding level) torch.compile (inductor) of the update-phase forwards
     graphs: bool = True        # CUDA-graph replay of the learner / net-opponent forwards (bit-identical, sim/graphfwd.py)
 
 
@@ -373,7 +427,11 @@ class GRPOTrainer:
         self.net = net.to(self.dev).eval()   # no dropout: eval mode also while training
         self.own = _OwnQ(self.net)
         self.ref = _OwnQ(copy.deepcopy(self.net).eval().requires_grad_(False))
+        self._compiled: dict = {}
         self.opt = torch.optim.AdamW(self.net.parameters(), lr=cfg.lr, weight_decay=0.0)
+        # fp16 update: loss scaling (static 1024 unless a step overflows, then halved) -- without it ~10 % of the fp16 gradients underflow
+        self.scaler = torch.amp.GradScaler("cuda", init_scale=1024.0, growth_interval=10**9,
+                                           enabled=bool(cfg.update_fp16) and self.dev.type == "cuda")
         self.leaf = LeafValue(cfg.value, cfg.device)
         gr = bool(cfg.graphs) and self.dev.type == "cuda"
         self.learner_gf = None
@@ -425,8 +483,8 @@ class GRPOTrainer:
 
     def _rollout(self, roots, learner, opp_of, side, horizon, reseeds=None, opps=None):
         opps = self.opps if opps is None else opps
-        if self.cfg.joint:
-            pj = JointSeats(learner, opps, opp_of, side)
+        if self.cfg.joint or self.cfg.overlap_heur:
+            pj = JointSeats(learner, opps, opp_of, side, split=not self.cfg.joint)
             return BatchRollout(pj, pj, packed=True).run(roots, horizon, reseeds=reseeds)
         pa = Seats(0, learner, opps, opp_of, side)
         pb = Seats(1, learner, opps, opp_of, side)
@@ -558,8 +616,23 @@ class GRPOTrainer:
         return {**{k: v / c.value_steps for k, v in tot.items()}, "v_rows": buf.size}
 
     # -------- update
+    def _compiled_fwd(self, mod, fp16: bool, logits: bool = True):
+        """The (autocast +) forward of ``mod`` returning float32 (logits only for ``_OwnQ``), torch.compile'd once per
+        (module, fp16), static shapes, used only for full-size minibatches (the shorter last minibatch of an epoch
+        varies per iteration: recompiles cost ~2 min, and dynamic=True crashes inductor on this net).  autocast is entered
+        *inside* the compiled function (outside, inductor mis-compiled the fp16 RMSNorm with fp32 weights)."""
+        key = (id(mod), fp16)
+        if key not in self._compiled:
+            self._compiled[key] = torch.compile(_AutocastFwd(mod, fp16, self.dev.type, logits), dynamic=False)
+        return self._compiled[key]
+
     def _logits(self, own, g, t, a):
         g = unpack_graphic(g) if g.dim() == 3 else g
+        # compiled only where gradients flow: inductor's fp16 graphs for parameter-free-grad / no_grad forwards were wrong
+        # (max |dlogit| ~ 10, NaN) on torch 2.11 -- the old / ref log-probs stay eager
+        if self.cfg.update_compile and self.dev.type == "cuda" and torch.is_grad_enabled() and own is self.own \
+                and g.shape[0] == self.cfg.minibatch:
+            return self._compiled_fwd(own, self.cfg.update_fp16)(g, t, a) / self.cfg.temperature
         with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.update_fp16 and self.dev.type == "cuda"):
             q, _ = own(g, t, a)
         return q.float() / self.cfg.temperature
@@ -594,9 +667,16 @@ class GRPOTrainer:
                 kl = (p * (lp_all - ref_lp[mb])).sum(-1).mean()
                 loss = pg + c.beta * kl
                 self.opt.zero_grad(set_to_none=True)
-                loss.backward()
-                gn = torch.nn.utils.clip_grad_norm_(self.net.parameters(), c.max_grad_norm)
-                self.opt.step()
+                if self.scaler.is_enabled():
+                    self.scaler.scale(loss).backward()
+                    self.scaler.unscale_(self.opt)
+                    gn = torch.nn.utils.clip_grad_norm_(self.net.parameters(), c.max_grad_norm)
+                    self.scaler.step(self.opt)
+                    self.scaler.update()
+                else:
+                    loss.backward()
+                    gn = torch.nn.utils.clip_grad_norm_(self.net.parameters(), c.max_grad_norm)
+                    self.opt.step()
                 with torch.no_grad():
                     st["loss"] += loss.item(); st["pg"] += pg.item(); st["kl"] += kl.item()
                     st["ent"] += -(p * lp_all).sum(-1).mean().item()

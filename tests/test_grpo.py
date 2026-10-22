@@ -126,3 +126,21 @@ def test_value_retraining_cpu(tmp_path):
     tr.save(str(tmp_path / "x.pt"))
     from blackout_env.value.model import load_value_net
     load_value_net(str(tmp_path / "x_value.pt"))
+
+
+def test_ppo_overlap_heur_is_bit_identical_cpu():
+    """overlap_heur (split JointSeats, heuristics of both teams started before the net forwards) collects exactly the
+    batch of the per-team Seats path, in-process heuristics and worker processes alike."""
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    def collect(overlap, workers):
+        cfg = PPOConfig(init=CKPT, value=VALUE, device="cpu", games=6, segment=6, seed=3, critic_warmup=0, overlap_heur=overlap,
+                        heur_workers=workers, opponents=[f"net:{CKPT}", "random", "net:" + CKPT], pfsp="hard")
+        tr = PPOTrainer(cfg)
+        return tr.collect()[0]
+
+    ref = collect(False, 0)
+    for overlap, workers in ((True, 0), (True, 2)):
+        got = collect(overlap, workers)
+        for k in ref:
+            assert np.array_equal(ref[k], got[k]), (k, overlap, workers)
