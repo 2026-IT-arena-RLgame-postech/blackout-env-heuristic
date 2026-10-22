@@ -59,9 +59,14 @@ def main():
     ap.add_argument("--no-update", action="store_true")
     ap.add_argument("--save-batch", default="")
     ap.add_argument("--opps", default="", help="comma list of indices into the 9-opponent pool (default all)")
+    ap.add_argument("--det", action="store_true", help="deterministic torch kernels (bitwise A/B comparisons)")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--set", nargs="*", default=[])
     a = ap.parse_args()
+    if a.det:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        torch.use_deterministic_algorithms(True, warn_only=True)
     sel = [int(x) for x in a.opps.split(",")] if a.opps else list(range(len(OPPS)))
     cfg = PPOConfig(opponents=[OPPS[i] for i in sel], opp_weights=[W[i] for i in sel], pfsp="hard", games=a.games, segment=a.segment, seed=a.seed)
     for it in a.set:
