@@ -36,6 +36,7 @@ class PPOConfig(GRPOConfig):
     critic_lr: float = 1e-5
     critic_warmup: int = 5     # iterations with critic updates only
     vf_huber: float = 0.1
+    overlap_heur: bool = True  # (bit-identical) heuristic opponents overlap the network forwards
 
 
 class PPOTrainer(GRPOTrainer):
@@ -68,7 +69,8 @@ class PPOTrainer(GRPOTrainer):
         c = self.cfg
         t0 = time.perf_counter()
         n = len(self.trunk)
-        learner = LearnerPolicy(self.own, self.dev, 10**9, c.temperature, seed=int(self.rng.integers(2**31)))
+        learner = LearnerPolicy(self.own, self.dev, 10**9, c.temperature, seed=int(self.rng.integers(2**31)),
+                                graphs=self.learner_gf)
         res = self._rollout(self.trunk, learner, self.trunk_opp, self.trunk_side, c.segment)
         t1 = time.perf_counter()
         recs = learner.records

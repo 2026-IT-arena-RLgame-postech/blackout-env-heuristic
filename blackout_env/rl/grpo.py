@@ -167,14 +167,18 @@ class JointSeats(BatchPolicy):
     needs_inputs = True
     accepts_packed = True
 
-    def __init__(self, learner: LearnerPolicy, opps: list[BatchPolicy], opp_of: np.ndarray, learner_team: np.ndarray):
+    def __init__(self, learner: LearnerPolicy, opps: list[BatchPolicy], opp_of: np.ndarray, learner_team: np.ndarray,
+                 split: bool = False):
         self.learner, self.opps, self.opp_of, self.learner_team = learner, opps, opp_of, learner_team
+        self.split = split   # keep every network forward's batch composition of the per-team ``Seats`` calls (bit-identical)
 
     def reset(self, n: int) -> None:
         self.learner.reset(n)
 
     def moves(self, bsim, idx, teams, inputs):
         assert tuple(teams) == (0, 1)
+        if self.split:
+            return self._moves_split(bsim, idx, inputs)
         n = len(idx)
         graphic, team, agents = (x[:n] for x in inputs)
         lt = self.learner_team[idx]
@@ -210,6 +214,41 @@ class JointSeats(BatchPolicy):
                     if len(sel):
                         sub = tuple(x[sel] for x in (graphic, team, agents))
                         out[tm, sel] = p.moves(bsim, idx[sel], (tm,), sub)[tm]
+        for rows, p, h in pend:
+            out[otm[rows], rows] = p.finish(h)
+        return {0: out[0], 1: out[1]}
+
+
+    def _moves_split(self, bsim, idx, inputs):
+        """What the two per-team ``Seats`` calls (team 0, then team 1) compute, with the heuristic opponents of both
+        teams started on the workers before any network forward and collected after them.  Every learner / net
+        forward sees exactly the rows it would see under ``Seats`` (same batch sizes and order: bit-identical moves,
+        records and RNG stream); heuristic instances are keyed per (game, team), so shipping both teams' rows in one
+        message changes nothing."""
+        n = len(idx)
+        sub_all = tuple(x[:n] for x in inputs)
+        lt = self.learner_team[idx]
+        otm = 1 - lt
+        ok = self.opp_of[idx]
+        out = np.zeros((2, n, 5, 2), F32)
+        pend = []
+        for k, p in enumerate(self.opps):
+            if hasattr(p, "start"):
+                rows = np.nonzero(ok == k)[0]
+                if len(rows):
+                    pend.append((rows, p, p.start(bsim, idx[rows], otm[rows])))
+        for tm in (0, 1):
+            mine = lt == tm
+            if mine.any():
+                sub = tuple(x[mine] for x in sub_all)
+                out[tm, mine] = self.learner.moves(bsim, idx[mine], (tm,), sub)[tm]
+            for k, p in enumerate(self.opps):
+                if hasattr(p, "start"):
+                    continue
+                rows = np.nonzero(~mine & (ok == k))[0]
+                if len(rows):
+                    sub = tuple(x[rows] for x in sub_all)
+                    out[tm, rows] = p.moves(bsim, idx[rows], (tm,), sub)[tm]
         for rows, p, h in pend:
             out[otm[rows], rows] = p.finish(h)
         return {0: out[0], 1: out[1]}
@@ -359,6 +398,7 @@ class GRPOConfig:
     joint: bool = False        # (opt-in: not bit-identical, fp16 batch-composition noise) one policy call per decision step for both teams (JointSeats): one forward per policy, not per team
     heur_workers: int = -1     # heuristic opponents in this many worker processes (-1: 4 on CUDA, else none; 0: in-process)
     update_fp16: bool = False  # autocast fp16 in update()'s forward/backward (~2x faster; changes numerics slightly, off by default)
+    overlap_heur: bool = False  # heuristic opponents of both teams run on the workers during the network forwards (bit-identical to the per-team Seats calls; ignored with joint)
     graphs: bool = True        # CUDA-graph replay of the learner / net-opponent forwards (bit-identical, sim/graphfwd.py)
 
 
@@ -425,8 +465,8 @@ class GRPOTrainer:
 
     def _rollout(self, roots, learner, opp_of, side, horizon, reseeds=None, opps=None):
         opps = self.opps if opps is None else opps
-        if self.cfg.joint:
-            pj = JointSeats(learner, opps, opp_of, side)
+        if self.cfg.joint or self.cfg.overlap_heur:
+            pj = JointSeats(learner, opps, opp_of, side, split=not self.cfg.joint)
             return BatchRollout(pj, pj, packed=True).run(roots, horizon, reseeds=reseeds)
         pa = Seats(0, learner, opps, opp_of, side)
         pb = Seats(1, learner, opps, opp_of, side)
