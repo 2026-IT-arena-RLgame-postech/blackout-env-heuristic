@@ -226,6 +226,10 @@ class PPOTrainer(GRPOTrainer):
                 adv[rows[j]] = gae
                 ret[rows[j]] = gae + vb[j]
         ended = np.nonzero(bs.over)[0]
+        hook = getattr(self, "diag_hook", None)   # offline diagnostics (examples/critic_shift_diag.py); no effect when unset
+        if hook is not None:
+            hook(dict(game=game, g=g, t=ts, a=ag, v=v, adv=adv, ret=ret, opp_of=self.trunk_opp.copy(), side=side.copy(),
+                      over=bs.over.copy(), boot=boot, final_r=final_r, lead=lead, bsim=bs))
         # PFSP: per-opponent EMA of the learner's result on the games that ended (no branch leaves here)
         score = (np.sign(lead) + 1.0) / 2.0
         for i in range(len(self.opps)):
