@@ -1,0 +1,82 @@
+/home/cucumbersaurus/blackout-env-ppodist/.venv/lib/python3.12/site-packages/torch/nn/functional.py:2954: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return torch.rms_norm(input, normalized_shape, weight, eps)
+eval 0 {'p24c_v321': {'win': 0.46875, 'margin': -2.40625, 'se': 11.541200685199454}, 'p22_v31': {'win': 0.6875, 'margin': 23.34375, 'se': 9.872535357499643}, 'p5a_v22': {'win': 0.96875, 'margin': 66.6875, 'se': 3.4926297687577628}, 'p16_v27': {'win': 1.0, 'margin': 68.4375, 'se': 2.4801378327332615}}
+eval 150 {'p24c_v321': {'win': 0.78125, 'margin': 36.6875, 'se': 8.27737850769659}, 'p22_v31': {'win': 0.78125, 'margin': 40.28125, 'se': 9.881580532514244}, 'p5a_v22': {'win': 1.0, 'margin': 65.875, 'se': 2.6939859843493927}, 'p16_v27': {'win': 1.0, 'margin': 74.8125, 'se': 1.2143608932406618}}
+eval 300 {'p24c_v321': {'win': 0.78125, 'margin': 33.3125, 'se': 8.611043816218722}, 'p22_v31': {'win': 0.8125, 'margin': 40.28125, 'se': 8.898535849912468}, 'p5a_v22': {'win': 0.984375, 'margin': 63.34375, 'se': 3.2850496433500354}, 'p16_v27': {'win': 1.0, 'margin': 73.34375, 'se': 1.2854719973801012}}
+eval 450 {'p24c_v321': {'win': 0.84375, 'margin': 35.59375, 'se': 7.110002520160843}, 'p22_v31': {'win': 0.875, 'margin': 47.03125, 'se': 7.6775337804269395}, 'p5a_v22': {'win': 1.0, 'margin': 63.84375, 'se': 2.661368408250816}, 'p16_v27': {'win': 1.0, 'margin': 71.125, 'se': 2.0638741756471553}}
+eval 600 {'p24c_v321': {'win': 0.875, 'margin': 37.5625, 'se': 7.221012335761919}, 'p22_v31': {'win': 0.90625, 'margin': 50.65625, 'se': 6.767392374199309}, 'p5a_v22': {'win': 0.96875, 'margin': 63.78125, 'se': 5.0463046154763}, 'p16_v27': {'win': 1.0, 'margin': 73.625, 'se': 2.0274079669657334}}
+eval 750 {'p24c_v321': {'win': 0.8125, 'margin': 32.84375, 'se': 7.530597448640297}, 'p22_v31': {'win': 0.875, 'margin': 45.8125, 'se': 8.781904679418188}, 'p5a_v22': {'win': 1.0, 'margin': 65.3125, 'se': 2.152660347704822}, 'p16_v27': {'win': 1.0, 'margin': 72.90625, 'se': 1.5614815229041192}}
+eval 900 {'p24c_v321': {'win': 0.875, 'margin': 41.71875, 'se': 7.053115642904022}, 'p22_v31': {'win': 0.859375, 'margin': 42.125, 'se': 7.579384975900301}, 'p5a_v22': {'win': 1.0, 'margin': 65.84375, 'se': 1.798918455874834}, 'p16_v27': {'win': 1.0, 'margin': 74.96875, 'se': 1.345905061090024}}
+final {'iter': 1048, 'eval': {'p24c_v321': {'win': 0.84375, 'margin': 41.59375, 'se': 6.7563977110766595}, 'p22_v31': {'win': 0.90625, 'margin': 44.3125, 'se': 7.2670041831821655}, 'p5a_v22': {'win': 1.0, 'margin': 64.375, 'se': 2.0808991155344985}, 'p16_v27': {'win': 1.0, 'margin': 72.65625, 'se': 2.346758821380204}}, 'wall_h': 10.756027180155119, 'final': True}
+Process SpawnProcess-4:
+Process SpawnProcess-1:
+Process SpawnProcess-3:
+Process SpawnProcess-2:
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/cucumbersaurus/blackout-env-ppodist/blackout_env/rl/hpool.py", line 30, in _worker
+    msg = conn.recv()
+          ^^^^^^^^^^^
+  File "/usr/lib/python3.12/multiprocessing/connection.py", line 250, in recv
+    buf = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/multiprocessing/connection.py", line 430, in _recv_bytes
+    buf = self._recv(4)
+          ^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/multiprocessing/connection.py", line 399, in _recv
+    raise EOFError
+EOFError
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/cucumbersaurus/blackout-env-ppodist/blackout_env/rl/hpool.py", line 30, in _worker
+    msg = conn.recv()
+          ^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-ppodist/blackout_env/rl/hpool.py", line 30, in _worker
+    msg = conn.recv()
+          ^^^^^^^^^^^
+  File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/usr/lib/python3.12/multiprocessing/connection.py", line 250, in recv
+    buf = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/multiprocessing/connection.py", line 250, in recv
+    buf = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "/home/cucumbersaurus/blackout-env-ppodist/blackout_env/rl/hpool.py", line 30, in _worker
+    msg = conn.recv()
+          ^^^^^^^^^^^
+  File "/usr/lib/python3.12/multiprocessing/connection.py", line 430, in _recv_bytes
+    buf = self._recv(4)
+          ^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/multiprocessing/connection.py", line 430, in _recv_bytes
+    buf = self._recv(4)
+          ^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/multiprocessing/connection.py", line 250, in recv
+    buf = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/multiprocessing/connection.py", line 399, in _recv
+    raise EOFError
+  File "/usr/lib/python3.12/multiprocessing/connection.py", line 399, in _recv
+    raise EOFError
+  File "/usr/lib/python3.12/multiprocessing/connection.py", line 430, in _recv_bytes
+    buf = self._recv(4)
+          ^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/multiprocessing/connection.py", line 399, in _recv
+    raise EOFError
+EOFError
+EOFError
+EOFError
