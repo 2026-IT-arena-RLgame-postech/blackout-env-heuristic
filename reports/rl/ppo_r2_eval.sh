@@ -15,11 +15,13 @@ for a in reg hlg; do
   echo "$(date) ppo_r2_$a finished"
 done
 sleep 30
-GPUS=""
-for g in 0 2; do
-  if nvidia-smi -i $g | grep -q "No running processes found"; then GPUS="$GPUS $g"; else echo "GPU $g busy, skipped"; nvidia-smi -i $g; fi
+# both GPUs must be completely free (other users' jobs come and go): wait, re-checking every 5 min
+while :; do
+  GPUS=""
+  for g in 0 2; do nvidia-smi -i $g | grep -q "No running processes found" && GPUS="$GPUS $g"; done
+  [ -n "$GPUS" ] && break
+  echo "$(date) GPU 0/2 busy, waiting"; sleep 300
 done
-[ -n "$GPUS" ] || { echo "no free GPU"; exit 1; }
 echo "$(date) using GPUs:$GPUS"
 jobs=()
 for a in reg hlg; do
