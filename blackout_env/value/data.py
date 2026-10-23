@@ -149,12 +149,53 @@ def _match_rows(args):
 
 
 def open_cache(directory: Path, mode: str = "r", n: int | None = None) -> dict[str, np.ndarray]:
+    """The cache arrays; ``agent_vel`` (velocity.py; add_velocity below) is included when the file exists."""
     directory = Path(directory)
     if n is None:
         n = json.loads((directory / "cache.json").read_text())["rows"]
-    return {name: np.lib.format.open_memmap(directory / f"{name}.npy", mode=mode, dtype=dtype, shape=(n, *shape))
-            if mode == "w+" else np.load(directory / f"{name}.npy", mmap_mode=mode)
-            for name, (dtype, shape) in ARRAYS.items()}
+    out = {name: np.lib.format.open_memmap(directory / f"{name}.npy", mode=mode, dtype=dtype, shape=(n, *shape))
+           if mode == "w+" else np.load(directory / f"{name}.npy", mmap_mode=mode)
+           for name, (dtype, shape) in ARRAYS.items()}
+    if mode != "w+" and (directory / "agent_vel.npy").exists():
+        out["agent_vel"] = np.load(directory / "agent_vel.npy", mmap_mode=mode)
+    return out
+
+
+def _vel_rows(args):
+    repo, entry, k = args
+    from blackout_env.value.velocity import shard_velocity
+
+    with np.load(Path(repo) / entry["path"]) as shard:
+        agents = shard["agent_states"]
+        ticks = shard_ticks(shard)
+        idx = sample_rows(len(agents), k, entry["path"])
+        return shard_velocity(agents, ticks)[idx], agents[idx]
+
+
+def add_velocity(repo: Path, directory: Path, workers: int = 8, log=print) -> dict:
+    """Writes ``agent_vel.npy`` for an existing cache (same rows / order: the per-match row sample is a
+    function of the shard path and rows_per_match, data.sample_rows) and checks every row's
+    agent_states against the cache."""
+    directory = Path(directory)
+    meta = json.loads((directory / "cache.json").read_text())
+    entries = json.loads((directory / "matches.json").read_text())
+    k = meta["rows_per_match"]
+    cache = {name: np.load(directory / f"{name}.npy", mmap_mode="r") for name in ("match", "agent_states")}
+    match = np.asarray(cache["match"])
+    out = np.lib.format.open_memmap(directory / "agent_vel.npy", mode="w+", dtype=np.float32, shape=(meta["rows"], 10, 3))
+    starts = np.concatenate(([0], np.cumsum(np.bincount(match, minlength=len(entries)))))
+    with ProcessPoolExecutor(workers) as pool:
+        for i, (vel, agents) in enumerate(pool.map(_vel_rows, [(str(repo), e, k) for e in entries], chunksize=16)):
+            a, b = starts[i], starts[i + 1]
+            if len(vel) != b - a or not np.array_equal(agents, cache["agent_states"][a:b]):
+                raise RuntimeError(f"{entries[i]['path']}: rows differ from the cache")
+            out[a:b] = vel
+            if i % 1000 == 0:
+                log(f"vel: {i}/{len(entries)}")
+    out.flush()
+    valid = out[:, :, 2]
+    return {"rows": int(meta["rows"]), "valid_frac": float(valid.mean()),
+            "moving_frac_of_valid": float((np.abs(out[:, :, :2]).max(-1)[valid > 0] > 0.05).mean())}
 
 
 def build_cache(repo: Path, index: list[dict], directory: Path, rows_per_match: int = 32, workers: int = 8,

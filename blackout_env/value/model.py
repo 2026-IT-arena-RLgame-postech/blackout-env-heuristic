@@ -29,6 +29,14 @@ against a Gaussian (sigma = ``sigma_ratio`` x bin width) integrated over the bin
 column is the pmf mean (so decode_outputs and every other consumer read it unchanged);
 ``forward_full`` returns the logits as its second value, ``decode_final_dist`` the pmf / mean /
 E[tanh(final / s)].  Default (``n_bins=0``) is the old regression head; old checkpoints load.
+
+Optional velocity inputs (``vel=True``, reports/value/vel_pool_ab.md): per-unit Delta-pos features
+``agent_vel`` [B, 10, 3] = (vx, vy, valid) (value/velocity.py) enter the unit tokens through a
+zero-initialised linear map (VectorEncoder.extra_proj), so a warm-started net is identical to the
+base one at init.  Optional attention pooling (``pool="attn"``): ``n_queries`` learned queries
+cross-attend (multi-head, LayerNorm'd keys) over all post-trunk tokens; the head then reads
+[team_state token, CLS, the pooled queries] instead of [team_state, own mean, enemy mean, CLS].
+Defaults (vel off, pool "mean") are the old net; old checkpoints load.
 """
 
 from __future__ import annotations
@@ -49,13 +57,40 @@ REG_SCALE = 10.0  # score/100 -> tenths of points
 HUBER_BETA = 1.0  # = 10 points
 N_TEAM = 5
 TRUNK_MODULES = ("graphic_encoder", "vector_encoder", "attention")
+VEL_DIM = 3  # (vx, vy, valid)
+POOLS = ("mean", "attn")
+POOL_HEADS = 4
+
+
+class AttnPool(nn.Module):
+    """``n_queries`` learned queries cross-attending over a token set -> [B, n_queries * hidden].
+    Permutation invariant in the tokens (the trunk output already carries slot / position)."""
+
+    def __init__(self, hidden: int, n_queries: int = 4, n_heads: int = POOL_HEADS):
+        super().__init__()
+        self.query = nn.Parameter(torch.randn(n_queries, hidden) * hidden ** -0.5)
+        self.norm_kv = nn.LayerNorm(hidden)
+        self.attn = nn.MultiheadAttention(hidden, n_heads, batch_first=True)
+        self.norm_out = nn.LayerNorm(hidden)
+
+    def forward(self, tokens: torch.Tensor) -> torch.Tensor:
+        kv = self.norm_kv(tokens)
+        q = self.query[None].expand(tokens.shape[0], -1, -1).to(kv.dtype)
+        out, _ = self.attn(q, kv, kv, need_weights=False)
+        return self.norm_out(out).flatten(1)
 
 
 class ValueNet(nn.Module):
     def __init__(self, hidden_size: int = 256, n_horizons: int = len(HORIZONS_S), n_quantiles: int = 0,
                  antisym: bool = False, n_bins: int = 0, bin_range: float = DEFAULT_BIN_RANGE,
-                 sigma_ratio: float = DEFAULT_SIGMA_RATIO):
+                 sigma_ratio: float = DEFAULT_SIGMA_RATIO, vel: bool = False, pool: str = "mean",
+                 n_queries: int = 4):
         super().__init__()
+        if pool not in POOLS:
+            raise ValueError(f"pool must be one of {POOLS}")
+        self.vel = bool(vel)
+        self.pool = pool
+        self.n_queries = int(n_queries)
         if n_bins and n_quantiles:
             raise ValueError("n_bins (HL-Gauss) and n_quantiles are mutually exclusive")
         self.n_bins = int(n_bins)
@@ -64,12 +99,14 @@ class ValueNet(nn.Module):
         self.n_horizons = n_horizons
         self.n_quantiles = int(n_quantiles)
         self.antisym = bool(antisym)
-        self.trunk = MyModel(hidden_size=hidden_size, policy_head="logits")
+        self.trunk = MyModel(hidden_size=hidden_size, policy_head="logits", unit_extra_dim=VEL_DIM if self.vel else 0)
         # the policy / SPR heads are not used here: drop them so they take no optimizer state
         self.trunk.q_head = None
         self.trunk.spr_head = None
-        self.head_in = nn.LayerNorm(4 * hidden_size)
-        self.head = nn.Sequential(SwiGLUBlock(4 * hidden_size, 2 * hidden_size, hidden_size), nn.GELU(),
+        self.attn_pool = AttnPool(hidden_size, self.n_queries) if pool == "attn" else None
+        d_in = (2 + self.n_queries) * hidden_size if pool == "attn" else 4 * hidden_size
+        self.head_in = nn.LayerNorm(d_in)
+        self.head = nn.Sequential(SwiGLUBlock(d_in, 2 * hidden_size, hidden_size), nn.GELU(),
                                   nn.Linear(hidden_size, n_horizons + 1 + 3))
         self.q_out = nn.Linear(hidden_size, self.n_quantiles) if self.n_quantiles else None
         self.bin_out = nn.Linear(hidden_size, self.n_bins) if self.n_bins else None
@@ -91,24 +128,35 @@ class ValueNet(nn.Module):
         keep = {k: v for k, v in policy_state.items()
                 if not k.startswith(("q_head.", "spr_head.", "temporal."))}
         missing, unexpected = self.trunk.load_state_dict(keep, strict=False)
-        missing = [k for k in missing if not k.startswith(("q_head.", "spr_head."))]
+        missing = [k for k in missing if not k.startswith(("q_head.", "spr_head.")) and "extra_proj" not in k]
         if missing or unexpected:
             raise RuntimeError(f"trunk warm start: missing {missing}, unexpected {unexpected}")
 
     def trunk_parameters(self):
-        return self.trunk.parameters()
+        """Warm-started trunk weights (the velocity map is new, zero-initialised: it trains with the head)."""
+        return [p for n, p in self.trunk.named_parameters() if "extra_proj" not in n]
 
     def head_parameters(self):
-        return list(self.head_in.parameters()) + list(self.head.parameters()) + \
+        new = [p for n, p in self.trunk.named_parameters() if "extra_proj" in n]
+        return new + (list(self.attn_pool.parameters()) if self.attn_pool is not None else []) + \
+            list(self.head_in.parameters()) + list(self.head.parameters()) + \
             (list(self.q_out.parameters()) if self.q_out is not None else []) + \
             (list(self.bin_out.parameters()) if self.bin_out is not None else [])
 
-    def forward_full(self, graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor):
-        """-> (outputs [B, H + 4], quantiles [B, Q] or None); with quantiles the final column = their mean."""
-        tokens = self.trunk._trunk(graphic, team_state, agent_states)
+    def forward_full(self, graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor,
+                     agent_vel: torch.Tensor | None = None):
+        """-> (outputs [B, H + 4], quantiles [B, Q] or None); with quantiles the final column = their mean.
+        ``agent_vel`` [B, 10, 3] (vel nets only; None = no velocity known = zeros, valid 0)."""
+        extra = None
+        if self.vel:
+            extra = agent_vel if agent_vel is not None else agent_states.new_zeros(agent_states.shape[0], N_UNITS, VEL_DIM)
+        tokens = self.trunk._trunk(graphic, team_state, agent_states, extra)
         units = tokens[:, N_VISION_TOKENS: N_VISION_TOKENS + N_UNITS]
         glob = tokens[:, N_VISION_TOKENS + N_UNITS]
-        feats = torch.cat((glob, units[:, :N_TEAM].mean(1), units[:, N_TEAM:].mean(1), tokens[:, -1]), dim=-1)
+        if self.attn_pool is not None:
+            feats = torch.cat((glob, tokens[:, -1], self.attn_pool(tokens)), dim=-1)
+        else:
+            feats = torch.cat((glob, units[:, :N_TEAM].mean(1), units[:, N_TEAM:].mean(1), tokens[:, -1]), dim=-1)
         hidden = self.head[:-1](self.head_in(feats))
         out = self.head[-1](hidden)
         if self.bin_out is not None:  # HL-Gauss: the scalar final column = the pmf mean
@@ -123,22 +171,24 @@ class ValueNet(nn.Module):
         out = torch.cat((out[:, :h], q.mean(1, keepdim=True).to(out.dtype), out[:, h + 1:]), dim=1)
         return out, q
 
-    def forward(self, graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor) -> torch.Tensor:
+    def forward(self, graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor,
+                agent_vel: torch.Tensor | None = None) -> torch.Tensor:
         """graphic [B, C, H, W] float (decoded), team_state [B, 4], agent_states [B, 10, D] -> [B, H + 4]."""
-        return self.forward_full(graphic, team_state, agent_states)[0]
+        return self.forward_full(graphic, team_state, agent_states, agent_vel)[0]
 
-    def forward_full_u8(self, graphic_u8, team_state, agent_states):
+    def forward_full_u8(self, graphic_u8, team_state, agent_states, agent_vel=None):
         graphic = graphic_u8.permute(0, 3, 1, 2).float() / GRAPHIC_SCALE
-        return self.forward_full(graphic, team_state, agent_states)
+        return self.forward_full(graphic, team_state, agent_states, agent_vel)
 
-    def forward_u8(self, graphic_u8: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor) -> torch.Tensor:
+    def forward_u8(self, graphic_u8: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor,
+                   agent_vel: torch.Tensor | None = None) -> torch.Tensor:
         """``graphic_u8``: the shard encoding [B, H, W, C] uint8 (x15)."""
         graphic = graphic_u8.permute(0, 3, 1, 2).float() / GRAPHIC_SCALE
-        return self(graphic, team_state, agent_states)
+        return self(graphic, team_state, agent_states, agent_vel)
 
-    def predict(self, graphic_u8, team_state, agent_states) -> dict:
+    def predict(self, graphic_u8, team_state, agent_states, agent_vel=None) -> dict:
         """Decoded predictions (``decode_outputs``) for a batch in the shard encoding."""
-        return decode_outputs(self.forward_u8(graphic_u8, team_state, agent_states).float(),
+        return decode_outputs(self.forward_u8(graphic_u8, team_state, agent_states, agent_vel).float(),
                               team_state[:, 0] - team_state[:, 1])
 
 
@@ -219,6 +269,7 @@ def save_value_net(path, net: ValueNet, extra: dict | None = None) -> None:
     torch.save({"value_state": state, "hidden_size": net.trunk.hidden_size, "n_horizons": net.n_horizons,
                 "n_quantiles": net.n_quantiles, "antisym": net.antisym, "n_bins": net.n_bins,
                 "bin_range": net.bin_range, "sigma_ratio": net.sigma_ratio,
+                "vel": net.vel, "pool": net.pool, "n_queries": net.n_queries,
                 "horizons_s": list(HORIZONS_S), **(extra or {})}, path)
 
 
@@ -231,7 +282,9 @@ def load_value_net(path, device="cpu", n_quantiles: int | None = None, antisym: 
     net = ValueNet(hidden_size=ckpt["hidden_size"], n_horizons=ckpt["n_horizons"], n_quantiles=q,
                    antisym=bool(ckpt.get("antisym", False)) if antisym is None else antisym,
                    n_bins=int(ckpt.get("n_bins", 0)), bin_range=float(ckpt.get("bin_range", DEFAULT_BIN_RANGE)),
-                   sigma_ratio=float(ckpt.get("sigma_ratio", DEFAULT_SIGMA_RATIO)))
+                   sigma_ratio=float(ckpt.get("sigma_ratio", DEFAULT_SIGMA_RATIO)),
+                   vel=bool(ckpt.get("vel", False)), pool=ckpt.get("pool", "mean"),
+                   n_queries=int(ckpt.get("n_queries", 4)))
     state = _strip_compile(ckpt["value_state"])
     if q != q_ck:
         if q_ck:

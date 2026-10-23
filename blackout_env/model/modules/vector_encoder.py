@@ -61,8 +61,10 @@ class VectorEncoder(nn.Module):
         n_classes: int = 3,
         team_state_size: int = 4,
         n_patch_features: int = N_PATCH_FEATURES,
+        n_extra: int = 0,
     ) -> None:
         super().__init__()
+        self.n_extra = int(n_extra)
 
         self.pos_dim = 2
         self.team_dim = 1
@@ -74,6 +76,12 @@ class VectorEncoder(nn.Module):
         group_sizes = _weighted_group_sizes(SPATIAL_GROUP_WEIGHTS, hidden_size, leftover_to="spatial")
 
         self.spatial_proj = nn.Linear(self.spatial_dim, group_sizes["spatial"])
+        # optional extra per-unit inputs (the value net's velocity features): the same as widening
+        # spatial_proj's input, but as its own zero-initialised weight, so a net without them (and a
+        # warm start from one) is reproduced exactly at init and old state dicts load unchanged
+        self.extra_proj = nn.Linear(self.n_extra, group_sizes["spatial"], bias=False) if self.n_extra else None
+        if self.extra_proj is not None:
+            nn.init.zeros_(self.extra_proj.weight)
         self.team_proj = nn.Linear(self.team_dim, group_sizes["team"])
         self.item_proj = nn.Linear(self.item_dim, group_sizes["item"])
         self.class_proj = nn.Linear(self.class_dim, group_sizes["class"])
@@ -86,7 +94,8 @@ class VectorEncoder(nn.Module):
             SwiGLUBlock(hidden_size, hidden_size * 3, hidden_size),
         )
 
-    def forward(self, agent_states: torch.Tensor, team_state: torch.Tensor) -> torch.Tensor:
+    def forward(self, agent_states: torch.Tensor, team_state: torch.Tensor,
+                extra: torch.Tensor | None = None) -> torch.Tensor:
         """
         agent_states : [B, N_UNITS, pos(2)+team(1)+item(n_items+1)+class(n_classes)+patch]
         team_state   : [B, team_state_size]
@@ -99,10 +108,13 @@ class VectorEncoder(nn.Module):
         cls = agent_states[..., 3 + self.item_dim : 3 + self.item_dim + self.class_dim]
         patch = agent_states[..., 3 + self.item_dim + self.class_dim :]
         spatial = torch.cat([pos, patch], dim=-1)
+        spatial_out = self.spatial_proj(spatial)
+        if self.extra_proj is not None and extra is not None:
+            spatial_out = spatial_out + self.extra_proj(extra.to(spatial_out.dtype))
 
         unit_features = torch.cat(
             [
-                self.group_act(self.spatial_proj(spatial)),
+                self.group_act(spatial_out),
                 self.group_act(self.team_proj(team)),
                 self.group_act(self.item_proj(item)),
                 self.group_act(self.class_proj(cls)),

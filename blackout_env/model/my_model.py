@@ -173,6 +173,7 @@ class MyModel(nn.Module):
         map_xattn: str | None = None,
         map_xattn_layers: int = 2,
         map_encoder: str = "cnn",
+        unit_extra_dim: int = 0,
     ) -> None:
         super().__init__()
         if map_encoder != "cnn" and map_xattn:
@@ -190,7 +191,8 @@ class MyModel(nn.Module):
         self.graphic_encoder = GraphicEncoder(hidden_size, map_encoder=map_encoder)
         self.n_vision = self.graphic_encoder.n_tokens  # 36 (6x6) for the CNN / patch4 / patch6; 144 (12x12) for the stride-2 patch arms
         self.vector_encoder = VectorEncoder(
-            hidden_size, n_items=n_items, n_classes=n_classes, team_state_size=team_state_size
+            hidden_size, n_items=n_items, n_classes=n_classes, team_state_size=team_state_size,
+            n_extra=unit_extra_dim,
         )
 
         # main trunk: [36 vision] + [10 units] + [1 team_state] + [1 spr_cls] = 48 tokens
@@ -483,7 +485,7 @@ class MyModel(nn.Module):
         outputs = self._heads(vec_out, tokens_out[:, -1], n_quantiles, tau, q_units, angle)
         return outputs if self.temporal is None else (*outputs, new_memory)
 
-    def _trunk(self, graphic, team_state, agent_states) -> torch.Tensor:
+    def _trunk(self, graphic, team_state, agent_states, unit_extra=None) -> torch.Tensor:
         """The 48 trunk tokens' post-attention output, [B, 48, hidden]."""
         B = graphic.shape[0]
         # Features the env does not send, but that measured failures traced back to -- unit
@@ -498,7 +500,7 @@ class MyModel(nn.Module):
             vis_tokens, feats = self.graphic_encoder(graphic, features=True)
         else:
             vis_tokens = self.graphic_encoder(graphic)               # [B, 36, hidden]
-        vec_tokens = self.vector_encoder(agent_states, team_state)   # [B, 11, hidden]
+        vec_tokens = self.vector_encoder(agent_states, team_state, unit_extra)   # [B, 11, hidden]
         vec_tokens = vec_tokens + self.vec_slot_emb(self.vec_slot_ids)[None, :, :]
         spr_cls_tok = self.spr_cls_emb(self.spr_cls_ids)[None, :, :].expand(B, -1, -1)  # [B, 1, hidden]
 

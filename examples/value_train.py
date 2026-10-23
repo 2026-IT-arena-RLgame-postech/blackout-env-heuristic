@@ -44,6 +44,12 @@ def cmd_build(args) -> None:
     print(f"cache: {rows} rows {counts} ({time.time() - started:.0f} s)", flush=True)
 
 
+def cmd_addvel(args) -> None:
+    from blackout_env.value.data import add_velocity
+
+    print(add_velocity(REPO, args.cache, workers=args.workers), flush=True)
+
+
 def cmd_baselines(args) -> None:
     from blackout_env.value.baselines import run_baselines
 
@@ -134,6 +140,11 @@ def main(argv=None) -> None:
     b.add_argument("--workers", type=int, default=8)
     b.set_defaults(fn=cmd_build)
 
+    av = sub.add_parser("addvel", help="write agent_vel.npy for an existing cache (shards needed)")
+    av.add_argument("--cache", type=Path, default=REPO / "datasets/value_s1")
+    av.add_argument("--workers", type=int, default=8)
+    av.set_defaults(fn=cmd_addvel)
+
     bl = sub.add_parser("baselines")
     bl.add_argument("--cache", type=Path, default=REPO / "datasets/value_s1")
     bl.add_argument("--out", type=Path, default=REPO / "reports/value_s1")
@@ -161,6 +172,9 @@ def main(argv=None) -> None:
     t.add_argument("--n-bins", type=int, default=112)
     t.add_argument("--bin-range", type=float, default=14.0, help="HL-Gauss half-range, REG_SCALE units (14 = 140 points)")
     t.add_argument("--sigma-ratio", type=float, default=0.75)
+    t.add_argument("--vel", action="store_true", help="unit velocity (Delta-pos) inputs; cache needs agent_vel.npy")
+    t.add_argument("--pool", choices=["mean", "attn"], default="mean", help="value-head unit pooling (model.py)")
+    t.add_argument("--n-queries", type=int, default=4)
     t.add_argument("--num-threads", type=int, default=4)
     t.set_defaults(fn=cmd_train)
 

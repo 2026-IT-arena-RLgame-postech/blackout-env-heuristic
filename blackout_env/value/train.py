@@ -23,9 +23,13 @@ INPUTS = ("graphic", "team_state", "agent_states")
 TARGETS = ("delta", "delta_mask", "final", "result")
 
 
+def input_keys(cache: dict) -> tuple[str, ...]:
+    return INPUTS + (("agent_vel",) if "agent_vel" in cache else ())
+
+
 def gather(cache: dict, idx: np.ndarray) -> dict[str, np.ndarray]:
     idx = np.sort(idx)
-    return {k: np.asarray(cache[k][idx]) for k in INPUTS + TARGETS + ("elapsed_s",)}
+    return {k: np.asarray(cache[k][idx]) for k in input_keys(cache) + TARGETS + ("elapsed_s",)}
 
 
 def to_device(batch: dict, device) -> dict[str, torch.Tensor]:
@@ -90,10 +94,11 @@ def predict_rows(net: ValueNet, cache: dict, idx: np.ndarray, device, batch_size
     net.eval()
     parts = []
     for a in range(0, len(idx), batch_size):
-        b = to_device({k: np.asarray(cache[k][idx[a:a + batch_size]]) for k in INPUTS}, device)
+        b = to_device({k: np.asarray(cache[k][idx[a:a + batch_size]]) for k in input_keys(cache)}, device)
         ctx = torch.autocast(device.type, dtype=amp) if amp else contextlib.nullcontext()
         with ctx:
-            parts.append(net.predict(b["graphic"], b["team_state"], b["agent_states"]))
+            parts.append(net.predict(b["graphic"], b["team_state"], b["agent_states"],
+                                     b.get("agent_vel") if net.vel else None))
     net.train()
     return {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
 
@@ -131,12 +136,16 @@ def train(args) -> None:
         raise SystemExit(f"--batch-size {args.batch_size} is not divisible by {dist.world} ranks")
 
     final_head = getattr(args, "final_head", "reg")
+    vp = dict(vel=bool(getattr(args, "vel", False)), pool=getattr(args, "pool", "mean"),
+              n_queries=getattr(args, "n_queries", 4))
+    if vp["vel"] and "agent_vel" not in cache:
+        raise SystemExit(f"--vel needs {args.cache}/agent_vel.npy (value.data.add_velocity)")
     if final_head == "hlgauss":
         if dist.world > 1:
             raise SystemExit("--final-head hlgauss is single-process (forward_full is not DDP-wrapped)")
-        net = ValueNet(n_bins=args.n_bins, bin_range=args.bin_range, sigma_ratio=args.sigma_ratio).to(device)
+        net = ValueNet(n_bins=args.n_bins, bin_range=args.bin_range, sigma_ratio=args.sigma_ratio, **vp).to(device)
     else:
-        net = ValueNet().to(device)
+        net = ValueNet(**vp).to(device)
     if args.init is not None:
         init = torch.load(args.init, map_location="cpu", weights_only=True)
         net.load_trunk(init["policy_state"])
@@ -203,10 +212,11 @@ def train(args) -> None:
         batch = to_device(prefetch.next(), device)
         ctx = torch.autocast(device.type, dtype=amp) if amp else contextlib.nullcontext()
         with ctx:
+            vel = batch.get("agent_vel") if net.vel else None
             if net.n_bins:
-                out, logits = net.forward_full(u8_graphic(batch["graphic"]), batch["team_state"], batch["agent_states"])
+                out, logits = net.forward_full(u8_graphic(batch["graphic"]), batch["team_state"], batch["agent_states"], vel)
             else:
-                out, logits = model(u8_graphic(batch["graphic"]), batch["team_state"], batch["agent_states"]), None
+                out, logits = model(u8_graphic(batch["graphic"]), batch["team_state"], batch["agent_states"], vel), None
         lead = batch["team_state"][:, 0] - batch["team_state"][:, 1]
         loss, stats = value_loss(out, batch, lead, final_beta=getattr(args, "final_beta", None), final_logits=logits,
                                  bin_range=net.bin_range, sigma_ratio=net.sigma_ratio)
