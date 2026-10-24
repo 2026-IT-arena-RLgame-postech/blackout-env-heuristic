@@ -200,8 +200,11 @@ class PPOTrainer(GRPOTrainer):
         if self.cfg.league:
             self._league_post(out)
         if self.dev.type == "cuda":
-            out["cuda_peak_alloc_mb"] = torch.cuda.max_memory_allocated() / 2**20
-            out["cuda_peak_reserved_mb"] = torch.cuda.max_memory_reserved() / 2**20
+            out["cuda_collect_peak_mb"] = self._collect_peak                       # allocated, rollouts + critic reads
+            out["cuda_update_peak_mb"] = torch.cuda.max_memory_allocated() / 2**20  # allocated, updates (+ league bookkeeping)
+            out["cuda_reserved_mb"] = torch.cuda.memory_reserved() / 2**20
+            out["cuda_between_peak_mb"] = self._between_peak
+            torch.cuda.reset_peak_memory_stats()
         return out
 
     # ------------------------------------------------------------------ resume
@@ -340,6 +343,9 @@ class PPOTrainer(GRPOTrainer):
 
     def collect(self):
         c = self.cfg
+        if self.dev.type == "cuda":
+            self._between_peak = torch.cuda.max_memory_allocated() / 2**20   # since the end of the last step (checkpoint writes, evals)
+            torch.cuda.reset_peak_memory_stats()
         t0 = time.perf_counter()
         n = len(self.trunk)
         learner = LearnerPolicy(self.own, self.dev, 10**9, c.temperature, seed=int(self.rng.integers(2**31)),
@@ -441,6 +447,9 @@ class PPOTrainer(GRPOTrainer):
         ev = 1.0 - float(np.var(ret - v) / (np.var(ret) + 1e-12))
         batch = {"g": g, "t": ts, "a": ag, "act": act, "adv": (adv_used / a_std).astype(np.float32),
                  "ret": ret.astype(np.float32)}
+        if self.dev.type == "cuda":
+            self._collect_peak = torch.cuda.max_memory_allocated() / 2**20
+            torch.cuda.reset_peak_memory_stats()
         stats = {"trunk_s": t1 - t0, "leaf_s": time.perf_counter() - t1, "views": len(game),
                  "trunk_restarts": len(ended), "decisions": int(res.steps.sum()), "v_mean": float(v.mean()), "adv_std": float(a_std),
                  "ret_mean": float(ret.mean()), "ret_std": float(ret.std()), "expl_var": ev, "abs_adv": float(np.abs(adv_used).mean()),

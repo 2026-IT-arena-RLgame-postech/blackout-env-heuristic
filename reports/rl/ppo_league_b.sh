@@ -26,7 +26,8 @@ setsid nohup nice -n 10 env PYTHONPATH=. .venv/bin/python examples/rl_train.py \
     --algo ppo --out $OUT --hours ${HOURS:-30} --max-decisions ${MAXDEC:?set MAXDEC} --eval-every ${EVAL_EVERY:-150} --eval-seeds ${EVAL_SEEDS:-16} \
     --save-every 10 $RES \
     --set "opponents=$OPPS" "opp_weights=$W" update_fp16=true critic_fp16=true update_compile=true critic_warmup=10 critic_head=reg pfsp=hard \
-    games=${GAMES:-256} segment=${SEGMENT:-128} heur_workers=${HWORKERS:-6} $LEAGUE ${EXTRA} \
+    games=${GAMES:-256} segment=${SEGMENT:-128} heur_workers=${HWORKERS:-6} \
+    graph_shared_pool=true league_snap_graphs=true cuda_mem_fraction=${MEMFRAC:-0.75} critic_read_batch=1024 $LEAGUE ${EXTRA} \
     >> $OUT/run.log 2>&1 &
 echo "launched pid $! -> $OUT"
 setsid nohup bash reports/rl/health_logger.sh $OUT > /dev/null 2>&1 &
