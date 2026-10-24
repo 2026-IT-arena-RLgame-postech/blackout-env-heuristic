@@ -50,6 +50,7 @@ class PPOConfig(GRPOConfig):
     critic_sigma: float = 0.75  # HL-Gauss sigma in bin widths
     critic_prefit_epochs: int = 4   # one-off fit of the new head to the S2 heads' V on the first batch (hlgauss only)
     critic_prefit_lr: float = 1e-3
+    critic_read_batch: int = 4096      # rows per eager critic forward when reading V (4096 peaks at ~2.4 GB of activations; fp16 batch-composition noise only)
     cuda_mem_fraction: float = 0.0     # >0: torch.cuda.set_per_process_memory_fraction (soft cap: the allocator frees cached blocks before it would exceed it)
     graph_shared_pool: bool = False    # (memory only, outputs identical) all CUDA-graph forwards (learner, net opponents, snapshots) share one graph memory pool
     # ---- league arm B (all off by default = old behaviour, bit-identical); see reports/rl/ppo_league_b_setup.md
@@ -289,7 +290,8 @@ class PPOTrainer(GRPOTrainer):
         return (p[:, 2] - p[:, 0]) + self.cfg.lam * torch.tanh(final / self.cfg.scale)
 
     @torch.no_grad()
-    def _values_np(self, g, t, a, bs=4096, orig=False):
+    def _values_np(self, g, t, a, bs=None, orig=False):
+        bs = bs or self.cfg.critic_read_batch
         out, ent = [], []
         for s in range(0, len(g), bs):
             to = lambda x: torch.from_numpy(np.ascontiguousarray(x[s:s + bs])).to(self.dev)
