@@ -17,7 +17,9 @@ from __future__ import annotations
 
 import copy
 import time
-from dataclasses import dataclass
+import os
+from collections import deque
+from dataclasses import dataclass, field
 
 import numpy as np
 import torch
@@ -26,7 +28,8 @@ from torch.nn import functional as F
 from blackout_env.sim.batch import N_AGENT_COLS, BatchRollout, H, W, unpack_graphic
 from blackout_env.value.model import REG_SCALE, load_value_net
 
-from .grpo import GRPOConfig, GRPOTrainer, LearnerPolicy, Seats, forget
+from . import league as lg
+from .grpo import GRPOConfig, GRPOTrainer, LearnerPolicy, Seats, forget, make_opponent_policy
 
 
 @dataclass
@@ -47,6 +50,23 @@ class PPOConfig(GRPOConfig):
     critic_sigma: float = 0.75  # HL-Gauss sigma in bin widths
     critic_prefit_epochs: int = 4   # one-off fit of the new head to the S2 heads' V on the first batch (hlgauss only)
     critic_prefit_lr: float = 1e-3
+    # ---- league arm B (all off by default = old behaviour, bit-identical); see reports/rl/ppo_league_b_setup.md
+    adv_center_opp: bool = False       # subtract each opponent's batch-mean advantage (then the global-std scaling)
+    adv_center_min_games: int = 10     # ... only for opponents with >= this many (finished or active) games in the batch
+    league: bool = False               # gated self-play snapshots as extra net opponents
+    league_dir: str = ""               # snapshot checkpoints go here (rl_train: the run dir)
+    league_gate: float = 0.85          # PFSP-weighted mean EMA score of the fixed-pool opponents must be >= this
+    league_min_gap: int = 100          # iterations since the last snapshot
+    league_min_start: int = 150        # iterations since the start
+    league_max: int = 4                # max snapshots
+    league_steps: list = field(default_factory=lambda: [0.05, 0.10, 0.20])   # share ramp per snapshot (of trunk games)
+    league_ramp_every: int = 20        # min iterations between ramp steps of one snapshot
+    league_ramp_min_games: int = 100   # finished games (lifetime) of the snapshot before it may ramp
+    league_adv_ratio: float = 1.5      # max (adv std of the snapshot's rows) / (adv std of the fixed-pool rows), over league_window its
+    league_ev_min: float = 0.4         # min EV_mc over the snapshot's finished games
+    league_window: int = 20            # iterations of the adv-std window
+    league_anchor_min: float = 0.4     # fixed opponents keep >= this combined share
+    league_warmup: int = 2             # critic-only iterations after each snapshot
 
 
 class _HLLogits(torch.nn.Module):
@@ -65,7 +85,16 @@ class _HLLogits(torch.nn.Module):
 class PPOTrainer(GRPOTrainer):
     def __init__(self, cfg: PPOConfig):
         cfg.groups = cfg.games
+        self.snaps: list[dict] = []        # league snapshots: {path, added, level, last_step, win: deque of (n, sum, sumsq)}
+        self.n_fixed = len(cfg.opponents)  # the first n_fixed entries of self.opps are the fixed pool (anchors)
         super().__init__(cfg)
+        n_o = len(self.opps)
+        self.fin = np.zeros((n_o, 6))      # per opponent, finished games: [games, rows, sum R, sum R^2, sum e, sum e^2], e = R - V
+        self.gv = np.zeros((cfg.games, 3)) # per trunk game since its (re)start: [rows, sum V, sum V^2]
+        self.fixed_win: deque = deque(maxlen=max(cfg.league_window, 1))   # per iteration (n, sum, sumsq) of the fixed pool's used adv
+        self.last_snap_iter = 0
+        self.warm_until = 0                # policy updates are skipped while iter < max(critic_warmup, warm_until)
+        self._events: list = []
         self.critic = load_value_net(cfg.value, device=self.dev)
         self.critic.train(False)
         self.hl = cfg.critic_head == "hlgauss"
@@ -85,6 +114,119 @@ class PPOTrainer(GRPOTrainer):
             self.hl_sigma = cfg.critic_sigma * (cfg.critic_vmax - cfg.critic_vmin) / cfg.critic_bins
         self.copt = torch.optim.AdamW(self.critic.parameters(), lr=cfg.critic_lr, weight_decay=0.0)
         self.cscaler = torch.amp.GradScaler("cuda", init_scale=1024.0, growth_interval=10**9, enabled=bool(cfg.critic_fp16) and self.dev.type == "cuda")
+
+    # ------------------------------------------------------------------ league
+    def _pfsp_weights(self, n: int | None = None) -> np.ndarray:
+        if n is not None or not self.snaps:
+            return super()._pfsp_weights(n)
+        shares = lg.snap_shares([s["level"] for s in self.snaps], self.cfg.league_steps, self.cfg.league_anchor_min)
+        return lg.league_weights(super()._pfsp_weights(self.n_fixed), shares)
+
+    def gate_score(self) -> float:
+        """PFSP-weighted mean over the fixed-pool opponents of their EMA score (``opp_score``, learner win share with draws
+        as 1/2, updated per iteration from the games that ended), weights = base weight x PFSP factor renormalised over the
+        fixed pool (= how the fixed pool is being sampled)."""
+        return lg.fixed_gate(self.opp_score[:self.n_fixed], super()._pfsp_weights(self.n_fixed))
+
+    def _add_snapshot(self) -> dict:
+        """Freeze the current learner as a new net opponent (checkpoint file in ``league_dir``), share level 0."""
+        c = self.cfg
+        d = c.league_dir or "."
+        os.makedirs(d, exist_ok=True)
+        path = os.path.join(d, f"snap{len(self.snaps) + 1}_it{self.iter}.pt")
+        torch.save({"policy_state": {k: v.detach().cpu() for k, v in self.net.state_dict().items()},
+                    "league": {"iter": self.iter, "index": len(self.snaps) + 1}}, path + ".tmp")
+        os.replace(path + ".tmp", path)
+        return self._attach_snapshot(path, level=0, added=self.iter, last_step=self.iter)
+
+    def _attach_snapshot(self, path: str, level: int, added: int, last_step: int) -> dict:
+        c = self.cfg
+        pol = make_opponent_policy("net:" + path, c.device, graphs=bool(c.graphs) and self.dev.type == "cuda")
+        self.opps.append(pol)
+        self.branch_opps.append(pol)
+        self.opp_score = np.append(self.opp_score, 0.5)
+        self.fin = np.vstack([self.fin, np.zeros((1, 6))])
+        sn = {"path": path, "added": added, "level": level, "last_step": last_step, "win": deque(maxlen=max(c.league_window, 1))}
+        self.snaps.append(sn)
+        self.opp_w = self._pfsp_weights()
+        return sn
+
+    def _league_post(self, out: dict) -> None:
+        """After a step (iter already incremented): maybe advance ramp steps, maybe add a snapshot; logs into ``out``."""
+        c = self.cfg
+        gs = self.gate_score()
+        out["gate_score"] = gs
+        for j, sn in enumerate(self.snaps):
+            ok, info = lg.ramp_ok(fin=self.fin[self.n_fixed + j], snap_adv_win=sn["win"], fixed_adv_win=self.fixed_win,
+                                  it=self.iter, last_step_iter=sn["last_step"], level=sn["level"], n_levels=len(c.league_steps),
+                                  every=c.league_ramp_every, min_games=c.league_ramp_min_games, max_ratio=c.league_adv_ratio,
+                                  min_ev=c.league_ev_min)
+            if ok:
+                sn["level"] += 1
+                sn["last_step"] = self.iter
+                self._events.append({"ramp_step": j + 1, "level": sn["level"], "share": c.league_steps[sn["level"]], **info})
+        if lg.gate_open(gs, self.iter, self.last_snap_iter, len(self.snaps), thr=c.league_gate, min_gap=c.league_min_gap,
+                        min_start=c.league_min_start, max_snaps=c.league_max):
+            sn = self._add_snapshot()
+            self.last_snap_iter = self.iter
+            self.warm_until = self.iter + c.league_warmup
+            self._events.append({"snapshot": len(self.snaps), "path": os.path.basename(sn["path"]), "gate_score": gs})
+        self.opp_w = self._pfsp_weights()
+        out["league_events"] = self._events
+        out["n_snaps"] = len(self.snaps)
+        out["snap_levels"] = [s["level"] for s in self.snaps]
+        out["snap_ev_mc"] = [round(lg.ev_mc(self.fin[self.n_fixed + j]), 4) for j in range(len(self.snaps))]
+        out["snap_games"] = [int(self.fin[self.n_fixed + j, 0]) for j in range(len(self.snaps))]
+        out["opp_w_next"] = [round(float(x), 4) for x in self.opp_w]
+
+    def step(self):
+        self._events = []
+        out = super().step()
+        if self.cfg.league:
+            self._league_post(out)
+        return out
+
+    # ------------------------------------------------------------------ resume
+    def save_resume(self, path: str, extra: dict | None = None) -> None:
+        """Full trainer state (policy, critic, optimisers, scalers, iteration, PFSP scores, rng, league/snapshot state).
+        Not saved: the trunk games in flight (they restart from fresh seeds) and the heuristic opponents' state.
+        Snapshot weights live in their own files (``league_dir``)."""
+        st = {"policy_state": self.net.state_dict(), "critic_state": self.critic.state_dict(),
+              "opt": self.opt.state_dict(), "copt": self.copt.state_dict(),
+              "scaler": self.scaler.state_dict(), "cscaler": self.cscaler.state_dict(),
+              "iter": self.iter, "opp_score": self.opp_score.copy(), "fin": self.fin.copy(), "rng": self.rng.bit_generator.state,
+              "last_snap_iter": self.last_snap_iter, "warm_until": self.warm_until, "prefit_done": self._prefit_done,
+              "fixed_win": list(self.fixed_win),
+              "snaps": [{"file": os.path.basename(s["path"]), "added": s["added"], "level": s["level"], "last_step": s["last_step"],
+                         "win": list(s["win"])} for s in self.snaps],
+              "extra": extra or {}}
+        torch.save(st, path + ".tmp")
+        os.replace(path + ".tmp", path)
+
+    def load_resume(self, path: str) -> dict:
+        c = self.cfg
+        st = torch.load(path, map_location=self.dev, weights_only=False)
+        self.net.load_state_dict(st["policy_state"])
+        self.critic.load_state_dict(st["critic_state"])
+        self.opt.load_state_dict(st["opt"]); self.copt.load_state_dict(st["copt"])
+        self.scaler.load_state_dict(st["scaler"]); self.cscaler.load_state_dict(st["cscaler"])
+        self.iter = st["iter"]
+        self.rng.bit_generator.state = st["rng"]
+        self._prefit_done = st["prefit_done"]
+        for s in st["snaps"]:
+            sn = self._attach_snapshot(os.path.join(c.league_dir or ".", s["file"]), s["level"], s["added"], s["last_step"])
+            sn["win"].extend(tuple(x) for x in s["win"])
+        self.opp_score = np.asarray(st["opp_score"], np.float64).copy()
+        self.fin = np.asarray(st["fin"], np.float64).copy()
+        assert len(self.opp_score) == len(self.opps) == len(self.fin)
+        self.fixed_win.extend(tuple(x) for x in st["fixed_win"])
+        self.last_snap_iter, self.warm_until = st["last_snap_iter"], st["warm_until"]
+        self.opp_w = self._pfsp_weights()
+        self.trunk = [self._fresh_seed() for _ in range(c.games)]   # in-flight games restart
+        self.trunk_opp = self.rng.choice(len(self.opps), c.games, p=self.opp_w)
+        self.trunk_side = self.rng.integers(0, 2, c.games)
+        self.gv[:] = 0
+        return st["extra"]
 
     def _hl_target(self, x):
         """HL-Gauss target pmf [B, bins] of returns x [B]: N(x, sigma^2) mass per bin, renormalised over the support."""
@@ -217,6 +359,7 @@ class PPOTrainer(GRPOTrainer):
             if not len(rows):
                 continue
             vb = v[rows].astype(np.float64)
+            self.gv[b] += (len(rows), vb.sum(), (vb * vb).sum())
             nxt = final_r[b] if bs.over[b] else boot[b]   # value after the last step (terminal: reward, V=0)
             gae = 0.0
             for j in range(len(rows) - 1, -1, -1):
@@ -226,6 +369,29 @@ class PPOTrainer(GRPOTrainer):
                 adv[rows[j]] = gae
                 ret[rows[j]] = gae + vb[j]
         ended = np.nonzero(bs.over)[0]
+        # per-opponent advantage statistics / optional centering (``adv`` stays the raw GAE; ``adv_used`` feeds the policy)
+        n_opp = len(self.opps)
+        row_opp = self.trunk_opp[game]
+        gpo = np.bincount(self.trunk_opp[np.unique(game)], minlength=n_opp)   # games (finished or active) per opponent in the batch
+        adv_used, raw_mean = adv, np.full(n_opp, np.nan)
+        if c.adv_center_opp:
+            adv_used, raw_mean = lg.center_by_opponent(adv, row_opp, gpo, c.adv_center_min_games)
+        else:
+            for i in range(n_opp):
+                m = row_opp == i
+                if m.any():
+                    raw_mean[i] = adv[m].mean()
+        opp_adv_std, win = np.full(n_opp, np.nan), {}
+        for i in range(n_opp):
+            m = row_opp == i
+            if m.any():
+                a_i = adv_used[m]
+                opp_adv_std[i] = a_i.std()
+                win[i] = (float(m.sum()), float(a_i.sum()), float((a_i * a_i).sum()))
+        fx = [win[i] for i in range(self.n_fixed) if i in win]
+        self.fixed_win.append(tuple(np.sum(fx, 0)) if fx else (0.0, 0.0, 0.0))
+        for j, sn in enumerate(self.snaps):
+            sn["win"].append(win.get(self.n_fixed + j, (0.0, 0.0, 0.0)))
         hook = getattr(self, "diag_hook", None)   # offline diagnostics (examples/critic_shift_diag.py); no effect when unset
         if hook is not None:
             hook(dict(game=game, g=g, t=ts, a=ag, v=v, adv=adv, ret=ret, opp_of=self.trunk_opp.copy(), side=side.copy(),
@@ -237,6 +403,13 @@ class PPOTrainer(GRPOTrainer):
             if len(m):
                 self.opp_score[i] += c.pfsp_ema * (float(score[m].mean()) - self.opp_score[i])
         self.opp_w = self._pfsp_weights()
+        # finished games: MC explained-variance sums per opponent (R = the game's final reward, e = R - V over all its rows)
+        for b in ended:
+            n_r, s_v, ss_v = self.gv[b]
+            if n_r > 0:
+                R = float(final_r[b])
+                self.fin[self.trunk_opp[b]] += (1.0, n_r, n_r * R, n_r * R * R, n_r * R - s_v, n_r * R * R - 2 * R * s_v + ss_v)
+            self.gv[b] = 0.0
         roots = res.states()
         for b in ended:
             roots[b] = self._fresh_seed()
@@ -245,13 +418,19 @@ class PPOTrainer(GRPOTrainer):
         for p in self.opps:
             forget(p, ended)
         self.trunk = roots
-        a_std = adv.std() + 1e-8
+        a_std = adv_used.std() + 1e-8
         ev = 1.0 - float(np.var(ret - v) / (np.var(ret) + 1e-12))
-        batch = {"g": g, "t": ts, "a": ag, "act": act, "adv": (adv / a_std).astype(np.float32),
+        batch = {"g": g, "t": ts, "a": ag, "act": act, "adv": (adv_used / a_std).astype(np.float32),
                  "ret": ret.astype(np.float32)}
         stats = {"trunk_s": t1 - t0, "leaf_s": time.perf_counter() - t1, "views": len(game),
                  "trunk_restarts": len(ended), "decisions": int(res.steps.sum()), "v_mean": float(v.mean()), "adv_std": float(a_std),
-                 "ret_mean": float(ret.mean()), "ret_std": float(ret.std()), "expl_var": ev, "abs_adv": float(np.abs(adv).mean()),
+                 "ret_mean": float(ret.mean()), "ret_std": float(ret.std()), "expl_var": ev, "abs_adv": float(np.abs(adv_used).mean()),
+                 "adv_std_raw": float(adv.std()),
+                 "opp_adv_mean": [round(float(x), 4) for x in raw_mean],      # per-opponent mean of the raw GAE advantage
+                 "opp_adv_std": [round(float(x), 4) for x in opp_adv_std],    # per-opponent std of the advantage fed to the policy (pre global scaling)
+                 "opp_share": [round(float(x), 4) for x in gpo / max(gpo.sum(), 1)],   # this batch's share of games per opponent
+                 "opp_ev_mc": [round(lg.ev_mc(f), 4) for f in self.fin],      # cumulative EV_mc on finished games
+                 "opp_fin": [int(f[0]) for f in self.fin],                    # cumulative finished games per opponent
                  "pmf_entropy": v_ent, **getattr(self, "prefit_stats", {}),
                  "ended_win": float((final_r[ended] > 0).mean()) if len(ended) else float("nan"),
                  "ended_lead": float(lead[ended].mean()) if len(ended) else float("nan"),
@@ -289,7 +468,7 @@ class PPOTrainer(GRPOTrainer):
                 vl += loss.item(); nv += 1
         self.critic.eval()
         st = {"vf_loss": vl / max(nv, 1)}
-        if self.iter < c.critic_warmup:
+        if self.iter < max(c.critic_warmup, self.warm_until):
             return st
         return {**st, **super().update(batch)}
 

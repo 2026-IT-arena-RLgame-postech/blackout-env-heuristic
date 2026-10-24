@@ -466,8 +466,9 @@ class GRPOTrainer:
             self.vopt = torch.optim.AdamW(self.leaf.net.parameters(), lr=cfg.value_lr, weight_decay=0.0)
             self.pending = {b: [] for b in range(g)}
 
-    def _pfsp_weights(self) -> np.ndarray:
-        c, s = self.cfg, self.opp_score
+    def _pfsp_weights(self, n: int | None = None) -> np.ndarray:
+        """PFSP-reweighted sampling weights (``n``: only the first n opponents, i.e. the fixed pool of a league run)."""
+        c, s = self.cfg, self.opp_score[:n]
         if c.pfsp == "hard":
             f = c.pfsp_floor + (1.0 - s) ** c.pfsp_p
         elif c.pfsp == "even":
@@ -475,7 +476,7 @@ class GRPOTrainer:
         else:
             assert c.pfsp == "none", c.pfsp
             f = np.ones_like(s)
-        w = self.base_w * f
+        w = self.base_w[:n] * f
         return w / w.sum()
 
     def _fresh_seed(self) -> SimState:

@@ -56,12 +56,17 @@ def main():
     ap.add_argument("--eval-every", type=int, default=10)
     ap.add_argument("--eval-seeds", type=int, default=32, help="seeds per opponent (x2 sides)")
     ap.add_argument("--eval-opps", default=DEFAULT_EVAL)
+    ap.add_argument("--save-every", type=int, default=0,
+                    help="ppo: write <out>/latest.pt (full resumable trainer state, atomic) every N iterations (0: off)")
+    ap.add_argument("--resume", action="store_true", help="ppo: continue from <out>/latest.pt if it exists (same --set flags!)")
     ap.add_argument("--set", nargs="*", default=[])
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
     cfg = PPOConfig() if args.algo == "ppo" else GRPOConfig()
     cfg.opponents = DEFAULT_OPPS.split(",")
     parse_set(cfg, args.set)
+    if args.algo == "ppo" and not cfg.league_dir:
+        cfg.league_dir = args.out
     tr = (PPOTrainer if args.algo == "ppo" else GRPOTrainer)(cfg)
     log = open(os.path.join(args.out, "log.jsonl"), "a")
     log.write(json.dumps({"config": dataclasses.asdict(cfg), "algo": args.algo}) + "\n")
@@ -77,9 +82,20 @@ def main():
 
     t_start = time.time()
     decisions = 0
-    ev = evaluate()
-    log.write(json.dumps({"iter": 0, "eval": ev, "wall_h": 0.0}) + "\n"); log.flush()
-    print("eval 0", ev, flush=True)
+    latest = os.path.join(args.out, "latest.pt")
+
+    def save_latest():
+        tr.save_resume(latest, {"decisions": decisions, "wall_h": (time.time() - t_start) / 3600})
+
+    if args.resume and os.path.exists(latest):
+        ex = tr.load_resume(latest)
+        decisions, t_start = int(ex["decisions"]), time.time() - ex["wall_h"] * 3600
+        log.write(json.dumps({"resumed": tr.iter, "decisions_total": decisions, "wall_h": ex["wall_h"]}) + "\n"); log.flush()
+        print("resumed at iter", tr.iter, "decisions", decisions, flush=True)
+    else:
+        ev = evaluate()
+        log.write(json.dumps({"iter": 0, "eval": ev, "wall_h": 0.0}) + "\n"); log.flush()
+        print("eval 0", ev, flush=True)
     while (tr.iter < args.iters and time.time() - t_start < args.hours * 3600
            and decisions < args.max_decisions):
         s = tr.step()
@@ -92,7 +108,11 @@ def main():
             print("eval", tr.iter, s["eval"], flush=True)
         log.write(json.dumps({k: (float(v) if isinstance(v, (np.floating, float)) else v) for k, v in s.items()}) + "\n")
         log.flush()
+        if args.save_every and args.algo == "ppo" and tr.iter % args.save_every == 0:
+            save_latest()
     tr.save(os.path.join(args.out, "final.pt"))
+    if args.save_every and args.algo == "ppo":
+        save_latest()
     s = {"iter": tr.iter, "eval": evaluate(), "wall_h": (time.time() - t_start) / 3600, "final": True}
     log.write(json.dumps(s) + "\n"); log.close()
     print("final", s, flush=True)
