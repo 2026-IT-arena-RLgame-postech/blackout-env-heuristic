@@ -50,6 +50,7 @@ class PPOConfig(GRPOConfig):
     critic_sigma: float = 0.75  # HL-Gauss sigma in bin widths
     critic_prefit_epochs: int = 4   # one-off fit of the new head to the S2 heads' V on the first batch (hlgauss only)
     critic_prefit_lr: float = 1e-3
+    cuda_mem_fraction: float = 0.0     # >0: torch.cuda.set_per_process_memory_fraction (soft cap: the allocator frees cached blocks before it would exceed it)
     graph_shared_pool: bool = False    # (memory only, outputs identical) all CUDA-graph forwards (learner, net opponents, snapshots) share one graph memory pool
     # ---- league arm B (all off by default = old behaviour, bit-identical); see reports/rl/ppo_league_b_setup.md
     adv_center_opp: bool = False       # subtract each opponent's batch-mean advantage (then the global-std scaling)
@@ -87,6 +88,8 @@ class _HLLogits(torch.nn.Module):
 class PPOTrainer(GRPOTrainer):
     def __init__(self, cfg: PPOConfig):
         cfg.groups = cfg.games
+        if cfg.cuda_mem_fraction > 0 and torch.device(cfg.device).type == "cuda":
+            torch.cuda.set_per_process_memory_fraction(cfg.cuda_mem_fraction)
         self.snaps: list[dict] = []        # league snapshots: {path, added, level, last_step, win: deque of (n, sum, sumsq)}
         self.n_fixed = len(cfg.opponents)  # the first n_fixed entries of self.opps are the fixed pool (anchors)
         super().__init__(cfg)
