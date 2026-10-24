@@ -21,3 +21,15 @@ Launcher `reports/rl/ppo_league_b.sh`; tests `tests/test_league.py`.
   (snapshot / ramp_step records), `adv_std` (scale used) and `adv_std_raw`.
 * Resume: `latest.pt` every 10 its (atomic) holds policy, critic, optimisers, scalers, iteration, PFSP scores, finished-game sums, rng, ramp state;
   snapshot weights are the `snap*.pt` files. In-flight trunk games restart from fresh seeds. Run `RESUME=1` with the same env as the original launch.
+
+## WSL laptop run (RTX 3060 6 GB, 12 cores / 24 GB RAM)
+Run dir `~/blackout-env-league/checkpoints/rl/league_b` (worktree of the WSL mirror, branch `league-b`), launcher `reports/rl/ppo_league_b.sh`
+(`MAXDEC=33327244`; resume: `RESUME=1 MAXDEC=33327244 reports/rl/ppo_league_b.sh`). r2 recipe unchanged (games 256, segment 128, minibatch 1024,
+fp16/compile/critic_warmup 10, eval every 150 its x 16 seeds) plus the memory changes needed for 6 GB, all numerics-neutral up to fp rounding:
+* `graph_shared_pool` (all CUDA-graph forwards share one pool), `league_snap_graphs` (snapshots use graphs: eager snapshots cost +17 s/it),
+* `critic_read_batch=1024` (the 4096-row eager critic read peaked at ~2.4 GB), `update_micro=512` (gradient accumulation of 2 x 512 inside each
+  1024 minibatch; update-phase peak 3.5 -> 2.2 GB; test shows identical gradients), `cuda_mem_fraction=0.70` (hard stop instead of a full GPU).
+Smoke (forced snapshots every 3 its, 4 snapshots, all at max share): nvidia-smi peak 4.27 GB, torch allocated peak 2.3 GB, 18 s/it on
+critic-only iterations and ~32 s/it with policy update; heuristic workers 6, OMP 2. Evals (16 seeds x 2 sides x 4 opponents) take ~25 min each.
+Earlier smoke variants that filled the GPU to 5.9-6.0 GB (and two jobs sharing the GPU for ~5 min) logged 300 `nvlddmkm` id-13 events; none since
+the memory was cut.
