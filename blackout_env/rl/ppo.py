@@ -68,6 +68,7 @@ class PPOConfig(GRPOConfig):
     league_window: int = 20            # iterations of the adv-std window
     league_anchor_min: float = 0.4     # fixed opponents keep >= this combined share
     league_warmup: int = 2             # critic-only iterations after each snapshot
+    league_snap_graphs: bool = True    # CUDA-graph forwards for snapshots (each costs ~0.5 GB of graph outputs; False: eager, ~1 s/it each)
 
 
 class _HLLogits(torch.nn.Module):
@@ -148,7 +149,8 @@ class PPOTrainer(GRPOTrainer):
 
     def _attach_snapshot(self, path: str, level: int, added: int, last_step: int) -> dict:
         c = self.cfg
-        pol = make_opponent_policy("net:" + path, c.device, graphs=bool(c.graphs) and self.dev.type == "cuda")
+        pol = make_opponent_policy("net:" + path, c.device,
+                                   graphs=bool(c.graphs) and self.dev.type == "cuda" and c.league_snap_graphs)
         if self._gpool is not None and getattr(pol, "_gf", None) is not None:
             pol._gf._pool = self._gpool
         self.opps.append(pol)
