@@ -3,6 +3,7 @@
 # pfsp=hard, fp16 update/critic, compile, critic_warmup=10, eval every 150 its) PLUS per-opponent advantage centering and gated
 # self-play snapshots with a share ramp (blackout_env/rl/league.py, PPOTrainer flags; setup note reports/rl/ppo_league_b_setup.md).
 #
+# NOTE league_ramp_min_games=30 (design says 100): a snapshot at 5 % of ~3 finished games/it finishes only ~0.16 games/it, so 100 would take ~600 its.
 # Launch (from ~/blackout-env-league on wsl_gpu; needs a free GPU):
 #   MAXDEC=19100000 reports/rl/ppo_league_b.sh
 # Resume after a crash / reboot (same run dir, SAME env/flags; continues from <OUT>/latest.pt, in-flight games restart):
@@ -20,7 +21,7 @@ export OMP_NUM_THREADS=${OMP_NUM_THREADS:-2} MKL_NUM_THREADS=${OMP_NUM_THREADS:-
 RES=""; [ -z "$RESUME" ] || RES="--resume"
 # league flags (defaults of the design: gate 0.85 / gap 100 / start 150 / max 4 / shares 5-10-20 % / anchors >= 40 % / 2 critic-only its)
 LEAGUE="adv_center_opp=true league=true league_gate=${GATE:-0.85} league_min_gap=100 league_min_start=150 league_max=${NSNAP:-4} \
-league_steps=0.05,0.10,0.20 league_ramp_every=20 league_ramp_min_games=${RAMP_GAMES:-100} league_adv_ratio=1.5 league_ev_min=0.4 \
+league_steps=0.05,0.10,0.20 league_ramp_every=20 league_ramp_min_games=${RAMP_GAMES:-30} league_adv_ratio=1.5 league_ev_min=0.4 \
 league_anchor_min=0.4 league_warmup=2"
 setsid nohup nice -n 10 env PYTHONPATH=. .venv/bin/python examples/rl_train.py \
     --algo ppo --out $OUT --hours ${HOURS:-30} --max-decisions ${MAXDEC:?set MAXDEC} --eval-every ${EVAL_EVERY:-150} --eval-seeds ${EVAL_SEEDS:-16} \
