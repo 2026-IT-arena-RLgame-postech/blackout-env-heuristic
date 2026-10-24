@@ -259,7 +259,7 @@ class PPOTrainer(GRPOTrainer):
     def _hl_logits(self, g, t, a):
         """fp32 bin logits [B, bins] (compiled in training for full-size minibatches, like the regression critic)."""
         c = self.cfg
-        if self.critic.training and c.update_compile and self.dev.type == "cuda" and g.shape[0] == c.minibatch:
+        if self.critic.training and c.update_compile and self.dev.type == "cuda" and g.shape[0] in (c.minibatch, c.update_micro):
             key = (id(self.critic), c.critic_fp16, "hl")
             if key not in self._compiled:
                 self._compiled[key] = torch.compile(_HLLogits(self.critic, c.critic_fp16, self.dev.type), dynamic=False)
@@ -280,7 +280,7 @@ class PPOTrainer(GRPOTrainer):
 
     def _value_reg(self, g, t, a):
         g = unpack_graphic(g) if g.dim() == 3 else g
-        if self.critic.training and self.cfg.update_compile and self.dev.type == "cuda" and g.shape[0] == self.cfg.minibatch:
+        if self.critic.training and self.cfg.update_compile and self.dev.type == "cuda" and g.shape[0] in (self.cfg.minibatch, self.cfg.update_micro):
             out = self._compiled_fwd(self.critic, self.cfg.critic_fp16, logits=False)(g, t, a)
         else:
             with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.critic_fp16 and self.dev.type == "cuda"):
@@ -477,23 +477,32 @@ class PPOTrainer(GRPOTrainer):
             perm = torch.randperm(n, device=self.dev)
             for s in range(0, n, c.minibatch):
                 mb = perm[s:s + c.minibatch]
-                if self.hl:
-                    _, lg = self._value(g[mb], t[mb], a[mb])
-                    loss = -(self._hl_target(ret[mb]) * torch.log_softmax(lg, -1)).sum(-1).mean()   # fp32 log_softmax
-                else:
-                    loss = F.smooth_l1_loss(self._value(g[mb], t[mb], a[mb]), ret[mb], beta=c.vf_huber)
                 self.copt.zero_grad(set_to_none=True)
-                if self.cscaler.is_enabled():   # loss scaling: fp16 activation gradients of a ~1e-2 Huber loss underflow
-                    self.cscaler.scale(loss).backward()
+                m_all = len(mb)
+                sub = c.update_micro if c.update_micro > 0 else m_all   # gradient accumulation over micro-chunks
+                for u in range(0, m_all, sub):
+                    ids = mb[u:u + sub]
+                    frac = len(ids) / m_all
+                    if self.hl:
+                        _, lg = self._value(g[ids], t[ids], a[ids])
+                        loss = -(self._hl_target(ret[ids]) * torch.log_softmax(lg, -1)).sum(-1).mean()   # fp32 log_softmax
+                    else:
+                        loss = F.smooth_l1_loss(self._value(g[ids], t[ids], a[ids]), ret[ids], beta=c.vf_huber)
+                    sl = loss * frac if sub < m_all else loss
+                    if self.cscaler.is_enabled():   # loss scaling: fp16 activation gradients of a ~1e-2 Huber loss underflow
+                        self.cscaler.scale(sl).backward()
+                    else:
+                        sl.backward()
+                    vl += loss.item() * frac
+                if self.cscaler.is_enabled():
                     self.cscaler.unscale_(self.copt)
                     torch.nn.utils.clip_grad_norm_(self.critic.parameters(), c.max_grad_norm)
                     self.cscaler.step(self.copt)
                     self.cscaler.update()
                 else:
-                    loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.critic.parameters(), c.max_grad_norm)
                     self.copt.step()
-                vl += loss.item(); nv += 1
+                nv += 1
         self.critic.eval()
         st = {"vf_loss": vl / max(nv, 1)}
         if self.iter < max(c.critic_warmup, self.warm_until):

@@ -182,3 +182,32 @@ def test_snapshot_resume_cpu(tmp_path):
         assert np.array_equal(v.numpy(), tr2.net.state_dict()[k].numpy())
     s = tr2.step()                                                # keeps running after the resume
     assert s["iter"] == 4 and np.isfinite(s["vf_loss"])
+
+
+@needs_ckpt
+def test_update_micro_accumulation_matches_full_minibatch_cpu():
+    """Gradient accumulation over micro-chunks = the full-minibatch update: same gradients (fp32 CPU, up to rounding)."""
+    import torch
+
+    from blackout_env.rl.ppo import PPOTrainer
+
+    res = []
+    for micro in (0, 4):
+        torch.manual_seed(0)
+        tr = PPOTrainer(_cfg(games=6, segment=6, minibatch=12, update_micro=micro, epochs=1, critic_warmup=0))
+        batch, _ = tr.collect()
+        grads = {"pol": [], "crit": []}
+        tr.opt.step = lambda *a, g=grads, t=tr, **k: g["pol"].append([None if q.grad is None else q.grad.clone() for q in t.net.parameters()])
+        tr.copt.step = lambda *a, g=grads, t=tr, **k: g["crit"].append([None if q.grad is None else q.grad.clone() for q in t.critic.parameters()])
+        torch.manual_seed(1)
+        st = tr.update(batch)
+        res.append((grads, st))
+    for key in ("pol", "crit"):
+        assert len(res[0][0][key]) == len(res[1][0][key]) == 3        # 36 rows / minibatch 12
+        for b0, b1 in zip(res[0][0][key], res[1][0][key]):
+            for x, y in zip(b0, b1):
+                assert (x is None) == (y is None)
+                assert x is None or torch.allclose(x, y, atol=1e-7, rtol=1e-3)
+        assert max(float(x.abs().max()) for x in res[0][0][key][0] if x is not None) > 0
+    assert res[0][1]["vf_loss"] == pytest.approx(res[1][1]["vf_loss"], rel=1e-4)
+    assert res[0][1]["pg"] == pytest.approx(res[1][1]["pg"], rel=1e-3, abs=1e-8)

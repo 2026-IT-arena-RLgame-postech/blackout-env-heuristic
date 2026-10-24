@@ -413,6 +413,7 @@ class GRPOConfig:
     update_fp16: bool = False  # autocast fp16 in update()'s forward/backward (~2x faster; changes numerics slightly, off by default)
     overlap_heur: bool = False  # heuristic opponents of both teams run on the workers during the network forwards (bit-identical to the per-team Seats calls; ignored with joint)
     update_compile: bool = False  # (opt-in, numerics differ at fp rounding level) torch.compile (inductor) of the update-phase forwards
+    update_micro: int = 0      # >0: gradient accumulation over chunks of this many rows inside each minibatch (same loss/gradient up to fp rounding, ~linear less update-phase activation memory)
     graphs: bool = True        # CUDA-graph replay of the learner / net-opponent forwards (bit-identical, sim/graphfwd.py)
 
 
@@ -632,7 +633,7 @@ class GRPOTrainer:
         # compiled only where gradients flow: inductor's fp16 graphs for parameter-free-grad / no_grad forwards were wrong
         # (max |dlogit| ~ 10, NaN) on torch 2.11 -- the old / ref log-probs stay eager
         if self.cfg.update_compile and self.dev.type == "cuda" and torch.is_grad_enabled() and own is self.own \
-                and g.shape[0] == self.cfg.minibatch:
+                and g.shape[0] in (self.cfg.minibatch, self.cfg.update_micro):
             return self._compiled_fwd(own, self.cfg.update_fp16)(g, t, a) / self.cfg.temperature
         with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.update_fp16 and self.dev.type == "cuda"):
             q, _ = own(g, t, a)
@@ -659,30 +660,38 @@ class GRPOTrainer:
             perm = torch.randperm(n, device=self.dev)
             for s in range(0, n, c.minibatch):
                 mb = perm[s:s + c.minibatch]
-                lp_all = F.log_softmax(self._logits(self.own, g[mb], t[mb], a[mb]), -1)   # [m, 5, W]
-                lp = lp_all.gather(-1, act[mb].unsqueeze(-1)).squeeze(-1)                 # [m, 5]
-                ratio = torch.exp(lp - old_lp[mb])
-                A = adv[mb].unsqueeze(-1)
-                pg = -torch.min(ratio * A, ratio.clamp(1 - c.clip, 1 + c.clip) * A).mean()
-                p = lp_all.exp()
-                kl = (p * (lp_all - ref_lp[mb])).sum(-1).mean()
-                loss = pg + c.beta * kl
                 self.opt.zero_grad(set_to_none=True)
+                m_all = len(mb)
+                sub = c.update_micro if c.update_micro > 0 else m_all   # gradient accumulation over micro-chunks (same math, less activation memory)
+                for u in range(0, m_all, sub):
+                    ids = mb[u:u + sub]
+                    frac = len(ids) / m_all
+                    lp_all = F.log_softmax(self._logits(self.own, g[ids], t[ids], a[ids]), -1)   # [m, 5, W]
+                    lp = lp_all.gather(-1, act[ids].unsqueeze(-1)).squeeze(-1)                 # [m, 5]
+                    ratio = torch.exp(lp - old_lp[ids])
+                    A = adv[ids].unsqueeze(-1)
+                    pg = -torch.min(ratio * A, ratio.clamp(1 - c.clip, 1 + c.clip) * A).mean()
+                    p = lp_all.exp()
+                    kl = (p * (lp_all - ref_lp[ids])).sum(-1).mean()
+                    loss = pg + c.beta * kl
+                    sl = loss * frac if sub < m_all else loss
+                    if self.scaler.is_enabled():
+                        self.scaler.scale(sl).backward()
+                    else:
+                        sl.backward()
+                    with torch.no_grad():
+                        st["loss"] += loss.item() * frac; st["pg"] += pg.item() * frac; st["kl"] += kl.item() * frac
+                        st["ent"] += -(p * lp_all).sum(-1).mean().item() * frac
+                        st["clipfrac"] += ((ratio - 1).abs() > c.clip).float().mean().item() * frac
                 if self.scaler.is_enabled():
-                    self.scaler.scale(loss).backward()
                     self.scaler.unscale_(self.opt)
                     gn = torch.nn.utils.clip_grad_norm_(self.net.parameters(), c.max_grad_norm)
                     self.scaler.step(self.opt)
                     self.scaler.update()
                 else:
-                    loss.backward()
                     gn = torch.nn.utils.clip_grad_norm_(self.net.parameters(), c.max_grad_norm)
                     self.opt.step()
-                with torch.no_grad():
-                    st["loss"] += loss.item(); st["pg"] += pg.item(); st["kl"] += kl.item()
-                    st["ent"] += -(p * lp_all).sum(-1).mean().item()
-                    st["clipfrac"] += ((ratio - 1).abs() > c.clip).float().mean().item()
-                    st["grad_norm"] += gn.item(); st["n_mb"] += 1
+                st["grad_norm"] += gn.item(); st["n_mb"] += 1
         m = max(st.pop("n_mb"), 1)
         return {k: v / m for k, v in st.items()}
 
