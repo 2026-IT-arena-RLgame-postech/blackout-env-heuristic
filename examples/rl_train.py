@@ -58,6 +58,7 @@ def main():
     ap.add_argument("--eval-opps", default=DEFAULT_EVAL)
     ap.add_argument("--save-every", type=int, default=0,
                     help="ppo: write <out>/latest.pt (full resumable trainer state, atomic) every N iterations (0: off)")
+    ap.add_argument("--no-eval0", action="store_true", help="skip the initial evaluation (smoke tests)")
     ap.add_argument("--resume", action="store_true", help="ppo: continue from <out>/latest.pt if it exists (same --set flags!)")
     ap.add_argument("--set", nargs="*", default=[])
     args = ap.parse_args()
@@ -92,7 +93,7 @@ def main():
         decisions, t_start = int(ex["decisions"]), time.time() - ex["wall_h"] * 3600
         log.write(json.dumps({"resumed": tr.iter, "decisions_total": decisions, "wall_h": ex["wall_h"]}) + "\n"); log.flush()
         print("resumed at iter", tr.iter, "decisions", decisions, flush=True)
-    else:
+    elif not args.no_eval0:
         ev = evaluate()
         log.write(json.dumps({"iter": 0, "eval": ev, "wall_h": 0.0}) + "\n"); log.flush()
         print("eval 0", ev, flush=True)
