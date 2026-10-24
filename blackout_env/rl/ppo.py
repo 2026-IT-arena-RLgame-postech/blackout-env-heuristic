@@ -50,6 +50,7 @@ class PPOConfig(GRPOConfig):
     critic_sigma: float = 0.75  # HL-Gauss sigma in bin widths
     critic_prefit_epochs: int = 4   # one-off fit of the new head to the S2 heads' V on the first batch (hlgauss only)
     critic_prefit_lr: float = 1e-3
+    graph_shared_pool: bool = False    # (memory only, outputs identical) all CUDA-graph forwards (learner, net opponents, snapshots) share one graph memory pool
     # ---- league arm B (all off by default = old behaviour, bit-identical); see reports/rl/ppo_league_b_setup.md
     adv_center_opp: bool = False       # subtract each opponent's batch-mean advantage (then the global-std scaling)
     adv_center_min_games: int = 10     # ... only for opponents with >= this many (finished or active) games in the batch
@@ -95,6 +96,12 @@ class PPOTrainer(GRPOTrainer):
         self.last_snap_iter = 0
         self.warm_until = 0                # policy updates are skipped while iter < max(critic_warmup, warm_until)
         self._events: list = []
+        self._gpool = None
+        if cfg.graph_shared_pool and self.dev.type == "cuda" and cfg.graphs:
+            self._gpool = torch.cuda.graph_pool_handle()
+            for gf in [self.learner_gf] + [getattr(p, "_gf", None) for p in self.opps]:
+                if gf is not None:
+                    gf._pool = self._gpool
         self.critic = load_value_net(cfg.value, device=self.dev)
         self.critic.train(False)
         self.hl = cfg.critic_head == "hlgauss"
@@ -142,6 +149,8 @@ class PPOTrainer(GRPOTrainer):
     def _attach_snapshot(self, path: str, level: int, added: int, last_step: int) -> dict:
         c = self.cfg
         pol = make_opponent_policy("net:" + path, c.device, graphs=bool(c.graphs) and self.dev.type == "cuda")
+        if self._gpool is not None and getattr(pol, "_gf", None) is not None:
+            pol._gf._pool = self._gpool
         self.opps.append(pol)
         self.branch_opps.append(pol)
         self.opp_score = np.append(self.opp_score, 0.5)
@@ -184,6 +193,9 @@ class PPOTrainer(GRPOTrainer):
         out = super().step()
         if self.cfg.league:
             self._league_post(out)
+        if self.dev.type == "cuda":
+            out["cuda_peak_alloc_mb"] = torch.cuda.max_memory_allocated() / 2**20
+            out["cuda_peak_reserved_mb"] = torch.cuda.max_memory_reserved() / 2**20
         return out
 
     # ------------------------------------------------------------------ resume
