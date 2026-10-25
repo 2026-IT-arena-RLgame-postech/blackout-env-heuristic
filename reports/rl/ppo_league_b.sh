@@ -6,11 +6,12 @@
 # NOTE league_ramp_min_games=30 (design says 100): a snapshot at 5 % of ~3 finished games/it finishes only ~0.16 games/it, so 100 would take ~600 its.
 # Launch (from ~/blackout-env-league on wsl_gpu; needs a free GPU):
 #   MAXDEC=19100000 reports/rl/ppo_league_b.sh
+# On poscat_gpu2 (multi-GPU, never GPU 3): REPO=~/blackout-env-<dir> GPU=0 OUT=checkpoints/rl/league_b2 MAXDEC=... reports/rl/ppo_league_b.sh
 # Resume after a crash / reboot (same run dir, SAME env/flags; continues from <OUT>/latest.pt, in-flight games restart):
 #   RESUME=1 MAXDEC=19100000 reports/rl/ppo_league_b.sh
 set -e
-cd ~/blackout-env-league
-n=$(nvidia-smi --query-compute-apps=pid --format=csv,noheader | wc -l)
+cd ${REPO:-~/blackout-env-league}
+if [ -n "$GPU" ]; then [ "$GPU" != 3 ] || { echo "GPU 3 is off limits"; exit 1; }; export CUDA_VISIBLE_DEVICES=$GPU; nvidia-smi -i $GPU | grep -q "No running processes found" || { nvidia-smi -i $GPU; echo "GPU $GPU busy"; exit 1; }; n=0; else n=$(nvidia-smi --query-compute-apps=pid --format=csv,noheader | wc -l); fi
 [ "$n" = 0 ] || { echo "GPU has $n compute processes"; exit 1; }
 F=checkpoints/distill/frozen
 OUT=${OUT:-checkpoints/rl/league_b}
