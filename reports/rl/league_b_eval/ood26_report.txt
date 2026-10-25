@@ -1,0 +1,122 @@
+OOD-26 report: reports/rl/league_b_eval/ood26  (cat = margin < -20; catT = cat on a (seed, side) the teacher won)
+
+candidate  opponent       grp       n       margin   win   cat      catT   h99     - teacher - net:checkpoints/distill/frozen/p24c_v321.pt
+net:checkp v30_h4hunt     param    64  +30.7± 5.4  0.78  0.19   0/0     1.00              
+net:checkp v30_h2         param    64  +65.4± 2.5  0.98  0.02   0/0     1.00              
+net:checkp v30_camp       param    64  +36.1± 6.1  0.80  0.17   0/0     1.00              
+net:checkp v30_stage3     param    64  +37.6± 5.7  0.77  0.17   0/0     1.00              
+net:checkp v30_nostage    param    64  +57.1± 4.3  0.89  0.08   0/0     1.00              
+net:checkp v30_c0         param    64  +40.9± 8.4  0.72  0.25   0/0     1.00              
+net:checkp v30_hunt       param    64  +34.8± 5.7  0.78  0.17   0/0     1.00              
+net:checkp v30_reckless   param    64  +38.9± 4.9  0.83  0.14   0/0     1.00              
+net:checkp early_rush     style    64  +82.2± 1.5  1.00  0.00   0/0     1.00              
+net:checkp fortress       style    64  +75.1± 1.2  1.00  0.00   0/0     1.00              
+net:checkp raider         style    64  +75.9± 1.0  1.00  0.00   0/0     1.00              
+net:checkp duelist        style    64  +70.1± 1.4  1.00  0.00   0/0     1.00              
+net:checkp cargo_hunter   style    64  +71.6± 2.0  0.98  0.02   0/0     1.00              
+net:checkp rush_all       param    64  +94.1± 2.0  1.00  0.00   0/0     1.00              
+net:checkp v4             old      64  +69.1± 1.7  1.00  0.00   0/0     1.00              
+net:checkp v19            old      64  +77.8± 1.8  0.98  0.00   0/0     1.00              
+net:checkp v21            old      64  +72.0± 3.0  0.98  0.02   0/0     1.00              
+net:checkp v26            old      64  +65.3± 2.7  0.98  0.02   0/0     1.00              
+net:checkp random         old      64  +99.1± 0.9  1.00  0.00   0/0     1.00              
+net:checkp idle           old      64 +100.5± 1.4  1.00  0.00   0/0     1.00              
+net:checkp v31_eps10      noise    64  +78.2± 1.2  1.00  0.00   0/0     1.00              
+net:checkp v30_lag4       noise    64  +82.8± 0.9  1.00  0.00   0/0     1.00              
+net:checkp v30_freeze10   noise    64  +68.4± 4.0  0.95  0.05   0/0     1.00              
+net:checkp p20_t1         noise    64  +39.7± 6.2  0.77  0.17   0/0     1.00              
+net:checkp v31            mirror   64  +38.0± 6.2  0.80  0.16   0/0     1.00              
+
+candidate  opponent       grp       n       margin   win   cat      catT   h99     - teacher - net:checkpoints/distill/frozen/p24c_v321.pt
+net:checkp v30_h4hunt     param    64  +46.2± 3.8  0.91  0.06   0/0     1.00                +15.5± 6.1
+net:checkp v30_h2         param    64  +67.7± 2.0  0.98  0.00   0/0     1.00                 +2.3± 2.9
+net:checkp v30_camp       param    64  +50.6± 5.0  0.91  0.09   0/0     1.00                +14.5± 5.0
+net:checkp v30_stage3     param    64  +52.0± 4.8  0.91  0.09   0/0     1.00                +14.4± 6.1
+net:checkp v30_nostage    param    64  +62.8± 3.5  0.95  0.03   0/0     1.00                 +5.7± 4.5
+net:checkp v30_c0         param    64  +40.7± 8.0  0.73  0.23   0/0     1.00                 -0.2± 5.9
+net:checkp v30_hunt       param    64  +56.1± 3.3  0.97  0.03   0/0     1.00                +21.3± 5.3
+net:checkp v30_reckless   param    64  +55.5± 4.2  0.94  0.06   0/0     1.00                +16.6± 6.0
+net:checkp early_rush     style    64  +80.6± 2.0  1.00  0.00   0/0     1.00                 -1.6± 2.0
+net:checkp fortress       style    64  +74.3± 1.3  1.00  0.00   0/0     1.00                 -0.8± 0.9
+net:checkp raider         style    64  +74.9± 2.0  0.98  0.02   0/0     1.00                 -1.0± 2.3
+net:checkp duelist        style    64  +73.7± 1.2  1.00  0.00   0/0     1.00                 +3.5± 1.4
+net:checkp cargo_hunter   style    64  +73.5± 2.3  0.98  0.02   0/0     1.00                 +1.9± 1.2
+net:checkp rush_all       param    64  +94.0± 2.0  1.00  0.00   0/0     1.00                 -0.1± 1.4
+net:checkp v4             old      64  +70.9± 1.7  1.00  0.00   0/0     1.00                 +1.8± 2.3
+net:checkp v19            old      64  +80.4± 1.2  1.00  0.00   0/0     1.00                 +2.6± 1.7
+net:checkp v21            old      64  +68.3± 3.7  0.95  0.03   0/0     1.00                 -3.6± 3.1
+net:checkp v26            old      64  +66.2± 3.3  0.97  0.03   0/0     1.00                 +0.9± 4.2
+net:checkp random         old      64  +99.8± 0.8  1.00  0.00   0/0     1.00                 +0.8± 0.7
+net:checkp idle           old      64 +101.6± 0.6  1.00  0.00   0/0     1.00                 +1.1± 1.3
+net:checkp v31_eps10      noise    64  +74.7± 3.1  0.97  0.03   0/0     1.00                 -3.5± 3.4
+net:checkp v30_lag4       noise    64  +84.8± 0.7  1.00  0.00   0/0     1.00                 +2.0± 0.9
+net:checkp v30_freeze10   noise    64  +70.4± 3.0  0.95  0.02   0/0     1.00                 +2.0± 3.1
+net:checkp p20_t1         noise    64  +57.0± 3.4  0.95  0.03   0/0     1.00                +17.3± 5.7
+net:checkp v31            mirror   64  +52.8± 4.1  0.92  0.06   0/0     1.00                +14.8± 7.7
+
+candidate  opponent       grp       n       margin   win   cat      catT   h99     - teacher - net:checkpoints/distill/frozen/p24c_v321.pt
+net:checkp v30_h4hunt     param    64  +42.2± 5.2  0.89  0.09   0/0     1.00                +11.5± 5.6
+net:checkp v30_h2         param    64  +68.3± 1.6  1.00  0.00   0/0     1.00                 +2.9± 3.1
+net:checkp v30_camp       param    64  +53.0± 4.0  0.92  0.05   0/0     1.00                +16.9± 6.1
+net:checkp v30_stage3     param    64  +57.1± 3.1  0.95  0.03   0/0     1.00                +19.5± 6.4
+net:checkp v30_nostage    param    64  +62.7± 4.1  0.95  0.05   0/0     1.00                 +5.6± 4.8
+net:checkp v30_c0         param    64  +37.9± 7.3  0.69  0.27   0/0     1.00                 -3.0± 5.9
+net:checkp v30_hunt       param    64  +50.8± 3.8  0.92  0.08   0/0     1.00                +16.0± 6.3
+net:checkp v30_reckless   param    64  +46.7± 5.4  0.88  0.12   0/0     1.00                 +7.8± 5.8
+net:checkp early_rush     style    64  +82.1± 1.7  1.00  0.00   0/0     1.00                 -0.2± 1.9
+net:checkp fortress       style    64  +73.2± 1.5  1.00  0.00   0/0     1.00                 -2.0± 1.2
+net:checkp raider         style    64  +75.8± 1.0  1.00  0.00   0/0     1.00                 -0.1± 1.0
+net:checkp duelist        style    64  +72.0± 1.1  1.00  0.00   0/0     1.00                 +1.8± 1.3
+net:checkp cargo_hunter   style    64  +70.8± 2.5  0.97  0.02   0/0     1.00                 -0.8± 2.1
+net:checkp rush_all       param    64  +94.1± 1.7  1.00  0.00   0/0     1.00                 +0.0± 1.8
+net:checkp v4             old      64  +68.8± 2.7  0.98  0.02   0/0     1.00                 -0.4± 3.2
+net:checkp v19            old      64  +79.3± 1.4  1.00  0.00   0/0     1.00                 +1.5± 1.9
+net:checkp v21            old      64  +70.9± 2.2  0.98  0.02   0/0     1.00                 -1.1± 1.9
+net:checkp v26            old      64  +67.0± 2.8  0.98  0.02   0/0     1.00                 +1.7± 3.7
+net:checkp random         old      64  +98.2± 1.4  1.00  0.00   0/0     1.00                 -0.9± 1.7
+net:checkp idle           old      64 +100.9± 1.0  1.00  0.00   0/0     1.00                 +0.4± 1.6
+net:checkp v31_eps10      noise    64  +77.7± 1.9  0.98  0.02   0/0     1.00                 -0.5± 2.3
+net:checkp v30_lag4       noise    64  +84.2± 0.9  1.00  0.00   0/0     1.00                 +1.5± 1.0
+net:checkp v30_freeze10   noise    64  +66.2± 3.6  0.94  0.03   0/0     1.00                 -2.2± 3.8
+net:checkp p20_t1         noise    64  +57.7± 3.3  0.95  0.05   0/0     1.00                +18.0± 5.3
+net:checkp v31            mirror   64  +55.5± 3.3  0.97  0.03   0/0     1.00                +17.5± 6.5
+
+candidate  opponent       grp       n       margin   win   cat      catT   h99     - teacher - net:checkpoints/distill/frozen/p24c_v321.pt
+net:checkp v30_h4hunt     param    64  +44.7± 4.3  0.89  0.09   0/0     1.00                +14.1± 6.4
+net:checkp v30_h2         param    64  +68.5± 1.6  1.00  0.00   0/0     1.00                 +3.1± 2.7
+net:checkp v30_camp       param    64  +48.0± 4.3  0.91  0.09   0/0     1.00                +11.9± 5.4
+net:checkp v30_stage3     param    64  +50.5± 4.6  0.92  0.06   0/0     1.00                +12.9± 6.7
+net:checkp v30_nostage    param    64  +67.8± 2.5  0.98  0.02   0/0     1.00                +10.6± 4.2
+net:checkp v30_c0         param    64  +22.5± 9.2  0.58  0.41   0/0     1.00                -18.4± 6.8
+net:checkp v30_hunt       param    64  +50.5± 4.1  0.89  0.08   0/0     1.00                +15.7± 6.2
+net:checkp v30_reckless   param    64  +48.6± 4.7  0.89  0.11   0/0     1.00                 +9.6± 5.8
+net:checkp early_rush     style    64  +82.5± 1.5  1.00  0.00   0/0     1.00                 +0.3± 2.1
+net:checkp fortress       style    64  +73.2± 1.5  1.00  0.00   0/0     1.00                 -1.9± 1.1
+net:checkp raider         style    64  +76.5± 0.9  1.00  0.00   0/0     1.00                 +0.6± 0.9
+net:checkp duelist        style    64  +72.3± 1.0  1.00  0.00   0/0     1.00                 +2.2± 1.4
+net:checkp cargo_hunter   style    64  +74.7± 1.1  1.00  0.00   0/0     1.00                 +3.1± 1.9
+net:checkp rush_all       param    64  +96.4± 1.2  1.00  0.00   0/0     1.00                 +2.2± 2.0
+net:checkp v4             old      64  +70.7± 1.0  1.00  0.00   0/0     1.00                 +1.6± 2.0
+net:checkp v19            old      64  +80.8± 1.1  1.00  0.00   0/0     1.00                 +3.0± 1.9
+net:checkp v21            old      64  +76.2± 1.2  1.00  0.00   0/0     1.00                 +4.2± 3.1
+net:checkp v26            old      64  +72.0± 1.3  1.00  0.00   0/0     1.00                 +6.7± 2.4
+net:checkp random         old      64  +98.8± 1.1  1.00  0.00   0/0     1.00                 -0.3± 1.3
+net:checkp idle           old      64 +101.3± 1.0  1.00  0.00   0/0     1.00                 +0.8± 1.6
+net:checkp v31_eps10      noise    64  +80.2± 0.9  1.00  0.00   0/0     1.00                 +2.0± 1.3
+net:checkp v30_lag4       noise    64  +85.0± 1.1  1.00  0.00   0/0     1.00                 +2.2± 1.1
+net:checkp v30_freeze10   noise    64  +72.6± 1.4  1.00  0.00   0/0     1.00                 +4.2± 3.4
+net:checkp p20_t1         noise    64  +59.3± 3.4  0.97  0.03   0/0     1.00                +19.6± 5.4
+net:checkp v31            mirror   64  +52.2± 5.0  0.94  0.06   0/0     1.00                +14.3± 8.2
+
+per candidate (over the OOD-26 opponents it played):
+candidate  opps   mean                  worst   cat       catT collapse vs teacher (gap < -5 at 2 SE)
+net:checkp   25  +64.1     v30_h4hunt  +30.7  0.064    0/0     -
+net:checkp   25  +69.2         v30_c0  +40.7  0.034    0/0     -
+net:checkp   25  +68.5         v30_c0  +37.9  0.035    0/0     -
+net:checkp   25  +69.0         v30_c0  +22.5  0.038    0/0     -
+
+OOD non-regression rule vs net:checkpoints/distill/frozen/p24c_v321.pt (§56): R1 worst >= base-5, R2 catT <= base+2 %, R3 no opponent < -5 at 2 SE, R4 h99 >= base-0.10 everywhere
+  net:checkpoints/rl/league_b/final.pt PASS  R1 worst +40.7 (v30_c0) vs +30.7 ok | R2 catT nan% vs nan% ok | R3 ok | R4 ok
+  net:checkpoints/rl/league_b/iter_600.pt PASS  R1 worst +37.9 (v30_c0) vs +30.7 ok | R2 catT nan% vs nan% ok | R3 ok | R4 ok
+  net:checkpoints/rl/ppo_r2_reg/final.pt FAIL  R1 worst +22.5 (v30_c0) vs +30.7 X | R2 catT nan% vs nan% ok | R3 v30_c0 -18.4±6.8 | R4 ok
+
