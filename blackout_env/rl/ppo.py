@@ -226,6 +226,8 @@ class PPOTrainer(GRPOTrainer):
               "extra": extra or {}}
         if self.cfg.league_ref_reset:
             st["ref_state"] = self.ref.net.state_dict()
+        if self.log_sigma is not None:
+            st["log_sigma"] = float(self.log_sigma)
         torch.save(st, path + ".tmp")
         os.replace(path + ".tmp", path)
 
@@ -235,6 +237,9 @@ class PPOTrainer(GRPOTrainer):
         self.net.load_state_dict(st["policy_state"])
         if "ref_state" in st:
             self.ref.net.load_state_dict(st["ref_state"])
+        if self.log_sigma is not None and "log_sigma" in st:
+            with torch.no_grad():
+                self.log_sigma.fill_(st["log_sigma"])
         self.critic.load_state_dict(st["critic_state"])
         self.opt.load_state_dict(st["opt"]); self.copt.load_state_dict(st["copt"])
         self.scaler.load_state_dict(st["scaler"]); self.cscaler.load_state_dict(st["cscaler"])
@@ -356,13 +361,14 @@ class PPOTrainer(GRPOTrainer):
         t0 = time.perf_counter()
         n = len(self.trunk)
         learner = LearnerPolicy(self.own, self.dev, 10**9, c.temperature, seed=int(self.rng.integers(2**31)),
-                                graphs=self.learner_gf)
+                                graphs=self.learner_gf, **self._learner_kw())
         res = self._rollout(self.trunk, learner, self.trunk_opp, self.trunk_side, c.segment)
         t1 = time.perf_counter()
         recs = learner.records
         game = np.concatenate([r[0] for r in recs])
         g = np.concatenate([r[1] for r in recs]); ts = np.concatenate([r[2] for r in recs])
         ag = np.concatenate([r[3] for r in recs]); act = np.concatenate([r[4] for r in recs])
+        off = np.concatenate([r[5] for r in recs]) if c.offset_rl else None
         if not self._prefit_done:
             self._prefit_head(g, ts, ag)
         v = self._values_np(g, ts, ag)
@@ -454,6 +460,8 @@ class PPOTrainer(GRPOTrainer):
         ev = 1.0 - float(np.var(ret - v) / (np.var(ret) + 1e-12))
         batch = {"g": g, "t": ts, "a": ag, "act": act, "adv": (adv_used / a_std).astype(np.float32),
                  "ret": ret.astype(np.float32)}
+        if off is not None:
+            batch["off"] = off
         if self.dev.type == "cuda":
             self._collect_peak = torch.cuda.max_memory_allocated() / 2**20
             torch.cuda.reset_peak_memory_stats()
