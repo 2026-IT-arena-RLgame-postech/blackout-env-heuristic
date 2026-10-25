@@ -71,6 +71,7 @@ class PPOConfig(GRPOConfig):
     league_anchor_min: float = 0.4     # fixed opponents keep >= this combined share
     league_warmup: int = 2             # critic-only iterations after each snapshot
     league_snap_graphs: bool = True    # CUDA-graph forwards for snapshots (each costs ~0.5 GB of graph outputs; False: eager, ~1 s/it each)
+    league_ref_reset: bool = False     # KL anchor pi_ref <- the learner at each new snapshot (default: pi_ref stays the init policy)
 
 
 class _HLLogits(torch.nn.Module):
@@ -185,6 +186,8 @@ class PPOTrainer(GRPOTrainer):
             sn = self._add_snapshot()
             self.last_snap_iter = self.iter
             self.warm_until = self.iter + c.league_warmup
+            if c.league_ref_reset:
+                self.ref.net.load_state_dict(self.net.state_dict())
             self._events.append({"snapshot": len(self.snaps), "path": os.path.basename(sn["path"]), "gate_score": gs})
         self.opp_w = self._pfsp_weights()
         out["league_events"] = self._events
@@ -221,6 +224,8 @@ class PPOTrainer(GRPOTrainer):
               "snaps": [{"file": os.path.basename(s["path"]), "added": s["added"], "level": s["level"], "last_step": s["last_step"],
                          "win": list(s["win"])} for s in self.snaps],
               "extra": extra or {}}
+        if self.cfg.league_ref_reset:
+            st["ref_state"] = self.ref.net.state_dict()
         torch.save(st, path + ".tmp")
         os.replace(path + ".tmp", path)
 
@@ -228,6 +233,8 @@ class PPOTrainer(GRPOTrainer):
         c = self.cfg
         st = torch.load(path, map_location=self.dev, weights_only=False)
         self.net.load_state_dict(st["policy_state"])
+        if "ref_state" in st:
+            self.ref.net.load_state_dict(st["ref_state"])
         self.critic.load_state_dict(st["critic_state"])
         self.opt.load_state_dict(st["opt"]); self.copt.load_state_dict(st["copt"])
         self.scaler.load_state_dict(st["scaler"]); self.cscaler.load_state_dict(st["cscaler"])

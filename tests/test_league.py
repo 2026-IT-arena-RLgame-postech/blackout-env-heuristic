@@ -211,3 +211,33 @@ def test_update_micro_accumulation_matches_full_minibatch_cpu():
         assert max(float(x.abs().max()) for x in res[0][0][key][0] if x is not None) > 0
     assert res[0][1]["vf_loss"] == pytest.approx(res[1][1]["vf_loss"], rel=1e-4)
     assert res[0][1]["pg"] == pytest.approx(res[1][1]["pg"], rel=1e-3, abs=1e-8)
+
+
+@needs_ckpt
+def test_league_ref_reset_cpu(tmp_path):
+    """league_ref_reset: pi_ref <- the learner at each snapshot (off: pi_ref stays the init); kept across a resume."""
+    import torch
+
+    from blackout_env.rl.ppo import PPOTrainer
+
+    kw = dict(league=True, league_dir=str(tmp_path), league_gate=0.0, league_min_start=2, league_min_gap=2, league_max=1,
+              league_warmup=0, critic_warmup=0, lr=1e-3)
+    init = {k: v.clone() for k, v in PPOTrainer(_cfg(**kw)).ref.net.state_dict().items()}
+    same = lambda a, b: all(torch.equal(a[k], b[k]) for k in a)
+    for reset in (False, True):
+        tr = PPOTrainer(_cfg(**kw, league_ref_reset=reset))
+        for _ in range(2):
+            tr.step()
+        assert len(tr.snaps) == 1
+        ref = tr.ref.net.state_dict()
+        assert same(ref, init) != reset
+        if reset:
+            snap = torch.load(tr.snaps[0]["path"], weights_only=True)["policy_state"]
+            assert same(ref, snap)
+            tr.step()                                             # learner moves on, ref stays at the snapshot
+            assert same(tr.ref.net.state_dict(), snap) and not same(tr.net.state_dict(), snap)
+            path = str(tmp_path / "latest.pt")
+            tr.save_resume(path)
+            tr2 = PPOTrainer(_cfg(**kw, league_ref_reset=True))
+            tr2.load_resume(path)
+            assert same(tr2.ref.net.state_dict(), snap)
