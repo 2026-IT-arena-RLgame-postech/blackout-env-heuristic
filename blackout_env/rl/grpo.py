@@ -17,7 +17,9 @@ One iteration:
    noise).
 5. **Update**: PPO-clipped ratio per unit action (the 5 units' bins are independent categoricals),
    + ``beta`` * exact KL(pi || pi_ref) over the bins (pi_ref = the starting student).  The angle
-   offsets stay deterministic (no policy gradient through them).
+   offsets stay deterministic (no policy gradient through them) unless ``offset_rl``: then the chosen bin's offset
+   is sampled N(mu, sigma^2) (mu = the net's offset for that bin, sigma = exp(learnable scalar)) and is part of the
+   action (log-prob = bin + Gaussian, KL gains the Gaussian term, see ``GRPOTrainer.update``).
 
 Opponents are drawn per trunk game from ``opponents`` with weights ``opp_weights`` (default uniform),
 reweighted by PFSP when ``pfsp`` is set: each opponent keeps an EMA of the learner's score against it
@@ -73,7 +75,7 @@ class LearnerPolicy(BatchPolicy):
     accepts_packed = True
 
     def __init__(self, own: _OwnQ, device, sample_steps: int = 0, temperature: float = 1.0,
-                 fp16: bool = True, seed: int = 0, graphs=None):
+                 fp16: bool = True, seed: int = 0, graphs=None, offset_sigma: float | None = None):
         self.own, self.device = own, torch.device(device)
         self.sample_steps, self.temperature, self.fp16 = int(sample_steps), float(temperature), fp16
         self.rng = torch.Generator(device=self.device)
@@ -81,6 +83,22 @@ class LearnerPolicy(BatchPolicy):
         self.t = np.zeros(0, np.int64)
         self.records: list = []
         self.graphs = graphs   # a sim.graphfwd.GraphForward over ``own`` (fp16 CUDA only), else the eager path
+        self.offset_sigma = offset_sigma   # not None: sampled units also sample the chosen bin's angle offset ~ N(mu, sigma^2) and record it
+
+    def _sample_offsets(self, off, rows, chosen):
+        """Replace, in ``off`` [n, 5, K] (canonical frame), the chosen bin's offset of the sampled ``rows`` by a draw
+        N(mu, sigma^2) (mu = the net's value; STAND units keep theirs, unused).  Returns (new ``off``, the draws [len(rows), 5] as
+        float32 numpy, 0 for STAND); ``off`` itself is not modified (it may be a CUDA-graph output buffer)."""
+        k = off.shape[-1]
+        ch = chosen[rows]
+        nonstand = ch < k
+        idx = ch.clamp(max=k - 1).unsqueeze(-1)
+        mu = off[rows].gather(-1, idx)[..., 0]
+        o = mu + self.offset_sigma * torch.randn(mu.shape, generator=self.rng, device=self.device)
+        o = torch.where(nonstand, o, torch.zeros_like(o))
+        off = off.clone()
+        off[rows] = off[rows].scatter(-1, idx, torch.where(nonstand, o, mu).unsqueeze(-1))
+        return off, o.cpu().numpy().astype(np.float32)
 
     def reset(self, n: int) -> None:
         self.t = np.zeros(n, np.int64)
@@ -115,10 +133,13 @@ class LearnerPolicy(BatchPolicy):
                 p = torch.softmax(q[rows] / self.temperature, -1)
                 pick = torch.multinomial(p.reshape(-1, p.shape[-1]), 1, generator=self.rng).view(p.shape[:-1])
                 chosen[rows] = pick
+            o_np = None
+            if r is not None and self.offset_sigma is not None:
+                off, o_np = self._sample_offsets(off, rows, chosen)
             chosen_np = chosen.cpu().numpy()
             if r is not None:
                 self.records.append((idx[r].copy(), g[r].copy(), ts[r].copy(), ag[r].copy(),
-                                     chosen_np[r].astype(np.int8)))
+                                     chosen_np[r].astype(np.int8)) + ((o_np,) if o_np is not None else ()))
             onehot = np.zeros(q.shape, np.float32)
             np.put_along_axis(onehot, chosen_np[..., None], 1.0, -1)
             team_b = np.full(n, tm == 1)
@@ -134,7 +155,7 @@ def _moves_views(self, idx, g, ts, ag, team, chunks):
     those of the per-team ``moves`` calls (only the forward's batch composition differs)."""
     q, off = self._forward(g, ts, ag)
     chosen = q.argmax(-1)
-    sampled = []
+    sampled, offs = [], []
     for lo, hi in chunks:
         if hi <= lo:
             continue
@@ -146,9 +167,13 @@ def _moves_views(self, idx, g, ts, ag, team, chunks):
             pick = torch.multinomial(p.reshape(-1, p.shape[-1]), 1, generator=self.rng).view(p.shape[:-1])
             chosen[rows] = pick
             sampled.append(r)
+            if self.offset_sigma is not None:
+                off, o_np = self._sample_offsets(off, rows, chosen)
+                offs.append(o_np)
     chosen_np = chosen.cpu().numpy()
-    for r in sampled:
-        self.records.append((idx[r].copy(), g[r].copy(), ts[r].copy(), ag[r].copy(), chosen_np[r].astype(np.int8)))
+    for j, r in enumerate(sampled):
+        self.records.append((idx[r].copy(), g[r].copy(), ts[r].copy(), ag[r].copy(), chosen_np[r].astype(np.int8))
+                            + ((offs[j],) if offs else ()))
     self.t[idx] += 1
     onehot = np.zeros(q.shape, np.float32)
     np.put_along_axis(onehot, chosen_np[..., None], 1.0, -1)
@@ -414,6 +439,12 @@ class GRPOConfig:
     overlap_heur: bool = False  # heuristic opponents of both teams run on the workers during the network forwards (bit-identical to the per-team Seats calls; ignored with joint)
     update_compile: bool = False  # (opt-in, numerics differ at fp rounding level) torch.compile (inductor) of the update-phase forwards
     update_micro: int = 0      # >0: gradient accumulation over chunks of this many rows inside each minibatch (same loss/gradient up to fp rounding, ~linear less update-phase activation memory)
+    # ---- stochastic angle offset as part of the action (opt-in; off = bit-identical to before)
+    offset_rl: bool = False        # sample the chosen bin's offset ~ N(mu, sigma^2) and train mu (and sigma) with the policy gradient
+    offset_std_init: float = 0.03  # sigma at the start, radians (~1.7 deg); also the KL reference sigma (fixed)
+    offset_std_learn: bool = True  # sigma = exp(log_sigma), a learnable state-independent scalar
+    offset_std_min: float = 0.005  # sigma is clamped to >= this
+    offset_std_lr: float = 1e-3    # Adam lr of log_sigma (the policy lr, ~3e-6, would leave it frozen)
     graphs: bool = True        # CUDA-graph replay of the learner / net-opponent forwards (bit-identical, sim/graphfwd.py)
 
 
@@ -430,6 +461,13 @@ class GRPOTrainer:
         self.ref = _OwnQ(copy.deepcopy(self.net).eval().requires_grad_(False))
         self._compiled: dict = {}
         self.opt = torch.optim.AdamW(self.net.parameters(), lr=cfg.lr, weight_decay=0.0)
+        self.log_sigma = None
+        if cfg.offset_rl:
+            assert net.angle_head, "offset_rl needs an angle-head student"
+            self.log_sigma = torch.nn.Parameter(torch.tensor(math.log(cfg.offset_std_init), device=self.dev),
+                                                requires_grad=bool(cfg.offset_std_learn))
+            if cfg.offset_std_learn:
+                self.opt.add_param_group({"params": [self.log_sigma], "lr": cfg.offset_std_lr, "weight_decay": 0.0})
         # fp16 update: loss scaling (static 1024 unless a step overflows, then halved) -- without it ~10 % of the fp16 gradients underflow
         self.scaler = torch.amp.GradScaler("cuda", init_scale=1024.0, growth_interval=10**9,
                                            enabled=bool(cfg.update_fp16) and self.dev.type == "cuda")
@@ -466,6 +504,13 @@ class GRPOTrainer:
         if cfg.value_train:
             self.vopt = torch.optim.AdamW(self.leaf.net.parameters(), lr=cfg.value_lr, weight_decay=0.0)
             self.pending = {b: [] for b in range(g)}
+
+    def sigma(self) -> torch.Tensor:
+        """Offset std (0-d tensor, differentiable): exp(log_sigma) clamped to >= offset_std_min."""
+        return self.log_sigma.exp().clamp_min(self.cfg.offset_std_min)
+
+    def _learner_kw(self) -> dict:
+        return {"offset_sigma": float(self.sigma().detach())} if self.cfg.offset_rl else {}
 
     def _pfsp_weights(self, n: int | None = None) -> np.ndarray:
         """PFSP-reweighted sampling weights (``n``: only the first n opponents, i.e. the fixed pool of a league run)."""
@@ -525,7 +570,7 @@ class GRPOTrainer:
         side = np.repeat(self.trunk_side[g_idx], k)
         reseeds = np.repeat(self.rng.integers(0, 2**31 - 1, len(g_idx)), k)
         learner = LearnerPolicy(self.own, self.dev, c.sample_steps, c.temperature, seed=int(self.rng.integers(2**31)),
-                                graphs=self.learner_gf)
+                                graphs=self.learner_gf, **self._learner_kw())
         for p in self.branch_opps:
             if isinstance(p, HeuristicPolicy):
                 p.reset(0)
@@ -552,6 +597,8 @@ class GRPOTrainer:
         keep = np.repeat(Rg.std(1) >= c.drop_flat, k)[game]   # all True when drop_flat = 0
         cat = lambda j: np.concatenate([r[j] for r in recs])[keep]
         batch = {"g": cat(1), "t": cat(2), "a": cat(3), "act": cat(4), "adv": adv[game][keep].astype(np.float32)}
+        if c.offset_rl:
+            batch["off"] = cat(5)
         t3 = time.perf_counter()
         stats = {
             "trunk_s": t1 - t0, "branch_s": t2 - t1, "leaf_s": t3 - t2, "views": len(game),
@@ -639,23 +686,57 @@ class GRPOTrainer:
             q, _ = own(g, t, a)
         return q.float() / self.cfg.temperature
 
+    def _logits_off(self, own, g, t, a):
+        """(logits / T, offsets) in fp32 -- the ``offset_rl`` forward.  Always eager (no torch.compile)."""
+        g = unpack_graphic(g) if g.dim() == 3 else g
+        with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.update_fp16 and self.dev.type == "cuda"):
+            q, off = own(g, t, a)
+        return q.float() / self.cfg.temperature, off.float()
+
+    @staticmethod
+    def _chosen_mu(off, act):
+        """The offset output of the chosen bin [m, 5] and the non-STAND mask (offsets cover the K bins only)."""
+        k = off.shape[-1]
+        return off.gather(-1, act.clamp(max=k - 1).unsqueeze(-1)).squeeze(-1), (act < k).float()
+
     def update(self, batch):
         c = self.cfg
         n = len(batch["act"])
         if n == 0:   # every group dropped as flat
             return {"loss": 0.0, "pg": 0.0, "kl": 0.0, "ent": 0.0, "clipfrac": 0.0, "grad_norm": 0.0}
+        oc = c.offset_rl
+        LOG2PI = math.log(2 * math.pi)
+        s_ref = c.offset_std_init
         to = lambda x: torch.from_numpy(x).to(self.dev)
         g, t, a = to(batch["g"]), to(batch["t"]), to(batch["a"])
         act, adv = to(batch["act"]).long(), to(batch["adv"])
+        if oc:
+            o_samp = to(batch["off"]).float()
+            sig0 = self.sigma().detach()
+            ref_mu = []
         with torch.no_grad():  # old log-probs on the training path (fp32), ref logits
             old_lp, ref_lp = [], []
             for s in range(0, n, c.minibatch):
                 sl = slice(s, s + c.minibatch)
+                if oc:
+                    lg_o, off_o = self._logits_off(self.own, g[sl], t[sl], a[sl])
+                    lp = F.log_softmax(lg_o, -1)
+                    lg_r, off_r = self._logits_off(self.ref, g[sl], t[sl], a[sl])
+                    ref_lp.append(F.log_softmax(lg_r, -1))
+                    ref_mu.append(off_r)
+                    mu_o, nonstand = self._chosen_mu(off_o, act[sl])
+                    old_lp.append(lp.gather(-1, act[sl].unsqueeze(-1)).squeeze(-1)
+                                  + nonstand * (-0.5 * ((o_samp[sl] - mu_o) / sig0) ** 2 - sig0.log() - 0.5 * LOG2PI))
+                    continue
                 lp = F.log_softmax(self._logits(self.own, g[sl], t[sl], a[sl]), -1)
                 old_lp.append(lp.gather(-1, act[sl].unsqueeze(-1)).squeeze(-1))
                 ref_lp.append(F.log_softmax(self._logits(self.ref, g[sl], t[sl], a[sl]), -1))
             old_lp, ref_lp = torch.cat(old_lp), torch.cat(ref_lp)
+            if oc:
+                ref_mu = torch.cat(ref_mu)
         st = {"loss": 0.0, "pg": 0.0, "kl": 0.0, "ent": 0.0, "clipfrac": 0.0, "grad_norm": 0.0, "n_mb": 0}
+        if oc:
+            st.update({"offset_sigma": 0.0, "off_mu_shift": 0.0, "kl_off": 0.0})
         for _ in range(c.epochs):
             perm = torch.randperm(n, device=self.dev)
             for s in range(0, n, c.minibatch):
@@ -666,13 +747,26 @@ class GRPOTrainer:
                 for u in range(0, m_all, sub):
                     ids = mb[u:u + sub]
                     frac = len(ids) / m_all
-                    lp_all = F.log_softmax(self._logits(self.own, g[ids], t[ids], a[ids]), -1)   # [m, 5, W]
+                    if oc:
+                        lg_n, off_n = self._logits_off(self.own, g[ids], t[ids], a[ids])
+                        lp_all = F.log_softmax(lg_n, -1)
+                    else:
+                        lp_all = F.log_softmax(self._logits(self.own, g[ids], t[ids], a[ids]), -1)   # [m, 5, W]
                     lp = lp_all.gather(-1, act[ids].unsqueeze(-1)).squeeze(-1)                 # [m, 5]
+                    if oc:   # + log N(o; mu_chosen, sigma^2) on the non-STAND units
+                        sig = self.sigma()
+                        mu_n, nonstand = self._chosen_mu(off_n, act[ids])
+                        lp = lp + nonstand * (-0.5 * ((o_samp[ids] - mu_n) / sig) ** 2 - sig.log() - 0.5 * LOG2PI)
                     ratio = torch.exp(lp - old_lp[ids])
                     A = adv[ids].unsqueeze(-1)
                     pg = -torch.min(ratio * A, ratio.clamp(1 - c.clip, 1 + c.clip) * A).mean()
                     p = lp_all.exp()
                     kl = (p * (lp_all - ref_lp[ids])).sum(-1).mean()
+                    if oc:   # sum_b p_b KL(N(mu_b, sigma^2) || N(mu_ref_b, s_ref^2)) over the K direction bins
+                        kn = off_n.shape[-1]
+                        gk = math.log(s_ref) - sig.log() + (sig ** 2 + (off_n - ref_mu[ids]) ** 2) / (2 * s_ref ** 2) - 0.5
+                        kl_off = (p[..., :kn] * gk).sum(-1).mean()
+                        kl = kl + kl_off
                     loss = pg + c.beta * kl
                     sl = loss * frac if sub < m_all else loss
                     if self.scaler.is_enabled():
@@ -683,6 +777,11 @@ class GRPOTrainer:
                         st["loss"] += loss.item() * frac; st["pg"] += pg.item() * frac; st["kl"] += kl.item() * frac
                         st["ent"] += -(p * lp_all).sum(-1).mean().item() * frac
                         st["clipfrac"] += ((ratio - 1).abs() > c.clip).float().mean().item() * frac
+                        if oc:
+                            mu_r, _ = self._chosen_mu(ref_mu[ids], act[ids])
+                            st["offset_sigma"] += sig.item() * frac
+                            st["off_mu_shift"] += ((mu_n - mu_r).abs() * nonstand).sum().item() / max(nonstand.sum().item(), 1.0) * frac
+                            st["kl_off"] += kl_off.item() * frac
                 if self.scaler.is_enabled():
                     self.scaler.unscale_(self.opt)
                     gn = torch.nn.utils.clip_grad_norm_(self.net.parameters(), c.max_grad_norm)
@@ -711,7 +810,8 @@ class GRPOTrainer:
 
     def save(self, path: str, extra: dict | None = None) -> None:
         torch.save({"policy_state": self.net.state_dict(),
-                    "grpo": {**vars(self.cfg), "iter": self.iter, "opp_score": self.opp_score.tolist(), **(extra or {})}}, path)
+                    "grpo": {**vars(self.cfg), "iter": self.iter, "opp_score": self.opp_score.tolist(), **(extra or {})},
+                    **({"offset_log_sigma": float(self.log_sigma)} if self.log_sigma is not None else {})}, path)
         if self.cfg.value_train:
             from blackout_env.value.model import save_value_net
 
