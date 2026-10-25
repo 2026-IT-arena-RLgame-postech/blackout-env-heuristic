@@ -18,5 +18,5 @@ case $ARM in
   offset)   export EXTRA="offset_rl=true";;   # E5: Gaussian angle offset (eager update, no compile); CUDA smoke first
   *) echo "bad ARM $ARM"; exit 1;;
 esac
-export OUT=${OUT:-checkpoints/rl/abl_$ARM} MAXDEC=${MAXDEC:-10000000}
+export OUT=${OUT:-checkpoints/rl/abl_$ARM} MAXDEC=${MAXDEC:-10000000} EVAL_SEEDS=${EVAL_SEEDS:-4}   # in-run evals are only a sanity check (16 seeds took ~25 min on gpu2); arms get a separate 256-seed eval
 exec bash "$(dirname "$0")/ppo_league_b.sh"
