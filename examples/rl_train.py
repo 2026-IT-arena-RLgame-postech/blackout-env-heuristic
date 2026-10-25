@@ -19,6 +19,7 @@ import time
 import numpy as np
 import torch
 
+from blackout_env.rl.evalfast import eval_batched
 from blackout_env.rl.grpo import GRPOConfig, GRPOTrainer, eval_matches
 from blackout_env.rl.ppo import PPOConfig, PPOTrainer
 
@@ -56,6 +57,10 @@ def main():
     ap.add_argument("--eval-every", type=int, default=10)
     ap.add_argument("--eval-seeds", type=int, default=32, help="seeds per opponent (x2 sides)")
     ap.add_argument("--eval-opps", default=DEFAULT_EVAL)
+    ap.add_argument("--eval-fast", action=argparse.BooleanOptionalAction, default=True,
+                    help="in-run evals: all opponents x seeds x sides in ONE batched rollout (evalfast.eval_batched; fp16 + "
+                         "CUDA graphs on CUDA, so margins can differ slightly from the old path); --no-eval-fast: one "
+                         "fp32 eager rollout per opponent and side (eval_matches)")
     ap.add_argument("--save-every", type=int, default=0,
                     help="ppo: write <out>/latest.pt (full resumable trainer state, atomic) every N iterations (0: off)")
     ap.add_argument("--no-eval0", action="store_true", help="skip the initial evaluation (smoke tests)")
@@ -76,6 +81,10 @@ def main():
 
     def evaluate():
         out = {}
+        if args.eval_fast:
+            res = eval_batched(tr.net, eval_opps, seeds, cfg.device, graphs=bool(cfg.graphs), workers=getattr(tr, "hworkers", None))
+            return {os.path.basename(spec).replace(".pt", ""): {k: res[spec][k] for k in ("win", "margin", "se")}
+                    for spec in eval_opps}
         for spec in eval_opps:
             wr, m, se = eval_matches(tr.net, spec, seeds, cfg.device)
             out[os.path.basename(spec).replace(".pt", "")] = {"win": wr, "margin": m, "se": se}
