@@ -1,0 +1,42 @@
+/home/cucumbersaurus/blackout-env-abl/.venv/lib/python3.12/site-packages/torch/nn/functional.py:2954: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return torch.rms_norm(input, normalized_shape, weight, eps)
+net:checkpoints/distill/frozen/p24c_v321.pt  seeds 970000..970031  win 0.906  margin +43.2 +- 4.3
+net:checkpoints/distill/frozen/p22_v31.pt  seeds 970000..970031  win 0.828  margin +32.2 +- 5.7
+V32.1  seeds 970000..970031  win 0.891  margin +46.9 +- 4.6
+net:checkpoints/rl/league_b/iter_300.pt  seeds 970000..970031  win 0.578  margin +2.5 +- 4.9
+chunk 970000 done in 294s
+net:checkpoints/distill/frozen/p24c_v321.pt  seeds 970032..970063  win 0.828  margin +38.6 +- 5.4
+net:checkpoints/distill/frozen/p22_v31.pt  seeds 970032..970063  win 0.844  margin +39.9 +- 5.0
+V32.1  seeds 970032..970063  win 0.938  margin +52.5 +- 3.9
+net:checkpoints/rl/league_b/iter_300.pt  seeds 970032..970063  win 0.461  margin -0.6 +- 5.0
+chunk 970032 done in 275s
+net:checkpoints/distill/frozen/p24c_v321.pt  seeds 970064..970095  win 0.812  margin +36.2 +- 5.1
+net:checkpoints/distill/frozen/p22_v31.pt  seeds 970064..970095  win 0.844  margin +39.0 +- 4.8
+V32.1  seeds 970064..970095  win 0.891  margin +47.6 +- 5.0
+net:checkpoints/rl/league_b/iter_300.pt  seeds 970064..970095  win 0.555  margin +2.8 +- 5.3
+chunk 970064 done in 277s
+net:checkpoints/distill/frozen/p24c_v321.pt  seeds 970096..970127  win 0.812  margin +33.2 +- 5.5
+net:checkpoints/distill/frozen/p22_v31.pt  seeds 970096..970127  win 0.828  margin +39.6 +- 5.8
+V32.1  seeds 970096..970127  win 0.828  margin +39.3 +- 5.7
+net:checkpoints/rl/league_b/iter_300.pt  seeds 970096..970127  win 0.469  margin -1.8 +- 5.2
+chunk 970096 done in 273s
+net:checkpoints/distill/frozen/p24c_v321.pt  seeds 970128..970159  win 0.797  margin +31.7 +- 5.5
+net:checkpoints/distill/frozen/p22_v31.pt  seeds 970128..970159  win 0.844  margin +39.8 +- 4.9
+V32.1  seeds 970128..970159  win 0.891  margin +49.5 +- 4.6
+net:checkpoints/rl/league_b/iter_300.pt  seeds 970128..970159  win 0.531  margin +4.1 +- 5.1
+chunk 970128 done in 296s
+net:checkpoints/distill/frozen/p24c_v321.pt  seeds 970160..970191  win 0.812  margin +31.3 +- 5.2
+net:checkpoints/distill/frozen/p22_v31.pt  seeds 970160..970191  win 0.828  margin +43.0 +- 5.5
+V32.1  seeds 970160..970191  win 0.875  margin +46.4 +- 5.0
+net:checkpoints/rl/league_b/iter_300.pt  seeds 970160..970191  win 0.500  margin -0.5 +- 5.6
+chunk 970160 done in 280s
+net:checkpoints/distill/frozen/p24c_v321.pt  seeds 970192..970223  win 0.867  margin +41.1 +- 4.1
+net:checkpoints/distill/frozen/p22_v31.pt  seeds 970192..970223  win 0.812  margin +37.5 +- 5.6
+V32.1  seeds 970192..970223  win 0.859  margin +44.8 +- 5.0
+net:checkpoints/rl/league_b/iter_300.pt  seeds 970192..970223  win 0.445  margin -5.2 +- 4.9
+chunk 970192 done in 283s
+net:checkpoints/distill/frozen/p24c_v321.pt  seeds 970224..970255  win 0.828  margin +38.9 +- 4.9
+net:checkpoints/distill/frozen/p22_v31.pt  seeds 970224..970255  win 0.891  margin +48.2 +- 4.9
+V32.1  seeds 970224..970255  win 0.844  margin +44.4 +- 5.0
+net:checkpoints/rl/league_b/iter_300.pt  seeds 970224..970255  win 0.625  margin +8.0 +- 4.6
+chunk 970224 done in 293s
