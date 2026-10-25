@@ -445,6 +445,9 @@ class GRPOConfig:
     offset_std_learn: bool = True  # sigma = exp(log_sigma), a learnable state-independent scalar
     offset_std_min: float = 0.005  # sigma is clamped to >= this
     offset_std_lr: float = 1e-3    # Adam lr of log_sigma (the policy lr, ~3e-6, would leave it frozen)
+    offset_detach: bool = True     # the angle head reads DETACHED trunk features (offset gradients only train angle_out) and is
+                                   # grad-clipped on its own: the A/sigma^2 offset gradient (norm ~3.6 vs ~0.8) otherwise eats the
+                                   # shared clip and slows the bin policy ~4x (WSL smoke 10-25)
     graphs: bool = True        # CUDA-graph replay of the learner / net-opponent forwards (bit-identical, sim/graphfwd.py)
 
 
@@ -468,6 +471,14 @@ class GRPOTrainer:
                                                 requires_grad=bool(cfg.offset_std_learn))
             if cfg.offset_std_learn:
                 self.opt.add_param_group({"params": [self.log_sigma], "lr": cfg.offset_std_lr, "weight_decay": 0.0})
+        self._ang_params, self._body_params = [], list(self.net.parameters())
+        if cfg.offset_rl and cfg.offset_detach:
+            ang = [m for n_, m in self.net.named_modules() if n_.endswith("angle_out")]
+            assert len(ang) == 1, "offset_detach needs exactly one angle_out module"
+            ang[0].register_forward_pre_hook(lambda m, inp: tuple(x.detach() for x in inp))
+            ids = {id(q) for q in ang[0].parameters()}
+            self._ang_params = list(ang[0].parameters())
+            self._body_params = [q for q in self.net.parameters() if id(q) not in ids]
         # fp16 update: loss scaling (static 1024 unless a step overflows, then halved) -- without it ~10 % of the fp16 gradients underflow
         self.scaler = torch.amp.GradScaler("cuda", init_scale=1024.0, growth_interval=10**9,
                                            enabled=bool(cfg.update_fp16) and self.dev.type == "cuda")
@@ -686,6 +697,15 @@ class GRPOTrainer:
             q, _ = own(g, t, a)
         return q.float() / self.cfg.temperature
 
+    def _clip(self, st):
+        """Clip the policy gradients; with offset_detach the angle head is clipped separately (its norm -> st['grad_norm_off'])."""
+        c = self.cfg
+        if not self._ang_params:
+            return torch.nn.utils.clip_grad_norm_(self.net.parameters(), c.max_grad_norm)
+        go = torch.nn.utils.clip_grad_norm_(self._ang_params, c.max_grad_norm)
+        st["grad_norm_off"] = st.get("grad_norm_off", 0.0) + go.item()
+        return torch.nn.utils.clip_grad_norm_(self._body_params, c.max_grad_norm)
+
     def _logits_off(self, own, g, t, a):
         """(logits / T, offsets) in fp32 -- the ``offset_rl`` forward.  Always eager (no torch.compile)."""
         g = unpack_graphic(g) if g.dim() == 3 else g
@@ -736,7 +756,7 @@ class GRPOTrainer:
                 ref_mu = torch.cat(ref_mu)
         st = {"loss": 0.0, "pg": 0.0, "kl": 0.0, "ent": 0.0, "clipfrac": 0.0, "grad_norm": 0.0, "n_mb": 0}
         if oc:
-            st.update({"offset_sigma": 0.0, "off_mu_shift": 0.0, "kl_off": 0.0})
+            st.update({"offset_sigma": 0.0, "off_mu_shift": 0.0, "kl_off": 0.0, "kl_bin": 0.0})
         for _ in range(c.epochs):
             perm = torch.randperm(n, device=self.dev)
             for s in range(0, n, c.minibatch):
@@ -782,13 +802,14 @@ class GRPOTrainer:
                             st["offset_sigma"] += sig.item() * frac
                             st["off_mu_shift"] += ((mu_n - mu_r).abs() * nonstand).sum().item() / max(nonstand.sum().item(), 1.0) * frac
                             st["kl_off"] += kl_off.item() * frac
+                            st["kl_bin"] += (kl - kl_off).item() * frac
                 if self.scaler.is_enabled():
                     self.scaler.unscale_(self.opt)
-                    gn = torch.nn.utils.clip_grad_norm_(self.net.parameters(), c.max_grad_norm)
+                    gn = self._clip(st)
                     self.scaler.step(self.opt)
                     self.scaler.update()
                 else:
-                    gn = torch.nn.utils.clip_grad_norm_(self.net.parameters(), c.max_grad_norm)
+                    gn = self._clip(st)
                     self.opt.step()
                 st["grad_norm"] += gn.item(); st["n_mb"] += 1
         m = max(st.pop("n_mb"), 1)

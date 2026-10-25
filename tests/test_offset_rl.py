@@ -126,3 +126,26 @@ def test_save_resume_roundtrip(tmp_path):
     tr2.load_resume(str(tmp_path / "r.pt"))
     assert float(tr2.log_sigma) == pytest.approx(float(tr.log_sigma)) and float(tr2.sigma()) == pytest.approx(0.0123, rel=1e-5)
     tr2.step()
+
+
+@needs_ckpt
+def test_offset_detach_trunk_gets_no_offset_gradient():
+    """offset_detach: a loss on the offsets alone gives the angle head a gradient and the trunk/bin logits none;
+    offset_detach=False lets it reach the trunk.  Separate clipping logs grad_norm_off."""
+    from blackout_env.rl.ppo import PPOTrainer
+    from blackout_env.sim.batch import unpack_graphic
+
+    for detach in (True, False):
+        tr = PPOTrainer(_cfg(offset_rl=True, offset_detach=detach))
+        batch, _ = tr.collect()
+        g = torch.from_numpy(batch["g"][:8]); t = torch.from_numpy(batch["t"][:8]); a = torch.from_numpy(batch["a"][:8])
+        tr.net.zero_grad(set_to_none=True)
+        _, off = tr._logits_off(tr.own, g, t, a)
+        off.sum().backward()
+        ang = {id(q) for n_, m in tr.net.named_modules() if n_.endswith("angle_out") for q in m.parameters()}
+        body = [q for q in tr.net.parameters() if id(q) not in ang and q.grad is not None and q.grad.abs().sum() > 0]
+        assert any(q.grad is not None and q.grad.abs().sum() > 0 for q in tr.net.parameters() if id(q) in ang)
+        assert (len(body) == 0) == detach
+    tr = PPOTrainer(_cfg(offset_rl=True, critic_warmup=0))
+    s = tr.step()
+    assert "grad_norm_off" in s and np.isfinite(s["grad_norm_off"]) and "kl_bin" in s
