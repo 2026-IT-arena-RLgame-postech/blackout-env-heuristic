@@ -1,0 +1,93 @@
+OOD-26 report: reports/heur_search/ood_c2  (cat = margin < -20; catT = cat on a (seed, side) the teacher won)
+
+candidate  opponent       grp       n       margin   win   cat      catT   h99     - teacher       - V32.1
+V32.1      v30_h4hunt     param    64  +28.5± 5.1  0.75  0.22   0/0     1.00              
+V32.1      v30_h2         param    64  +62.9± 2.7  0.97  0.02   0/0     1.00              
+V32.1      v30_camp       param    64  +35.2± 4.7  0.80  0.16   0/0     1.00              
+V32.1      v30_stage3     param    64  +42.4± 4.3  0.83  0.12   0/0     1.00              
+V32.1      v30_nostage    param    64  +61.8± 3.3  0.95  0.05   0/0     1.00              
+V32.1      v30_c0         param    64  +40.5± 9.2  0.73  0.23   0/0     1.00              
+V32.1      v30_hunt       param    64  +35.2± 5.4  0.78  0.16   0/0     1.00              
+V32.1      v30_reckless   param    64  +31.8± 5.9  0.77  0.20   0/0     1.00              
+V32.1      early_rush     style    64  +83.5± 1.4  1.00  0.00   0/0     1.00              
+V32.1      fortress       style    64  +73.6± 1.1  1.00  0.00   0/0     1.00              
+V32.1      raider         style    64  +76.3± 1.0  1.00  0.00   0/0     1.00              
+V32.1      duelist        style    64  +71.6± 1.3  1.00  0.00   0/0     1.00              
+V32.1      cargo_hunter   style    64  +76.0± 1.5  1.00  0.00   0/0     1.00              
+V32.1      rush_all       param    64  +96.8± 0.9  1.00  0.00   0/0     1.00              
+V32.1      v4             old      64  +69.2± 1.9  0.98  0.00   0/0     1.00              
+V32.1      v19            old      64  +79.0± 1.6  0.98  0.00   0/0     1.00              
+V32.1      v21            old      64  +74.8± 1.2  1.00  0.00   0/0     1.00              
+V32.1      v26            old      64  +65.6± 2.4  0.98  0.02   0/0     1.00              
+V32.1      random         old      64  +96.0± 1.5  1.00  0.00   0/0     1.00              
+V32.1      idle           old      64 +101.8± 0.2  1.00  0.00   0/0     1.00              
+V32.1      v31_eps10      noise    64  +77.7± 1.2  1.00  0.00   0/0     1.00              
+V32.1      v30_lag4       noise    64  +83.7± 1.1  1.00  0.00   0/0     1.00              
+V32.1      v30_freeze10   noise    64  +63.8± 3.0  0.94  0.03   0/0     1.00              
+V32.1      p20_t1         noise    64  +30.8± 5.8  0.70  0.28   0/0     1.00              
+V32.1      v31            mirror   64  +23.2± 6.1  0.70  0.30   0/0     1.00              
+
+candidate  opponent       grp       n       margin   win   cat      catT   h99     - teacher       - V32.1
+strategic_ v30_h4hunt     param    64  +37.3± 3.9  0.83  0.16   0/0     1.00                 +8.8± 5.1
+strategic_ v30_h2         param    64  +67.1± 2.8  0.97  0.00   0/0     1.00                 +4.2± 2.5
+strategic_ v30_camp       param    64  +44.8± 5.2  0.86  0.12   0/0     1.00                 +9.6± 4.4
+strategic_ v30_stage3     param    64  +48.2± 5.0  0.86  0.09   0/0     1.00                 +5.9± 5.9
+strategic_ v30_nostage    param    64  +64.9± 3.9  0.95  0.05   0/0     1.00                 +3.0± 3.5
+strategic_ v30_c0         param    64  +40.0± 9.1  0.75  0.22   0/0     1.00                 -0.4± 3.7
+strategic_ v30_hunt       param    64  +46.7± 4.1  0.89  0.09   0/0     1.00                +11.5± 4.7
+strategic_ v30_reckless   param    64  +47.9± 5.2  0.88  0.11   0/0     1.00                +16.1± 6.6
+strategic_ early_rush     style    64  +84.9± 0.9  1.00  0.00   0/0     1.00                 +1.4± 1.4
+strategic_ fortress       style    64  +73.5± 1.3  1.00  0.00   0/0     1.00                 -0.2± 0.9
+strategic_ raider         style    64  +76.4± 1.1  1.00  0.00   0/0     1.00                 +0.1± 1.1
+strategic_ duelist        style    64  +71.1± 1.6  1.00  0.00   0/0     1.00                 -0.5± 1.0
+strategic_ cargo_hunter   style    64  +77.6± 0.9  1.00  0.00   0/0     1.00                 +1.6± 1.3
+strategic_ rush_all       param    64  +97.2± 0.7  1.00  0.00   0/0     1.00                 +0.4± 0.3
+strategic_ v4             old      64  +71.6± 1.2  1.00  0.00   0/0     1.00                 +2.5± 1.3
+strategic_ v19            old      64  +79.2± 2.0  0.98  0.00   0/0     1.00                 +0.2± 2.1
+strategic_ v21            old      64  +74.1± 2.4  0.98  0.00   0/0     1.00                 -0.7± 2.4
+strategic_ v26            old      64  +70.9± 1.6  1.00  0.00   0/0     1.00                 +5.3± 2.5
+strategic_ random         old      64  +97.5± 1.2  1.00  0.00   0/0     1.00                 +1.5± 1.0
+strategic_ idle           old      64 +101.9± 0.2  1.00  0.00   0/0     1.00                 +0.1± 0.1
+strategic_ v31_eps10      noise    64  +78.5± 1.0  1.00  0.00   0/0     1.00                 +0.8± 1.0
+strategic_ v30_lag4       noise    64  +83.8± 1.1  1.00  0.00   0/0     1.00                 +0.1± 0.6
+strategic_ v30_freeze10   noise    64  +69.4± 2.4  0.97  0.02   0/0     1.00                 +5.6± 3.1
+strategic_ p20_t1         noise    64  +51.6± 4.2  0.89  0.11   0/0     1.00                +20.9± 5.8
+strategic_ v31            mirror   64  +50.2± 5.1  0.91  0.09   0/0     1.00                +27.0± 5.7
+
+candidate  opponent       grp       n       margin   win   cat      catT   h99     - teacher       - V32.1
+strategic_ v30_h4hunt     param    64  +36.2± 4.7  0.88  0.11   0/0     1.00                 +7.7± 5.3
+strategic_ v30_h2         param    64  +66.5± 2.9  0.97  0.02   0/0     1.00                 +3.6± 2.4
+strategic_ v30_camp       param    64  +45.0± 4.8  0.88  0.09   0/0     1.00                 +9.8± 4.0
+strategic_ v30_stage3     param    64  +50.3± 4.2  0.89  0.08   0/0     1.00                 +7.9± 4.6
+strategic_ v30_nostage    param    64  +62.4± 3.9  0.95  0.05   0/0     1.00                 +0.6± 3.6
+strategic_ v30_c0         param    64  +37.9± 9.1  0.73  0.25   0/0     1.00                 -2.5± 3.8
+strategic_ v30_hunt       param    64  +43.9± 4.6  0.86  0.11   0/0     1.00                 +8.8± 4.3
+strategic_ v30_reckless   param    64  +50.3± 4.5  0.91  0.08   0/0     1.00                +18.5± 5.9
+strategic_ early_rush     style    64  +83.8± 1.1  1.00  0.00   0/0     1.00                 +0.3± 1.6
+strategic_ fortress       style    64  +73.6± 1.4  1.00  0.00   0/0     1.00                 +0.0± 1.1
+strategic_ raider         style    64  +75.2± 1.2  1.00  0.00   0/0     1.00                 -1.1± 1.2
+strategic_ duelist        style    64  +72.2± 1.5  1.00  0.00   0/0     1.00                 +0.5± 1.0
+strategic_ cargo_hunter   style    64  +77.3± 0.9  1.00  0.00   0/0     1.00                 +1.3± 1.4
+strategic_ rush_all       param    64  +97.3± 0.7  1.00  0.00   0/0     1.00                 +0.5± 0.5
+strategic_ v4             old      64  +71.1± 1.6  1.00  0.00   0/0     1.00                 +1.9± 1.7
+strategic_ v19            old      64  +80.5± 1.2  1.00  0.00   0/0     1.00                 +1.5± 1.7
+strategic_ v21            old      64  +75.1± 1.6  1.00  0.00   0/0     1.00                 +0.3± 2.0
+strategic_ v26            old      64  +70.6± 1.6  1.00  0.00   0/0     1.00                 +5.0± 2.1
+strategic_ random         old      64  +97.4± 1.2  1.00  0.00   0/0     1.00                 +1.4± 1.0
+strategic_ idle           old      64 +101.9± 0.2  1.00  0.00   0/0     1.00                 +0.1± 0.2
+strategic_ v31_eps10      noise    64  +76.0± 1.1  1.00  0.00   0/0     1.00                 -1.8± 1.2
+strategic_ v30_lag4       noise    64  +82.9± 1.3  1.00  0.00   0/0     1.00                 -0.7± 1.1
+strategic_ v30_freeze10   noise    64  +72.0± 1.9  1.00  0.00   0/0     1.00                 +8.2± 3.2
+strategic_ p20_t1         noise    64  +55.7± 4.6  0.91  0.09   0/0     1.00                +24.9± 6.2
+strategic_ v31            mirror   64  +47.5± 5.1  0.89  0.11   0/0     1.00                +24.2± 5.9
+
+per candidate (over the OOD-26 opponents it played):
+candidate  opps   mean                  worst   cat       catT collapse vs teacher (gap < -5 at 2 SE)
+V32.1        25  +63.3            v31  +23.2  0.071    0/0     -
+strategic_   25  +68.3     v30_h4hunt  +37.3  0.043    0/0     -
+strategic_   25  +68.1     v30_h4hunt  +36.2  0.039    0/0     -
+
+OOD non-regression rule vs V32.1 (§56): R1 worst >= base-5, R2 catT <= base+2 %, R3 no opponent < -5 at 2 SE, R4 h99 >= base-0.10 everywhere
+  strategic_v32:reserve_stage=0.5523,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1113,camp_engage_radius=6.5,hunter_quota=4,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,commit_margin=-0.3,guard_radius=7.691,late_after=16.0,carrier_col_scale=0.9054,camp_tiles=2.457,breakout_units=1,join_reach=1.137,trade_radius=0.7359,steal_weight=1.94,exposure_cost=0.7841,danger_hunter_radius=4.137,contest_factor=0.5747 PASS  R1 worst +37.3 (v30_h4hunt) vs +23.2 ok | R2 catT nan% vs nan% ok | R3 ok | R4 ok
+  strategic_v33:reserve_stage=0.5523,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1113,camp_engage_radius=6.5,hunter_quota=4,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,commit_margin=-0.3,guard_radius=7.691,late_after=16.0,carrier_col_scale=0.9054,camp_tiles=2.457,breakout_units=1,join_reach=1.137,trade_radius=0.7359,steal_weight=1.94,exposure_cost=0.7841,danger_hunter_radius=4.137,contest_factor=0.5747,w_dspd=5.0,w_bspd=3.0 PASS  R1 worst +36.2 (v30_h4hunt) vs +23.2 ok | R2 catT nan% vs nan% ok | R3 ok | R4 ok
+
