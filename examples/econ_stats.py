@@ -35,7 +35,8 @@ sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "examples"))
 
 CLS = ("col", "hun", "car")
-SNAP_S = (60, 120, 180, 240, 300)
+SNAP_S = (20, 40, 60, 120, 180, 240, 300)
+WIN_S = (20, 40, 60)  # all counters are also copied at these seconds as w<T>.<key>
 
 
 def _team(u: int) -> int:
@@ -124,6 +125,11 @@ def play_chunk(job):
                 for k, nm in enumerate(CLS):
                     d[f"{nm}_s"] += float((c == k).sum()) / 25.0
                 d["held_s"] += float(held[j, 5 * team:5 * team + 5].sum()) / 25.0
+        if (t + 1) % 25 == 0 and (t + 1) // 25 in WIN_S:
+            for b in live:
+                for team in (0, 1):
+                    d = st[b][team]
+                    d.update({f"w{(t + 1) // 25}.{k}": v for k, v in list(d.items()) if "." not in k})
         if (t + 1) % 25 == 0 and (t + 1) // 25 in SNAP_S:
             sc = bs.scores
             for b in live:
@@ -133,9 +139,13 @@ def play_chunk(job):
     rows = []
     for j, (s, sd) in enumerate(zip(seeds, sides)):
         o, p = int(sc[j, sd]), int(sc[j, 1 - sd])
-        for team in (0, 1):  # matches that ended early keep their final score in later snapshots
+        for team in (0, 1):  # matches that ended early keep their final values in later snapshots
+            d = st[j][team]
             for k in SNAP_S:
-                st[j][team].setdefault(f"score{k}", float(sc[j, team]))
+                d.setdefault(f"score{k}", float(sc[j, team]))
+            for w in WIN_S:
+                if f"w{w}.col_s" not in d:
+                    d.update({f"w{w}.{k}": v for k, v in list(d.items()) if "." not in k})
         rows.append({"ours": ours_name, "opponent": opp_name, "seed": int(s), "side": int(sd), "margin": o - p,
                      "score_ours": o, "score_opp": p, "ticks": int(bs.ticks[j]),
                      "us": dict(st[j][sd]), "them": dict(st[j][1 - sd]), "chunk_wall_s": time.time() - t0})
@@ -172,6 +182,8 @@ def cmd_play(args):
                   f"wall {rows[0]['chunk_wall_s']:.0f}s", flush=True)
 
 
+BASE_KEYS = ["pick_amt", "steal_amt", "dep_amt", "abs_amt", "lost_die_amt", "die_col", "die_car", "die_hun",
+             "kill_by_hun", "col_s", "hun_s", "car_s", "held_s"]
 KEYS = ["margin", "win", "score_ours", "score_opp",
         "us.pick_amt", "us.steal_amt", "us.dep_amt", "us.abs_amt", "us.lost_die_amt", "us.lost_tx_amt",
         "them.pick_amt", "them.steal_amt", "them.dep_amt", "them.abs_amt", "them.lost_die_amt",
@@ -181,7 +193,8 @@ KEYS = ["margin", "win", "score_ours", "score_opp",
         "us.kill_by_hun", "us.kill_by_col", "them.kill_by_hun",
         "us.col_s", "us.hun_s", "us.car_s", "us.held_s", "them.hun_s", "them.car_s", "us.first_dep_t",
         "us.special_n", "them.special_n"] + \
-       [f"{w}.score{k}" for k in SNAP_S for w in ("us", "them")]
+       [f"{w}.score{k}" for k in SNAP_S for w in ("us", "them")] + \
+       [f"{w}.w{t}.{k}" for t in WIN_S for k in BASE_KEYS for w in ("us", "them")]
 
 
 def value(r, key):
@@ -189,6 +202,8 @@ def value(r, key):
         return (np.sign(r["margin"]) + 1) / 2
     if "." in key:
         w, k = key.split(".", 1)
+        if k.startswith("w") and "." in k and f"{k.split('.')[0]}.col_s" not in r[w]:
+            return np.nan  # an older row without window counters
         return float(r[w].get(k, np.nan if k == "first_dep_t" else 0.0))
     return float(r[key])
 
