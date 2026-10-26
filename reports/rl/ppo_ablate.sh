@@ -20,7 +20,7 @@ case $ARM in
   beta005)  export EXTRA="beta=0.005" MAXDEC=${MAXDEC:-20000000};;   # follow-ups of E4 (beta 0.01 won, +4.6±1.1 vs B it600)
   beta0)    export EXTRA="beta=0.0" MAXDEC=${MAXDEC:-20000000};;
   offset)   export EXTRA="offset_rl=true";;   # E5: Gaussian angle offset (eager update, no compile); CUDA smoke first
-  fine)     export EXTRA="fine_bins=32 fine_lr=2e-5";;   # CUDA smoke: fine_lr 1e-4 gave kl_fine 0.065 and clipfrac 0.08 after 7 its (B: kl ~0.003, clipfrac ~0.005)   # eager update (no compile), like offset: CUDA smoke first
+  fine)     export EXTRA="fine_bins=32 fine_lr=2e-5 fine_tau=1.5";;   # CUDA smokes: tau 0.5 -> kl_fine 0.08 / clipfrac 0.08 after 7 its (prior centred on the drifting angle head; lr irrelevant); tau 1.5 -> 0.0074 / 0.013, ent_fine 1.82   # eager update (no compile), like offset: CUDA smoke first
   *) echo "bad ARM $ARM"; exit 1;;
 esac
 [ -z "$BETA" ] || export EXTRA="$EXTRA beta=$BETA"
