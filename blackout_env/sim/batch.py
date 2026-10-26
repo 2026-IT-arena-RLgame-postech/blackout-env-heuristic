@@ -383,12 +383,16 @@ def mirror_order(k: int) -> np.ndarray:
     return (k // 4 - np.arange(k)) % k
 
 
-def decode_moves(q: np.ndarray, off: np.ndarray | None, team_b: np.ndarray) -> np.ndarray:
+def decode_moves(q: np.ndarray, off: np.ndarray | None, team_b: np.ndarray, quant: int = 0) -> np.ndarray:
     """[n, 5, K] logits (+ offsets, radians, canonical frame) of n team views -> [n, 5, 2] float32
     world moves, the way ``MyPolicy.act`` and ``joint_moves``' clip turn them into moves.
     ``team_b`` [n] bool.  K bins, or K bins + STAND (odd width, P18b §43: STAND = the zero move,
-    mirrors to itself; offsets cover the K bins only)."""
+    mirrors to itself; offsets cover the K bins only).
+    ``quant`` (angle-precision probe): -1 = ignore the offsets (bin centres); M > 0 = round the final world angle to the
+    nearest of M directions; 0 = unchanged."""
     n, units, width = q.shape
+    if quant == -1:
+        off = None
     k = width - (width % 2)
     order = mirror_order(k)
     if width != k:
@@ -405,6 +409,9 @@ def decode_moves(q: np.ndarray, off: np.ndarray | None, team_b: np.ndarray) -> n
         offw = np.where(team_b[:, None, None], -off[..., order[:k]], off)
         o = np.take_along_axis(offw, j[..., None], axis=-1)[..., 0].astype(np.float64)
         ang = 2 * math.pi * j / k + o  # direction_bins.offset_vectors' expression
+        if quant > 0:
+            step = 2 * math.pi / quant
+            ang = np.round(ang / step) * step
         vec = np.stack([np.cos(ang), np.sin(ang)], axis=-1).astype(np.float32)
     vec = np.where(stand[..., None], F32(0), vec)
     return np.clip(vec, F32(-1), F32(1)).astype(F32)

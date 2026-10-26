@@ -35,7 +35,7 @@ def _heur(desc: str, shift: int, workers):
 
 
 def eval_batched(net_or_path, opp_specs, seeds, device: str, horizon: int = 11000, graphs: bool = True,
-                 fp16: bool = True, heur_workers: int = 0, joint: bool = False, workers=None, fine=None):
+                 fp16: bool = True, heur_workers: int = 0, joint: bool = False, workers=None, fine=None, angle_quant: int = 0):
     """Greedy learner vs each of ``opp_specs`` on ``seeds``, both sides, all games in one rollout.
 
     Returns ``{opp_spec: {"margin_side0": [...], "margin_side1": [...], "win", "margin", "se"}}`` (margins from the
@@ -73,6 +73,7 @@ def eval_batched(net_or_path, opp_specs, seeds, device: str, horizon: int = 1100
 
         gf = GraphForward(own, dev, angle=True, max_batch=max(2048, n), **({"tap": tap, "fine": fine} if fine is not None else {}))   # fine decoded inside the graph
     learner = LearnerPolicy(own, dev, 0, fp16=use_fp16, graphs=gf, **({"fine": fine, "tap": tap} if fine is not None and gf is None else {}))
+    learner.angle_quant = int(angle_quant)   # angle-precision probe of the candidate only (sim.batch.decode_moves quant)
 
     own_workers = None
     if workers is None and heur_workers > 0 and any(not s.startswith("net:") for s in opp_specs):

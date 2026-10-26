@@ -33,6 +33,7 @@ def main():
     ap.add_argument("--heur-workers", type=int, default=0, help="heuristic opponents in this many worker processes")
     ap.add_argument("--joint", action="store_true", help="JointSeats: one forward per policy over both teams' views")
     ap.add_argument("--horizon", type=int, default=11000)
+    ap.add_argument("--angle-quant", type=int, default=0, help="candidate's move angle: -1 bin centres (no offset), M>0 rounded to M directions")
     a = ap.parse_args()
 
     opps = [s for s in a.opps.split(";") if s]
@@ -47,7 +48,7 @@ def main():
     for lo in range(a.lo, a.hi, step):
         seeds = list(range(lo, min(lo + step, a.hi)))
         t0 = time.time()
-        res = eval_batched(a.cand, opps, seeds, a.device, horizon=a.horizon, graphs=not a.no_graphs, fp16=not a.fp32,
+        res = eval_batched(a.cand, opps, seeds, a.device, horizon=a.horizon, angle_quant=a.angle_quant, graphs=not a.no_graphs, fp16=not a.fp32,
                            joint=a.joint, workers=workers)
         secs = time.time() - t0
         for spec in opps:

@@ -168,7 +168,7 @@ class LearnerPolicy(BatchPolicy):
             onehot = np.zeros(q.shape, np.float32)
             np.put_along_axis(onehot, chosen_np[..., None], 1.0, -1)
             team_b = np.full(n, tm == 1)
-            out[tm] = decode_moves(onehot, off.cpu().numpy(), team_b)
+            out[tm] = decode_moves(onehot, off.cpu().numpy(), team_b, getattr(self, "angle_quant", 0))
             self.t[idx] += 1
         return out
 
@@ -208,7 +208,7 @@ def _moves_views(self, idx, g, ts, ag, team, chunks):
     self.t[idx] += 1
     onehot = np.zeros(q.shape, np.float32)
     np.put_along_axis(onehot, chosen_np[..., None], 1.0, -1)
-    return decode_moves(onehot, off.cpu().numpy(), team == 1)
+    return decode_moves(onehot, off.cpu().numpy(), team == 1, getattr(self, "angle_quant", 0))
 
 
 LearnerPolicy.moves_views = torch.no_grad()(_moves_views)
