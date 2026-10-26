@@ -15,6 +15,8 @@ case $ARM in
   lam995)   export SEGMENT=512 GAMES=64  EXTRA="gae_lambda=0.995";;
   refreset) export EXTRA="league_ref_reset=true" MAXDEC=${MAXDEC:-20000000};;   # KL arms: 20M (snapshots only from it 150; plateau at ~it 300)
   beta01)   export EXTRA="beta=0.01" MAXDEC=${MAXDEC:-20000000};;
+  beta005)  export EXTRA="beta=0.005" MAXDEC=${MAXDEC:-20000000};;   # follow-ups of E4 (beta 0.01 won, +4.6±1.1 vs B it600)
+  beta0)    export EXTRA="beta=0.0" MAXDEC=${MAXDEC:-20000000};;
   offset)   export EXTRA="offset_rl=true";;   # E5: Gaussian angle offset (eager update, no compile); CUDA smoke first
   *) echo "bad ARM $ARM"; exit 1;;
 esac
