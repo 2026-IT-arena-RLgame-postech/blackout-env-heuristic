@@ -37,4 +37,6 @@ init = KL ref = E4, critic warm-started from E4, β 0.01, pool = 9 B opponents +
 - vs E4 (paired, 256 seeds): p24c +2.4±1.9, p22 +6.6±1.8, V32.1 +3.4±1.7, **avg3 +4.1±1.1**; **H2H vs E4 +10.1±1.9 (win 62.2 %)**; avg3 vs B600 +8.7±1.2.
 - vs V33 and hunt-style OOD (`reports/rl/angle_probe/f1__*`, paired with E4 = q0): **V33 +12.4±2.2 (E4 −12.1 → F1 +0.3)**,
   v30_h4hunt +7.8±1.6, v30_hunt +3.9±1.7, v30_reckless +3.0±1.8, early_rush +0.2, rush_all −0.4.
-- OOD-26 (worst case) running on gpu2 CPU → reports/rl/abl_ood_f1/.
+- **OOD-26 vs E4: PASS** (reports/rl/abl_ood_f1/, 32 seeds × 2 from 2600000, E4 rows from abl_ood_beta01): mean +71.2 vs +70.3,
+  worst +43.7 (v30_c0) vs +40.7 (v30_h4hunt); v30_h4hunt +12.7±3.9, v30_stage3 +6.5; v30_c0 −7.2±3.9 (watch: E4's own weak spot, within 2 SE), no opponent < −5 at 2 SE.
+- → **F1 = new best RL policy** (checkpoints/rl/f1_v33/final.pt on gpu2).
