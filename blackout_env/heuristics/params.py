@@ -38,6 +38,9 @@ ALIASES = {
     "V31": "strategic_v31:" + _V31,
     "V32": "strategic_v32:" + _V32,
     "V32.1": "strategic_v32:" + _V32 + ",adapt_k=3",
+    # V33 (reports/heur_v33.md): V32.1 with commit_margin < 0 (walkers step into the sanctuary instead of fleeing a
+    # fresh enemy Hunter), CEM-retuned knobs and much higher special-item weights (BuffSpeed / DebuffSpeed)
+    "V33": "strategic_v33:reserve_stage=0.5523,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1113,camp_engage_radius=6.5,hunter_quota=4,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,commit_margin=-0.3,guard_radius=7.691,late_after=16.0,carrier_col_scale=0.9054,camp_tiles=2.457,breakout_units=1,join_reach=1.137,trade_radius=0.7359,steal_weight=1.94,exposure_cost=0.7841,danger_hunter_radius=4.137,contest_factor=0.5747,w_dspd=5.0,w_bspd=4.5",
 }
 
 
