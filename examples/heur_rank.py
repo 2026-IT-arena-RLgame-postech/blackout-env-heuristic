@@ -14,8 +14,17 @@ from pathlib import Path
 import numpy as np
 
 
+_REF = {}
+
+
 def short(name: str, width: int = 0) -> str:
     s = name.split("/")[-2] if name.startswith("net:") else name
+    if s.startswith("strategic_v32:"):  # show only what differs from V32.1
+        from blackout_env.heuristics.params import resolve_descriptor, split_descriptor
+        if not _REF:
+            _REF.update(split_descriptor(resolve_descriptor("V32.1"))[1])
+        kv = split_descriptor(s)[1]
+        s = "~" + ",".join(f"{k}={v}" for k, v in kv.items() if _REF.get(k) != v)
     return s if not width or len(s) <= width else s[:width - 3] + "..."
 
 

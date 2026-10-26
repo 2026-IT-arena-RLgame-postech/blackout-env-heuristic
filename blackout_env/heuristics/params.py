@@ -162,7 +162,7 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("breakout_units", "int", 1, 4, "evasion", "blocked units waiting in the base that leave together"),
     # -- race / opening
     _k("opening_seconds", "float", 6.0, 20.0, "race", "seconds in which a battery-holding walker still goes to the sanctuary"),
-    _k("commit_margin", "float", -0.1, 0.25, "race", "seconds a committed walker must reach the sanctuary ahead of an enemy Hunter"),
+    _k("commit_margin", "float", -1.0, 0.25, "race", "seconds a committed walker must reach the sanctuary ahead of an enemy Hunter"),
     _k("commit_reach", "float", 0.5, 2.0, "race", "tiles from the sanctuary within which the last-step commit applies"),
     _k("reserve_stage", "float", 0.0, 2.0, "race", "tiles: the staged reserve walker waits this far from the sanctuary (0 = none)"),
     _k("reserve_count", "int", 1, 2, "race", "number of staged reserve walkers"),
