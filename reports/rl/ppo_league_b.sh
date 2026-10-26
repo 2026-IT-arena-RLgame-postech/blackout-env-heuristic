@@ -16,8 +16,8 @@ if [ -n "$GPU" ]; then [ "$GPU" != 3 ] || { echo "GPU 3 is off limits"; exit 1; 
 F=checkpoints/distill/frozen
 OUT=${OUT:-checkpoints/rl/league_b}
 mkdir -p $OUT
-OPPS="net:$F/p24c_v321.pt;net:$F/p22_v31.pt;net:$F/p21e_v30.pt;net:$F/p20_v30.pt;net:$F/p17_v28.pt;net:$F/p14_v25.pt;net:$F/d6_v42.pt;V32.1;mixture"
-W="0.5,1,1,1,1,1,1,1,1"
+OPPS=${OPPS:-"net:$F/p24c_v321.pt;net:$F/p22_v31.pt;net:$F/p21e_v30.pt;net:$F/p20_v30.pt;net:$F/p17_v28.pt;net:$F/p14_v25.pt;net:$F/d6_v42.pt;V32.1;mixture"}
+W=${W:-"0.5,1,1,1,1,1,1,1,1"}
 export OMP_NUM_THREADS=${OMP_NUM_THREADS:-2} MKL_NUM_THREADS=${OMP_NUM_THREADS:-2}
 RES=""; [ -z "$RESUME" ] || RES="--resume"
 # league flags (defaults of the design: gate 0.85 / gap 100 / start 150 / max 4 / shares 5-10-20 % / anchors >= 40 % / 2 critic-only its)

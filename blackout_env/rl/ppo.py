@@ -39,6 +39,7 @@ class PPOConfig(GRPOConfig):
     gae_lambda: float = 0.95
     critic_lr: float = 1e-5
     critic_warmup: int = 5     # iterations with critic updates only
+    critic_init: str = ""      # warm-start the critic from a PPO run's <ckpt>_critic.pt (state dict) instead of the bare value net
     vf_huber: float = 0.1
     critic_fp16: bool = False  # (opt-in, changes numerics) fp16 autocast + GradScaler for the critic (update epochs and value reads)
     overlap_heur: bool = True  # (bit-identical) heuristic opponents overlap the network forwards
@@ -109,6 +110,8 @@ class PPOTrainer(GRPOTrainer):
                 if gf is not None:
                     gf._pool = self._gpool
         self.critic = load_value_net(cfg.value, device=self.dev)
+        if cfg.critic_init:
+            self.critic.load_state_dict(torch.load(cfg.critic_init, map_location=self.dev, weights_only=True))
         self.critic.train(False)
         self.hl = cfg.critic_head == "hlgauss"
         if cfg.critic_head not in ("reg", "hlgauss"):
