@@ -191,6 +191,8 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("dom_threat_radius", "float", 0.1, 0.4, "evasion", "threat_radius used while the enemy dominates the Hunter war (V33; -1 = off)"),
     _k("dom_danger_hunter_radius", "float", 3.0, 9.0, "evasion", "danger_hunter_radius used while the enemy dominates (V33; -1 = off)"),
     _k("dom_margin", "int", 1, 2, "evasion", "enemy Hunters out minus ours that counts as dominated (V33)"),
+    _k("h_evade_radius", "float", 1.0, 6.0, "hunters", "tiles: an outnumbered Hunter is repelled by enemy Hunters this close (V33; -1 = off)"),
+    _k("h_trade_up", "bool", 0, 1, "structural", "when we have more Hunters, the closest pair becomes a strike (V33)", True),
     # -- structural switches (sampled only with structural=True)
     _k("sweep", "bool", 0, 1, "structural", "Hunters first strike enemy Collectors near the sanctuary", True),
     _k("cargo_transform", "bool", 0, 1, "structural", "battery-holding Collectors stay Hunter candidates all match", True),
