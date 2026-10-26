@@ -184,10 +184,13 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("deposit_band", "float", 0.1, 0.6, "economy", "deposit cost slack (s) within which storages are tied"),
     _k("idle_band", "float", 0.1, 0.6, "economy", "idle-patrol score slack within which enemy storages are tied"),
     # -- special items (V33)
-    _k("w_bspd", "float", 0.0, 3.0, "specials", "planner value per second of an owned BuffSpeed"),
-    _k("w_dspd", "float", 0.0, 4.0, "specials", "planner value per second of an owned DebuffSpeed (enemy Workers -90 %)"),
+    _k("w_bspd", "float", 0.0, 6.0, "specials", "planner value per second of an owned BuffSpeed"),
+    _k("w_dspd", "float", 0.0, 8.0, "specials", "planner value per second of an owned DebuffSpeed (enemy Workers -90 %)"),
     _k("w_bsize", "float", 0.0, 1.5, "specials", "planner value per second of an owned BuffSize"),
     _k("w_dsize", "float", 0.0, 1.5, "specials", "planner value per second of an owned DebuffSize"),
+    _k("dom_threat_radius", "float", 0.1, 0.4, "evasion", "threat_radius used while the enemy dominates the Hunter war (V33; -1 = off)"),
+    _k("dom_danger_hunter_radius", "float", 3.0, 9.0, "evasion", "danger_hunter_radius used while the enemy dominates (V33; -1 = off)"),
+    _k("dom_margin", "int", 1, 2, "evasion", "enemy Hunters out minus ours that counts as dominated (V33)"),
     # -- structural switches (sampled only with structural=True)
     _k("sweep", "bool", 0, 1, "structural", "Hunters first strike enemy Collectors near the sanctuary", True),
     _k("cargo_transform", "bool", 0, 1, "structural", "battery-holding Collectors stay Hunter candidates all match", True),

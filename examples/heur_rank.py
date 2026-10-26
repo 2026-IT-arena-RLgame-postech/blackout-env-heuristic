@@ -19,7 +19,7 @@ _REF = {}
 
 def short(name: str, width: int = 0) -> str:
     s = name.split("/")[-2] if name.startswith("net:") else name
-    if s.startswith("strategic_v32:"):  # show only what differs from V32.1
+    if s.startswith(("strategic_v32:", "strategic_v33:")):  # show only what differs from V32.1
         from blackout_env.heuristics.params import resolve_descriptor, split_descriptor
         if not _REF:
             _REF.update(split_descriptor(resolve_descriptor("V32.1"))[1])
