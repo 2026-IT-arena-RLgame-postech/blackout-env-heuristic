@@ -183,6 +183,11 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("exclusion_margin", "float", 0.3, 2.0, "economy", "seconds a teammate must arrive earlier to take a shared task"),
     _k("deposit_band", "float", 0.1, 0.6, "economy", "deposit cost slack (s) within which storages are tied"),
     _k("idle_band", "float", 0.1, 0.6, "economy", "idle-patrol score slack within which enemy storages are tied"),
+    # -- special items (V33)
+    _k("w_bspd", "float", 0.0, 3.0, "specials", "planner value per second of an owned BuffSpeed"),
+    _k("w_dspd", "float", 0.0, 4.0, "specials", "planner value per second of an owned DebuffSpeed (enemy Workers -90 %)"),
+    _k("w_bsize", "float", 0.0, 1.5, "specials", "planner value per second of an owned BuffSize"),
+    _k("w_dsize", "float", 0.0, 1.5, "specials", "planner value per second of an owned DebuffSize"),
     # -- structural switches (sampled only with structural=True)
     _k("sweep", "bool", 0, 1, "structural", "Hunters first strike enemy Collectors near the sanctuary", True),
     _k("cargo_transform", "bool", 0, 1, "structural", "battery-holding Collectors stay Hunter candidates all match", True),

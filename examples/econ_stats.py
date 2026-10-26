@@ -35,6 +35,7 @@ sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "examples"))
 
 CLS = ("col", "hun", "car")
+SPECIAL = ("", "_bspd", "_dspd", "_bsize", "_dsize")
 SNAP_S = (20, 40, 60, 120, 180, 240, 300)
 WIN_S = (20, 40, 60)  # all counters are also copied at these seconds as w<T>.<key>
 
@@ -118,6 +119,13 @@ def play_chunk(job):
                         s[_team(killer)][f"kill_by_{CLS[kcls]}"] += 1
         cls = bs.ui[live, :, core.U_CLS]
         held = bs.ui[live, :, core.U_HELD] >= 0
+        it = bs.it[live]
+        stored = (it[..., core.I_STATE] == core.GROUND) & (it[..., core.I_TX] >= 0)
+        for j, b in enumerate(live):  # seconds each special item type sits in each team's storage
+            for i in np.nonzero(stored[j] & (it[j, :, core.I_TYPE] > 0))[0]:
+                ctx = int(it[j, i, core.I_CTX])
+                if ctx in (0, 1):
+                    st[b][ctx][f"own{SPECIAL[int(it[j, i, core.I_TYPE])]}_s"] += 1.0 / 25.0
         for j, b in enumerate(live):
             for team in (0, 1):
                 c = cls[j, 5 * team:5 * team + 5]
@@ -182,7 +190,7 @@ def cmd_play(args):
                   f"wall {rows[0]['chunk_wall_s']:.0f}s", flush=True)
 
 
-BASE_KEYS = ["pick_amt", "steal_amt", "dep_amt", "abs_amt", "lost_die_amt", "die_col", "die_car", "die_hun",
+BASE_KEYS = ["own_dspd_s", "own_bspd_s", "own_bsize_s", "own_dsize_s", "pick_amt", "steal_amt", "dep_amt", "abs_amt", "lost_die_amt", "die_col", "die_car", "die_hun",
              "kill_by_hun", "col_s", "hun_s", "car_s", "held_s"]
 KEYS = ["margin", "win", "score_ours", "score_opp",
         "us.pick_amt", "us.steal_amt", "us.dep_amt", "us.abs_amt", "us.lost_die_amt", "us.lost_tx_amt",
