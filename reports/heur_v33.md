@@ -35,7 +35,7 @@ E4 vs V32.1 +48.7 (승률 0.89). 점수 차는 처음 60 s 안에 결정된다 (
 | V33a | `commit_margin=-0.3` (워커가 후퇴 대신 진입) | +21.4 | −48.7 → −3.6 | `reports/heur_search/commit_mac` |
 | C1 | CEM g0 (28 후보, 구조 노브 포함) 최고: `adapt_k=4, threat_radius=.111, breakout_units=1, exposure_cost=.78, contest_factor=.57, …` | +35.5 | +1.3 | g1 (C1 주변 ±0.7)·g2 (±1.5) 모두 개선 없음 |
 | C2 | + `w_dspd=5, w_bspd=3` (새 V33 노브) | | +10.7 (C1 대비 +9.7) | `spec*_mac` |
-| **C3 = V33** | `w_bspd=4.5` | +42.9 | +15.7 (128 seeds) | g3 (C3 주변) 개선 없음 |
+| **C3 = V33** | `w_bspd=4.5` | +42.9 | +15.7 (128 seeds) | g3 (C3 주변 ±0.8)·g4 (±0.5) 개선 없음 (E4 상대 최대 +1.2 ± 2.8) |
 
 ## 효과가 없었던 것 (모두 C3/C2 기준 paired, 64 seeds)
 
