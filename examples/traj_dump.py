@@ -21,7 +21,13 @@ sys.path.insert(0, str(REPO / "examples"))
 
 
 def tag(name: str) -> str:
-    return name.split("/")[-2] if name.startswith("net:") else name.replace(":", "_").replace(",", "_").replace("=", "")
+    if name.startswith("net:"):
+        return name.split("/")[-2]
+    t = name.replace(":", "_").replace(",", "_").replace("=", "")
+    if len(t) > 60:  # long descriptors: policy id + a stable hash
+        import hashlib
+        t = name.split(":")[0] + "_" + hashlib.md5(name.encode()).hexdigest()[:8]
+    return t
 
 
 def play_chunk(job):
