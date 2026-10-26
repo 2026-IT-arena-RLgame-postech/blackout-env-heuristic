@@ -1,0 +1,12 @@
+/home/cucumbersaurus/blackout-env-abl/.venv/lib/python3.12/site-packages/torch/nn/functional.py:2954: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+  return torch.rms_norm(input, normalized_shape, weight, eps)
+net:checkpoints/distill/frozen/p24c_v321.pt  seeds 970000..970127  win 0.830  margin +35.2 +- 2.5
+net:checkpoints/distill/frozen/p22_v31.pt  seeds 970000..970127  win 0.871  margin +49.9 +- 2.6
+V32.1  seeds 970000..970127  win 0.898  margin +43.2 +- 2.2
+net:checkpoints/rl/league_b/iter_600.pt  seeds 970000..970127  win 0.576  margin +6.2 +- 2.6
+chunk 970000 done in 1157s
+net:checkpoints/distill/frozen/p24c_v321.pt  seeds 970128..970255  win 0.871  margin +38.5 +- 2.3
+net:checkpoints/distill/frozen/p22_v31.pt  seeds 970128..970255  win 0.941  margin +56.1 +- 1.9
+V32.1  seeds 970128..970255  win 0.867  margin +42.7 +- 2.4
+net:checkpoints/rl/league_b/iter_600.pt  seeds 970128..970255  win 0.547  margin +5.9 +- 2.4
+chunk 970128 done in 958s
