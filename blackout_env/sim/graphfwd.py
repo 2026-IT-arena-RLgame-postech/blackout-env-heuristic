@@ -10,6 +10,11 @@ algorithms), so the outputs are bit-identical to ``NetPolicy``'s eager fp16 path
 * output: one float32 device tensor ``[m, 5, K(+K')]`` (logits, then offsets when the net has an angle head);
 * graphs share one memory pool (they are replayed strictly in sequence on the current stream), so hundreds of
   sizes cost little memory; sizes above ``max_batch`` or beyond ``max_graphs`` fall back to the eager forward;
+* fine direction head (rl/finehead.py, opt-in): ``tap`` (a ``FeatTap`` on the net's angle head) + ``fine`` (a ``FineHead``)
+  fold the greedy fine decode INTO the graph -- the offsets of the argmax coarse bin become the argmax fine centre, the
+  output keeps its shape (net opponents / greedy eval, no extra memory); ``tap`` + ``expose_feat`` instead keeps the
+  angle head's input features as a second graph output, read as ``self.feat`` after each call (the learner, which
+  samples the fine index outside the graph);
 * ``bucket`` > 0 pads a batch up to a multiple of ``bucket`` (fewer graphs, but the padded GEMM shape may round
   differently from the eager one -- off by default).
 """
@@ -24,7 +29,10 @@ from .batch import unpack_graphic
 
 class GraphForward:
     def __init__(self, own, device, angle: bool = True, max_batch: int = 2048, max_graphs: int = 400, bucket: int = 0,
-                 autocast: bool = True):
+                 autocast: bool = True, tap=None, fine=None, expose_feat: bool = False):
+        self.tap, self.fine, self.expose_feat = tap, fine, bool(expose_feat)
+        self.feat = None   # expose_feat: the last call's features [m, 5, H] (device tensor, valid until the next call of that size)
+        self._side = None
         self.own, self.device, self.angle = own, torch.device(device), angle
         self.max_batch, self.max_graphs, self.bucket, self.autocast = max_batch, max_graphs, bucket, autocast
         self._ents: dict = {}
@@ -39,7 +47,12 @@ class GraphForward:
             out = self.own(g, t, a)
         if self.angle:
             self.kq = out[0].shape[-1]   # logits width; the offsets follow
-            return torch.cat([out[0].float(), out[1].float()], -1)
+            q, off = out[0].float(), out[1].float()
+            if self.expose_feat:
+                self._side = self.tap.feat
+            elif self.fine is not None:
+                off = self.fine.greedy_offsets(q, off, self.tap.feat.float())
+            return torch.cat([q, off], -1)
         return (out[0] if isinstance(out, tuple) else out).float()
 
     def eager(self, g, t, a) -> torch.Tensor:
@@ -48,6 +61,12 @@ class GraphForward:
             return self._fn(torch.from_numpy(np.ascontiguousarray(g)).to(self.device),
                             torch.from_numpy(np.ascontiguousarray(t)).to(self.device),
                             torch.from_numpy(np.ascontiguousarray(a)).to(self.device))
+
+    def _eager_feat(self, g, t, a) -> torch.Tensor:
+        out = self.eager(g, t, a)
+        if self.expose_feat:
+            self.feat = self._side
+        return out
 
     def _size(self, m: int) -> int:
         return m if self.bucket <= 0 else -(-m // self.bucket) * self.bucket
@@ -78,7 +97,8 @@ class GraphForward:
         with torch.inference_mode(), torch.cuda.graph(graph, pool=self._pool):
             out = self._fn(*views())
         done = torch.cuda.Event()
-        return {"graph": graph, "host": host_in, "host_np": host_np, "dev": dev_in, "out": out, "cols": cols, "ev": done}
+        return {"graph": graph, "host": host_in, "host_np": host_np, "dev": dev_in, "out": out, "cols": cols, "ev": done,
+                "feat": self._side}
 
     def __call__(self, g, t, a) -> torch.Tensor:
         """numpy ``g`` (packed ``[m, H, W]``), ``t``, ``a`` -> float32 device tensor of the m rows (valid until
@@ -87,13 +107,13 @@ class GraphForward:
         size = self._size(m)
         if self.device.type != "cuda" or size > self.max_batch:
             self.n_eager += 1
-            return self.eager(g, t, a)
+            return self._eager_feat(g, t, a)
         key = (g.ndim, size)
         ent = self._ents.get(key)
         if ent is None:
             if len(self._ents) >= self.max_graphs:
                 self.n_eager += 1
-                return self.eager(g, t, a)
+                return self._eager_feat(g, t, a)
             ent = self._ents[key] = self._capture(g, t, a, size)
         ent["ev"].synchronize()   # the previous replay of this entry has consumed the pinned buffer
         hn, cols = ent["host_np"], ent["cols"]
@@ -102,4 +122,6 @@ class GraphForward:
         ent["dev"][:m].copy_(ent["host"][:m], non_blocking=True)
         ent["graph"].replay()
         ent["ev"].record()
+        if self.expose_feat:
+            self.feat = ent["feat"][:m]
         return ent["out"][:m]

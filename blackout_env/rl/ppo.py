@@ -147,8 +147,11 @@ class PPOTrainer(GRPOTrainer):
         d = c.league_dir or "."
         os.makedirs(d, exist_ok=True)
         path = os.path.join(d, f"snap{len(self.snaps) + 1}_it{self.iter}.pt")
-        torch.save({"policy_state": {k: v.detach().cpu() for k, v in self.net.state_dict().items()},
-                    "league": {"iter": self.iter, "index": len(self.snaps) + 1}}, path + ".tmp")
+        ck = {"policy_state": {k: v.detach().cpu() for k, v in self.net.state_dict().items()},
+              "league": {"iter": self.iter, "index": len(self.snaps) + 1}}
+        if self.fine is not None:   # the snapshot plays with the fine head (NetPolicy.from_checkpoint reads it)
+            ck["fine_head_state"] = {k: v.detach().cpu() for k, v in self.fine.state_dict().items()}
+        torch.save(ck, path + ".tmp")
         os.replace(path + ".tmp", path)
         return self._attach_snapshot(path, level=0, added=self.iter, last_step=self.iter)
 
@@ -187,7 +190,7 @@ class PPOTrainer(GRPOTrainer):
             self.last_snap_iter = self.iter
             self.warm_until = self.iter + c.league_warmup
             if c.league_ref_reset:
-                self.ref.net.load_state_dict(self.net.state_dict())
+                self._sync_ref()
             self._events.append({"snapshot": len(self.snaps), "path": os.path.basename(sn["path"]), "gate_score": gs})
         self.opp_w = self._pfsp_weights()
         out["league_events"] = self._events
@@ -226,6 +229,8 @@ class PPOTrainer(GRPOTrainer):
               "extra": extra or {}}
         if self.cfg.league_ref_reset:
             st["ref_state"] = self.ref.net.state_dict()
+        if self.fine is not None:
+            st["fine_state"], st["fine_ref_state"] = self.fine.state_dict(), self.fine_ref.state_dict()
         if self.log_sigma is not None:
             st["log_sigma"] = float(self.log_sigma)
         torch.save(st, path + ".tmp")
@@ -237,6 +242,9 @@ class PPOTrainer(GRPOTrainer):
         self.net.load_state_dict(st["policy_state"])
         if "ref_state" in st:
             self.ref.net.load_state_dict(st["ref_state"])
+        if self.fine is not None:
+            self.fine.load_state_dict(st["fine_state"])
+            self.fine_ref.load_state_dict(st["fine_ref_state"])
         if self.log_sigma is not None and "log_sigma" in st:
             with torch.no_grad():
                 self.log_sigma.fill_(st["log_sigma"])
@@ -369,6 +377,7 @@ class PPOTrainer(GRPOTrainer):
         g = np.concatenate([r[1] for r in recs]); ts = np.concatenate([r[2] for r in recs])
         ag = np.concatenate([r[3] for r in recs]); act = np.concatenate([r[4] for r in recs])
         off = np.concatenate([r[5] for r in recs]) if c.offset_rl else None
+        fine = np.concatenate([r[5] for r in recs]) if c.fine_bins > 0 else None
         if not self._prefit_done:
             self._prefit_head(g, ts, ag)
         v = self._values_np(g, ts, ag)
@@ -462,6 +471,8 @@ class PPOTrainer(GRPOTrainer):
                  "ret": ret.astype(np.float32)}
         if off is not None:
             batch["off"] = off
+        if fine is not None:
+            batch["fine"] = fine
         if self.dev.type == "cuda":
             self._collect_peak = torch.cuda.max_memory_allocated() / 2**20
             torch.cuda.reset_peak_memory_stats()

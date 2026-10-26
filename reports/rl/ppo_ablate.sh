@@ -7,6 +7,8 @@
 #   refreset: KL anchor pi_ref <- learner at each snapshot (league_ref_reset)
 #   beta01  : KL coefficient 0.02 -> 0.01
 #   offset  : angle offset sampled N(mu, sigma), learnable sigma, in the PPO ratio + KL (offset_rl)
+#   fine    : hierarchical 32 x 32 direction head (fine_bins=32: 1024 directions, ~0.35 deg sub-bins; blackout_env/rl/finehead.py)
+# BETA=<x> (any arm) appends "beta=<x>" to EXTRA, e.g. ARM=fine BETA=0.01 (the E4 winner) for the combined arm.
 # Usage: ARM=<arm> [REPO=... GPU=...] reports/rl/ppo_ablate.sh   (GPU check is in ppo_league_b.sh; never GPU 3)
 set -e
 ARM=${ARM:?set ARM}
@@ -18,7 +20,9 @@ case $ARM in
   beta005)  export EXTRA="beta=0.005" MAXDEC=${MAXDEC:-20000000};;   # follow-ups of E4 (beta 0.01 won, +4.6±1.1 vs B it600)
   beta0)    export EXTRA="beta=0.0" MAXDEC=${MAXDEC:-20000000};;
   offset)   export EXTRA="offset_rl=true";;   # E5: Gaussian angle offset (eager update, no compile); CUDA smoke first
+  fine)     export EXTRA="fine_bins=32";;   # eager update (no compile), like offset: CUDA smoke first
   *) echo "bad ARM $ARM"; exit 1;;
 esac
+[ -z "$BETA" ] || export EXTRA="$EXTRA beta=$BETA"
 export OUT=${OUT:-checkpoints/rl/abl_$ARM} MAXDEC=${MAXDEC:-10000000} EVAL_SEEDS=${EVAL_SEEDS:-4}   # in-run evals are only a sanity check (16 seeds took ~25 min on gpu2); arms get a separate 256-seed eval
 exec bash "$(dirname "$0")/ppo_league_b.sh"

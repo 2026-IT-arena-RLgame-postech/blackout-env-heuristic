@@ -35,22 +35,33 @@ def _heur(desc: str, shift: int, workers):
 
 
 def eval_batched(net_or_path, opp_specs, seeds, device: str, horizon: int = 11000, graphs: bool = True,
-                 fp16: bool = True, heur_workers: int = 0, joint: bool = False, workers=None):
+                 fp16: bool = True, heur_workers: int = 0, joint: bool = False, workers=None, fine=None):
     """Greedy learner vs each of ``opp_specs`` on ``seeds``, both sides, all games in one rollout.
 
     Returns ``{opp_spec: {"margin_side0": [...], "margin_side1": [...], "win", "margin", "se"}}`` (margins from the
     learner's side, in seed order; win counts draws as 1/2; se = std(ddof=1)/sqrt(n) of the 2*len(seeds) margins).
     ``fp16`` / ``graphs`` only act on CUDA (graphs additionally need fp16).  ``heur_workers`` > 0: heuristic
-    opponents run in that many worker processes (or pass an existing ``HeuristicWorkers`` as ``workers``)."""
+    opponents run in that many worker processes (or pass an existing ``HeuristicWorkers`` as ``workers``).
+    Fine direction head (PPO ``fine_bins``): a checkpoint path whose file has ``fine_head_state`` is played with it (greedy
+    argmax coarse bin, then argmax fine sub-bin), a net object takes ``fine`` (a ``rl.finehead.FineHead``); otherwise unchanged."""
     opp_specs, seeds = list(opp_specs), list(seeds)
     dev = torch.device(device)
     if isinstance(net_or_path, str):
         ck = torch.load(net_or_path, map_location="cpu", weights_only=True)
         net = load_net(ck["policy_state"])
+        if fine is None and "fine_head_state" in ck:
+            from blackout_env.rl.finehead import FineHead
+
+            fine = FineHead.from_state(ck["fine_head_state"])
     else:
         net = net_or_path
     net = net.to(dev).eval()
     own = _OwnQ(net)
+    tap = None
+    if fine is not None:
+        from blackout_env.rl.finehead import FeatTap
+
+        fine, tap = fine.to(dev).eval(), FeatTap.of(net)
     cuda = dev.type == "cuda"
     use_fp16 = bool(fp16) and cuda
     use_graphs = bool(graphs) and use_fp16
@@ -60,8 +71,8 @@ def eval_batched(net_or_path, opp_specs, seeds, device: str, horizon: int = 1100
     if use_graphs:
         from blackout_env.sim.graphfwd import GraphForward
 
-        gf = GraphForward(own, dev, angle=True, max_batch=max(2048, n))
-    learner = LearnerPolicy(own, dev, 0, fp16=use_fp16, graphs=gf)
+        gf = GraphForward(own, dev, angle=True, max_batch=max(2048, n), **({"tap": tap, "fine": fine} if fine is not None else {}))   # fine decoded inside the graph
+    learner = LearnerPolicy(own, dev, 0, fp16=use_fp16, graphs=gf, **({"fine": fine, "tap": tap} if fine is not None and gf is None else {}))
 
     own_workers = None
     if workers is None and heur_workers > 0 and any(not s.startswith("net:") for s in opp_specs):

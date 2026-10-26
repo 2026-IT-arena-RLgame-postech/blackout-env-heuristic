@@ -82,11 +82,12 @@ def main():
     def evaluate():
         out = {}
         if args.eval_fast:
-            res = eval_batched(tr.net, eval_opps, seeds, cfg.device, graphs=bool(cfg.graphs), workers=getattr(tr, "hworkers", None))
+            res = eval_batched(tr.net, eval_opps, seeds, cfg.device, graphs=bool(cfg.graphs), workers=getattr(tr, "hworkers", None),
+                               fine=getattr(tr, "fine", None))
             return {os.path.basename(spec).replace(".pt", ""): {k: res[spec][k] for k in ("win", "margin", "se")}
                     for spec in eval_opps}
         for spec in eval_opps:
-            wr, m, se = eval_matches(tr.net, spec, seeds, cfg.device)
+            wr, m, se = eval_matches(tr.net, spec, seeds, cfg.device, fine=getattr(tr, "fine", None))
             out[os.path.basename(spec).replace(".pt", "")] = {"win": wr, "margin": m, "se": se}
         return out
 

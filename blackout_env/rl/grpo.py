@@ -21,6 +21,12 @@ One iteration:
    is sampled N(mu, sigma^2) (mu = the net's offset for that bin, sigma = exp(learnable scalar)) and is part of the
    action (log-prob = bin + Gaussian, KL gains the Gaussian term, see ``GRPOTrainer.update``).
 
+Discrete refinement (``fine_bins`` = 32, opt-in, mutually exclusive with ``offset_rl``; blackout_env/rl/finehead.py): a
+non-STAND unit's action is (coarse bin k, fine sub-bin j) -- heading 2 pi k / K + c_j, the sub-bins tiling the angle head's
+offset range -- from a hierarchical head owned by the trainer (prior = a bump around the angle head's offset of k, so it
+starts at today's behaviour).  log pi = log pi(k) + [non-STAND] log pi(j | k, s); the KL anchor gains
+``fine_kl`` * [non-STAND] KL(pi_fine(.|k) || pi_fine_ref(.|k)) at the chosen k (``batch["fine"]`` holds j).
+
 Opponents are drawn per trunk game from ``opponents`` with weights ``opp_weights`` (default uniform),
 reweighted by PFSP when ``pfsp`` is set: each opponent keeps an EMA of the learner's score against it
 (branch leaf winness mapped to [0, 1]); ``hard`` multiplies its base weight by ``floor + (1 - s)**pfsp_p``
@@ -75,7 +81,8 @@ class LearnerPolicy(BatchPolicy):
     accepts_packed = True
 
     def __init__(self, own: _OwnQ, device, sample_steps: int = 0, temperature: float = 1.0,
-                 fp16: bool = True, seed: int = 0, graphs=None, offset_sigma: float | None = None):
+                 fp16: bool = True, seed: int = 0, graphs=None, offset_sigma: float | None = None,
+                 fine=None, tap=None):
         self.own, self.device = own, torch.device(device)
         self.sample_steps, self.temperature, self.fp16 = int(sample_steps), float(temperature), fp16
         self.rng = torch.Generator(device=self.device)
@@ -84,6 +91,8 @@ class LearnerPolicy(BatchPolicy):
         self.records: list = []
         self.graphs = graphs   # a sim.graphfwd.GraphForward over ``own`` (fp16 CUDA only), else the eager path
         self.offset_sigma = offset_sigma   # not None: sampled units also sample the chosen bin's angle offset ~ N(mu, sigma^2) and record it
+        self.fine, self.tap = fine, tap    # fine: a FineHead (units also pick a fine sub-bin; sampled rows sample it and record it); tap: its FeatTap
+        self._feat = None                  # the last forward's angle-head input features [m, 5, H] float32 (fine only)
 
     def _sample_offsets(self, off, rows, chosen):
         """Replace, in ``off`` [n, 5, K] (canonical frame), the chosen bin's offset of the sampled ``rows`` by a draw
@@ -100,6 +109,13 @@ class LearnerPolicy(BatchPolicy):
         off[rows] = off[rows].scatter(-1, idx, torch.where(nonstand, o, mu).unsqueeze(-1))
         return off, o.cpu().numpy().astype(np.float32)
 
+    @torch.no_grad()
+    def _fine_apply(self, off, chosen, rows):
+        """Fine head on the last forward's features: ``off`` [n, 5, K] -> (``off`` with the chosen bin's offset of every
+        non-STAND unit replaced by its fine centre (argmax; sampled ~ softmax(logits / temperature) on ``rows`` = index tensor
+        of the sampled views), fine index [n, 5] int64, 0 for STAND)."""
+        return self.fine.pick(off, self._feat, chosen, rows, self.temperature, self.rng)
+
     def reset(self, n: int) -> None:
         self.t = np.zeros(n, np.int64)
         self.records = []
@@ -108,6 +124,8 @@ class LearnerPolicy(BatchPolicy):
     def _forward(self, g, t, a):
         if self.graphs is not None and g.ndim == 3:
             out = self.graphs(g, t, a)
+            if self.fine is not None:
+                self._feat = self.graphs.feat.float()   # a second graph output (GraphForward expose_feat)
             return out[..., :self.graphs.kq], out[..., self.graphs.kq:]
         g = torch.from_numpy(np.ascontiguousarray(g)).to(self.device)
         g = unpack_graphic(g) if g.dim() == 3 else g
@@ -115,6 +133,8 @@ class LearnerPolicy(BatchPolicy):
         a = torch.from_numpy(np.ascontiguousarray(a)).to(self.device)
         with torch.autocast(self.device.type, dtype=torch.float16, enabled=self.fp16 and self.device.type == "cuda"):
             q, off = self.own(g, t, a)
+        if self.fine is not None:
+            self._feat = self.tap.feat.float()
         return q.float(), off.float()
 
     def moves(self, bsim, idx, teams, inputs):
@@ -136,10 +156,15 @@ class LearnerPolicy(BatchPolicy):
             o_np = None
             if r is not None and self.offset_sigma is not None:
                 off, o_np = self._sample_offsets(off, rows, chosen)
+            f_np = None
+            if self.fine is not None:
+                off, fj = self._fine_apply(off, chosen, rows if r is not None else None)
+                f_np = fj.cpu().numpy().astype(np.int8)
             chosen_np = chosen.cpu().numpy()
             if r is not None:
                 self.records.append((idx[r].copy(), g[r].copy(), ts[r].copy(), ag[r].copy(),
-                                     chosen_np[r].astype(np.int8)) + ((o_np,) if o_np is not None else ()))
+                                     chosen_np[r].astype(np.int8)) + ((o_np,) if o_np is not None else ())
+                                    + ((f_np[r],) if f_np is not None else ()))
             onehot = np.zeros(q.shape, np.float32)
             np.put_along_axis(onehot, chosen_np[..., None], 1.0, -1)
             team_b = np.full(n, tm == 1)
@@ -156,6 +181,7 @@ def _moves_views(self, idx, g, ts, ag, team, chunks):
     q, off = self._forward(g, ts, ag)
     chosen = q.argmax(-1)
     sampled, offs = [], []
+    allrows = []
     for lo, hi in chunks:
         if hi <= lo:
             continue
@@ -167,13 +193,18 @@ def _moves_views(self, idx, g, ts, ag, team, chunks):
             pick = torch.multinomial(p.reshape(-1, p.shape[-1]), 1, generator=self.rng).view(p.shape[:-1])
             chosen[rows] = pick
             sampled.append(r)
+            allrows.append(rows)
             if self.offset_sigma is not None:
                 off, o_np = self._sample_offsets(off, rows, chosen)
                 offs.append(o_np)
+    f_np = None
+    if self.fine is not None:   # after all coarse draws: greedy on every view, sampled on the sampled rows (chunk order)
+        off, fj = self._fine_apply(off, chosen, torch.cat(allrows) if allrows else None)
+        f_np = fj.cpu().numpy().astype(np.int8)
     chosen_np = chosen.cpu().numpy()
     for j, r in enumerate(sampled):
         self.records.append((idx[r].copy(), g[r].copy(), ts[r].copy(), ag[r].copy(), chosen_np[r].astype(np.int8))
-                            + ((offs[j],) if offs else ()))
+                            + ((offs[j],) if offs else ()) + ((f_np[r],) if f_np is not None else ()))
     self.t[idx] += 1
     onehot = np.zeros(q.shape, np.float32)
     np.put_along_axis(onehot, chosen_np[..., None], 1.0, -1)
@@ -448,6 +479,12 @@ class GRPOConfig:
     offset_detach: bool = True     # the angle head reads DETACHED trunk features (offset gradients only train angle_out) and is
                                    # grad-clipped on its own: the A/sigma^2 offset gradient (norm ~3.6 vs ~0.8) otherwise eats the
                                    # shared clip and slows the bin policy ~4x (WSL smoke 10-25)
+    # ---- hierarchical fine direction head (opt-in; 0 = off = bit-identical to before; exclusive with offset_rl), blackout_env/rl/finehead.py
+    fine_bins: int = 0         # sub-bins per coarse bin over the angle head's offset range [-S, S] (32 -> 32 x 32 = 1024 directions, ~0.35 deg)
+    fine_tau: float = 0.5      # init prior width, in sub-bin widths (the prior is a Gaussian bump around the angle head's offset)
+    fine_detach: bool = True   # the fine head reads DETACHED trunk features (its gradient only trains the head)
+    fine_kl: float = 1.0       # multiplier of the fine KL term inside beta * KL
+    fine_lr: float = 1e-4      # Adam lr of the fine head (the policy lr 3e-6 would leave the zero-initialised head frozen: ~1e-3 total drift in 300 steps vs prior logits of O(1-10))
     graphs: bool = True        # CUDA-graph replay of the learner / net-opponent forwards (bit-identical, sim/graphfwd.py)
 
 
@@ -465,6 +502,16 @@ class GRPOTrainer:
         self._compiled: dict = {}
         self.opt = torch.optim.AdamW(self.net.parameters(), lr=cfg.lr, weight_decay=0.0)
         self.log_sigma = None
+        self.fine = self.fine_ref = self.tap = self.ref_tap = None
+        if cfg.fine_bins > 0:
+            from blackout_env.rl.finehead import FeatTap, FineHead
+
+            assert not cfg.offset_rl, "fine_bins and offset_rl are mutually exclusive"
+            assert net.angle_head, "fine_bins needs an angle-head student"
+            self.tap, self.ref_tap = FeatTap.of(self.net), FeatTap.of(self.ref.net)
+            self.fine = FineHead(self.tap.hidden, self.tap.n_coarse, cfg.fine_bins, self.tap.scale, cfg.fine_tau).to(self.dev)
+            self.fine_ref = copy.deepcopy(self.fine).eval().requires_grad_(False)
+            self.opt.add_param_group({"params": list(self.fine.parameters()), "lr": cfg.fine_lr, "weight_decay": 0.0})
         if cfg.offset_rl:
             assert net.angle_head, "offset_rl needs an angle-head student"
             self.log_sigma = torch.nn.Parameter(torch.tensor(math.log(cfg.offset_std_init), device=self.dev),
@@ -488,7 +535,7 @@ class GRPOTrainer:
         if gr:
             from blackout_env.sim.graphfwd import GraphForward
 
-            self.learner_gf = GraphForward(self.own, self.dev, angle=True, max_batch=2048)
+            self.learner_gf = GraphForward(self.own, self.dev, angle=True, max_batch=2048, tap=self.tap, expose_feat=self.fine is not None)
         nw = cfg.heur_workers if cfg.heur_workers >= 0 else (4 if self.dev.type == "cuda" else 0)
         self.hworkers = None
         if nw > 0 and any(not s.startswith("net:") for s in cfg.opponents):
@@ -521,7 +568,15 @@ class GRPOTrainer:
         return self.log_sigma.exp().clamp_min(self.cfg.offset_std_min)
 
     def _learner_kw(self) -> dict:
+        if self.fine is not None:
+            return {"fine": self.fine, "tap": self.tap}
         return {"offset_sigma": float(self.sigma().detach())} if self.cfg.offset_rl else {}
+
+    def _sync_ref(self) -> None:
+        """pi_ref <- the current policy (coarse net and, with fine_bins, the fine head)."""
+        self.ref.net.load_state_dict(self.net.state_dict())
+        if self.fine is not None:
+            self.fine_ref.load_state_dict(self.fine.state_dict())
 
     def _pfsp_weights(self, n: int | None = None) -> np.ndarray:
         """PFSP-reweighted sampling weights (``n``: only the first n opponents, i.e. the fixed pool of a league run)."""
@@ -552,7 +607,8 @@ class GRPOTrainer:
     def collect(self):
         c = self.cfg
         t0 = time.perf_counter()
-        greedy = LearnerPolicy(self.own, self.dev, 0, graphs=self.learner_gf)
+        greedy = LearnerPolicy(self.own, self.dev, 0, graphs=self.learner_gf,
+                               **({"fine": self.fine, "tap": self.tap} if self.fine is not None else {}))
         n_chunks = c.value_snaps if c.value_train else 1
         roots, steps = self.trunk, 0
         for j in range(n_chunks):
@@ -610,6 +666,8 @@ class GRPOTrainer:
         batch = {"g": cat(1), "t": cat(2), "a": cat(3), "act": cat(4), "adv": adv[game][keep].astype(np.float32)}
         if c.offset_rl:
             batch["off"] = cat(5)
+        if c.fine_bins > 0:
+            batch["fine"] = cat(5)
         t3 = time.perf_counter()
         stats = {
             "trunk_s": t1 - t0, "branch_s": t2 - t1, "leaf_s": t3 - t2, "views": len(game),
@@ -700,6 +758,9 @@ class GRPOTrainer:
     def _clip(self, st):
         """Clip the policy gradients; with offset_detach the angle head is clipped separately (its norm -> st['grad_norm_off'])."""
         c = self.cfg
+        if self.fine is not None:   # the fine head is clipped on its own (its gradient must not eat the trunk's clip, nor vice versa)
+            gf = torch.nn.utils.clip_grad_norm_(self.fine.parameters(), c.max_grad_norm)
+            st["grad_norm_fine"] = st.get("grad_norm_fine", 0.0) + gf.item()
         if not self._ang_params:
             return torch.nn.utils.clip_grad_norm_(self.net.parameters(), c.max_grad_norm)
         go = torch.nn.utils.clip_grad_norm_(self._ang_params, c.max_grad_norm)
@@ -712,6 +773,21 @@ class GRPOTrainer:
         with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.update_fp16 and self.dev.type == "cuda"):
             q, off = own(g, t, a)
         return q.float() / self.cfg.temperature, off.float()
+
+    def _fine_fwd(self, own, tap, g, t, a):
+        """(logits / T, offsets, angle-head input features float32) -- the ``fine_bins`` forward.  Always eager (the tap)."""
+        q, off = self._logits_off(own, g, t, a)
+        return q, off, tap.feat.float()
+
+    def _fine_logits(self, head, feat, act, off):
+        """Fine logits / T [m, 5, nf] of the chosen coarse bins ``act`` and the non-STAND mask [m, 5] (float).  The prior's mu is the
+        (detached) offset of the chosen bin; with ``fine_detach`` the features are detached too."""
+        k = off.shape[-1]
+        kc = act.clamp(max=k - 1)
+        mu = off.gather(-1, kc.unsqueeze(-1))[..., 0].detach()
+        if self.cfg.fine_detach:
+            feat = feat.detach()
+        return head(feat, kc, mu).float() / self.cfg.temperature, (act < k).float()
 
     @staticmethod
     def _chosen_mu(off, act):
@@ -730,14 +806,27 @@ class GRPOTrainer:
         to = lambda x: torch.from_numpy(x).to(self.dev)
         g, t, a = to(batch["g"]), to(batch["t"]), to(batch["a"])
         act, adv = to(batch["act"]).long(), to(batch["adv"])
+        fc = c.fine_bins > 0
         if oc:
             o_samp = to(batch["off"]).float()
             sig0 = self.sigma().detach()
             ref_mu = []
+        if fc:
+            fidx = to(batch["fine"]).long()
+            ref_flp = []
         with torch.no_grad():  # old log-probs on the training path (fp32), ref logits
             old_lp, ref_lp = [], []
             for s in range(0, n, c.minibatch):
                 sl = slice(s, s + c.minibatch)
+                if fc:
+                    lg_o, off_o, ft_o = self._fine_fwd(self.own, self.tap, g[sl], t[sl], a[sl])
+                    flg, ns = self._fine_logits(self.fine, ft_o, act[sl], off_o)
+                    old_lp.append(F.log_softmax(lg_o, -1).gather(-1, act[sl].unsqueeze(-1)).squeeze(-1)
+                                  + ns * F.log_softmax(flg, -1).gather(-1, fidx[sl].unsqueeze(-1)).squeeze(-1))
+                    lg_r, off_r, ft_r = self._fine_fwd(self.ref, self.ref_tap, g[sl], t[sl], a[sl])
+                    ref_lp.append(F.log_softmax(lg_r, -1))
+                    ref_flp.append(F.log_softmax(self._fine_logits(self.fine_ref, ft_r, act[sl], off_r)[0], -1))
+                    continue
                 if oc:
                     lg_o, off_o = self._logits_off(self.own, g[sl], t[sl], a[sl])
                     lp = F.log_softmax(lg_o, -1)
@@ -754,9 +843,13 @@ class GRPOTrainer:
             old_lp, ref_lp = torch.cat(old_lp), torch.cat(ref_lp)
             if oc:
                 ref_mu = torch.cat(ref_mu)
+            if fc:
+                ref_flp = torch.cat(ref_flp)
         st = {"loss": 0.0, "pg": 0.0, "kl": 0.0, "ent": 0.0, "clipfrac": 0.0, "grad_norm": 0.0, "n_mb": 0}
         if oc:
             st.update({"offset_sigma": 0.0, "off_mu_shift": 0.0, "kl_off": 0.0, "kl_bin": 0.0})
+        if fc:
+            st.update({"kl_fine": 0.0, "ent_fine": 0.0, "grad_norm_fine": 0.0})
         for _ in range(c.epochs):
             perm = torch.randperm(n, device=self.dev)
             for s in range(0, n, c.minibatch):
@@ -767,7 +860,10 @@ class GRPOTrainer:
                 for u in range(0, m_all, sub):
                     ids = mb[u:u + sub]
                     frac = len(ids) / m_all
-                    if oc:
+                    if fc:
+                        lg_n, off_n, ft_n = self._fine_fwd(self.own, self.tap, g[ids], t[ids], a[ids])
+                        lp_all = F.log_softmax(lg_n, -1)
+                    elif oc:
                         lg_n, off_n = self._logits_off(self.own, g[ids], t[ids], a[ids])
                         lp_all = F.log_softmax(lg_n, -1)
                     else:
@@ -777,6 +873,10 @@ class GRPOTrainer:
                         sig = self.sigma()
                         mu_n, nonstand = self._chosen_mu(off_n, act[ids])
                         lp = lp + nonstand * (-0.5 * ((o_samp[ids] - mu_n) / sig) ** 2 - sig.log() - 0.5 * LOG2PI)
+                    if fc:   # + log pi(j | k, s) on the non-STAND units
+                        flg, nonstand = self._fine_logits(self.fine, ft_n, act[ids], off_n)
+                        flp_all = F.log_softmax(flg, -1)
+                        lp = lp + nonstand * flp_all.gather(-1, fidx[ids].unsqueeze(-1)).squeeze(-1)
                     ratio = torch.exp(lp - old_lp[ids])
                     A = adv[ids].unsqueeze(-1)
                     pg = -torch.min(ratio * A, ratio.clamp(1 - c.clip, 1 + c.clip) * A).mean()
@@ -787,6 +887,9 @@ class GRPOTrainer:
                         gk = math.log(s_ref) - sig.log() + (sig ** 2 + (off_n - ref_mu[ids]) ** 2) / (2 * s_ref ** 2) - 0.5
                         kl_off = (p[..., :kn] * gk).sum(-1).mean()
                         kl = kl + kl_off
+                    if fc:   # fine KL at the chosen coarse bin (sample estimate over the visited k)
+                        kl_fine = (nonstand * (flp_all.exp() * (flp_all - ref_flp[ids])).sum(-1)).mean()
+                        kl = kl + c.fine_kl * kl_fine
                     loss = pg + c.beta * kl
                     sl = loss * frac if sub < m_all else loss
                     if self.scaler.is_enabled():
@@ -797,6 +900,9 @@ class GRPOTrainer:
                         st["loss"] += loss.item() * frac; st["pg"] += pg.item() * frac; st["kl"] += kl.item() * frac
                         st["ent"] += -(p * lp_all).sum(-1).mean().item() * frac
                         st["clipfrac"] += ((ratio - 1).abs() > c.clip).float().mean().item() * frac
+                        if fc:
+                            st["kl_fine"] += kl_fine.item() * frac
+                            st["ent_fine"] += (-(nonstand * (flp_all.exp() * flp_all).sum(-1)).sum() / nonstand.sum().clamp_min(1.0)).item() * frac
                         if oc:
                             mu_r, _ = self._chosen_mu(ref_mu[ids], act[ids])
                             st["offset_sigma"] += sig.item() * frac
@@ -822,7 +928,7 @@ class GRPOTrainer:
         us["update_s"] = time.perf_counter() - t0
         self.iter += 1
         if self.cfg.ref_reset_every and self.iter % self.cfg.ref_reset_every == 0:
-            self.ref.net.load_state_dict(self.net.state_dict())
+            self._sync_ref()
         if self.cfg.value_train and self.iter % self.cfg.value_every == 0:
             t0 = time.perf_counter()
             us.update(self.train_value())
@@ -832,7 +938,8 @@ class GRPOTrainer:
     def save(self, path: str, extra: dict | None = None) -> None:
         torch.save({"policy_state": self.net.state_dict(),
                     "grpo": {**vars(self.cfg), "iter": self.iter, "opp_score": self.opp_score.tolist(), **(extra or {})},
-                    **({"offset_log_sigma": float(self.log_sigma)} if self.log_sigma is not None else {})}, path)
+                    **({"offset_log_sigma": float(self.log_sigma)} if self.log_sigma is not None else {}),
+                    **({"fine_head_state": {k: v.detach().cpu() for k, v in self.fine.state_dict().items()}} if self.fine is not None else {})}, path)
         if self.cfg.value_train:
             from blackout_env.value.model import save_value_net
 
@@ -872,11 +979,12 @@ class ValueBuffer:
 
 # ---------------------------------------------------------------------------------- evaluation
 
-def eval_matches(net_or_path, opp_spec: str, seeds, device: str, horizon: int = 11000):
+def eval_matches(net_or_path, opp_spec: str, seeds, device: str, horizon: int = 11000, fine=None):
     """Full official-rules matches, greedy learner vs ``opp_spec``, every seed from both sides.
+    ``fine``: a FineHead for a net object (a checkpoint path carrying ``fine_head_state`` brings its own).
     Returns (win rate with draws as 1/2, mean margin, se of margin)."""
-    pol = (NetPolicy.from_checkpoint(net_or_path, device=device) if isinstance(net_or_path, str)
-           else NetPolicy(net_or_path, device=device))
+    pol = (NetPolicy.from_checkpoint(net_or_path, device=device, **({"fine": fine} if fine is not None else {}))
+           if isinstance(net_or_path, str) else NetPolicy(net_or_path, device=device, fine=fine))
     opp = make_opponent_policy(opp_spec, device)
     seeds = list(seeds)
     roots = [SimState.from_seed(s) for s in seeds]
