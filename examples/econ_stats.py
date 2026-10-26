@@ -68,6 +68,7 @@ def play_chunk(job):
     bufs = (np.zeros((n, 2, N_CH, H, W), F32), np.zeros((n, 2, 4), F32), np.zeros((n, 2, 10, N_AGENT_COLS), F32))
     moves = np.zeros((n, 10, 2), F32)
     st = [[defaultdict(float), defaultdict(float)] for _ in range(n)]
+    spev = [[] for _ in range(n)]  # special-item events (tick, kind, item type, team or -1)
     for t in range(cap_s * 25):
         live = np.nonzero(~bs.over)[0]
         if not len(live):
@@ -96,8 +97,11 @@ def play_chunk(job):
                         d[key + "_amt"] += int(e[4])
                     else:
                         d["special_n"] += 1
+                        spev[b].append((t + 1, "steal" if kind == core.EV_STEAL else "pick", int(e[3]), _team(int(e[2]))))
                 elif kind == core.EV_DEPOSIT:
                     d = s[_team(int(e[2]))]
+                    if int(e[3]) != core.BATTERY:
+                        spev[b].append((t + 1, "dep", int(e[3]), _team(int(e[2]))))
                     if int(e[3]) == core.BATTERY:
                         d["dep_n"] += 1
                         d["dep_amt"] += int(e[4])
@@ -106,7 +110,11 @@ def play_chunk(job):
                 elif kind == core.EV_ABSORB:
                     if int(e[3]) == core.BATTERY and int(e[2]) in (0, 1):
                         s[int(e[2])]["abs_amt"] += int(e[4])
+                elif kind == core.EV_SPAWN and int(e[2]) > 0:
+                    spev[b].append((t + 1, "spawn", int(e[2]), -1))
                 elif kind == core.EV_LOST:
+                    if int(e[3]) != core.BATTERY:
+                        spev[b].append((t + 1, "lost", int(e[3]), _team(int(e[2]))))
                     if int(e[3]) == core.BATTERY:
                         s[_team(int(e[2]))]["lost_die_amt" if int(e[5]) == 1 else "lost_tx_amt"] += int(e[4])
                 elif kind == core.EV_KILL:
@@ -156,7 +164,9 @@ def play_chunk(job):
                     d.update({f"w{w}.{k}": v for k, v in list(d.items()) if "." not in k})
         rows.append({"ours": ours_name, "opponent": opp_name, "seed": int(s), "side": int(sd), "margin": o - p,
                      "score_ours": o, "score_opp": p, "ticks": int(bs.ticks[j]),
-                     "us": dict(st[j][sd]), "them": dict(st[j][1 - sd]), "chunk_wall_s": time.time() - t0})
+                     "us": dict(st[j][sd]), "them": dict(st[j][1 - sd]),
+                     "spev": [(tk, k, ty, (-1 if tm < 0 else int(tm != sd))) for tk, k, ty, tm in spev[j]],  # 0 = us
+                     "chunk_wall_s": time.time() - t0})
     return rows
 
 
