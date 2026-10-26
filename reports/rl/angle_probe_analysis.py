@@ -16,7 +16,7 @@ def short(spec):
 
 def load(q):
     out = {}
-    for f in glob.glob(f"{D}/q{q}__*.json"):
+    for f in glob.glob(f"{D}/{'q' + q if q.lstrip('-').isdigit() else q}__*.json"):
         r = json.load(open(f))
         d = out.setdefault(short(r["opp"]), {})
         for s, a, b in zip(r["seeds"], r["margin_side0"], r["margin_side1"]):

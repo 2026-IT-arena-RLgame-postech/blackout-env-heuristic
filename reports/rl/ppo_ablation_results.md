@@ -31,3 +31,10 @@ E4 itself ends at KL 0.04. With β 0.01 the stochastic-direction heads (offset, 
 - Keep the discrete 33-way head + deterministic offset; β 0.01; λ 0.95; KL anchor = init policy.
 - Finer direction control did not help under PPO here (both offset and 32×32 fine head lose, alone or combined).
 - Next: F1 = continue from E4 (init = KL ref = E4, critic warm-started) with V33 added to the pool (`reports/rl/ppo_f1.sh`).
+
+## F1: continue from E4 with V33 in the pool (`reports/rl/ppo_f1.sh`, 20M, 2026-10-26/27)
+init = KL ref = E4, critic warm-started from E4, β 0.01, pool = 9 B opponents + V33.
+- vs E4 (paired, 256 seeds): p24c +2.4±1.9, p22 +6.6±1.8, V32.1 +3.4±1.7, **avg3 +4.1±1.1**; **H2H vs E4 +10.1±1.9 (win 62.2 %)**; avg3 vs B600 +8.7±1.2.
+- vs V33 and hunt-style OOD (`reports/rl/angle_probe/f1__*`, paired with E4 = q0): **V33 +12.4±2.2 (E4 −12.1 → F1 +0.3)**,
+  v30_h4hunt +7.8±1.6, v30_hunt +3.9±1.7, v30_reckless +3.0±1.8, early_rush +0.2, rush_all −0.4.
+- OOD-26 (worst case) running on gpu2 CPU → reports/rl/abl_ood_f1/.
