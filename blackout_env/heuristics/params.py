@@ -38,6 +38,9 @@ ALIASES = {
     "V31": "strategic_v31:" + _V31,
     "V32": "strategic_v32:" + _V32,
     "V32.1": "strategic_v32:" + _V32 + ",adapt_k=3",
+    # V33 (reports/heur_v33.md): V32.1 with commit_margin < 0 (walkers step into the sanctuary instead of fleeing a
+    # fresh enemy Hunter), CEM-retuned knobs and much higher special-item weights (BuffSpeed / DebuffSpeed)
+    "V33": "strategic_v33:reserve_stage=0.5523,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1113,camp_engage_radius=6.5,hunter_quota=4,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,commit_margin=-0.3,guard_radius=7.691,late_after=16.0,carrier_col_scale=0.9054,camp_tiles=2.457,breakout_units=1,join_reach=1.137,trade_radius=0.7359,steal_weight=1.94,exposure_cost=0.7841,danger_hunter_radius=4.137,contest_factor=0.5747,w_dspd=5.0,w_bspd=4.5",
 }
 
 
@@ -162,7 +165,7 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("breakout_units", "int", 1, 4, "evasion", "blocked units waiting in the base that leave together"),
     # -- race / opening
     _k("opening_seconds", "float", 6.0, 20.0, "race", "seconds in which a battery-holding walker still goes to the sanctuary"),
-    _k("commit_margin", "float", -0.1, 0.25, "race", "seconds a committed walker must reach the sanctuary ahead of an enemy Hunter"),
+    _k("commit_margin", "float", -1.0, 0.25, "race", "seconds a committed walker must reach the sanctuary ahead of an enemy Hunter"),
     _k("commit_reach", "float", 0.5, 2.0, "race", "tiles from the sanctuary within which the last-step commit applies"),
     _k("reserve_stage", "float", 0.0, 2.0, "race", "tiles: the staged reserve walker waits this far from the sanctuary (0 = none)"),
     _k("reserve_count", "int", 1, 2, "race", "number of staged reserve walkers"),
@@ -183,6 +186,16 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("exclusion_margin", "float", 0.3, 2.0, "economy", "seconds a teammate must arrive earlier to take a shared task"),
     _k("deposit_band", "float", 0.1, 0.6, "economy", "deposit cost slack (s) within which storages are tied"),
     _k("idle_band", "float", 0.1, 0.6, "economy", "idle-patrol score slack within which enemy storages are tied"),
+    # -- special items (V33)
+    _k("w_bspd", "float", 0.0, 6.0, "specials", "planner value per second of an owned BuffSpeed"),
+    _k("w_dspd", "float", 0.0, 8.0, "specials", "planner value per second of an owned DebuffSpeed (enemy Workers -90 %)"),
+    _k("w_bsize", "float", 0.0, 1.5, "specials", "planner value per second of an owned BuffSize"),
+    _k("w_dsize", "float", 0.0, 1.5, "specials", "planner value per second of an owned DebuffSize"),
+    _k("dom_threat_radius", "float", 0.1, 0.4, "evasion", "threat_radius used while the enemy dominates the Hunter war (V33; -1 = off)"),
+    _k("dom_danger_hunter_radius", "float", 3.0, 9.0, "evasion", "danger_hunter_radius used while the enemy dominates (V33; -1 = off)"),
+    _k("dom_margin", "int", 1, 2, "evasion", "enemy Hunters out minus ours that counts as dominated (V33)"),
+    _k("h_evade_radius", "float", 1.0, 6.0, "hunters", "tiles: an outnumbered Hunter is repelled by enemy Hunters this close (V33; -1 = off)"),
+    _k("h_trade_up", "bool", 0, 1, "structural", "when we have more Hunters, the closest pair becomes a strike (V33)", True),
     # -- structural switches (sampled only with structural=True)
     _k("sweep", "bool", 0, 1, "structural", "Hunters first strike enemy Collectors near the sanctuary", True),
     _k("cargo_transform", "bool", 0, 1, "structural", "battery-holding Collectors stay Hunter candidates all match", True),

@@ -1,4 +1,4 @@
-# Heuristic parameters (V19 / V30 / V31 / V32 / V32.1)
+# Heuristic parameters (V19 / V30 / V31 / V32 / V32.1 / V33)
 
 Goal: after the Hunter balance patch, (a) retune the best heuristic by search instead of code edits, and (b) generate
 many diverse variants for the GRPO opponent pool.  Everything below is CPU-only and lives in
@@ -139,3 +139,23 @@ up here).  `sensitivity` reports for each knob at its lo/hi value the share of g
    adjust the module constants named above.
 4. Re-run `tests/test_heuristic_params.py`; the golden hashes only guard the *defaults* (they must be regenerated with
    `examples/heur_hash.py capture` if you intentionally change default behaviour).
+
+## V33 (2026-10-26, `reports/heur_v33.md`)
+
+`V33` (alias, `strategic_v33` = `v33_specials.py`) = V32.1 + `commit_margin=-0.3` + CEM retune + `w_dspd=5, w_bspd=4.5`.
+vs V32.1 +42, vs E4 (strongest PPO net) +13 (win 0.66), vs P24c +40; OOD-25 pass. Lessons for the next retune:
+
+* **Score is decided in the first ~60 s** (margin@60 s vs final: corr 0.99) → screen with `--cap-s 80`.
+* **The Hunter war decides matches, not the pickup economy.** Outcomes are bimodal: whoever keeps the last Hunter
+  wins by ~±50; balanced games are ≈0 with equal economy. Measure Hunter-seconds per side (`econ_stats` `w20/w40`).
+* **`commit_margin` must be negative** (range widened to −1.0): with ≥ 0 a walker 0.2–0.3 tiles from the sanctuary
+  flees a fresh enemy Hunter instead of stepping in (stepping in = at worst a trade). Single biggest gain (+21 / +45).
+* **Special items decide Hunter races.** Owning BuffSpeed / DebuffSpeed longer ≈ +40 margin; V17's per-second
+  weights (0.45 / 0.8) were far too low. New knobs `w_bspd w_dspd w_bsize w_dsize` (size items: no gain).
+* **Did not help:** wider evasion when dominated (`dom_threat_radius`, `dom_danger_hunter_radius`), Hunters evading
+  enemy Hunters when outnumbered (`h_evade_radius`, −4…−5: Hunters should engage), `h_trade_up`, sentry/role
+  variants, wide CEM (scale 1.5). Knobs are kept (default off, bit-identical) for future search.
+* **Search noise:** per-match margin SD ≈ 40 → 32 seeds × 2 sides gives ±5; screen at 32–64 seeds, confirm the top
+  3–4 at 128 seeds on fresh seeds. Mac core ≈ 4× gpu1 core; a CPU net opponent is ~3.5× slower than a heuristic.
+* Tools: `examples/econ_stats.py` (per-team economy/deaths/Hunter-seconds/specials, time windows),
+  `examples/heur_rank.py` (paired Δ table), `examples/heur_cem.py`, `examples/traj_dump.py`, `scripts/heur_sync.sh`.
