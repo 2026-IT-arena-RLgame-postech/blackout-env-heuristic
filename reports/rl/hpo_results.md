@@ -17,3 +17,6 @@ Base lr = 3e-6 (PPOConfig default).
 |---|---|---|---|---|---|---|---|
 | lr6e-6 | lr 3e-6 → 6e-6 | +0.8±1.5 | +1.5±1.5 | −0.3±1.5 | **+6.2±1.2** (p24c +9.5, p22 +6.4, V32.1 −0.6, V33 +9.5) | +2.2±0.8 | **significant (final)**; gain appears only after it200 (abs. 25.2 → 33.3) |
 | lr1.2e-5 | lr 3e-6 → 1.2e-5 | −0.7±1.6 | +3.0±1.5 | **+4.3±1.6** | +2.4±1.6 (p24c −0.2, p22 +8.8, **V32.1 −15.4**, V33 +16.4) | +1.8±0.9 | not significant; fastest early (it100–200) but specialises (V32.1 collapse) → too high |
+| lr1.5e-6 | lr 3e-6 → 1.5e-6 | −4.3±1.5 | −3.3±1.5 | −0.7±1.4 | −0.6±1.2 | −1.7±0.8 | slower start, same final → rejected |
+
+**lr summary:** 1.5e-6 slower, 6e-6 best final (+6.2, balanced), 1.2e-5 fastest to it200 but specialises → **lr 6e-6** for combos.
