@@ -11,7 +11,12 @@
 #   RESUME=1 MAXDEC=19100000 reports/rl/ppo_league_b.sh
 set -e
 cd ${REPO:-~/blackout-env-league}
-if [ -n "$GPU" ]; then [ "$GPU" != 3 ] || { echo "GPU 3 is off limits"; exit 1; }; export CUDA_VISIBLE_DEVICES=$GPU; nvidia-smi -i $GPU | grep -q "No running processes found" || { nvidia-smi -i $GPU; echo "GPU $GPU busy"; exit 1; }; n=0; else n=$(nvidia-smi --query-compute-apps=pid --format=csv,noheader | wc -l); fi
+if [ -n "$GPU" ]; then [ "$GPU" != 3 ] || { echo "GPU 3 is off limits"; exit 1; }; export CUDA_VISIBLE_DEVICES=$GPU
+  if [ -n "$ALLOW_OWN" ]; then   # tolerate only my own processes on that GPU (e.g. a running eval of the previous trial)
+    u=$(nvidia-smi -i $GPU --query-gpu=uuid --format=csv,noheader)
+    for p in $(nvidia-smi --query-compute-apps=gpu_uuid,pid --format=csv,noheader | awk -F', ' -v u="$u" '$1==u{print $2}'); do
+      [ "$(ps -o user= -p $p | tr -d ' ')" = "$USER" ] || { echo "GPU $GPU has a foreign process $p"; exit 1; }; done
+  else nvidia-smi -i $GPU | grep -q "No running processes found" || { nvidia-smi -i $GPU; echo "GPU $GPU busy"; exit 1; }; fi; n=0; else n=$(nvidia-smi --query-compute-apps=pid --format=csv,noheader | wc -l); fi
 [ "$n" = 0 ] || { echo "GPU has $n compute processes"; exit 1; }
 F=checkpoints/distill/frozen
 OUT=${OUT:-checkpoints/rl/league_b}
