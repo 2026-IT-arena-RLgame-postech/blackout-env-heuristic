@@ -20,3 +20,4 @@ Base lr = 3e-6 (PPOConfig default).
 | lr1.5e-6 | lr 3e-6 → 1.5e-6 | −4.3±1.5 | −3.3±1.5 | −0.7±1.4 | −0.6±1.2 | −1.7±0.8 | slower start, same final → rejected |
 
 **lr summary:** 1.5e-6 slower, 6e-6 best final (+6.2, balanced), 1.2e-5 fastest to it200 but specialises → **lr 6e-6** for combos.
+| ep4 | epochs 2 → 4 | −0.3±1.5 | +0.8±1.5 | −1.2±1.5 | +1.7±1.3 (V33 +6.0) | +0.2±0.8 | null (2× update cost, no gain) |
