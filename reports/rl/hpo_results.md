@@ -23,3 +23,8 @@ Base lr = 3e-6 (PPOConfig default).
 | ep4 | epochs 2 → 4 | −0.3±1.5 | +0.8±1.5 | −1.2±1.5 | +1.7±1.3 (V33 +6.0) | +0.2±0.8 | null (2× update cost, no gain) |
 | mb512 | minibatch 1024 → 512 | −0.8±1.4 | +0.3±1.5 | −1.9±1.5 | −1.4±1.4 (p24c −7.6, p22 +8.9, V32.1 −9.1, V33 +2.3) | −0.7±0.9 | null/worse; specialises like lr1.2e-5 → rejected |
 | clip0.1 | clip 0.2 → 0.1 | −3.1±1.4 | −2.5±1.5 | +0.2±1.4 | −2.5±1.2 | −1.6±0.8 | slower and slightly worse → rejected |
+| clip0.3 | clip 0.2 → 0.3 | +0.8±1.4 | −0.6±1.6 | +3.0±1.5 | +0.8±1.2 | +1.3±0.8 | null (mildly positive, balanced) |
+
+**Single-factor summary:** only lr 6e-6 is significant (final +6.2). Smaller steps (lr 1.5e-6, clip 0.1) are slower; more update
+steps (ep4, mb512) do not help and mb512 specialises; lr 1.2e-5 specialises. Next (queued 10-28): lr6e-6_r2 (replicate),
+lr6e-6_clip0.3 (combo of the two step-size-up settings), lr8e-6.
