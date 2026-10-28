@@ -26,7 +26,14 @@ Base lr = 3e-6 (PPOConfig default).
 | clip0.3 | clip 0.2 → 0.3 | +0.8±1.4 | −0.6±1.6 | +3.0±1.5 | +0.8±1.2 | +1.3±0.8 | null (mildly positive, balanced) |
 | lr6e-6_r2 | replicate of lr6e-6 | +1.5±1.4 | +1.6±1.4 | +1.2±1.5 | **+4.5±1.3** (p24c +5.2, p22 +7.2, V32.1 −1.4, V33 +7.2) | **+2.2±0.9** | **replicates** (r2 − r1: final −1.7±1.2, curve +0.0) |
 | lr6e-6_clip0.3 | lr 6e-6 + clip 0.3 | +2.2±1.5 | +1.4±1.3 | **+3.5±1.4** | +3.1±1.2 (p24c −1.0, p22 +6.9, V32.1 +0.3, V33 +6.1) | **+2.9±0.8** | significant (curve, fastest); vs lr6e-6_r2: final −1.4±1.2, curve +0.7±0.8 → n.s. (slightly faster, not stronger) |
+| lr8e-6 | lr 3e-6 → 8e-6 | **+4.6±1.5** | +3.6±1.4 | −2.7±1.7 | **+7.1±1.4** (p24c +2.5, p22 +13.4, **V32.1 −5.4**, V33 +17.9) | **+3.3±0.9** | significant (final + curve, highest numbers) but dips at it200 and leans to V33/p22 at V32.1's cost; vs lr6e-6_r2: final +2.6±1.3, curve +1.0±1.0 |
 
 **Single-factor summary:** only lr 6e-6 is significant (final +6.2). Smaller steps (lr 1.5e-6, clip 0.1) are slower; more update
 steps (ep4, mb512) do not help and mb512 specialises; lr 1.2e-5 specialises. Next (queued 10-28): lr6e-6_r2 (replicate),
 lr6e-6_clip0.3 (combo of the two step-size-up settings), lr8e-6.
+
+## Conclusion (10-29)
+- **lr is the only lever that matters** in this recipe (10M, P24c start): 3e-6 → 6e-6 gives final +4.5…+6.2 (replicated) and curve +2.2;
+  8e-6 gives the highest final/curve (+7.1 / +3.3) but is less balanced (V32.1 −5.4) and dips mid-run; 1.2e-5 over-specialises (V32.1 −15).
+- clip 0.3 on top of lr 6e-6 makes the curve slightly faster (+2.9) without a higher final; epochs/minibatch/clip 0.1 do not help.
+- **Recommended default: lr 6e-6** (balanced, replicated). lr 8e-6 is the aggressive option — adopt only after an OOD-26 worst-case check.
