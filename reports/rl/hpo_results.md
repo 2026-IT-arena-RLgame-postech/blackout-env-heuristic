@@ -37,3 +37,12 @@ lr6e-6_clip0.3 (combo of the two step-size-up settings), lr8e-6.
   8e-6 gives the highest final/curve (+7.1 / +3.3) but is less balanced (V32.1 −5.4) and dips mid-run; 1.2e-5 over-specialises (V32.1 −15).
 - clip 0.3 on top of lr 6e-6 makes the curve slightly faster (+2.9) without a higher final; epochs/minibatch/clip 0.1 do not help.
 - **Recommended default: lr 6e-6** (balanced, replicated). lr 8e-6 is the aggressive option — adopt only after an OOD-26 worst-case check.
+
+## OOD-26: lr 8e-6 vs lr 6e-6 finals (10-29, `reports/rl/hpo_ood_<t>/`, 32 seeds × 2 from 2600000, examples/ood_report.py)
+| | mean | worst | cat (lost by > 20) |
+|---|---|---|---|
+| lr 6e-6 | +68.1 | +40.4 (v30_c0) | 3.8 % |
+| **lr 8e-6** | **+71.3** | **+51.4** (v30_h4hunt) | 1.9 % |
+
+lr 8e-6 − lr 6e-6: **R1–R4 PASS**, no opponent < −5 at 2 SE (lowest v30_camp −6.2±5.1); v30_c0 +25.6±8.0, v30_stage3 +15.4±4.8, v30_hunt +9.0.
+→ lr 8e-6 is not fragile OOD (its V32.1 −5.4 in-pool dip does not carry over); **lr 8e-6 is a valid aggressive default**, 6e-6 the safe one.
