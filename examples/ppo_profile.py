@@ -62,7 +62,14 @@ def main():
     ap.add_argument("--det", action="store_true", help="deterministic torch kernels (bitwise A/B comparisons)")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--set", nargs="*", default=[])
+    ap.add_argument("--opp-specs", default="", help="';'-separated opponent pool replacing the default 9 (e.g. the L1 pool)")
+    ap.add_argument("--weights", default="", help="','-separated opp_weights for --opp-specs (default all 1)")
+    ap.add_argument("--no-wrap", action="store_true", help="no per-policy timers (they sync CUDA and break the overlap): wall phases only")
     a = ap.parse_args()
+    global OPPS, W
+    if a.opp_specs:
+        OPPS = a.opp_specs.split(";")
+        W = [float(x) for x in a.weights.split(",")] if a.weights else [1.0] * len(OPPS)
     if a.det:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
@@ -75,15 +82,19 @@ def main():
         setattr(cfg, k, (v.lower() in ("1", "true", "yes")) if isinstance(cur, bool) else type(cur)(v))
     tr = PPOTrainer(cfg)
     wrap(tr, "values_np", "_values_np")
-    for i, o in enumerate(tr.opps):
-        wrap(o, f"pol:opp{i}", "moves")
+    if not a.no_wrap:
+        for i, o in enumerate(tr.opps):
+            wrap(o, f"pol:opp{i}", "moves")
     om = grpo.LearnerPolicy.moves
     def lm(self, *args, **kw):
         sync(); t0 = time.perf_counter()
         r = om(self, *args, **kw)
         T["pol:learner"] += time.perf_counter() - t0
         return r
-    grpo.LearnerPolicy.moves = lm
+    if not a.no_wrap:
+        grpo.LearnerPolicy.moves = lm
+    else:
+        grpo.JointSeats.prof = T   # heur_start / net_fwd / heur_wait of the overlapped split path
     wrap(tr, "rollout", "_rollout")
     orig_gu = GRPOTrainer.update
     def gu(self, batch):

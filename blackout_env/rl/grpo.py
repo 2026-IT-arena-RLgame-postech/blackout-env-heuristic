@@ -222,6 +222,7 @@ class JointSeats(BatchPolicy):
 
     needs_inputs = True
     accepts_packed = True
+    prof = None   # set to a defaultdict(float) to time the split path: heur_start / net_fwd (synced) / heur_wait
 
     def __init__(self, learner: LearnerPolicy, opps: list[BatchPolicy], opp_of: np.ndarray, learner_team: np.ndarray,
                  split: bool = False):
@@ -288,11 +289,16 @@ class JointSeats(BatchPolicy):
         ok = self.opp_of[idx]
         out = np.zeros((2, n, 5, 2), F32)
         pend = []
+        pr = JointSeats.prof   # profiler dict (examples/ppo_profile.py) or None
+        if pr is not None:
+            t0 = time.perf_counter()
         for k, p in enumerate(self.opps):
             if hasattr(p, "start"):
                 rows = np.nonzero(ok == k)[0]
                 if len(rows):
                     pend.append((rows, p, p.start(bsim, idx[rows], otm[rows])))
+        if pr is not None:
+            t1 = time.perf_counter(); pr["heur_start"] += t1 - t0
         for tm in (0, 1):
             mine = lt == tm
             if mine.any():
@@ -305,8 +311,14 @@ class JointSeats(BatchPolicy):
                 if len(rows):
                     sub = tuple(x[rows] for x in sub_all)
                     out[tm, rows] = p.moves(bsim, idx[rows], (tm,), sub)[tm]
+        if pr is not None:
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            t2 = time.perf_counter(); pr["net_fwd"] += t2 - t1
         for rows, p, h in pend:
             out[otm[rows], rows] = p.finish(h)
+        if pr is not None:
+            pr["heur_wait"] += time.perf_counter() - t2
         return {0: out[0], 1: out[1]}
 
 
