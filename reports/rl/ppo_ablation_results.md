@@ -49,3 +49,11 @@ init = KL ref = F1, critic F1, β 0.01, pool 9 + V33, **lr 3e-6 → 6e-6** (repo
 - **OOD-26 vs F1: PASS** (reports/rl/abl_ood_f2/): mean +71.9 vs +71.2, worst +51.9 (v30_h4hunt) vs +43.7 (v30_c0);
   v30_c0 +11.3±7.7, no opponent < −5 at 2 SE (lowest cargo_hunter −3.8±2.0).
 - → **F2 = new best RL policy** (checkpoints/rl/f2_lr6/final.pt on gpu2).
+
+## F3: continue from F2 with lr 8e-6 (`reports/rl/q_f3all.sh`, 20M, 2026-10-29)
+init = KL ref = F2, critic F2, β 0.01, pool 9 + V33, lr 8e-6.
+- vs F2 (paired, 256 seeds): p24c −3.0±1.8, p22 +0.5±1.5, V32.1 −0.3±1.7, **avg3 −0.9±1.0 (null)**; **H2H vs F2 +25.2±2.1 (win 72.4 %)**.
+- V33 + hunt OOD (paired with E4 q0): **V33 +33.3 vs F2 +45.5 → −12.2 vs F2**; v30_h4hunt +7.8 (F2 +8.8), v30_hunt +5.7 (+6.3), v30_reckless +6.0 (+5.9).
+- OOD-26 vs F2: PASS (mean +72.4 vs +71.9, worst +48.0 v30_c0 vs +51.9; v30_c0 −7.0±6.7 within 2 SE).
+- → **Mixed / non-transitive:** F3 beats F2 head-to-head by a lot but loses ground to V33 (−12) and p24c (−3) and is level elsewhere.
+  **F2 stays the champion** (better vs the strongest heuristic, equal elsewhere); F3 kept as a league opponent candidate.
