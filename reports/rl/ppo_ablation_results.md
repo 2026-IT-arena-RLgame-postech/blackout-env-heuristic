@@ -40,3 +40,12 @@ init = KL ref = E4, critic warm-started from E4, β 0.01, pool = 9 B opponents +
 - **OOD-26 vs E4: PASS** (reports/rl/abl_ood_f1/, 32 seeds × 2 from 2600000, E4 rows from abl_ood_beta01): mean +71.2 vs +70.3,
   worst +43.7 (v30_c0) vs +40.7 (v30_h4hunt); v30_h4hunt +12.7±3.9, v30_stage3 +6.5; v30_c0 −7.2±3.9 (watch: E4's own weak spot, within 2 SE), no opponent < −5 at 2 SE.
 - → **F1 = new best RL policy** (checkpoints/rl/f1_v33/final.pt on gpu2).
+
+## F2: continue from F1 with lr 6e-6 (HPO winner; `reports/rl/q_f2.sh`, 20M, 2026-10-29)
+init = KL ref = F1, critic F1, β 0.01, pool 9 + V33, **lr 3e-6 → 6e-6** (reports/rl/hpo_results.md).
+- vs F1 (paired, 256 seeds): p24c +7.7±1.9, p22 +2.8±1.6, V32.1 −1.8±1.7, **avg3 +2.9±1.0**; **H2H vs F1 +22.6±2.1 (win 71.3 %)**.
+- V33 + hunt OOD (`angle_probe/f2__*`, paired with E4 q0): **V33 +45.5 vs E4 (F1 +12.4) → F2 beats V33 by ≈ +33**;
+  v30_h4hunt +8.8, v30_hunt +6.3, v30_reckless +5.9 (all ≥ F1).
+- **OOD-26 vs F1: PASS** (reports/rl/abl_ood_f2/): mean +71.9 vs +71.2, worst +51.9 (v30_h4hunt) vs +43.7 (v30_c0);
+  v30_c0 +11.3±7.7, no opponent < −5 at 2 SE (lowest cargo_hunter −3.8±2.0).
+- → **F2 = new best RL policy** (checkpoints/rl/f2_lr6/final.pt on gpu2).
