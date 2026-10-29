@@ -57,3 +57,11 @@ init = KL ref = F2, critic F2, β 0.01, pool 9 + V33, lr 8e-6.
 - OOD-26 vs F2: PASS (mean +72.4 vs +71.9, worst +48.0 v30_c0 vs +51.9; v30_c0 −7.0±6.7 within 2 SE).
 - → **Mixed / non-transitive:** F3 beats F2 head-to-head by a lot but loses ground to V33 (−12) and p24c (−3) and is level elsewhere.
   **F2 stays the champion** (better vs the strongest heuristic, equal elsewhere); F3 kept as a league opponent candidate.
+
+## L1 league: F2 init + F2 & F3 in the pool (`reports/rl/ppo_l1.sh`, `q_l1all.sh`, 20M, 2026-10-29/30)
+init = KL ref = F2, critic F2, β 0.01, lr 6e-6, pool 9 B + V33 + F2 + F3.
+- vs F2 (paired, 256 seeds): p24c +2.9±1.7, p22 +4.0±1.6, V32.1 +5.7±1.7, **avg3 +4.2±1.0**; **H2H vs F2 +19.1±2.2 (win 67.5 %)**.
+- **H2H vs F3 −6.3±2.4 (win 44.1 %)** (F2 vs F3 was −25.2): the gap to F3 is mostly closed but not reversed.
+- V33 + hunt OOD (paired with E4 q0): **V33 +52.8 (F2 +45.5, F3 +33.3)**, v30_h4hunt +15.5 (F2 +8.8), v30_hunt +10.6 (+6.3), v30_reckless +9.3 (+5.9).
+- OOD-26 vs F2: **PASS** (mean +72.6 vs +71.9, **worst +56.5** v30_h4hunt vs +51.9).
+- → **L1 = new best RL policy** (beats F2 everywhere incl. H2H +19; only F3 H2H slightly negative). checkpoints/rl/l1_league/final.pt on gpu2.
