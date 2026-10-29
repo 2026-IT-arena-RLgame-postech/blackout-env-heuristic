@@ -175,3 +175,48 @@ def test_ppo_reg_critic_diagnostics_cpu():
 
     s = PPOTrainer(PPOConfig(init=CKPT, value=VALUE, device="cpu", games=3, segment=8, minibatch=8, epochs=1, critic_warmup=0)).step()
     assert np.isfinite(s["expl_var"]) and np.isfinite(s["abs_adv"]) and np.isnan(s["pmf_entropy"])
+
+
+def test_ppo_async_collect_matches_sync_when_frozen_cpu():
+    """async_collect with lr = critic_lr = 0 (weights never change, so the 1-iteration lag is invisible) collects exactly
+    the batches of the synchronous trainer, and its PPO old log-probs come from the behaviour copy."""
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    def run(async_):
+        cfg = PPOConfig(init=CKPT, value=VALUE, device="cpu", games=4, segment=6, minibatch=8, epochs=1, critic_warmup=0, seed=5,
+                        lr=0.0, critic_lr=0.0, opponents=[f"net:{CKPT}", "random"], pfsp="hard", async_collect=async_)
+        tr = PPOTrainer(cfg)
+        got = []
+        orig = tr.collect
+        def rec():
+            b, s = orig()
+            got.append(b)
+            return b, s
+        tr.collect = rec
+        stats = [tr.step() for _ in range(3)]
+        return got, stats
+
+    ref, s_ref = run(False)
+    got, s_got = run(True)
+    assert len(got) == 4 and len(ref) == 3   # async collected one batch ahead
+    for a, b in zip(ref, got[:3]):
+        for k in a:
+            assert np.array_equal(a[k], b[k]), k
+    for a, b in zip(s_ref, s_got):
+        assert abs(a["kl"] - b["kl"]) < 1e-6 and abs(a["clipfrac"] - b["clipfrac"]) < 1e-9 and np.isfinite(b["actor_wait_s"])
+
+
+def test_ppo_async_collect_learns_cpu():
+    """async_collect with a real learning rate: steps run, stats finite, behaviour copy lags the learner by one update."""
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    cfg = PPOConfig(init=CKPT, value=VALUE, device="cpu", games=3, segment=8, minibatch=8, epochs=1, critic_warmup=0,
+                    opponents=["random"], async_collect=True)
+    tr = PPOTrainer(cfg)
+    for _ in range(3):
+        s = tr.step()
+        assert np.isfinite(s["pg"]) and np.isfinite(s["vf_loss"]) and np.isfinite(s["kl"])
+    # the pending batch was played by the weights after update 2 (= the actor copy), the learner has moved on by update 3
+    w_act = next(iter(tr._act_net.parameters()))
+    w_now = next(iter(tr.net.parameters()))
+    assert not torch.equal(w_act, w_now)

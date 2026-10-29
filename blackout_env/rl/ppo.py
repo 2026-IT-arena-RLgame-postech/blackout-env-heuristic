@@ -73,6 +73,11 @@ class PPOConfig(GRPOConfig):
     league_warmup: int = 2             # critic-only iterations after each snapshot
     league_snap_graphs: bool = True    # CUDA-graph forwards for snapshots (each costs ~0.5 GB of graph outputs; False: eager, ~1 s/it each)
     league_ref_reset: bool = False     # KL anchor pi_ref <- the learner at each new snapshot (default: pi_ref stays the init policy)
+    # ---- async actor-learner (off by default): the rollout of batch k+1 runs in a thread (on ``actor_device``, or a second CUDA
+    # stream of ``device``) while batch k updates the learner.  1-iteration policy lag: batch k+1 is played by the weights after
+    # update k-1; the PPO ratio uses those behaviour weights (``_old_own``), values/GAE come from the actor's critic copy.
+    async_collect: bool = False
+    actor_device: str = ""             # "" = same device as the learner (overlap via a second CUDA stream)
 
 
 class _HLLogits(torch.nn.Module):
@@ -129,7 +134,99 @@ class PPOTrainer(GRPOTrainer):
             self.hl_edges = e
             self.hl_sigma = cfg.critic_sigma * (cfg.critic_vmax - cfg.critic_vmin) / cfg.critic_bins
         self.copt = torch.optim.AdamW(self.critic.parameters(), lr=cfg.critic_lr, weight_decay=0.0)
+        self._async = bool(cfg.async_collect)
+        self.adev = torch.device(cfg.actor_device or cfg.device)
+        if self._async:
+            self._init_actor()
         self.cscaler = torch.amp.GradScaler("cuda", init_scale=1024.0, growth_interval=10**9, enabled=bool(cfg.critic_fp16) and self.dev.type == "cuda")
+
+    # ------------------------------------------------------------------ async actor-learner
+    def _init_actor(self) -> None:
+        """Actor-side copies (policy + its CUDA graphs, critic) on ``adev`` and a behaviour copy of the policy on ``dev``."""
+        c = self.cfg
+        assert not self.hl and c.fine_bins == 0 and not c.offset_rl and not c.value_train and not c.joint, \
+            "async_collect: reg critic, plain head, no value_train / joint"
+        from blackout_env.train.distill.inference import _OwnQ
+
+        self._act_net = copy.deepcopy(self.net).to(self.adev).eval().requires_grad_(False)
+        self._act_own = _OwnQ(self._act_net)
+        self._act_critic = copy.deepcopy(self.critic).to(self.adev).eval().requires_grad_(False)
+        self.beh = _OwnQ(copy.deepcopy(self.net).eval().requires_grad_(False))
+        self._act_gf, self._astream = None, None
+        if self.adev.type == "cuda":
+            from blackout_env.sim.graphfwd import GraphForward
+
+            self._astream = torch.cuda.Stream(device=self.adev)
+            self._lstream = torch.cuda.Stream(device=self.dev) if self.dev.type == "cuda" else None
+            if c.graphs:
+                self._act_gf = GraphForward(self._act_own, self.adev, angle=True, max_batch=2048)
+                with torch.cuda.device(self.adev):
+                    apool = torch.cuda.graph_pool_handle()
+                for gf in [self._act_gf] + [getattr(p, "_gf", None) for p in self.opps]:
+                    if gf is not None:
+                        gf._pool = apool
+                self._apool = apool
+        self._pending = None   # (batch, collect stats, behaviour state dict) of the batch collected during the last update
+
+    def _sync_actor(self) -> dict:
+        """Actor copies <- the learner's current weights (in place: captured CUDA graphs stay valid); returns those weights
+        (a copy on ``dev``) = the behaviour policy of the batch the actor collects next."""
+        sd = {k: v.detach().clone() for k, v in self.net.state_dict().items()}
+        self._act_net.load_state_dict(sd)
+        self._act_critic.load_state_dict(self.critic.state_dict())
+        if self.adev.type == "cuda":
+            torch.cuda.synchronize(self.adev)
+        return sd
+
+    def _collect_actor(self):
+        if self._astream is None:
+            return self.collect()
+        with torch.cuda.device(self.adev), torch.cuda.stream(self._astream):
+            out = self.collect()
+        self._astream.synchronize()
+        return out
+
+    def _step_async(self) -> dict:
+        import threading
+
+        if self._pending is None:   # first iteration: collect synchronously
+            beh = self._sync_actor()
+            batch, cs = self._collect_actor()
+        else:
+            batch, cs, beh = self._pending
+        beh_next = self._sync_actor()   # the weights after the last update play the next batch
+        box: dict = {}
+
+        def run():
+            try:
+                box["out"] = self._collect_actor()
+            except BaseException as e:   # re-raised in the main thread
+                box["err"] = e
+
+        th = threading.Thread(target=run, name="ppo-actor", daemon=True)
+        th.start()
+        self.beh.net.load_state_dict(beh)
+        self._old_own = self.beh
+        t0 = time.perf_counter()
+        try:
+            if getattr(self, "_lstream", None) is not None:
+                with torch.cuda.stream(self._lstream):
+                    us = self.update(batch)
+                self._lstream.synchronize()
+            else:
+                us = self.update(batch)
+        finally:
+            self._old_own = None
+        t1 = time.perf_counter()
+        th.join()
+        if "err" in box:
+            raise box["err"]
+        us["update_s"] = t1 - t0
+        us["actor_wait_s"] = time.perf_counter() - t1   # time the learner waited for the actor after its update
+        nb, ncs = box["out"]
+        self._pending = (nb, ncs, beh_next)
+        self.iter += 1
+        return {"iter": self.iter, **cs, **us}
 
     # ------------------------------------------------------------------ league
     def _pfsp_weights(self, n: int | None = None) -> np.ndarray:
@@ -160,10 +257,11 @@ class PPOTrainer(GRPOTrainer):
 
     def _attach_snapshot(self, path: str, level: int, added: int, last_step: int) -> dict:
         c = self.cfg
-        pol = make_opponent_policy("net:" + path, c.device,
+        pol = make_opponent_policy("net:" + path, c.actor_device or c.device,
                                    graphs=bool(c.graphs) and self.dev.type == "cuda" and c.league_snap_graphs)
-        if self._gpool is not None and getattr(pol, "_gf", None) is not None:
-            pol._gf._pool = self._gpool
+        pool = getattr(self, "_apool", None) or self._gpool
+        if pool is not None and getattr(pol, "_gf", None) is not None:
+            pol._gf._pool = pool
         self.opps.append(pol)
         self.branch_opps.append(pol)
         self.opp_score = np.append(self.opp_score, 0.5)
@@ -205,14 +303,14 @@ class PPOTrainer(GRPOTrainer):
 
     def step(self):
         self._events = []
-        out = super().step()
+        out = self._step_async() if self._async else super().step()
         if self.cfg.league:
             self._league_post(out)
         if self.dev.type == "cuda":
-            out["cuda_collect_peak_mb"] = self._collect_peak                       # allocated, rollouts + critic reads
+            out["cuda_collect_peak_mb"] = getattr(self, "_collect_peak", float("nan"))                       # allocated, rollouts + critic reads
             out["cuda_update_peak_mb"] = torch.cuda.max_memory_allocated() / 2**20  # allocated, updates (+ league bookkeeping)
             out["cuda_reserved_mb"] = torch.cuda.memory_reserved() / 2**20
-            out["cuda_between_peak_mb"] = self._between_peak
+            out["cuda_between_peak_mb"] = getattr(self, "_between_peak", float("nan"))
             torch.cuda.reset_peak_memory_stats()
         return out
 
@@ -301,6 +399,18 @@ class PPOTrainer(GRPOTrainer):
         v = self._value_reg(g, t, a)
         return (v, None) if self.hl else v
 
+    def _value_actor(self, g, t, a):
+        """``_value_reg`` with the actor's critic copy on ``adev`` (eager)."""
+        g = unpack_graphic(g) if g.dim() == 3 else g
+        with torch.autocast(self.adev.type, dtype=torch.float16, enabled=self.cfg.critic_fp16 and self.adev.type == "cuda"):
+            out = self._act_critic(g, t, a)
+        out = out.float()
+        h = out.shape[1] - 4
+        lead = (t[:, 0] - t[:, 1]).float() * 100.0
+        final = lead + out[:, h] / REG_SCALE * 100.0
+        p = torch.softmax(out[:, h + 1:], -1)
+        return (p[:, 2] - p[:, 0]) + self.cfg.lam * torch.tanh(final / self.cfg.scale)
+
     def _value_reg(self, g, t, a):
         g = unpack_graphic(g) if g.dim() == 3 else g
         if self.critic.training and self.cfg.update_compile and self.dev.type == "cuda" and g.shape[0] in (self.cfg.minibatch, self.cfg.update_micro):
@@ -316,12 +426,13 @@ class PPOTrainer(GRPOTrainer):
         return (p[:, 2] - p[:, 0]) + self.cfg.lam * torch.tanh(final / self.cfg.scale)
 
     @torch.no_grad()
-    def _values_np(self, g, t, a, bs=None, orig=False):
+    def _values_np(self, g, t, a, bs=None, orig=False, actor=False):
         bs = bs or self.cfg.critic_read_batch
         out, ent = [], []
+        dev = self.adev if actor else self.dev
         for s in range(0, len(g), bs):
-            to = lambda x: torch.from_numpy(np.ascontiguousarray(x[s:s + bs])).to(self.dev)
-            v = self._value(to(g), to(t), to(a), orig=orig)
+            to = lambda x: torch.from_numpy(np.ascontiguousarray(x[s:s + bs])).to(dev)
+            v = self._value_actor(to(g), to(t), to(a)) if actor else self._value(to(g), to(t), to(a), orig=orig)
             if self.hl:
                 v, lg = v
                 if lg is not None:
@@ -366,13 +477,17 @@ class PPOTrainer(GRPOTrainer):
 
     def collect(self):
         c = self.cfg
-        if self.dev.type == "cuda":
+        if self.dev.type == "cuda" and not self._async:
             self._between_peak = torch.cuda.max_memory_allocated() / 2**20   # since the end of the last step (checkpoint writes, evals)
             torch.cuda.reset_peak_memory_stats()
         t0 = time.perf_counter()
         n = len(self.trunk)
-        learner = LearnerPolicy(self.own, self.dev, 10**9, c.temperature, seed=int(self.rng.integers(2**31)),
-                                graphs=self.learner_gf, **self._learner_kw())
+        if self._async:   # actor copies (the learner's own net is being updated concurrently)
+            learner = LearnerPolicy(self._act_own, self.adev, 10**9, c.temperature, seed=int(self.rng.integers(2**31)),
+                                    graphs=self._act_gf)
+        else:
+            learner = LearnerPolicy(self.own, self.dev, 10**9, c.temperature, seed=int(self.rng.integers(2**31)),
+                                    graphs=self.learner_gf, **self._learner_kw())
         res = self._rollout(self.trunk, learner, self.trunk_opp, self.trunk_side, c.segment)
         t1 = time.perf_counter()
         recs = learner.records
@@ -383,7 +498,7 @@ class PPOTrainer(GRPOTrainer):
         fine = np.concatenate([r[5] for r in recs]) if c.fine_bins > 0 else None
         if not self._prefit_done:
             self._prefit_head(g, ts, ag)
-        v = self._values_np(g, ts, ag)
+        v = self._values_np(g, ts, ag, actor=self._async)
         v_ent = self._hl_ent_last
         # bootstrap: the learner's view of every unfinished game's final state
         side = self.trunk_side
@@ -397,7 +512,7 @@ class PPOTrainer(GRPOTrainer):
             bs.render_packed(live, pk, tm, am)
             r = np.arange(len(live))
             s_ = side[live]
-            boot[live] = self._values_np(pk[r, s_], tm[r, s_], am[r, s_])
+            boot[live] = self._values_np(pk[r, s_], tm[r, s_], am[r, s_], actor=self._async)
         lead = (bs.scores[:, 0] - bs.scores[:, 1]).astype(np.float64)
         lead = np.where(side == 0, lead, -lead)
         final_r = np.sign(lead) + c.lam * np.tanh(lead / c.scale)
@@ -476,7 +591,7 @@ class PPOTrainer(GRPOTrainer):
             batch["off"] = off
         if fine is not None:
             batch["fine"] = fine
-        if self.dev.type == "cuda":
+        if self.dev.type == "cuda" and not self._async:
             self._collect_peak = torch.cuda.max_memory_allocated() / 2**20
             torch.cuda.reset_peak_memory_stats()
         stats = {"trunk_s": t1 - t0, "leaf_s": time.perf_counter() - t1, "views": len(game),

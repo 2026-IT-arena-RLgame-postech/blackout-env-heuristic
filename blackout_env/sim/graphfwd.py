@@ -94,7 +94,8 @@ class GraphForward:
                 self._fn(*views())
         torch.cuda.current_stream().wait_stream(stream)
         graph = torch.cuda.CUDAGraph()
-        with torch.inference_mode(), torch.cuda.graph(graph, pool=self._pool):
+        # thread_local: another thread (PPO async_collect's learner update) may launch work on other streams/devices during capture
+        with torch.inference_mode(), torch.cuda.graph(graph, pool=self._pool, capture_error_mode="thread_local"):
             out = self._fn(*views())
         done = torch.cuda.Event()
         return {"graph": graph, "host": host_in, "host_np": host_np, "dev": dev_in, "out": out, "cols": cols, "ev": done,

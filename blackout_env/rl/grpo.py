@@ -554,7 +554,8 @@ class GRPOTrainer:
             from blackout_env.rl.hpool import HeuristicWorkers
 
             self.hworkers = HeuristicWorkers(nw)
-        self.opps = [make_opponent_policy(s, cfg.device, cfg.seed + 7 * i, graphs=gr, workers=self.hworkers)
+        opp_dev = getattr(cfg, "actor_device", "") or cfg.device   # PPO async_collect: opponents live on the actor's GPU
+        self.opps = [make_opponent_policy(s, opp_dev, cfg.seed + 7 * i, graphs=gr, workers=self.hworkers)
                      for i, s in enumerate(cfg.opponents)]
         # branches get their own heuristic instances (nets are stateless and shared)
         mk = (lambda p: p.__class__(p.descriptor, p.seed + 1, self.hworkers) if self.hworkers is not None
@@ -849,7 +850,9 @@ class GRPOTrainer:
                     old_lp.append(lp.gather(-1, act[sl].unsqueeze(-1)).squeeze(-1)
                                   + nonstand * (-0.5 * ((o_samp[sl] - mu_o) / sig0) ** 2 - sig0.log() - 0.5 * LOG2PI))
                     continue
-                lp = F.log_softmax(self._logits(self.own, g[sl], t[sl], a[sl]), -1)
+                # behaviour policy: the net itself, or (PPO async_collect) the copy holding the weights that played the batch
+                beh = self.own if getattr(self, "_old_own", None) is None else self._old_own
+                lp = F.log_softmax(self._logits(beh, g[sl], t[sl], a[sl]), -1)
                 old_lp.append(lp.gather(-1, act[sl].unsqueeze(-1)).squeeze(-1))
                 ref_lp.append(F.log_softmax(self._logits(self.ref, g[sl], t[sl], a[sl]), -1))
             old_lp, ref_lp = torch.cat(old_lp), torch.cat(ref_lp)
