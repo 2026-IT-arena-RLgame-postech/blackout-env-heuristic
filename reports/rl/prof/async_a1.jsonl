@@ -1,0 +1,5 @@
+{"iter": 0, "wall_s": 36.11, "trunk_s": 11.36, "leaf_s": 1.48, "update_s": 19.03, "actor_wait_s": 4.22, "kl": 0.0014700438959991402, "clipfrac": 0.011395263855320081, "views": 32768}
+{"iter": 1, "wall_s": 18.55, "trunk_s": 21.76, "leaf_s": 1.49, "update_s": 12.25, "actor_wait_s": 6.28, "kl": 0.001584516793172952, "clipfrac": 0.01366882349793741, "views": 32768}
+{"iter": 2, "wall_s": 18.65, "trunk_s": 17.06, "leaf_s": 1.48, "update_s": 12.26, "actor_wait_s": 6.37, "kl": 0.0020157455082880915, "clipfrac": 0.015222168189211516, "views": 32768}
+{"iter": 3, "wall_s": 19.0, "trunk_s": 17.15, "leaf_s": 1.49, "update_s": 12.58, "actor_wait_s": 6.4, "kl": 0.0026481197794047456, "clipfrac": 0.01771311606748561, "views": 32668}
+{"iter": 4, "wall_s": 19.39, "trunk_s": 17.49, "leaf_s": 1.5, "update_s": 12.65, "actor_wait_s": 6.71, "kl": 0.0027539323183808626, "clipfrac": 0.014631768547379565, "views": 32709}

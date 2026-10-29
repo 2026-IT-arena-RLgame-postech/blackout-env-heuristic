@@ -9,6 +9,8 @@ import torch
 from blackout_env.rl.ppo import PPOConfig, PPOTrainer
 
 def main():
+    import faulthandler, sys
+    faulthandler.dump_traceback_later(240, repeat=True, file=sys.stderr)   # all threads' stacks every 4 min (hang diagnosis)
     ap = argparse.ArgumentParser()
     ap.add_argument("--iters", type=int, default=6)
     ap.add_argument("--async", dest="async_", action="store_true")

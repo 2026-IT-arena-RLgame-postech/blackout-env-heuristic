@@ -37,3 +37,21 @@ of 256 games, i.e. ~25-row forwards × 2 teams × 128 steps: **latency-bound sma
    Options: run the opponents' forwards on separate CUDA streams (independent small graphs overlap on the GPU), or one forward
    per opponent for both teams (`joint=true`, not bit-identical). Potential trunk 9.5 → ~5 s (−20 % of the iteration), and it
    stacks with idea 2.
+
+## Async actor-learner, measured (`async_collect`, ddac4a1; `reports/rl/q_async_bench.sh`, `examples/ppo_async_bench.py`)
+Same recipe/pool as above, 7 iterations each, steady state = iters 1–6. Raw: `reports/rl/prof/async_{sync,a1,a2}.jsonl`.
+
+| mode | wall s/iter | speed-up | trunk (in the actor) | update | learner waits for actor |
+|---|---|---|---|---|---|
+| sync (baseline) | 22.1 | 1.0× | 9.7 | 11.1 | – |
+| async, 1 GPU (2nd CUDA stream) | 18.9 | **1.17×** | 17–22 (contention) | 12.4 | 6.4 |
+| async, 2 GPUs (learner GPU2, actor GPU0) | **12.9** | **1.71×** | 10.5 | 12.3 | 0–2.5 |
+
+- 1 GPU: the rollout's latency-bound replays queue behind the update's kernels (and the GIL), the trunk nearly doubles → small gain.
+- **2 GPUs: ~1.7×**, close to the max(trunk + leaf, update) bound; the update (≈ 12 s) is now the critical path, so further rollout
+  speed-ups (stream-parallel opponent forwards) would only help together with a faster update.
+- KL / clipfrac in the async runs stay in the sync range (KL 0.002–0.003 after 6 its, clipfrac 0.013–0.016 vs 0.008–0.011):
+  the 1-iteration lag raises clipfrac slightly as expected.
+- **Caveat:** the first 2-GPU attempt hung in its first iteration (0 % GPU on both for 25 min, no stack available: ptrace denied);
+  the identical rerun ran cleanly. `ppo_async_bench.py` now dumps all thread stacks every 4 min (faulthandler) to catch it if it recurs.
+  Before using async in a long run: add the same faulthandler watchdog to `rl_train.py` and compare learning vs sync on a short run.

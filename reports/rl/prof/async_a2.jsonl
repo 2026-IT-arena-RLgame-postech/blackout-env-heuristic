@@ -1,0 +1,7 @@
+{"iter": 0, "wall_s": 30.26, "trunk_s": 10.7, "leaf_s": 1.45, "update_s": 18.07, "actor_wait_s": 0.0, "kl": 0.0016463676561997431, "clipfrac": 0.010671997234567243, "views": 32768}
+{"iter": 1, "wall_s": 11.55, "trunk_s": 11.89, "leaf_s": 2.97, "update_s": 11.51, "actor_wait_s": 0.0, "kl": 0.0016848565692271222, "clipfrac": 0.014752197639609221, "views": 32768}
+{"iter": 2, "wall_s": 12.14, "trunk_s": 8.96, "leaf_s": 1.57, "update_s": 12.1, "actor_wait_s": 0.0, "kl": 0.002170121807466785, "clipfrac": 0.015417480677569984, "views": 32768}
+{"iter": 3, "wall_s": 11.89, "trunk_s": 9.81, "leaf_s": 1.59, "update_s": 11.86, "actor_wait_s": 0.0, "kl": 0.0024770143578427815, "clipfrac": 0.01603699101208331, "views": 32643}
+{"iter": 4, "wall_s": 12.38, "trunk_s": 9.91, "leaf_s": 1.58, "update_s": 12.35, "actor_wait_s": 0.0, "kl": 0.003005649793956425, "clipfrac": 0.012946500023343155, "views": 32705}
+{"iter": 5, "wall_s": 13.83, "trunk_s": 10.14, "leaf_s": 1.62, "update_s": 12.73, "actor_wait_s": 1.07, "kl": 0.003330959337027808, "clipfrac": 0.015828247299456658, "views": 32464}
+{"iter": 6, "wall_s": 15.69, "trunk_s": 12.25, "leaf_s": 1.56, "update_s": 13.11, "actor_wait_s": 2.55, "kl": 0.0033932009846466826, "clipfrac": 0.014415893761906773, "views": 31764}
