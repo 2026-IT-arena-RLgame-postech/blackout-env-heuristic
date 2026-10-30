@@ -85,19 +85,25 @@ class GraphForward:
             return [dev_in[:, cols[k]:cols[k + 1]].view(torch.from_numpy(x[:0]).dtype).reshape(size, *x.shape[1:]).contiguous()
                     for k, x in enumerate((g, t, a))]
 
-        if self._pool is None:
-            self._pool = torch.cuda.graph_pool_handle()
-        stream = torch.cuda.Stream()
-        stream.wait_stream(torch.cuda.current_stream())
-        with torch.cuda.stream(stream), torch.inference_mode():
-            for _ in range(2):   # warm-up on a side stream (cuBLAS workspaces, lazy tables) before capture
-                self._fn(*views())
-        torch.cuda.current_stream().wait_stream(stream)
-        graph = torch.cuda.CUDAGraph()
-        # thread_local: another thread (PPO async_collect's learner update) may launch work on other streams/devices during capture
-        with torch.inference_mode(), torch.cuda.graph(graph, pool=self._pool, capture_error_mode="thread_local"):
-            out = self._fn(*views())
-        done = torch.cuda.Event()
+        # everything on this forward's own device: torch.cuda.graph's default capture stream is ONE class-wide stream created on
+        # whichever device captured first, which breaks a second device (PPO async_collect: actor GPU != learner/eval GPU)
+        with torch.cuda.device(self.device):
+            if self._pool is None:
+                self._pool = torch.cuda.graph_pool_handle()
+            if getattr(self, "_cap_stream", None) is None:
+                self._cap_stream = torch.cuda.Stream(device=self.device)
+            stream = torch.cuda.Stream(device=self.device)
+            stream.wait_stream(torch.cuda.current_stream(self.device))
+            with torch.cuda.stream(stream), torch.inference_mode():
+                for _ in range(2):   # warm-up on a side stream (cuBLAS workspaces, lazy tables) before capture
+                    self._fn(*views())
+            torch.cuda.current_stream(self.device).wait_stream(stream)
+            graph = torch.cuda.CUDAGraph()
+            # thread_local: another thread (PPO async_collect's learner update) may launch work on other streams/devices during capture
+            with torch.inference_mode(), torch.cuda.graph(graph, pool=self._pool, stream=self._cap_stream,
+                                                          capture_error_mode="thread_local"):
+                out = self._fn(*views())
+            done = torch.cuda.Event()
         return {"graph": graph, "host": host_in, "host_np": host_np, "dev": dev_in, "out": out, "cols": cols, "ev": done,
                 "feat": self._side}
 
