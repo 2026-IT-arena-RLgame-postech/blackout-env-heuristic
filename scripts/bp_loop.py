@@ -34,6 +34,13 @@ THREADS = "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_
 HOSTS = {"poscat_gpu2": (28, 2, "~/blackout-env-bp"), "wsl_gpu": (12, 2, "~/blackout-env-bp"), "mac": (18, 2, None),
          "poscat_gpu1": (28, 2, "~/blackout-env-bp")}
 MAX_WORKERS = {"poscat_gpu1": 16}  # user (2026-10-31): gpu1 CPU up to ~16 cores, never disturbing others
+
+
+def max_workers(h, default):
+    # user (10-31 05:10): gpu1 may use 20 cores until 08:00 KST that morning
+    if h == "poscat_gpu1" and time.time() < time.mktime((2026, 10, 31, 8, 0, 0, 0, 0, -1)):
+        return 20
+    return MAX_WORKERS.get(h, default)
 CAP_S = 300          # match cap (s); matches are decided early, most end by 100 points
 SCREEN_SEEDS = 24    # x both sides per opponent
 CONFIRM_SEEDS = 64
@@ -68,7 +75,7 @@ def free_workers() -> dict[str, int]:
             busy = int(r.stdout.strip() or 999) if r.returncode == 0 else 999
         except Exception:  # unreachable (the laptop sleeps)
             busy = 999
-        out[h] = min(MAX_WORKERS.get(h, cores), max(0, cores - reserve - busy))
+        out[h] = min(max_workers(h, cores), max(0, cores - reserve - busy))
     return out
 
 
