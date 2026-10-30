@@ -74,3 +74,21 @@ HPO lr6e-6 recipe (P24c start, β 0.01, pool 9 + V33, 10M = 313 its) with `async
   per-sample loss matters for long runs. Likely cause: the 1-iteration lag makes the clipped ratio π/π_behaviour start away
   from 1 (clipfrac ↑), i.e. fewer effective updates. Candidate fix: **decoupled PPO** (Hilton et al. 2021) — clip against the
   proximal policy (weights at update start) and correct the lag with a truncated importance weight π_prox/π_behaviour.
+
+## Decoupled PPO (f4b649a, `T=lr6e-6_async_dec reports/rl/q_async_ab.sh`, 2026-10-30)
+Async 2-GPU as above + `async_decoupled=True` (clip vs proximal policy = weights at update start, IS weight
+π_prox/π_behaviour truncated at 2).
+
+| | iter_50 | iter_100 | iter_200 | final | curve | wall |
+|---|---|---|---|---|---|---|
+| async_dec − lr6e-6 (sync) | +1.7±1.5 | −0.6±1.5 | +3.7±1.6 | −2.2±1.1 | **+0.7±0.9** | 1.45 h vs 2.64 h |
+| async_dec − lr6e-6_r2 (sync) | +1.0±1.5 | −0.8±1.6 | +2.2±1.6 | −0.6±1.2 | **+0.6±0.9** | |
+| async_dec − async (plain) | +4.2±1.6 | +5.0±1.6 | +1.7±1.5 | +2.4±1.2 | **+3.8±0.9** | |
+| (noise: r2 − r1) | | | | −1.7±1.2 | +0.0±0.9 | |
+
+- **Fixed:** curve and final are within noise of both sync replicates (the plain async run was −3); +3.8 curve over plain async.
+  Final per opp vs the two sync runs: p24c −8.6/−4.4 (r2 was −4.3 vs r1, so watch), p22 −1.4/−2.1, V32.1 +2.2/+3.0, V33 −1.1/+1.2.
+- **Speed: 16.6 s/iter (1.45 h for 10M) vs 30.4 sync → 1.8×** (≈ +1.6 s/iter over plain async for the extra proximal forward).
+- Lag is tiny: lag_kl mean 0.0016 (max 0.0026), isw mean 1.000, truncated fraction ≤ 0.0002 — so the gain comes from
+  clipping against the proximal policy, not from the IS correction.
+- → **Use async 2-GPU + decoupled PPO for long runs when GPU0 is free.**
