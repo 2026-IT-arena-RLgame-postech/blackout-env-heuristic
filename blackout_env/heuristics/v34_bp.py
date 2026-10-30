@@ -22,6 +22,12 @@ Carrier made at 0.4 s is one walker fewer (it can never become a Hunter).  New k
 * ``east_post`` (tiles, 0 = off): while we have 2 Hunters and the enemy none out of base, the Hunter nearest the
   enemy base's *east* exit (the y 19-20 corridor in team A's frame, which a Hunter camping y = 17 cannot reach
   quickly) holds a post ``east_post`` tiles into that corridor, engaging enemies within ``east_engage`` tiles.
+* ``hunter_roles`` ("" = off; e.g. ``raid/raid``, ``south/raid``, ``south/east``, ``default/raid``): explicit jobs for our
+  Hunters (first role to the Hunter best placed for it, ...).  ``default`` = the inherited behaviour (sanctuary
+  sentry, spawn camp, chases), ``raid`` = hunt the enemy's battery supply: chase the enemy Collector/Carrier out of
+  its base with the best (cargo bonus ``raid_value``) / path-distance score anywhere on the map, ``south`` / ``east`` =
+  hold the enemy base's south (y = 17 row) / east (y 19-20 corridor) exit and strike within ``east_engage``.
+  ``roles_when``: ``free`` = while the enemy has no Hunter out of base, ``always``.
 * ``storm_units`` (0 = off): after the opening (``storm_after`` s), while the enemy has more Hunters out of base than
   we have, up to this many empty Collectors (nearest the sanctuary first) are *committed* walkers to the Hunter
   sanctuary: no threat evasion, plain-map path.  A Collector that reaches the sanctuary turns into a Hunter on entry
@@ -46,8 +52,12 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  cap_enter: float = 0.3, storm_units: int = 0, storm_after: float = 6.0, race_second: bool = False,
                  rs_radius: float = 1.5, rs_wait: float = 0.6, early_reserve: float = 0.0,
                  carrier_retreat: float = 0.0, camp_path: bool = False, east_post: float = 0.0,
-                 east_engage: float = 3.0, **kwargs):
+                 east_engage: float = 3.0, hunter_roles: str = "", roles_when: str = "free", raid_value: float = 2.0,
+                 **kwargs):
         super().__init__(**kwargs)
+        self.hunter_roles = [r for r in str(hunter_roles).replace("+", "/").split("/") if r]
+        self.roles_when = str(roles_when)
+        self.raid_value = float(raid_value)
         self.east_post = float(east_post)
         self.east_engage = float(east_engage)
         self.camp_path = bool(camp_path)
@@ -139,6 +149,8 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
             self._retreat_carriers(labels)
         if self.east_post > 0:
             self._post_east(labels)
+        if self.hunter_roles:
+            self._assign_roles(labels)
         if self._cap_hold or self._cap_out:
             for n in list(labels):
                 lab = labels[n]
@@ -304,3 +316,85 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
         lab = labels[h.name]
         labels[h.name] = AnyAngleLabel(lab.mask, True, lab.kind, lab.target, lab.goals, False, heading)
         self._count("east_post")
+
+    # ------------------------------------------------------------------ Hunter roles
+
+    def _exit_post(self, which):
+        """Pixel cells of the enemy base's south / east exit post (team A frame mirrored for team B)."""
+        ctx = self._teach_ctx
+        shape = ctx["shape"]
+        er, _ = ctx["enemy_spawn"]
+        if which == "south":
+            a_cells = ((6, 3), (6, 4))   # pixel (row, col) of world (3,17), (4,17): just below the south exit
+        else:
+            d = int(4 + max(1.0, self.east_post or 2.0))
+            a_cells = ((3, d), (4, d))   # world (d, 20), (d, 19): inside the east corridor
+        if er < shape[0] // 2:
+            return a_cells
+        return tuple((shape[0] - 1 - c, shape[1] - 1 - r) for r, c in a_cells)
+
+    def _assign_roles(self, labels):
+        ctx = self._teach_ctx
+        if self.roles_when == "free" and any(e.cls == HUNTER and not e.in_base for e in ctx["enemies"]):
+            return
+        hunters = [u for u in ctx["own"] if u.cls == HUNTER and u.name in labels]
+        if not hunters:
+            return
+        shape, states = ctx["shape"], ctx["states"]
+        walk = self._teach_walkable
+        prey = [e for e in ctx["enemies"] if e.cls != HUNTER and not e.in_base]
+        free = list(hunters)
+        claimed = set()
+        for role in self.hunter_roles:
+            if not free:
+                break
+            if role == "default":
+                free.sort(key=lambda u: unit_index(u.name))
+                free.pop(0)
+                continue
+            if role == "raid":
+                best = None
+                for e in prey:
+                    if e.row in claimed:
+                        continue
+                    dist = self._distance_to(walk, (e.pos,))
+                    cargo = self._is_holding(states[e.row])
+                    for u in free:
+                        d = float(dist[u.pos])
+                        if not np.isfinite(d):
+                            continue
+                        score = d / (self.raid_value if cargo else 1.0)
+                        if best is None or score < best[0]:
+                            best = (score, u, e)
+                if best is None:
+                    continue
+                _, u, e = best
+                claimed.add(e.row)
+                here = pixel_position(states[u.row], shape)
+                there = pixel_position(states[e.row], shape)
+                heading = None
+                if np.hypot(here[0] - there[0], here[1] - there[1]) < 1.5:
+                    heading = world_heading(there[0] - here[0], there[1] - here[1])
+                if heading is None:
+                    heading = self._path_heading(walk, (e.pos,), here, UNIT_RADIUS[HUNTER])
+            elif role in ("south", "east"):
+                post = self._exit_post(role)
+                if not all(walk[p] for p in post):
+                    continue
+                dist = self._distance_to(walk, post)
+                u = min(free, key=lambda v: (float(dist[v.pos]), unit_index(v.name)))
+                here = pixel_position(states[u.row], shape)
+                near = [e for e in prey if np.hypot(here[0] - e.pos[0], here[1] - e.pos[1]) <= self.east_engage]
+                if near:
+                    free.remove(u)  # it is striking: keep its inherited chase label
+                    continue
+                heading = (np.zeros(2, dtype=np.float32) if float(dist[u.pos]) <= 0.5
+                           else self._path_heading(walk, post, here, UNIT_RADIUS[HUNTER]))
+            else:
+                continue
+            free.remove(u)
+            if heading is None:
+                continue
+            lab = labels[u.name]
+            labels[u.name] = AnyAngleLabel(lab.mask, True, lab.kind, lab.target, lab.goals, False, heading)
+            self._count("role_" + role)
