@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import faulthandler
 import json
 import os
 import time
@@ -109,7 +110,9 @@ def main():
         print("eval 0", ev, flush=True)
     while (tr.iter < args.iters and time.time() - t_start < args.hours * 3600
            and decisions < args.max_decisions):
+        faulthandler.dump_traceback_later(900, exit=False)   # hang watchdog: all threads' stacks to stderr if a step takes > 15 min
         s = tr.step()
+        faulthandler.cancel_dump_traceback_later()
         decisions += s.get("decisions", 0)
         s["wall_h"] = (time.time() - t_start) / 3600
         s["decisions_total"] = decisions
