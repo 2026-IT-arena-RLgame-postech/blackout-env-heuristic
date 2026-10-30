@@ -23,6 +23,7 @@ from ..model.base import BaseModel
 WALL, SITE_HUNTER, SITE_CARRIER = 1, 2, 3
 SPAWN_ALLY, SPAWN_ENEMY, STORAGE_ALLY, STORAGE_ENEMY, BATTERY = 4, 5, 6, 7, 8
 FIRST_SPECIAL = 9
+_PIXEL_MEMO: dict = {}  # (x, y, h, w) -> pixel, see StrategicHeuristic._to_pixel
 COLLECTOR, HUNTER, CARRIER = 0, 1, 2
 
 # team_state[3] is 1 - AbsorptionTimer.Ratio (MapObsAgent.cs), i.e. normalized by the absorption
@@ -438,19 +439,33 @@ class StrategicHeuristic(BaseModel):
 
     @classmethod
     def _to_pixel(cls, position: np.ndarray, shape: tuple[int, int]) -> tuple[int, int]:
-        # Same float32 rounding as _to_pixel_float, without building the array.
+        # Same float32 rounding as _to_pixel_float, without building the array.  Memoised on the exact
+        # coordinates: a unit is converted many times a tick.
         h, w = shape
-        y = (1.0 - float(position[1])) * 0.5 * h - 0.5
-        x = (float(position[0]) + 1.0) * 0.5 * w - 0.5
+        px, py = float(position[0]), float(position[1])
+        key = (px, py, h, w)
+        hit = _PIXEL_MEMO.get(key)
+        if hit is not None:
+            return hit
+        y = (1.0 - py) * 0.5 * h - 0.5
+        x = (px + 1.0) * 0.5 * w - 0.5
         # Fast path: rounding to float32 moves a value below 100 by < 1e-5, which changes round() only
         # within 1e-5 of a half-integer; everything else (and NaN) takes the float32 path below.
         if abs(y) < 100.0 and abs(x) < 100.0:
             ry, rx = round(y), round(x)
             if abs(abs(y - ry) - 0.5) > 1e-5 and abs(abs(x - rx) - 0.5) > 1e-5:
-                return (min(h - 1, max(0, ry)), min(w - 1, max(0, rx)))
-        y = float(np.float32((1.0 - float(position[1])) * 0.5 * h - 0.5))
-        x = float(np.float32((float(position[0]) + 1.0) * 0.5 * w - 0.5))
-        return (min(h - 1, max(0, int(round(y)))), min(w - 1, max(0, int(round(x)))))
+                out = (min(h - 1, max(0, ry)), min(w - 1, max(0, rx)))
+                if len(_PIXEL_MEMO) >= 65536:
+                    _PIXEL_MEMO.clear()
+                _PIXEL_MEMO[key] = out
+                return out
+        y = float(np.float32((1.0 - py) * 0.5 * h - 0.5))
+        x = float(np.float32((px + 1.0) * 0.5 * w - 0.5))
+        out = (min(h - 1, max(0, int(round(y)))), min(w - 1, max(0, int(round(x)))))
+        if len(_PIXEL_MEMO) >= 65536:
+            _PIXEL_MEMO.clear()
+        _PIXEL_MEMO[key] = out
+        return out
 
     def _cached_protected_ally_storage_mask(self, graphic: np.ndarray) -> np.ndarray:
         cached = self._static_masks.get("protected_ally_storage")
