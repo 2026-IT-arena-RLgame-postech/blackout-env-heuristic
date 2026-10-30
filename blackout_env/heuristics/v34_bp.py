@@ -401,6 +401,29 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                     heading = world_heading(there[0] - here[0], there[1] - here[1])
                 if heading is None:
                     heading = self._path_heading(walk, (e.pos,), here, UNIT_RADIUS[HUNTER])
+            elif role == "escort":
+                # stay by our Carrier; charge an enemy Hunter that comes within east_engage tiles of it (a trade)
+                carriers = [c for c in ctx["own"] if c.cls == CARRIER]
+                if not carriers:
+                    continue
+                car = carriers[0]
+                cpos = pixel_position(states[car.row], shape)
+                threats = [e for e in ctx["enemies"] if e.cls == HUNTER and not e.in_base
+                           and np.hypot(cpos[0] - e.pos[0], cpos[1] - e.pos[1]) <= self.east_engage]
+                dist_c = self._distance_to(walk, (car.pos,))
+                u = min(free, key=lambda v: (float(dist_c[v.pos]), unit_index(v.name)))
+                here = pixel_position(states[u.row], shape)
+                if threats:
+                    t = min(threats, key=lambda e: np.hypot(cpos[0] - e.pos[0], cpos[1] - e.pos[1]))
+                    there = pixel_position(states[t.row], shape)
+                    heading = (world_heading(there[0] - here[0], there[1] - here[1])
+                               if np.hypot(here[0] - there[0], here[1] - there[1]) < 1.5
+                               else self._path_heading(walk, (t.pos,), here, UNIT_RADIUS[HUNTER]))
+                elif float(dist_c[u.pos]) <= 1.5:
+                    free.remove(u)  # close enough: keep its own label (hunting nearby prey)
+                    continue
+                else:
+                    heading = self._path_heading(walk, (car.pos,), here, UNIT_RADIUS[HUNTER])
             elif role in ("south", "east", "storage", "field"):
                 post = self._exit_post(role) if role in ("south", "east") else self._zone_post(role, prey)
                 if not post:
