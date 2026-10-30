@@ -77,3 +77,25 @@ V34b +171±16, V34a +18±14, V33bp −189±19.
 | carrier_retreat | −9 ~ −25 | 반경을 작게(1.5–2) + 기지 대신 가까운 안전 지점 |
 | camp_path (경로 거리 위험 지역) | +1.4±1.5 | 출구별 목표 재선택과 함께 |
 | hunter_quota 1 / reserve_count 1 (경제 우선) | −34 | 습격형 헌터 배치와 결합 |
+
+## 헌터 역할 (05:00, 사용자 아이디어) → V34c
+
+`hunter_roles` (V34): default(상속 동작: 성소 보초, 스폰 봉쇄, 추격) / raid(상대 콜렉터·캐리어 추격, 짐 든 유닛 우선) /
+south·east(상대 기지 남쪽 y=17·동쪽 통로 출구 지키기) / storage(상대 저장소 매복) / field(배터리 밀집 지역).
+`roles_when`: free(상대 헌터가 기지 밖에 없을 때만) / always.
+
+x18 (48 seeds × 2면, paired):
+
+| 역할 | vs V34b | vs V34a |
+|---|---|---|
+| **raid/raid, always** | **+27.0±3.6 (승률 .78)** | +26.5±4.3 |
+| south/raid | +9.5 | +8.4 |
+| raid/raid (free) | +8.0 | +14.3 |
+| default/raid | +6.8 | +10.6 |
+| south/south | +4.5 | +3.0 |
+| south/east | −0.1 | −15.2 |
+| east/raid | −3.2 | −26.2 |
+| east_post (단독, 앞 실험) | −1 ~ +2 | −6 ~ −11 |
+
+→ 봉쇄는 약하고, 배터리 수급 습격이 강하다. 상대 헌터가 있어도 습격을 유지(always)하는 것이 결정적.
+**V34c** = V34b + `hunter_roles=raid/raid,roles_when=always`. 루프 풀 {V34a, V34b, V34c}, 챔피언 V34c (g003부터).
