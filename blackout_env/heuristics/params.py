@@ -49,6 +49,8 @@ ALIASES["V34"] = ALIASES["V33bp"].replace("strategic_v33:", "strategic_v34:")
 ALIASES["V34a"] = ALIASES["V34"] + ",reserve_count=2,cap_sync=true,cap_enter=0.2"
 # V34b: reserves walk straight to the sanctuary edge from the start (early_reserve) and wait one step out (reports/bp x10: +20.7 vs V34a)
 ALIASES["V34b"] = ALIASES["V34a"].replace("cap_enter=0.2", "cap_enter=0.17").replace("reserve_stage=0.5523", "reserve_stage=0.17") + ",early_reserve=5"
+# V34c: both Hunters raid the enemy battery supply at all times (user idea; reports/bp x18: +27.0 vs V34b)
+ALIASES["V34c"] = ALIASES["V34b"] + ",hunter_roles=raid/raid,roles_when=always"
 
 
 def parse_value(text: str):
