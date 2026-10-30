@@ -221,3 +221,15 @@ def test_ppo_async_collect_learns_cpu():
     w_act = next(iter(tr._act_net.parameters()))
     w_now = next(iter(tr.net.parameters()))
     assert not torch.equal(w_act, w_now)
+
+
+def test_ppo_async_collect_auto_resolution():
+    """async_collect="auto" is off without 2 CUDA GPUs; string/bool overrides resolve to bools."""
+    from blackout_env.rl.ppo import PPOConfig, _resolve_async
+    c = PPOConfig(device="cpu"); _resolve_async(c)
+    assert c.async_collect is False and c.actor_device == ""
+    for v, want in (("true", True), ("false", False), (True, True), (False, False)):
+        c = PPOConfig(device="cpu", async_collect=v); _resolve_async(c)
+        assert c.async_collect is want
+    c = PPOConfig(device="cpu", async_collect="true", critic_head="hlgauss"); _resolve_async(c)
+    assert c.async_collect is True   # forced: the trainer's own assert then rejects the unsupported recipe

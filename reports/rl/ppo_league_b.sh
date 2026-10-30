@@ -6,17 +6,20 @@
 # NOTE league_ramp_min_games=30 (design says 100): a snapshot at 5 % of ~3 finished games/it finishes only ~0.16 games/it, so 100 would take ~600 its.
 # Launch (from ~/blackout-env-league on wsl_gpu; needs a free GPU):
 #   MAXDEC=19100000 reports/rl/ppo_league_b.sh
-# On poscat_gpu2 (multi-GPU, never GPU 3): REPO=~/blackout-env-<dir> GPU=0 OUT=checkpoints/rl/league_b2 MAXDEC=... reports/rl/ppo_league_b.sh
+# On poscat_gpu2 (multi-GPU, never GPU 3): REPO=~/blackout-env-<dir> GPU=2,0 (learner,actor: async 2-GPU, default) or GPU=2 (sync) OUT=checkpoints/rl/league_b2 MAXDEC=... reports/rl/ppo_league_b.sh
 # Resume after a crash / reboot (same run dir, SAME env/flags; continues from <OUT>/latest.pt, in-flight games restart):
 #   RESUME=1 MAXDEC=19100000 reports/rl/ppo_league_b.sh
 set -e
 cd ${REPO:-~/blackout-env-league}
-if [ -n "$GPU" ]; then [ "$GPU" != 3 ] || { echo "GPU 3 is off limits"; exit 1; }; export CUDA_VISIBLE_DEVICES=$GPU
-  if [ -n "$ALLOW_OWN" ]; then   # tolerate only my own processes on that GPU (e.g. a running eval of the previous trial)
-    u=$(nvidia-smi -i $GPU --query-gpu=uuid --format=csv,noheader)
-    for p in $(nvidia-smi --query-compute-apps=gpu_uuid,pid --format=csv,noheader | awk -F', ' -v u="$u" '$1==u{print $2}'); do
-      [ "$(ps -o user= -p $p | tr -d ' ')" = "$USER" ] || { echo "GPU $GPU has a foreign process $p"; exit 1; }; done
-  else nvidia-smi -i $GPU | grep -q "No running processes found" || { nvidia-smi -i $GPU; echo "GPU $GPU busy"; exit 1; }; fi; n=0; else n=$(nvidia-smi --query-compute-apps=pid --format=csv,noheader | wc -l); fi
+# GPU may be a list ("2,0"): the first is the learner, the second the async actor (PPO async_collect=auto turns it on).
+if [ -n "$GPU" ]; then export CUDA_VISIBLE_DEVICES=$GPU
+  for g in ${GPU//,/ }; do [ "$g" != 3 ] || { echo "GPU 3 is off limits"; exit 1; }
+    if [ -n "$ALLOW_OWN" ]; then   # tolerate only my own processes on that GPU (e.g. a running eval of the previous trial)
+      u=$(nvidia-smi -i $g --query-gpu=uuid --format=csv,noheader)
+      for p in $(nvidia-smi --query-compute-apps=gpu_uuid,pid --format=csv,noheader | awk -F', ' -v u="$u" '$1==u{print $2}'); do
+        [ "$(ps -o user= -p $p | tr -d ' ')" = "$USER" ] || { echo "GPU $g has a foreign process $p"; exit 1; }; done
+    else nvidia-smi -i $g | grep -q "No running processes found" || { nvidia-smi -i $g; echo "GPU $g busy"; exit 1; }; fi
+  done; n=0; else n=$(nvidia-smi --query-compute-apps=pid --format=csv,noheader | wc -l); fi
 [ "$n" = 0 ] || { echo "GPU has $n compute processes"; exit 1; }
 F=checkpoints/distill/frozen
 OUT=${OUT:-checkpoints/rl/league_b}

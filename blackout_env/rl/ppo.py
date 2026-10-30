@@ -73,11 +73,14 @@ class PPOConfig(GRPOConfig):
     league_warmup: int = 2             # critic-only iterations after each snapshot
     league_snap_graphs: bool = True    # CUDA-graph forwards for snapshots (each costs ~0.5 GB of graph outputs; False: eager, ~1 s/it each)
     league_ref_reset: bool = False     # KL anchor pi_ref <- the learner at each new snapshot (default: pi_ref stays the init policy)
-    # ---- async actor-learner (off by default): the rollout of batch k+1 runs in a thread (on ``actor_device``, or a second CUDA
+    # ---- async actor-learner (default "auto": on when a second CUDA GPU is visible, 2026-10-31): the rollout of batch k+1 runs in a thread (on ``actor_device``, or a second CUDA
     # stream of ``device``) while batch k updates the learner.  1-iteration policy lag: batch k+1 is played by the weights after
     # update k-1; the PPO ratio uses those behaviour weights (``_old_own``), values/GAE come from the actor's critic copy.
-    async_collect: bool = False
-    actor_device: str = ""             # "" = same device as the learner (overlap via a second CUDA stream)
+    # "auto" = on with the other visible GPU as actor_device iff the learner is on CUDA, >= 2 GPUs are visible and the recipe
+    # is supported (reg critic, plain head, no value_train / joint); otherwise sync.  Decoupled async on 2 GPUs matches sync
+    # learning at 1.8x wall speed (reports/rl/ppo_perf2.md).  "true" forces it (also 1 GPU / CPU), "false" disables it.
+    async_collect: str = "auto"
+    actor_device: str = ""             # "" = auto: the other GPU when "auto" turns async on, else the learner's device
     async_decoupled: bool = True       # decoupled PPO: clip vs the proximal policy (weights at update start) x truncated IS pi_prox/pi_beh
     async_is_cap: float = 2.0          # truncation of that importance weight
 
@@ -95,9 +98,29 @@ class _HLLogits(torch.nn.Module):
         return lg.float()
 
 
+def _resolve_async(cfg) -> None:
+    """Turn ``async_collect`` ("auto" / "true" / "false" / bool) into a bool and pick ``actor_device`` for "auto"."""
+    a = cfg.async_collect
+    if isinstance(a, str):
+        a = a.strip().lower()
+        if a == "auto":
+            dev = torch.device(cfg.device)
+            ok = (dev.type == "cuda" and torch.cuda.is_available() and torch.cuda.device_count() >= 2
+                  and cfg.critic_head == "reg" and cfg.fine_bins == 0 and not cfg.offset_rl and not cfg.value_train
+                  and not cfg.joint)
+            if ok and not cfg.actor_device:
+                cfg.actor_device = f"cuda:{1 if (dev.index or 0) == 0 else 0}"
+            a = ok
+        else:
+            a = a in ("1", "true", "yes")
+    cfg.async_collect = bool(a)
+    print(f"[ppo] async_collect={cfg.async_collect} actor_device={cfg.actor_device or cfg.device}", flush=True)
+
+
 class PPOTrainer(GRPOTrainer):
     def __init__(self, cfg: PPOConfig):
         cfg.groups = cfg.games
+        _resolve_async(cfg)
         if cfg.cuda_mem_fraction > 0 and torch.device(cfg.device).type == "cuda":
             torch.cuda.set_per_process_memory_fraction(cfg.cuda_mem_fraction)
         self.snaps: list[dict] = []        # league snapshots: {path, added, level, last_step, win: deque of (n, sum, sumsq)}
