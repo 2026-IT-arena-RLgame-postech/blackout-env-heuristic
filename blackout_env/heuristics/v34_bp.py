@@ -19,6 +19,9 @@ Carrier made at 0.4 s is one walker fewer (it can never become a Hunter).  New k
   (y 19-20) ~20 path tiles from a Hunter camping y = 17 that is 2 tiles away in a straight line, so the disc
   closes the one safe exit.  With ``camp_path`` the zone is the cells within ``danger_tiles`` *path* tiles of the
   Hunter on the map it can walk (walls and our base blocked).
+* ``east_post`` (tiles, 0 = off): while we have 2 Hunters and the enemy none out of base, the Hunter nearest the
+  enemy base's *east* exit (the y 19-20 corridor in team A's frame, which a Hunter camping y = 17 cannot reach
+  quickly) holds a post ``east_post`` tiles into that corridor, engaging enemies within ``east_engage`` tiles.
 * ``storm_units`` (0 = off): after the opening (``storm_after`` s), while the enemy has more Hunters out of base than
   we have, up to this many empty Collectors (nearest the sanctuary first) are *committed* walkers to the Hunter
   sanctuary: no threat evasion, plain-map path.  A Collector that reaches the sanctuary turns into a Hunter on entry
@@ -42,8 +45,11 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
     def __init__(self, *, carrier_delay: float = 0.0, carrier_on_monopoly: bool = True, cap_sync: bool = False,
                  cap_enter: float = 0.3, storm_units: int = 0, storm_after: float = 6.0, race_second: bool = False,
                  rs_radius: float = 1.5, rs_wait: float = 0.6, early_reserve: float = 0.0,
-                 carrier_retreat: float = 0.0, camp_path: bool = False, **kwargs):
+                 carrier_retreat: float = 0.0, camp_path: bool = False, east_post: float = 0.0,
+                 east_engage: float = 3.0, **kwargs):
         super().__init__(**kwargs)
+        self.east_post = float(east_post)
+        self.east_engage = float(east_engage)
         self.camp_path = bool(camp_path)
         self.carrier_retreat = float(carrier_retreat)
         self.early_reserve = float(early_reserve)
@@ -131,6 +137,8 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
         labels = super().teach(obs)
         if self.carrier_retreat > 0:
             self._retreat_carriers(labels)
+        if self.east_post > 0:
+            self._post_east(labels)
         if self._cap_hold or self._cap_out:
             for n in list(labels):
                 lab = labels[n]
@@ -261,3 +269,38 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                 continue
             mask |= self._distance_to(walk, p) <= radius
         return mask
+
+    # ------------------------------------------------------------------ east post
+
+    def _post_east(self, labels):
+        ctx = self._teach_ctx
+        hunters = [u for u in ctx["own"] if u.cls == HUNTER and u.name in labels]
+        if len(hunters) < MAX_HUNTERS or any(e.cls == HUNTER and not e.in_base for e in ctx["enemies"]):
+            return
+        shape = ctx["shape"]
+        er, ec = ctx["enemy_spawn"]
+        # team A's frame: base x 1..4, y 19..22 (pixel rows 1..4, cols 1..4); east exit corridor rows 3..4 (y 19..20)
+        depth = 4.0 + self.east_post  # columns into the corridor (x = 5 + east_post)
+        if er < shape[0] // 2:  # enemy is team A (top-left in pixels)
+            post = ((3, int(depth)), (4, int(depth)))
+        else:  # enemy is team B: mirror (x, y) -> (y, x) => pixel (r, c) -> (23 - c, 23 - r)
+            post = ((shape[0] - 1 - int(depth), shape[1] - 1 - 3), (shape[0] - 1 - int(depth), shape[1] - 1 - 4))
+        walk = self._teach_walkable
+        if not all(walk[p] for p in post):
+            return
+        dist = self._distance_to(walk, post)
+        h = min(hunters, key=lambda u: (float(dist[u.pos]), unit_index(u.name)))
+        here = pixel_position(ctx["states"][h.row], shape)
+        prey = [e for e in ctx["enemies"] if e.cls != HUNTER and not e.in_base
+                and np.hypot(here[0] - e.pos[0], here[1] - e.pos[1]) <= self.east_engage]
+        if prey:
+            return
+        if float(dist[h.pos]) <= 0.5:
+            heading = np.zeros(2, dtype=np.float32)
+        else:
+            heading = self._path_heading(walk, post, here, UNIT_RADIUS[HUNTER])
+            if heading is None:
+                return
+        lab = labels[h.name]
+        labels[h.name] = AnyAngleLabel(lab.mask, True, lab.kind, lab.target, lab.goals, False, heading)
+        self._count("east_post")

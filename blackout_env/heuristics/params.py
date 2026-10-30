@@ -209,6 +209,8 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("storm_after", "float", 4.0, 20.0, "race", "s: storm only after this (V34)"),
     _k("carrier_retreat", "float", 0.0, 8.0, "evasion", "tiles: a Carrier runs home while an enemy Hunter is this close (0 = off; V34)"),
     _k("camp_path", "bool", 0, 1, "structural", "camp danger zones by Hunter path distance instead of a disc (V34)", True),
+    _k("east_post", "float", 0.0, 4.0, "hunters", "tiles into the enemy east exit corridor a 2nd Hunter holds during our monopoly (0 = off; V34)"),
+    _k("east_engage", "float", 1.5, 6.0, "hunters", "tiles: the east-post Hunter engages enemies this close (V34)"),
     _k("carrier_on_monopoly", "bool", 0, 1, "race", "carrier_delay ends early once we hold a Hunter monopoly (V34)"),
     _k("h_trade_up", "bool", 0, 1, "structural", "when we have more Hunters, the closest pair becomes a strike (V33)", True),
     # -- structural switches (sampled only with structural=True)
