@@ -55,3 +55,22 @@ Same recipe/pool as above, 7 iterations each, steady state = iters 1–6. Raw: `
 - **Caveat:** the first 2-GPU attempt hung in its first iteration (0 % GPU on both for 25 min, no stack available: ptrace denied);
   the identical rerun ran cleanly. `ppo_async_bench.py` now dumps all thread stacks every 4 min (faulthandler) to catch it if it recurs.
   Before using async in a long run: add the same faulthandler watchdog to `rl_train.py` and compare learning vs sync on a short run.
+
+## Async learning A/B (2026-10-30, `reports/rl/q_async_ab.sh`)
+HPO lr6e-6 recipe (P24c start, β 0.01, pool 9 + V33, 10M = 313 its) with `async_collect=true actor_device=cuda:1`
+(learner GPU2, actor GPU0), learning-curve eval `hpo_eval.sh`, compared with the two sync replicates (`hpo_analysis.py`).
+(The first launch died at iter 0 on a CUDA-graph capture-stream bug, fixed in f0690a3.)
+
+| | iter_50 | iter_100 | iter_200 | final | curve | wall |
+|---|---|---|---|---|---|---|
+| async − lr6e-6 (sync) | −2.5±1.5 | −5.6±1.5 | +1.9±1.4 | **−4.6±1.2** | **−3.1±0.7** | 1.30 h vs 2.64 h |
+| async − lr6e-6_r2 (sync) | −3.2±1.5 | −5.8±1.7 | +0.5±1.5 | **−3.0±1.3** | **−3.2±0.9** | 1.30 h vs 2.69 h |
+| (noise: r2 − r1) | | | | −1.7±1.2 | +0.0±0.9 | |
+
+- **Speed: 15.0 s/iter vs 30.4–30.9 (2.0×; the sync HPO runs shared the GPU with the previous trial's eval).**
+- **Learning: degraded** — below both sync replicates by ~3 points (curve −3.1/−3.2, > 3 SE; final −4.6/−3.0), worst vs p24c
+  (−10.3/−6.1) and V32.1 (−6.0/−5.2). Per update the async run is roughly back at the base lr-3e-6 level (final +1.6 vs base).
+- Per wall-clock it is still ahead (async final at 1.3 h ≈ +28.7 vs sync ≈ +25–26 at the same wall time, it≈155), but the
+  per-sample loss matters for long runs. Likely cause: the 1-iteration lag makes the clipped ratio π/π_behaviour start away
+  from 1 (clipfrac ↑), i.e. fewer effective updates. Candidate fix: **decoupled PPO** (Hilton et al. 2021) — clip against the
+  proximal policy (weights at update start) and correct the lag with a truncated importance weight π_prox/π_behaviour.
