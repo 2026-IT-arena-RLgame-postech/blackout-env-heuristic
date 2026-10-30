@@ -31,7 +31,9 @@ OUT = REPO / "reports" / "bp"
 STATE = OUT / "state.json"
 THREADS = "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=."
 # host -> (cores we may fill, reserve kept free, remote repo or None for local)
-HOSTS = {"poscat_gpu2": (28, 2, "~/blackout-env-bp"), "wsl_gpu": (12, 2, "~/blackout-env-bp"), "mac": (18, 2, None)}
+HOSTS = {"poscat_gpu2": (28, 2, "~/blackout-env-bp"), "wsl_gpu": (12, 2, "~/blackout-env-bp"), "mac": (18, 2, None),
+         "poscat_gpu1": (28, 2, "~/blackout-env-bp")}
+MAX_WORKERS = {"poscat_gpu1": 16}  # user (2026-10-31): gpu1 CPU up to ~16 cores, never disturbing others
 CAP_S = 300          # match cap (s); matches are decided early, most end by 100 points
 SCREEN_SEEDS = 24    # x both sides per opponent
 CONFIRM_SEEDS = 64
@@ -66,7 +68,7 @@ def free_workers() -> dict[str, int]:
             busy = int(r.stdout.strip() or 999) if r.returncode == 0 else 999
         except Exception:  # unreachable (the laptop sleeps)
             busy = 999
-        out[h] = max(0, cores - reserve - busy)
+        out[h] = min(MAX_WORKERS.get(h, cores), max(0, cores - reserve - busy))
     return out
 
 
@@ -117,7 +119,7 @@ def play(gen, cands, opps, seeds, seed0, must_host_first=()):
         time.sleep(600)
         return play(gen, cands, opps, seeds, seed0, must_host_first)
     # relative speed per worker (games/s measured 2026-10-31): Mac ~3x a gpu2 hyperthread, wsl ~2x
-    speed = {"mac": 3.0, "wsl_gpu": 2.0, "poscat_gpu2": 1.0}
+    speed = {"mac": 3.0, "wsl_gpu": 2.0, "poscat_gpu2": 1.0, "poscat_gpu1": 1.0}
     cap = {h: free[h] * speed[h] for h in free}
     tot = sum(cap.values())
     order = sorted(free, key=lambda h: -cap[h])
