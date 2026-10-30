@@ -248,11 +248,17 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
     def _state_pixels(states, shape) -> list[tuple[int, int]]:
         """``_to_pixel`` for every row at once (same float32 rounding, one array allocation)."""
         h, w = shape
-        pixels = np.array(
-            [((1.0 - y) * 0.5 * h - 0.5, (x + 1.0) * 0.5 * w - 0.5)
-             for x, y in states[:, :2].tolist()], dtype=np.float32).tolist()
-        return [(min(h - 1, max(0, int(round(py)))), min(w - 1, max(0, int(round(px)))))
-                for py, px in pixels]
+        xy = states[:, :2].astype(np.float64)  # the same double arithmetic, float32 rounding and half-even rounding
+        py = ((1.0 - xy[:, 1]) * 0.5 * h - 0.5).astype(np.float32)
+        px = ((xy[:, 0] + 1.0) * 0.5 * w - 0.5).astype(np.float32)
+        if not (np.isfinite(py).all() and np.isfinite(px).all()):
+            pixels = np.array(
+                [((1.0 - y) * 0.5 * h - 0.5, (x + 1.0) * 0.5 * w - 0.5)
+                 for x, y in states[:, :2].tolist()], dtype=np.float32).tolist()
+            return [(min(h - 1, max(0, int(round(py)))), min(w - 1, max(0, int(round(px)))))
+                    for py, px in pixels]
+        return list(zip(np.clip(np.rint(py), 0, h - 1).astype(np.int64).tolist(),
+                        np.clip(np.rint(px), 0, w - 1).astype(np.int64).tolist()))
 
     def _per_tick(self, name, graphic, build):
         """Memoise ``build(graphic)`` for the current decision tick (read-only results)."""

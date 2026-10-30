@@ -89,7 +89,12 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
         tile_set = set(tiles)
         hunters = sum(self._class_id(states[row_for[n]]) == HUNTER for n in controlled)
         planner = self._planner(np.ascontiguousarray(walkable, dtype=bool), tiles, UNIT_RADIUS[COLLECTOR])
-        centre = np.mean(np.asarray(tiles, np.float32), axis=0)
+        cache = self.__dict__.setdefault("_cap_centres", {})  # the sanctuary tiles repeat tick after tick
+        centre = cache.get(tiles)
+        if centre is None:
+            if len(cache) >= 64:
+                cache.clear()
+            centre = cache[tiles] = np.mean(np.asarray(tiles, np.float32), axis=0)
         near = []
         for n in controlled:
             st = states[row_for[n]]
