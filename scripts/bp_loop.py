@@ -31,9 +31,10 @@ OUT = REPO / "reports" / "bp"
 STATE = OUT / "state.json"
 THREADS = "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=."
 # host -> (cores we may fill, reserve kept free, remote repo or None for local)
-HOSTS = {"poscat_gpu2": (28, 2, "~/blackout-env-bp"), "wsl_gpu": (12, 2, "~/blackout-env-bp"), "mac": (18, 2, None),
+HOSTS = {"poscat_gpu2": (28, 6, "~/blackout-env-bp"), "wsl_gpu": (12, 2, "~/blackout-env-bp"), "mac": (18, 2, None),
          "poscat_gpu1": (28, 2, "~/blackout-env-bp")}
-MAX_WORKERS = {"poscat_gpu1": 16}  # user (2026-10-31): gpu1 CPU up to ~16 cores, never disturbing others
+MAX_WORKERS = {"poscat_gpu1": 16,  # user (2026-10-31): gpu1 CPU up to ~16 cores, never disturbing others
+               "poscat_gpu2": 6}   # user (10-31 05:15): kyungdain trains for the same goal on gpu2 -> leave it room
 
 
 def max_workers(h, default):
