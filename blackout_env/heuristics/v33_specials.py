@@ -33,7 +33,7 @@ import math
 
 import numpy as np
 
-from .strategic import HUNTER
+from .strategic import CARRIER, COLLECTOR, HUNTER
 from .teach import DIRECTIONS
 from .v32_four_hunters import StrategicHeuristicV32
 
@@ -102,6 +102,11 @@ class StrategicHeuristicV33(StrategicHeuristicV32):
         total = self._hunter_repulsion(state, states, delta)
         if total is not None:
             return int(np.argmax(DIRECTIONS @ total))
+        # Every layer below returns None or defers; TeachLabeller._evasion answers None unless the unit
+        # holds something, is a Carrier or (evade_empty_collectors) a Collector: skip the chain then.
+        cls = self._class_id(state)
+        if not (self._is_holding(state) or cls == CARRIER or (self.evade_empty_collectors and cls == COLLECTOR)):
+            return None
         return super()._evasion(state, states, delta)
 
     def _evasion_vector(self, state, states, delta):
