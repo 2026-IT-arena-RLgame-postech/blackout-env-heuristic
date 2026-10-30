@@ -53,8 +53,9 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  rs_radius: float = 1.5, rs_wait: float = 0.6, early_reserve: float = 0.0,
                  carrier_retreat: float = 0.0, camp_path: bool = False, east_post: float = 0.0,
                  east_engage: float = 3.0, hunter_roles: str = "", roles_when: str = "free", raid_value: float = 2.0,
-                 **kwargs):
+                 raid_carrier: float = 1.0, **kwargs):
         super().__init__(**kwargs)
+        self.raid_carrier = float(raid_carrier)
         self.hunter_roles = [r for r in str(hunter_roles).replace("+", "/").split("/") if r]
         self.roles_when = str(roles_when)
         self.raid_value = float(raid_value)
@@ -363,7 +364,7 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                         d = float(dist[u.pos])
                         if not np.isfinite(d):
                             continue
-                        score = d / (self.raid_value if cargo else 1.0)
+                        score = d / ((self.raid_value if cargo else 1.0) * (self.raid_carrier if e.cls == CARRIER else 1.0))
                         if best is None or score < best[0]:
                             best = (score, u, e)
                 if best is None:
