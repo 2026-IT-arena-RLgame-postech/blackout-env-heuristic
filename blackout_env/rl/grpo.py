@@ -827,6 +827,9 @@ class GRPOTrainer:
         if fc:
             fidx = to(batch["fine"]).long()
             ref_flp = []
+        # decoupled PPO (Hilton et al. 2021) for PPO async_collect's 1-iteration policy lag
+        dec = getattr(self, "_old_own", None) is not None and getattr(c, "async_decoupled", False) and not (fc or oc)
+        isw = []
         with torch.no_grad():  # old log-probs on the training path (fp32), ref logits
             old_lp, ref_lp = [], []
             for s in range(0, n, c.minibatch):
@@ -853,9 +856,17 @@ class GRPOTrainer:
                 # behaviour policy: the net itself, or (PPO async_collect) the copy holding the weights that played the batch
                 beh = self.own if getattr(self, "_old_own", None) is None else self._old_own
                 lp = F.log_softmax(self._logits(beh, g[sl], t[sl], a[sl]), -1)
-                old_lp.append(lp.gather(-1, act[sl].unsqueeze(-1)).squeeze(-1))
+                lb = lp.gather(-1, act[sl].unsqueeze(-1)).squeeze(-1)
+                if dec:   # decoupled PPO: clip against the proximal policy (weights at update start), IS-correct the lag
+                    lpp = F.log_softmax(self._logits(self.own, g[sl], t[sl], a[sl]), -1).gather(-1, act[sl].unsqueeze(-1)).squeeze(-1)
+                    isw.append(torch.exp(lpp - lb))
+                    lb = lpp
+                old_lp.append(lb)
                 ref_lp.append(F.log_softmax(self._logits(self.ref, g[sl], t[sl], a[sl]), -1))
             old_lp, ref_lp = torch.cat(old_lp), torch.cat(ref_lp)
+            if dec:
+                isw_raw = torch.cat(isw)
+                isw = isw_raw.clamp(max=c.async_is_cap)   # truncated importance weight pi_prox / pi_behaviour (per unit)
             if oc:
                 ref_mu = torch.cat(ref_mu)
             if fc:
@@ -894,7 +905,8 @@ class GRPOTrainer:
                         lp = lp + nonstand * flp_all.gather(-1, fidx[ids].unsqueeze(-1)).squeeze(-1)
                     ratio = torch.exp(lp - old_lp[ids])
                     A = adv[ids].unsqueeze(-1)
-                    pg = -torch.min(ratio * A, ratio.clamp(1 - c.clip, 1 + c.clip) * A).mean()
+                    surr = torch.min(ratio * A, ratio.clamp(1 - c.clip, 1 + c.clip) * A)
+                    pg = -(isw[ids] * surr).mean() if dec else -surr.mean()
                     p = lp_all.exp()
                     kl = (p * (lp_all - ref_lp[ids])).sum(-1).mean()
                     if oc:   # sum_b p_b KL(N(mu_b, sigma^2) || N(mu_ref_b, s_ref^2)) over the K direction bins
@@ -934,7 +946,11 @@ class GRPOTrainer:
                     self.opt.step()
                 st["grad_norm"] += gn.item(); st["n_mb"] += 1
         m = max(st.pop("n_mb"), 1)
-        return {k: v / m for k, v in st.items()}
+        out = {k: v / m for k, v in st.items()}
+        if dec:
+            out["isw_mean"] = float(isw_raw.mean()); out["isw_trunc"] = float((isw_raw > c.async_is_cap).float().mean())
+            out["lag_kl"] = float((isw_raw.log() * -1).mean())   # mean log(pi_beh / pi_prox) on the taken actions
+        return out
 
     def step(self):
         batch, cs = self.collect()

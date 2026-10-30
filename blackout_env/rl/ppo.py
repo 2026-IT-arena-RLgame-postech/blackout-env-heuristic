@@ -78,6 +78,8 @@ class PPOConfig(GRPOConfig):
     # update k-1; the PPO ratio uses those behaviour weights (``_old_own``), values/GAE come from the actor's critic copy.
     async_collect: bool = False
     actor_device: str = ""             # "" = same device as the learner (overlap via a second CUDA stream)
+    async_decoupled: bool = True       # decoupled PPO: clip vs the proximal policy (weights at update start) x truncated IS pi_prox/pi_beh
+    async_is_cap: float = 2.0          # truncation of that importance weight
 
 
 class _HLLogits(torch.nn.Module):

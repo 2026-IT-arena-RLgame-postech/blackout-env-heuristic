@@ -216,6 +216,7 @@ def test_ppo_async_collect_learns_cpu():
     for _ in range(3):
         s = tr.step()
         assert np.isfinite(s["pg"]) and np.isfinite(s["vf_loss"]) and np.isfinite(s["kl"])
+        assert np.isfinite(s["isw_mean"]) and 0.0 <= s["isw_trunc"] <= 1.0   # decoupled PPO (default on)
     # the pending batch was played by the weights after update 2 (= the actor copy), the learner has moved on by update 3
     w_act = next(iter(tr._act_net.parameters()))
     w_now = next(iter(tr.net.parameters()))
