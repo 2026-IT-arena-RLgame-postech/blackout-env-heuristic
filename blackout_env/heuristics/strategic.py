@@ -505,7 +505,8 @@ class StrategicHeuristic(BaseModel):
         """Scan dynamic special-item pixels once per team decision tick."""
         if self._special_scan_tick != self._tick:
             found: list[tuple[int, int, int]] = []
-            for channel in range(FIRST_SPECIAL, graphic.shape[-1]):
+            for channel in (range(FIRST_SPECIAL, graphic.shape[-1])
+                            if (graphic[..., FIRST_SPECIAL:] > 0.5).any() else ()):  # (usually no special item)
                 ys, xs = np.nonzero(graphic[..., channel] > 0.5)
                 found.extend(
                     (channel, int(y), int(x))

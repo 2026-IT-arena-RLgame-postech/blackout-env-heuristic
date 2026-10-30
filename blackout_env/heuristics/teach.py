@@ -397,7 +397,15 @@ class TeachLabeller:
         hit = memo.get(key)
         if hit is not None and hit[0] is graphic and hit[1] is walkable:
             return hit[2]
-        tiles = tuple((int(y), int(x)) for y, x in np.argwhere((graphic[..., channel] > 0.5) & walkable))
+        mask = (graphic[..., channel] > 0.5) & walkable
+        ckey = (channel, mask.shape, mask.tobytes())  # the site and the walkable map repeat tick after tick
+        cache = self.__dict__.setdefault("_site_tile_cache", {})
+        tiles = cache.get(ckey)
+        if tiles is None:
+            tiles = tuple((int(y), int(x)) for y, x in np.argwhere(mask))
+            if len(cache) >= 256:
+                cache.clear()
+            cache[ckey] = tiles
         memo[key] = (graphic, walkable, tiles)
         return tiles
 

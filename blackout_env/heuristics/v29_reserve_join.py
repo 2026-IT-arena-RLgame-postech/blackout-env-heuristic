@@ -74,4 +74,7 @@ class StrategicHeuristicV29(StrategicHeuristicV28):
                 and (float(state[0]), float(state[1])) in self._staged_xy):
             self._count("reserve_join")
             return StrategicHeuristicV25._any_angle(self, label, state, states, goals, walkable, shape)
+        if label.kind != "transform" and not self._held_xy:
+            # V28 (a held trade walker), V27 (a staged reserve) and V25 (the race walk) only act on those
+            return super(StrategicHeuristicV25, self)._any_angle(label, state, states, goals, walkable, shape)
         return super()._any_angle(label, state, states, goals, walkable, shape)

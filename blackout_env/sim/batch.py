@@ -653,7 +653,7 @@ class HeuristicPolicy(BatchPolicy):
                 names = [f"unit_{i}" for i in range(5 * tm, 5 * tm + 5)]
                 acts = self._instance(int(b), tm).act({n: obs[n] for n in names})
                 for n_, a in acts.items():
-                    out[tm][j, int(n_.split("_")[1]) - 5 * tm] = np.clip(np.asarray(a, np.float32), -1, 1)
+                    out[tm][j, int(n_.split("_")[1]) - 5 * tm] = np.minimum(np.maximum(np.asarray(a, np.float32), -1), 1)
         return out
 
 
