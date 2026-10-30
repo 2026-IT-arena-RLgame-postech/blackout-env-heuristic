@@ -235,13 +235,20 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
 
     # ------------------------------------------------------------------ observation model
 
-    def _parse_unit(self, name, row, state, shape, pos=None) -> _Unit:
-        items = state[4:9].tolist()  # item slots 1..5; slot 0 (state[3]) means empty-handed
+    def _parse_unit(self, name, row, state, shape, pos=None, vals=None) -> _Unit:
+        """``vals``: ``state.tolist()`` when the caller has it (saves the per-row array calls)."""
+        if vals is None:
+            items = state[4:9].tolist()  # item slots 1..5; slot 0 (state[3]) means empty-handed
+            cls = self._class_id(state)
+        else:
+            items = vals[4:9]
+            a, b, c = vals[-3:]  # = _class_id
+            cls = 0 if a >= b and a >= c else 1 if b >= c else 2
         peak = max(items)
         slot = 1 + items.index(peak) if peak > 1e-5 else 0
         return _Unit(
             name=name, row=row, pos=self._to_pixel(state[:2], shape) if pos is None else pos,
-            cls=self._class_id(state), slot=slot, amount=items[0] * 15.0 if slot == 1 else 0.0,
+            cls=cls, slot=slot, amount=items[0] * 15.0 if slot == 1 else 0.0,
         )
 
     @staticmethod
@@ -386,22 +393,24 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
 
         shape = graphic.shape[:2]
         controlled = sorted(obs, key=unit_index)
-        own_rows = [i for i in range(len(states)) if states[i, 2] > 0]
+        rows = states.tolist()
+        sides = [r[2] for r in rows]
+        own_rows = [i for i, side in enumerate(sides) if side > 0]
         row_for = {name: unit_index(name) for name in controlled}
-        if any(i >= len(states) or states[i, 2] <= 0 for i in row_for.values()):
+        if any(i >= len(states) or sides[i] <= 0 for i in row_for.values()):
             row_for = {name: own_rows[j] for j, name in enumerate(controlled)}
         walkable = graphic[..., WALL] < 0.5
 
         ally_spawn = self._spawn_pixel(graphic, SPAWN_ALLY)
         enemy_spawn = self._spawn_pixel(graphic, SPAWN_ENEMY)
         pixels = self._state_pixels(states, shape)
-        own = [self._parse_unit(n, row_for[n], states[row_for[n]], shape, pixels[row_for[n]])
+        own = [self._parse_unit(n, row_for[n], states[row_for[n]], shape, pixels[row_for[n]], rows[row_for[n]])
                for n in controlled]
         enemies = []
         enemy_base = self._cached_base_mask(enemy_spawn, shape)
-        for row, side in enumerate(states[:, 2].tolist()):
+        for row, side in enumerate(sides):
             if side < 0:
-                unit = self._parse_unit(None, row, states[row], shape, pixels[row])
+                unit = self._parse_unit(None, row, states[row], shape, pixels[row], rows[row])
                 unit.in_base = bool(enemy_base[unit.pos])
                 enemies.append(unit)
 
