@@ -190,7 +190,7 @@ def raw_margin(t, cand, opps):
 def load_state():
     if STATE.exists():
         return json.loads(STATE.read_text())
-    seed = resolve_descriptor("V33bp")
+    seed = resolve_descriptor("V34") + ",reserve_count=2"
     return {"gen": 0, "pool": {"B0": seed}, "champion": "B0", "counter": None, "phase": "improve", "stale": 0,
             "history": []}
 
@@ -281,6 +281,7 @@ def main():
     st = load_state()
     save_state(st)
     while not (OUT / "STOP").exists():
+        st = load_state()  # re-read: state.json may be edited by hand between generations
         step(st)
     log("STOP file found, exiting")
 
