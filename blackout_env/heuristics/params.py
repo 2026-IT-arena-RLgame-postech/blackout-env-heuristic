@@ -44,6 +44,7 @@ ALIASES = {
 }
 # Balance patch (max 2 Hunters per team): V33 with its Hunter knobs in the new ranges (same behaviour as V33)
 ALIASES["V33bp"] = ALIASES["V33"].replace("hunter_quota=4", "hunter_quota=2")
+ALIASES["V34"] = ALIASES["V33bp"].replace("strategic_v33:", "strategic_v34:")
 
 
 def parse_value(text: str):
@@ -170,7 +171,7 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("commit_margin", "float", -1.0, 0.25, "race", "seconds a committed walker must reach the sanctuary ahead of an enemy Hunter"),
     _k("commit_reach", "float", 0.5, 2.0, "race", "tiles from the sanctuary within which the last-step commit applies"),
     _k("reserve_stage", "float", 0.0, 2.0, "race", "tiles: the staged reserve walker waits this far from the sanctuary (0 = none)"),
-    _k("reserve_count", "int", 1, 2, "race", "number of staged reserve walkers"),
+    _k("reserve_count", "int", 1, 3, "race", "number of staged reserve walkers"),
     _k("join_margin", "float", 0.0, 0.3, "race", "tiles the enemy's lead may trail ours for the race to count as tied"),
     _k("join_reach", "float", 0.5, 2.0, "race", "tiles: enemy Collectors this close to its lead walker count as its reserve"),
     _k("trade_radius", "float", 0.5, 3.0, "race", "tiles: enemy Hunters this close to ours count as a pending trade"),
@@ -197,6 +198,8 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("dom_danger_hunter_radius", "float", 3.0, 9.0, "evasion", "danger_hunter_radius used while the enemy dominates (V33; -1 = off)"),
     _k("dom_margin", "int", 1, 2, "evasion", "enemy Hunters out minus ours that counts as dominated (V33)"),
     _k("h_evade_radius", "float", 1.0, 6.0, "hunters", "tiles: an outnumbered Hunter is repelled by enemy Hunters this close (V33; -1 = off)"),
+    _k("carrier_delay", "float", 0.0, 30.0, "race", "s: no Carrier before this (0 = off; V34)"),
+    _k("carrier_on_monopoly", "bool", 0, 1, "race", "carrier_delay ends early once we hold a Hunter monopoly (V34)"),
     _k("h_trade_up", "bool", 0, 1, "structural", "when we have more Hunters, the closest pair becomes a strike (V33)", True),
     # -- structural switches (sampled only with structural=True)
     _k("sweep", "bool", 0, 1, "structural", "Hunters first strike enemy Collectors near the sanctuary", True),
