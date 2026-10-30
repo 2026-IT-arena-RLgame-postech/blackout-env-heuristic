@@ -40,7 +40,7 @@ class StrategicHeuristicV23(AnyAngleFieldMixin, StrategicHeuristicV22):
     # AnyAngleFieldMixin reads field_goals; AnyAngleMixin and V22 read clearance_margin / region_inset.
     @property
     def field_goals(self) -> bool:
-        return self._opening()
+        return self.opening_field and self._race_now  # = self._opening()
 
     @field_goals.setter
     def field_goals(self, value: bool) -> None:  # the mixin's __init__ sets it; the race decides
@@ -48,7 +48,7 @@ class StrategicHeuristicV23(AnyAngleFieldMixin, StrategicHeuristicV22):
 
     @property
     def clearance_margin(self) -> float:
-        return self.opening_margin if self._opening() else self._clearance_margin
+        return self.opening_margin if self.opening_field and self._race_now else self._clearance_margin
 
     @clearance_margin.setter
     def clearance_margin(self, value: float) -> None:
@@ -56,7 +56,7 @@ class StrategicHeuristicV23(AnyAngleFieldMixin, StrategicHeuristicV22):
 
     @property
     def region_inset(self) -> float:
-        return self.opening_inset if self._opening() else REGION_INSET
+        return self.opening_inset if self.opening_field and self._race_now else REGION_INSET
 
     def _context(self, obs) -> dict:
         ctx = super()._context(obs)

@@ -380,10 +380,13 @@ class TeachLabeller:
     def _tick_memo(self) -> dict:
         """A dict that lives for the current decision tick (``_tick``): per-tick memos of pure
         functions of arrays held by reference (identity keys stay valid while the entry lives)."""
-        tick = getattr(self, "_tick", None)
-        memo = getattr(self, "_o1_memo", None)
-        if memo is None or memo[0] != tick or len(memo[1]) > 4096:
-            memo = self._o1_memo = (tick, {})
+        try:
+            memo = self._o1_memo
+            if memo is not None and memo[0] == self._tick and len(memo[1]) <= 4096:
+                return memo[1]
+        except AttributeError:
+            pass
+        memo = self._o1_memo = (getattr(self, "_tick", None), {})
         return memo[1]
 
     def _site_tiles(self, graphic: np.ndarray, channel: int, walkable: np.ndarray) -> tuple[tuple[int, int], ...]:
@@ -394,23 +397,39 @@ class TeachLabeller:
         hit = memo.get(key)
         if hit is not None and hit[0] is graphic and hit[1] is walkable:
             return hit[2]
-        tiles = tuple((int(y), int(x)) for y, x in np.argwhere((graphic[..., channel] > 0.5) & walkable))
+        mask = (graphic[..., channel] > 0.5) & walkable
+        ckey = (channel, mask.shape, mask.tobytes())  # the site and the walkable map repeat tick after tick
+        cache = self.__dict__.setdefault("_site_tile_cache", {})
+        tiles = cache.get(ckey)
+        if tiles is None:
+            tiles = tuple((int(y), int(x)) for y, x in np.argwhere(mask))
+            if len(cache) >= 256:
+                cache.clear()
+            cache[ckey] = tiles
         memo[key] = (graphic, walkable, tiles)
         return tiles
 
     def _distance_to(self, walkable: np.ndarray, tiles: tuple[tuple[int, int], ...] | tuple[int, int]) -> np.ndarray:
         """Path distance from every cell to the nearest of ``tiles`` (one tile or a cluster)."""
         memo = self._tick_memo()
+        # Same array and same tuple object as an earlier call this tick: no need to hash the tiles.
+        ikey = (id(walkable), id(tiles))
+        field_goals = getattr(self, "field_goals", None)
+        hit = memo.get(ikey)
+        if hit is not None and hit[0] is walkable and hit[1] is tiles and hit[3] == field_goals:
+            return hit[2]
         try:
-            mkey = ("teach_distance_to", id(walkable), tiles, getattr(self, "field_goals", None))
+            mkey = ("teach_distance_to", id(walkable), tiles, field_goals)
             hit = memo.get(mkey)
         except TypeError:  # unhashable tiles
             mkey, hit = None, None
         if hit is not None and hit[0] is walkable:
+            memo[ikey] = (walkable, tiles, hit[1], field_goals)
             return hit[1]
         cached = self._teach_distance_to(walkable, tiles)
         if mkey is not None:
             memo[mkey] = (walkable, cached)
+            memo[ikey] = (walkable, tiles, cached, field_goals)
         return cached
 
     def _teach_distance_to(self, walkable: np.ndarray, tiles) -> np.ndarray:

@@ -235,24 +235,42 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
 
     # ------------------------------------------------------------------ observation model
 
-    def _parse_unit(self, name, row, state, shape, pos=None) -> _Unit:
-        items = state[4:9].tolist()  # item slots 1..5; slot 0 (state[3]) means empty-handed
+    def _parse_unit(self, name, row, state, shape, pos=None, vals=None) -> _Unit:
+        """``vals``: ``state.tolist()`` when the caller has it (saves the per-row array calls)."""
+        if vals is None:
+            items = state[4:9].tolist()  # item slots 1..5; slot 0 (state[3]) means empty-handed
+            cls = self._class_id(state)
+        else:
+            items = vals[4:9]
+            a, b, c = vals[-3:]  # = _class_id
+            cls = 0 if a >= b and a >= c else 1 if b >= c else 2
         peak = max(items)
         slot = 1 + items.index(peak) if peak > 1e-5 else 0
         return _Unit(
             name=name, row=row, pos=self._to_pixel(state[:2], shape) if pos is None else pos,
-            cls=self._class_id(state), slot=slot, amount=items[0] * 15.0 if slot == 1 else 0.0,
+            cls=cls, slot=slot, amount=items[0] * 15.0 if slot == 1 else 0.0,
         )
 
     @staticmethod
     def _state_pixels(states, shape) -> list[tuple[int, int]]:
         """``_to_pixel`` for every row at once (same float32 rounding, one array allocation)."""
         h, w = shape
-        pixels = np.array(
-            [((1.0 - y) * 0.5 * h - 0.5, (x + 1.0) * 0.5 * w - 0.5)
-             for x, y in states[:, :2].tolist()], dtype=np.float32).tolist()
-        return [(min(h - 1, max(0, int(round(py)))), min(w - 1, max(0, int(round(px)))))
-                for py, px in pixels]
+        xy = states[:, :2].astype(np.float64)  # the same double arithmetic, float32 rounding and half-even rounding
+        v = np.empty((2, len(xy)), dtype=np.float64)
+        v[0] = (1.0 - xy[:, 1]) * 0.5 * h - 0.5
+        v[1] = (xy[:, 0] + 1.0) * 0.5 * w - 0.5
+        v = v.astype(np.float32)
+        if not np.isfinite(v).all():
+            pixels = np.array(
+                [((1.0 - y) * 0.5 * h - 0.5, (x + 1.0) * 0.5 * w - 0.5)
+                 for x, y in states[:, :2].tolist()], dtype=np.float32).tolist()
+            return [(min(h - 1, max(0, int(round(py)))), min(w - 1, max(0, int(round(px)))))
+                    for py, px in pixels]
+        np.rint(v, out=v)
+        np.maximum(v, 0.0, out=v)
+        np.minimum(v, np.array([[h - 1], [w - 1]], dtype=np.float32), out=v)
+        rows, cols = v.astype(np.int64).tolist()
+        return list(zip(rows, cols))
 
     def _per_tick(self, name, graphic, build):
         """Memoise ``build(graphic)`` for the current decision tick (read-only results)."""
@@ -375,22 +393,24 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
 
         shape = graphic.shape[:2]
         controlled = sorted(obs, key=unit_index)
-        own_rows = [i for i in range(len(states)) if states[i, 2] > 0]
+        rows = states.tolist()
+        sides = [r[2] for r in rows]
+        own_rows = [i for i, side in enumerate(sides) if side > 0]
         row_for = {name: unit_index(name) for name in controlled}
-        if any(i >= len(states) or states[i, 2] <= 0 for i in row_for.values()):
+        if any(i >= len(states) or sides[i] <= 0 for i in row_for.values()):
             row_for = {name: own_rows[j] for j, name in enumerate(controlled)}
         walkable = graphic[..., WALL] < 0.5
 
         ally_spawn = self._spawn_pixel(graphic, SPAWN_ALLY)
         enemy_spawn = self._spawn_pixel(graphic, SPAWN_ENEMY)
         pixels = self._state_pixels(states, shape)
-        own = [self._parse_unit(n, row_for[n], states[row_for[n]], shape, pixels[row_for[n]])
+        own = [self._parse_unit(n, row_for[n], states[row_for[n]], shape, pixels[row_for[n]], rows[row_for[n]])
                for n in controlled]
         enemies = []
         enemy_base = self._cached_base_mask(enemy_spawn, shape)
-        for row, side in enumerate(states[:, 2].tolist()):
+        for row, side in enumerate(sides):
             if side < 0:
-                unit = self._parse_unit(None, row, states[row], shape, pixels[row])
+                unit = self._parse_unit(None, row, states[row], shape, pixels[row], rows[row])
                 unit.in_base = bool(enemy_base[unit.pos])
                 enemies.append(unit)
 
@@ -729,13 +749,13 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             float(ctx["absorb"]), float(ctx["remaining"]), float(self.steal_weight),
             np.array(self.special_weights, dtype=np.float64), BUFF_SPEED, float(ABSORPTION_INTERVAL_SECONDS),
             np.array([self.danger_hunter_radius, self.danger_collector_radius, self.danger_weight, self.contest_factor]))
-        scores, picks, keep = scores.tolist(), picks.tolist(), keep.tolist()
-        for k, unit in enumerate(units):
-            name = unit.name
-            for i, ok in enumerate(keep[k]):
-                if ok:
-                    pairs.append((scores[k][i], name, i))
-                    pickup[(name, i)] = picks[k][i]
+        ks, ts = np.nonzero(keep)  # row-major: unit by unit, task by task, as the nested loops walked them
+        if len(ks):
+            names = [unit.name for unit in units]
+            unit_names = [names[k] for k in ks.tolist()]
+            task_ids = ts.tolist()
+            pairs = list(zip(scores[ks, ts].tolist(), unit_names, task_ids))
+            pickup = dict(zip(zip(unit_names, task_ids), picks[ks, ts].tolist()))
         return tasks, pairs, pickup
 
     def _economy_pairs_py(self, ctx, units):

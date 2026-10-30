@@ -138,7 +138,7 @@ class StrategicHeuristicV17Teach(TeachLabeller, StrategicHeuristicV17):
             by_unit.setdefault(name, []).append((score, task))
 
         def best(scored: list[tuple[float, int]]) -> list[int]:
-            top = max(score for score, _ in scored)
+            top = max([score for score, _ in scored])
             return [task for score, task in scored if score * self.score_band >= top]
 
         wanted = {name: set(best(scored)) for name, scored in by_unit.items() if scored}
