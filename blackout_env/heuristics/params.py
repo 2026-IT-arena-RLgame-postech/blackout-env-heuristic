@@ -42,6 +42,8 @@ ALIASES = {
     # fresh enemy Hunter), CEM-retuned knobs and much higher special-item weights (BuffSpeed / DebuffSpeed)
     "V33": "strategic_v33:reserve_stage=0.5523,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1113,camp_engage_radius=6.5,hunter_quota=4,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,commit_margin=-0.3,guard_radius=7.691,late_after=16.0,carrier_col_scale=0.9054,camp_tiles=2.457,breakout_units=1,join_reach=1.137,trade_radius=0.7359,steal_weight=1.94,exposure_cost=0.7841,danger_hunter_radius=4.137,contest_factor=0.5747,w_dspd=5.0,w_bspd=4.5",
 }
+# Balance patch (max 2 Hunters per team): V33 with its Hunter knobs in the new ranges (same behaviour as V33)
+ALIASES["V33bp"] = ALIASES["V33"].replace("hunter_quota=4", "hunter_quota=2")
 
 
 def parse_value(text: str):
@@ -136,12 +138,12 @@ TEACH_ONLY = {"threat_radius", "deposit_band", "idle_band", "exclusion_margin", 
 
 KNOBS: dict[str, Knob] = {k.name: k for k in [
     # -- Hunter allocation / roles
-    _k("hunter_quota", "int", 2, 4, "hunters", "Hunters the team keeps (walkers sent to the sanctuary until reached)"),
+    _k("hunter_quota", "int", 1, 2, "hunters", "Hunters the team keeps (walkers sent to the sanctuary until reached)"),
     _k("exit_guards", "int", 0, 2, "hunters", "Hunters holding our base exit (strike enemy Hunters near it)"),
-    _k("guard_min_hunters", "int", 2, 4, "hunters", "Hunters needed before exit guards are posted"),
+    _k("guard_min_hunters", "int", 1, 2, "hunters", "Hunters needed before exit guards are posted"),
     _k("guard_radius", "float", 4.0, 10.0, "hunters", "tiles around our exit in which a guard strikes enemy Hunters"),
     _k("sweep_radius", "float", 5.0, 12.0, "hunters", "tiles from the sanctuary / Hunter in which Hunters strike enemy Collectors"),
-    _k("sentry_min_hunters", "int", 1, 4, "hunters", "Hunters needed before one is posted as sanctuary sentry"),
+    _k("sentry_min_hunters", "int", 1, 3, "hunters", "Hunters needed before one is posted as sanctuary sentry"),
     _k("sentry_offset", "float", 1.0, 4.0, "hunters", "tiles from sanctuary centre toward the enemy spawn where the sentry stands"),
     _k("sentry_radius", "float", 4.0, 10.0, "hunters", "tiles around the sanctuary in which the sentry strikes enemy Collectors"),
     _k("camp_engage_radius", "float", 3.0, 9.0, "hunters", "camper strikes enemies within this many tiles of its post"),
@@ -202,7 +204,7 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("sweep_camper", "bool", 0, 1, "structural", "the camper also sweeps (false keeps it on its post)", True),
     _k("solo_sentry", "bool", 0, 1, "structural", "a lone Hunter keeps the sanctuary (V30 role order)", True),
     _k("race_commit", "bool", 0, 1, "structural", "last-step commit of a walker into the sanctuary", True),
-    _k("late_hunter_quota", "int", -1, 4, "structural", "late Hunter refill target (-1 = off)", True),
+    _k("late_hunter_quota", "int", -1, 2, "structural", "late Hunter refill target (-1 = off)", True),
 ]}
 
 
@@ -276,12 +278,18 @@ def sample_params(base: str, rng: np.random.Generator, scale: float = 1.0, **kwa
     return with_params(base, **sample_overrides(base, rng, scale, **kwargs))
 
 
+# Hunter-count knobs: since the balance patch only values up to MAX_HUNTERS matter; older descriptors keep theirs
+HUNTER_COUNT_KNOBS = {"hunter_quota", "guard_min_hunters", "sentry_min_hunters", "late_hunter_quota"}
+
+
 def validate(descriptor: str) -> None:
     """Raise ValueError if a parameter is outside its knob's range (unknown names are left to the constructor)."""
     for name, value in split_descriptor(descriptor)[1].items():
         knob = KNOBS.get(name)
         if knob is None or knob.kind == "bool" or isinstance(value, str):
             continue
+        if name in HUNTER_COUNT_KNOBS and value > knob.hi:
+            continue  # pre-patch values (up to 4) act as the cap (env.constants.MAX_HUNTERS)
         if not (knob.lo <= value <= knob.hi) and not (name == "adapt_k" and value == 0):
             raise ValueError(f"{name}={value} outside the sane range [{knob.lo}, {knob.hi}]")
 
