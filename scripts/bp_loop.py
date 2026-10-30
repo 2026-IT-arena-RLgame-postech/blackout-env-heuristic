@@ -76,7 +76,7 @@ def sync_code():
         if repo is None:
             continue
         subprocess.run(["git", "-C", str(REPO), "push", "-q", "-f", h, f"{br}:refs/heads/bp-incoming"], capture_output=True)
-        sh(f"cd {repo} && git fetch -q origin bp-incoming && git merge -q --ff-only FETCH_HEAD", h, timeout=60)
+        sh(f"cd {repo} && git fetch -q origin bp-incoming && git checkout -q -B feat/balance-patch FETCH_HEAD", h, timeout=60)
 
 
 def run_on(host, cands, opps, seeds, seed0, gen, workers):
