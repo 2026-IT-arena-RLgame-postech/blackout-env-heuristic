@@ -84,11 +84,11 @@ def sync_code():
 def run_on(host, cands, opps, seeds, seed0, gen, workers):
     """Play ``cands`` x ``opps`` on ``host``; results land in OUT/<gen>/<host>/matches.jsonl locally."""
     repo = HOSTS[host][2] or str(REPO)
-    rel = f"reports/bp/{gen}/{host}"
-    (OUT / gen / host).mkdir(parents=True, exist_ok=True)
-    cf = OUT / gen / host / "cands.txt"
+    rel = f"reports/bp/{gen}"
+    (OUT / gen).mkdir(parents=True, exist_ok=True)
+    cf = OUT / gen / "cands.txt"
     cf.write_text(";".join(cands))
-    of = OUT / gen / host / "opps.txt"
+    of = OUT / gen / "opps.txt"
     of.write_text(";".join(opps))
     if host != "mac":
         sh(f"mkdir -p {repo}/{rel}", host)
@@ -99,7 +99,7 @@ def run_on(host, cands, opps, seeds, seed0, gen, workers):
     for attempt in range(3):
         r = sh(cmd, host)
         if host != "mac":
-            subprocess.run(["rsync", "-a", f"{host}:{repo}/{rel}/", str(OUT / gen / host) + "/"], capture_output=True)
+            subprocess.run(["rsync", "-a", f"{host}:{repo}/{rel}/", str(OUT / gen) + "/"], capture_output=True)
         if r.returncode == 0:
             return True
         log(f"  {host} failed (attempt {attempt}): {r.stderr[-300:]}")
@@ -108,7 +108,8 @@ def run_on(host, cands, opps, seeds, seed0, gen, workers):
 
 
 def play(gen, cands, opps, seeds, seed0, must_host_first=()):
-    """Split ``cands`` over the hosts by free workers and play them (blocking)."""
+    """Play ``cands`` x ``opps`` over all hosts with free CPU: a shared queue, each host pulls small batches
+    (so the slowest host never holds the generation back).  Blocking."""
     done = OUT / gen / "DONE"
     if done.exists():
         return load(gen)
@@ -118,39 +119,46 @@ def play(gen, cands, opps, seeds, seed0, must_host_first=()):
         log("no free CPU anywhere; waiting 10 min")
         time.sleep(600)
         return play(gen, cands, opps, seeds, seed0, must_host_first)
-    # relative speed per worker (games/s measured 2026-10-31): Mac ~3x a gpu2 hyperthread, wsl ~2x
-    speed = {"mac": 3.0, "wsl_gpu": 2.0, "poscat_gpu2": 1.0, "poscat_gpu1": 1.0}
-    cap = {h: free[h] * speed[h] for h in free}
-    tot = sum(cap.values())
-    order = sorted(free, key=lambda h: -cap[h])
-    split, i = {}, 0
-    for k, h in enumerate(order):
-        n = len(cands) - i if k == len(order) - 1 else int(round(len(cands) * cap[h] / tot))
-        split[h] = cands[i:i + n]
-        i += n
-    log(f"{gen}: {len(cands)} cands x {len(opps)} opps x {seeds} seeds; "
-        + ", ".join(f"{h}:{len(c)}c/{free[h]}w" for h, c in split.items()))
-    threads = []
-    for h, c in split.items():
-        if c:
-            t = threading.Thread(target=run_on, args=(h, c, opps, seeds, seed0, gen, free[h]))
-            t.start()
-            threads.append(t)
+    have = {r["ours"] for r in load(gen)}
+    queue = [c for c in cands if c not in have]
+    lock = threading.Lock()
+    log(f"{gen}: {len(cands)} cands ({len(queue)} to play) x {len(opps)} opps x {seeds} seeds; "
+        + ", ".join(f"{h}:{w}w" for h, w in free.items()))
+
+    def worker(h):
+        k = 0
+        # batch ~ enough chunks (16 games each) to fill the host's workers once
+        per = max(1, round(free[h] * 16 / (len(opps) * seeds * 2 * 1.0)))
+        while True:
+            with lock:
+                batch = queue[:per]
+                del queue[:per]
+            if not batch:
+                return
+            ok = run_on(h, batch, opps, seeds, seed0, f"{gen}/{h}_{k}", free[h])
+            k += 1
+            if not ok:
+                with lock:
+                    queue.extend(batch)
+                return
+
+    threads = [threading.Thread(target=worker, args=(h,)) for h in free]
+    for t in threads:
+        t.start()
     for t in threads:
         t.join()
     rows = load(gen)
-    have = {r["ours"] for r in rows}
-    missing = [c for c in cands if c not in have]
+    missing = [c for c in cands if c not in {r["ours"] for r in rows}]
     if missing:
         log(f"{gen}: {len(missing)} candidates missing, replaying them")
-        return play(gen + "r", missing, opps, seeds, seed0) + rows
+        return play(gen, cands, opps, seeds, seed0)
     done.write_text("ok")
     return rows
 
 
 def load(gen):
     rows = []
-    for f in (OUT / gen).glob("*/matches.jsonl"):
+    for f in (OUT / gen).glob("**/matches.jsonl"):
         rows += [json.loads(x) for x in f.read_text().splitlines() if x.strip()]
     return rows
 
