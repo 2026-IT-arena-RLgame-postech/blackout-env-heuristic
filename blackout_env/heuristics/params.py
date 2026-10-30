@@ -47,6 +47,8 @@ ALIASES["V33bp"] = ALIASES["V33"].replace("hunter_quota=4", "hunter_quota=2")
 ALIASES["V34"] = ALIASES["V33bp"].replace("strategic_v33:", "strategic_v34:")
 # V34a: + two staged reserves and cap_sync (reports/bp: +10 vs V34 + reserve_count=2, side gap 26 -> 24)
 ALIASES["V34a"] = ALIASES["V34"] + ",reserve_count=2,cap_sync=true,cap_enter=0.2"
+# V34b: reserves walk straight to the sanctuary edge from the start (early_reserve) and wait one step out (reports/bp x10: +20.7 vs V34a)
+ALIASES["V34b"] = ALIASES["V34a"].replace("cap_enter=0.2", "cap_enter=0.17").replace("reserve_stage=0.5523", "reserve_stage=0.17") + ",early_reserve=5"
 
 
 def parse_value(text: str):
