@@ -749,13 +749,13 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             float(ctx["absorb"]), float(ctx["remaining"]), float(self.steal_weight),
             np.array(self.special_weights, dtype=np.float64), BUFF_SPEED, float(ABSORPTION_INTERVAL_SECONDS),
             np.array([self.danger_hunter_radius, self.danger_collector_radius, self.danger_weight, self.contest_factor]))
-        scores, picks, keep = scores.tolist(), picks.tolist(), keep.tolist()
-        for k, unit in enumerate(units):
-            name = unit.name
-            for i, ok in enumerate(keep[k]):
-                if ok:
-                    pairs.append((scores[k][i], name, i))
-                    pickup[(name, i)] = picks[k][i]
+        ks, ts = np.nonzero(keep)  # row-major: unit by unit, task by task, as the nested loops walked them
+        if len(ks):
+            names = [unit.name for unit in units]
+            unit_names = [names[k] for k in ks.tolist()]
+            task_ids = ts.tolist()
+            pairs = list(zip(scores[ks, ts].tolist(), unit_names, task_ids))
+            pickup = dict(zip(zip(unit_names, task_ids), picks[ks, ts].tolist()))
         return tasks, pairs, pickup
 
     def _economy_pairs_py(self, ctx, units):
