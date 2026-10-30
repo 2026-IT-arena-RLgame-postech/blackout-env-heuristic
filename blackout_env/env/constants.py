@@ -49,3 +49,8 @@ def team_b_agents() -> list[str]:
 def all_agents() -> list[str]:
     """Return all agent identifiers in unitIndex order (0~9)."""
     return [agent_name(i) for i in range(N_AGENTS)]
+
+
+# Balance patch (2026-10-31): at most this many living Hunters per team (Hunter Sanctuary MaxPerTeam;
+# sim/core.MAX_HUNTERS).  Heuristics clamp their Hunter targets to it.
+MAX_HUNTERS = 2

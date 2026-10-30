@@ -29,7 +29,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ..env.constants import unit_index
+from ..env.constants import MAX_HUNTERS, unit_index
 from .risk_path import StrategicHeuristicV6
 from .strategic import (
     ABSORPTION_INTERVAL_SECONDS, BATTERY, CARRIER, COLLECTOR, FIRST_SPECIAL, HUNTER,
@@ -536,7 +536,7 @@ class StrategicHeuristicV17(StrategicHeuristicV6):
             choice = keep[0] if keep else self._closest_to_site(ctx, SITE_CARRIER, set(roles))
             if choice is not None:
                 roles[choice] = "carrier"
-        want_hunters = self.hunter_quota
+        want_hunters = min(self.hunter_quota, MAX_HUNTERS)
         missing = want_hunters - len(hunters)
         if missing > 0:
             keep = [i for i in pending("hunter") if not own[i].holding and i not in roles]

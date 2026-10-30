@@ -42,7 +42,7 @@ import math
 
 import numpy as np
 
-from ..env.constants import unit_index
+from ..env.constants import MAX_HUNTERS, unit_index
 from .any_angle import UNIT_RADIUS, pixel_position
 from .strategic import COLLECTOR, HUNTER, SITE_HUNTER
 from .teach import Goal
@@ -157,7 +157,7 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
         walkers = sorted((planner.distance(pixel_position(states[row_for[n]], shape)), unit_index(n), n)
                          for n in controlled if n in goals and n not in self.staged
                          and any(kind == "transform" and set(t) & tile_set for t, kind in goals[n]))
-        if len(walkers) < self.hunter_quota or not np.isfinite(walkers[0][0]):
+        if len(walkers) < min(self.hunter_quota, MAX_HUNTERS) or not np.isfinite(walkers[0][0]):
             return
         theirs = [planner.distance(pixel_position(states[e.row], shape)) for e in ctx["enemies"]
                   if e.cls == COLLECTOR and not e.in_base]

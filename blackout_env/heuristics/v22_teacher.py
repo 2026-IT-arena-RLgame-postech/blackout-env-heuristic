@@ -55,7 +55,7 @@ import math
 
 import numpy as np
 
-from ..env.constants import unit_index
+from ..env.constants import MAX_HUNTERS, unit_index
 from .any_angle import (AnyAngleMixin, SAMPLE_STEP, _point_clearance, _segment_clear, point_clearance,  # noqa: F401
                         segment_clear, pixel_position, world_heading)
 from .strategic import BATTERY, CARRIER, COLLECTOR, FIRST_SPECIAL, HUNTER, SITE_CARRIER, SITE_HUNTER, STORAGE_ALLY, STORAGE_ENEMY
@@ -215,6 +215,7 @@ class StrategicHeuristicV22Teach(StrategicHeuristicV21Teach):
         self.committed = []
         self._committed_xy = set()
         target_hunters, target_carriers = self._composition_targets(graphic, states, row_for)
+        target_hunters = min(target_hunters, MAX_HUNTERS)
         if not target_hunters and not target_carriers:
             return {}
         shape = graphic.shape[:2]

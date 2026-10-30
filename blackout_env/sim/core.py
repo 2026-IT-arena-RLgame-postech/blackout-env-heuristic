@@ -34,7 +34,7 @@ import math
 import numpy as np
 from numba import njit
 
-from .mapdata import (COLLECTOR, FLOOR, NEUTRAL, R_SANCTUARY,
+from .mapdata import (COLLECTOR, FLOOR, HUNTER, NEUTRAL, R_SANCTUARY,
                       R_STORAGE, SPAWN_CELL)
 from .unity_random import range_int
 
@@ -47,6 +47,7 @@ EPISODE_SECONDS = F32(420.0)           # GameBalanceConfig.MaxEpisodeTime
 ABSORPTION_SECONDS = F32(20.0)         # AbsorptionInterval
 SPAWN_COOLDOWN = F32(10.0)             # SpecialItemSpawnCooldown
 TARGET_SCORE = 100
+MAX_HUNTERS = 2                        # balance patch: Hunter Sanctuary MaxPerTeam (living Hunters per team)
 K_EPS = F32(1e-5)                      # Vector2.kEpsilon
 F0, F1, F2, FHALF, F15 = F32(0.0), F32(1.0), F32(2.0), F32(0.5), F32(1.5)
 BOUNDS = F32(24.0)                     # BlackOutEpisodeCoordinator.mapBounds
@@ -439,6 +440,13 @@ def _region_enter(S, M, u, reg):
         locked = M[6][reg]
         if locked and reg_lock[reg] >= 0:
             return
+        if M[5][reg] == HUNTER:   # Sanctuary.MaxInstancesPerTeam: Hunters only come from here, die back to Collector
+            n = 0
+            for v in range(5 * team, 5 * team + 5):
+                if ui[v, U_CLS] == HUNTER:
+                    n += 1
+            if n >= MAX_HUNTERS:
+                return
         if ui[u, U_CLS] == M[4][reg]:
             _set_class(S, u, M[5][reg])
             _event(S, EV_TRANSFORM, u, M[5][reg], reg, 0)

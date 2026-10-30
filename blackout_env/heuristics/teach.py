@@ -81,7 +81,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ..env.constants import unit_index
+from ..env.constants import MAX_HUNTERS, unit_index
 from . import _shared
 from .spread_deposit import StrategicHeuristicV4
 from .strategic import CARRIER, COLLECTOR, HUNTER, SITE_CARRIER, SITE_HUNTER, SPAWN_ENEMY, STORAGE_ALLY, WALL
@@ -243,6 +243,7 @@ class TeachLabeller:
         running (cargo is deposited first, as in V4).  A surplus is never labelled -- a unit only
         changes class back by dying."""
         target_hunters, target_carriers = self._composition_targets(graphic, states, row_for)
+        target_hunters = min(target_hunters, MAX_HUNTERS)
         if not target_hunters and not target_carriers:
             return {}
         shape = graphic.shape[:2]
