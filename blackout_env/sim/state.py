@@ -476,14 +476,75 @@ def _preprocessor():
     return _PRE
 
 
+_FAST = None
+
+
+def _fast_tables():
+    """Lookup tables of the fast ``obs_from_raw`` path (built from the preprocessor itself)."""
+    global _FAST
+    if _FAST is None:
+        pre = _preprocessor()
+        n = int(pre.PACK_DIVISOR)
+        graphic = pre.preprocess_graphic((np.arange(n, dtype=np.float32) / F32(pre.PACK_DIVISOR)).reshape(1, n, 1))[0]
+        graphic.flags.writeable = False
+        a_ch, b_ch = (pre.SPAWN_ALLY, pre.SPAWN_ENEMY), (pre.STORAGE_ALLY, pre.STORAGE_ENEMY)
+        perm = np.arange(graphic.shape[-1])
+        perm[a_ch[0]], perm[a_ch[1]] = a_ch[1], a_ch[0]
+        perm[b_ch[0]], perm[b_ch[1]] = b_ch[1], b_ch[0]
+        _FAST = (n, graphic, perm, pre.n_items + 1, pre.n_classes, F32(pre.BATTERY_MAX))
+    return _FAST
+
+
+def _fast_agent_states(raw: np.ndarray, items: int, classes: int, battery_max) -> np.ndarray | None:
+    """``preprocess_agent_states(raw)[0]`` vectorised, or None when the table does not apply."""
+    blocks = raw[:40].reshape(10, 4)
+    item, cls = blocks[:, 2], blocks[:, 3]
+    if not (np.isfinite(item).all() and np.isfinite(cls).all()):
+        return None
+    battery = item < 0
+    slot = np.where(battery, 1, np.rint(item)).astype(np.int64)
+    cls = np.rint(cls).astype(np.int64)
+    out = np.zeros((10, 3 + items + classes), dtype=np.float32)
+    out[:, :2] = blocks[:, :2]
+    out[:5, 2] = 1.0
+    out[5:, 2] = -1.0
+    rows = np.arange(10)
+    ok = (slot >= 0) & (slot < items)
+    out[rows[ok], 3 + slot[ok]] = 1.0
+    out[battery, 4] = -item[battery] / battery_max
+    ok = (cls >= 0) & (cls < classes)
+    out[rows[ok], 3 + items + cls[ok]] = 1.0
+    return out
+
+
 def obs_from_raw(raw_state, raw_map, agents=None) -> dict:
     """Exactly BlackOutEnv._collect_map_obs + _build_obs for a raw broadcast."""
-    pre = _preprocessor()
-    visual = (np.asarray(raw_map, dtype=np.float32) / F32(pre.PACK_DIVISOR))[:, :, None]
-    ga, gb = pre.preprocess_team_graphics(visual)
-    sa, sb = pre.preprocess_agent_states(np.asarray(raw_state, dtype=np.float32))
-    ta, tb = pre.preprocess_team_states(np.asarray(raw_state, dtype=np.float32))
     names = [f"unit_{i}" for i in range(10)] if agents is None else agents
+    sides = {int(name.split("_")[1]) >= 5 for name in names}
+    rs = np.asarray(raw_state, dtype=np.float32)
+    rm = np.asarray(raw_map)
+    fast = None
+    if rm.dtype == np.uint16 and rs.shape == (44,) and rm.ndim == 2:
+        n, table, perm, items, classes, battery_max = _fast_tables()
+        if int(rm.max()) < n:  # the packed map survives the float round trip unchanged
+            states = _fast_agent_states(rs, items, classes, battery_max)
+            if states is not None:
+                fast = (table[rm], perm, states)
+    if fast is None:
+        pre = _preprocessor()
+        visual = (np.asarray(raw_map, dtype=np.float32) / F32(pre.PACK_DIVISOR))[:, :, None]
+        ga, gb = pre.preprocess_team_graphics(visual)
+        sa, sb = pre.preprocess_agent_states(rs)
+        ta, tb = pre.preprocess_team_states(rs)
+    else:
+        pre = _preprocessor()
+        ga = fast[0]
+        gb = np.ascontiguousarray(ga[..., fast[1]]) if True in sides else None
+        sa = fast[2]
+        sb = sa.copy() if True in sides else None
+        if sb is not None:
+            sb[:, 2] *= -1.0
+        ta, tb = rs[40:44].copy(), rs[[41, 40, 42, 43]]
     out = {}
     for name in names:
         b = int(name.split("_")[1]) >= 5

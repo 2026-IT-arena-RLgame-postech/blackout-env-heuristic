@@ -648,7 +648,7 @@ class HeuristicPolicy(BatchPolicy):
     def moves(self, bsim, idx, teams, inputs):
         out = {tm: np.zeros((len(idx), 5, 2), np.float32) for tm in teams}
         for j, b in enumerate(idx):
-            obs = obs_from_raw(*bsim.raw(int(b)))
+            obs = obs_from_raw(*bsim.raw(int(b)), agents=[f"unit_{i}" for tm in teams for i in range(5 * tm, 5 * tm + 5)])
             for tm in teams:
                 names = [f"unit_{i}" for i in range(5 * tm, 5 * tm + 5)]
                 acts = self._instance(int(b), tm).act({n: obs[n] for n in names})
