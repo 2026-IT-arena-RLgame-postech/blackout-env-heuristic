@@ -14,6 +14,11 @@ Carrier made at 0.4 s is one walker fewer (it can never become a Hunter).  New k
   second race (and gives team B, whose units move after A's, a large edge).  With ``cap_sync`` at most
   ``2 - our Hunters`` of our Collectors may come within ``cap_enter`` tiles of the sanctuary per decision (nearest
   first); the others hold.  A Collector already inside without having transformed steps out to re-enter.
+* ``camp_path`` (off): V20's camp danger zone and V21's Hunter-free routes use a disc of ``danger_tiles`` around each
+  enemy Hunter.  After the patch the y = 18 wall row (x 5..16) and our base (closed to enemies) put our east exit
+  (y 19-20) ~20 path tiles from a Hunter camping y = 17 that is 2 tiles away in a straight line, so the disc
+  closes the one safe exit.  With ``camp_path`` the zone is the cells within ``danger_tiles`` *path* tiles of the
+  Hunter on the map it can walk (walls and our base blocked).
 * ``storm_units`` (0 = off): after the opening (``storm_after`` s), while the enemy has more Hunters out of base than
   we have, up to this many empty Collectors (nearest the sanctuary first) are *committed* walkers to the Hunter
   sanctuary: no threat evasion, plain-map path.  A Collector that reaches the sanctuary turns into a Hunter on entry
@@ -37,8 +42,9 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
     def __init__(self, *, carrier_delay: float = 0.0, carrier_on_monopoly: bool = True, cap_sync: bool = False,
                  cap_enter: float = 0.3, storm_units: int = 0, storm_after: float = 6.0, race_second: bool = False,
                  rs_radius: float = 1.5, rs_wait: float = 0.6, early_reserve: float = 0.0,
-                 carrier_retreat: float = 0.0, **kwargs):
+                 carrier_retreat: float = 0.0, camp_path: bool = False, **kwargs):
         super().__init__(**kwargs)
+        self.camp_path = bool(camp_path)
         self.carrier_retreat = float(carrier_retreat)
         self.early_reserve = float(early_reserve)
         self.race_second = bool(race_second)
@@ -238,3 +244,20 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                 lab = labels[u.name]
                 labels[u.name] = AnyAngleLabel(lab.mask, True, lab.kind, lab.target, lab.goals, False, heading)
                 self._count("carrier_retreat")
+
+    # ------------------------------------------------------------------ camp_path
+
+    def _near(self, shape, points, radius):
+        if not self.camp_path or not points:
+            return super()._near(shape, points, radius)
+        ctx = self._teach_ctx
+        base = self._cached_base_mask(ctx["ally_spawn"], tuple(shape))
+        walk = ctx["walkable"] & ~base
+        mask = np.zeros(tuple(shape), dtype=bool)
+        for p in points:
+            p = (int(p[0]), int(p[1]))
+            if not walk[p]:
+                mask |= super()._near(shape, [p], radius)
+                continue
+            mask |= self._distance_to(walk, p) <= radius
+        return mask
