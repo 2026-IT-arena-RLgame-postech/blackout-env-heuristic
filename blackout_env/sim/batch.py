@@ -652,8 +652,10 @@ class HeuristicPolicy(BatchPolicy):
             for tm in teams:
                 names = [f"unit_{i}" for i in range(5 * tm, 5 * tm + 5)]
                 acts = self._instance(int(b), tm).act({n: obs[n] for n in names})
+                block = out[tm][j]
                 for n_, a in acts.items():
-                    out[tm][j, int(n_.split("_")[1]) - 5 * tm] = np.minimum(np.maximum(np.asarray(a, np.float32), -1), 1)
+                    block[int(n_.split("_")[1]) - 5 * tm] = np.asarray(a, np.float32)
+                np.minimum(np.maximum(block, -1, out=block), 1, out=block)  # = np.clip(., -1, 1) per unit
         return out
 
 
