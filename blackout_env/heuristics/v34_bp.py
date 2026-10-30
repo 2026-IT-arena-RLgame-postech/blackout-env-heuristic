@@ -14,6 +14,10 @@ Carrier made at 0.4 s is one walker fewer (it can never become a Hunter).  New k
   second race (and gives team B, whose units move after A's, a large edge).  With ``cap_sync`` at most
   ``2 - our Hunters`` of our Collectors may come within ``cap_enter`` tiles of the sanctuary per decision (nearest
   first); the others hold.  A Collector already inside without having transformed steps out to re-enter.
+* ``storm_units`` (0 = off): after the opening (``storm_after`` s), while the enemy has more Hunters out of base than
+  we have, up to this many empty Collectors (nearest the sanctuary first) are *committed* walkers to the Hunter
+  sanctuary: no threat evasion, plain-map path.  A Collector that reaches the sanctuary turns into a Hunter on entry
+  and trades with the enemy sentry next to it -- a Collector for a Hunter, which breaks the enemy's monopoly.
 
 Defaults = V33 exactly.
 """
@@ -31,8 +35,10 @@ from .v33_specials import StrategicHeuristicV33
 
 class StrategicHeuristicV34(StrategicHeuristicV33):
     def __init__(self, *, carrier_delay: float = 0.0, carrier_on_monopoly: bool = True, cap_sync: bool = False,
-                 cap_enter: float = 0.3, **kwargs):
+                 cap_enter: float = 0.3, storm_units: int = 0, storm_after: float = 6.0, **kwargs):
         super().__init__(**kwargs)
+        self.storm_units = int(storm_units)
+        self.storm_after = float(storm_after)
         self.cap_sync = bool(cap_sync)
         self.cap_enter = float(cap_enter)
         self._cap_hold: set[tuple[float, float]] = set()
@@ -56,6 +62,8 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
 
     def _composition_goals(self, controlled, row_for, states, graphic, walkable):
         goals = super()._composition_goals(controlled, row_for, states, graphic, walkable)
+        if self.storm_units > 0:
+            self._storm(controlled, row_for, states, graphic, walkable, goals)
         self._cap_hold, self._cap_out = set(), {}
         if not self.cap_sync:
             return goals
@@ -108,3 +116,40 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                 self._count("cap_out")
                 return world_heading(float(out[0]), float(out[1]))
         return super()._any_angle(label, state, states, goals, walkable, shape)
+
+    # ------------------------------------------------------------------ storm
+
+    def _storm(self, controlled, row_for, states, graphic, walkable, goals):
+        ctx = self._teach_ctx
+        if MATCH_SECONDS - ctx["remaining"] < self.storm_after:
+            return
+        ours = sum(u.cls == HUNTER for u in ctx["own"])
+        theirs = sum(e.cls == HUNTER and not e.in_base for e in ctx["enemies"])
+        if theirs <= ours:
+            return
+        tiles = self._site_tiles(graphic, SITE_HUNTER, walkable)
+        if not tiles:
+            return
+        tile_set = set(tiles)
+        shape = graphic.shape[:2]
+        going = [n for n in controlled if n in goals
+                 and any(kind == "transform" and set(t) & tile_set for t, kind in goals[n])]
+        need = self.storm_units - len(going)
+        if need <= 0:
+            return
+        planner = self._planner(np.ascontiguousarray(walkable, dtype=bool), tiles, UNIT_RADIUS[COLLECTOR])
+        cands = []
+        for n in controlled:
+            st = states[row_for[n]]
+            if n in going or self._class_id(st) != COLLECTOR or self._is_holding(st):
+                continue
+            d = planner.distance(pixel_position(st, shape))
+            if np.isfinite(d):
+                cands.append((d, unit_index(n), n))
+        for _, _, n in sorted(cands)[:need]:
+            goals[n] = ((tiles, "transform"),)
+            if n not in self.committed:
+                self.committed.append(n)
+                st = states[row_for[n]]
+                self._committed_xy.add((float(st[0]), float(st[1])))
+            self._count("storm")
