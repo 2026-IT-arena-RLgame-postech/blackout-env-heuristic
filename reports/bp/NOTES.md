@@ -99,3 +99,14 @@ x18 (48 seeds × 2면, paired):
 
 → 봉쇄는 약하고, 배터리 수급 습격이 강하다. 상대 헌터가 있어도 습격을 유지(always)하는 것이 결정적.
 **V34c** = V34b + `hunter_roles=raid/raid,roles_when=always`. 루프 풀 {V34a, V34b, V34c}, 챔피언 V34c (g003부터).
+
+## V34c 주변 (05:10–06:05)
+
+- x19 (48 seeds): raid_value 1 / 4, raid/field, raid/storage, raid/default → V34c 대비 −0 ~ −11, storage/storage −55. V34c 유지.
+- x20 보류 가설 재시험 (V34c 기준): storm +4.1±5 (64 seeds 재확인 x21: −1.8±2.2), camp_path +1.3, h_evade 2 −1.7,
+  carrier_retreat 2 −8.6, carrier_delay 8 −14.9, early_reserve 0 −31, reserve_count 1 −65, hunter_quota 1 −72.
+  → 습격형에서도 레이스 구조(예비 2 + early_reserve)는 필수. 보류 가설은 여전히 무효.
+- V34c vs V34b 경기 분석: 헌터-초는 V34c가 적지만(1291 vs 1858) 상대 캐리어 킬이 2.3배 (165 vs 73).
+- x21 raid_carrier 0.5 / 2 / 3: +5.3±2.9 / −3.7 / −3.5 (vs V34c), vs V34b −0.5 / −2.8 / −3.8 → 무효.
+- 속도: 서브에이전트 #1 (perf/bp-heur-speed 병합 71f480e) 결정당 10–17 % 단축, 9 조합 해시 동일
+  (`examples/heur_perf_hash.py --check examples/heur_perf_hash_base.json`).
