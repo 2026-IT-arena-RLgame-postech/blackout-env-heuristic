@@ -31,10 +31,10 @@ OUT = REPO / "reports" / "bp"
 STATE = OUT / "state.json"
 THREADS = "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=."
 # host -> (cores we may fill, reserve kept free, remote repo or None for local)
-HOSTS = {"poscat_gpu2": (28, 6, "~/blackout-env-bp"), "wsl_gpu": (12, 2, "~/blackout-env-bp"), "mac": (18, 2, None),
+HOSTS = {"poscat_gpu2": (28, 2, "~/blackout-env-bp"), "wsl_gpu": (12, 2, "~/blackout-env-bp"), "mac": (18, 2, None),
          "poscat_gpu1": (28, 2, "~/blackout-env-bp")}
-MAX_WORKERS = {"poscat_gpu1": 16,  # user (2026-10-31): gpu1 CPU up to ~16 cores, never disturbing others
-               "poscat_gpu2": 6}   # user (10-31 05:15): kyungdain trains for the same goal on gpu2 -> leave it room
+MAX_WORKERS = {"poscat_gpu1": 16}  # user (2026-10-31): gpu1 CPU up to ~16 cores, never disturbing others
+# gpu2 is shared with another same-goal job (kyungdain): CPU as usual (user 05:20), but no GPU use without checking
 
 
 def max_workers(h, default):
@@ -217,17 +217,27 @@ def save_state(st):
     STATE.write_text(json.dumps(st, indent=1))
 
 
-def cem(bases, n, seed, scale, structural):
+# knobs parked after testing (reports/bp/NOTES.md): never sampled by the CEM (set them by hand to retry)
+PARKED = ("storm_units", "storm_after", "carrier_retreat", "east_post", "east_engage", "carrier_delay",
+          "carrier_on_monopoly", "camp_path", "cap_sync")
+
+
+def cem(bases, n, seed, scale, structural, tag=None):
+    """Candidates around ``bases``; cached in OUT/<tag>_cands.json so a restart replays the same generation."""
+    if tag is not None and (OUT / f"{tag}_cands.json").exists():
+        return json.loads((OUT / f"{tag}_cands.json").read_text())
     rng = np.random.default_rng(seed)
     out = []
     while len(out) < n:
         base = bases[len(out) % len(bases)]
-        ov = sample_overrides(base, rng, scale, structural=structural)
+        ov = sample_overrides(base, rng, scale, structural=structural, exclude=PARKED)
         if not ov:
             continue
         d = with_params(base, **{k: (round(v, 4) if isinstance(v, float) else v) for k, v in ov.items()})
         if d not in out and d not in bases:
             out.append(d)
+    if tag is not None:
+        (OUT / f"{tag}_cands.json").write_text(json.dumps(out))
     return out
 
 
@@ -244,7 +254,7 @@ def step(st):
     pool = list(st["pool"].values())
     if st["phase"] == "improve":
         bases = [champ] + ([st["pool"][st["counter"]]] if st["counter"] else [])
-        cands = cem(bases, 40, 1000 + g, 1.0 if st["stale"] < 2 else 0.6, structural=True)
+        cands = cem(bases, 40, 1000 + g, 1.0 if st["stale"] < 2 else 0.6, structural=True, tag=f"g{g:03d}_imp")
         rows = play(f"g{g:03d}_imp", [champ] + cands, pool, SCREEN_SEEDS, 10_000_000 + 1000 * g)
         t = table(rows)
         scored = sorted(((paired(t, c, champ, pool), c) for c in cands if c in t), key=lambda x: -np.nan_to_num(x[0][0], nan=-1e9))
@@ -269,7 +279,7 @@ def step(st):
                 st["stale"] = 0
     else:  # counter: beat the champion
         bases = [champ] + [v for k, v in st["pool"].items() if k != st["champion"]][-2:]
-        cands = cem(bases, 40, 5000 + g, 2.0, structural=True)
+        cands = cem(bases, 40, 5000 + g, 2.0, structural=True, tag=f"g{g:03d}_ctr")
         rows = play(f"g{g:03d}_ctr", cands, [champ], SCREEN_SEEDS * 2, 30_000_000 + 1000 * g)
         t = table(rows)
         scored = sorted(((raw_margin(t, c, [champ]), c) for c in cands if c in t), key=lambda x: -np.nan_to_num(x[0], nan=-1e9))
