@@ -42,7 +42,7 @@ import numpy as np
 
 from ..env.constants import MAX_HUNTERS, unit_index
 from .any_angle import UNIT_RADIUS, AnyAngleLabel, pixel_position, world_heading
-from .strategic import CARRIER, COLLECTOR, HUNTER, SITE_HUNTER
+from .strategic import BATTERY, CARRIER, COLLECTOR, HUNTER, SITE_HUNTER, STORAGE_ENEMY
 from .v17_planner import MATCH_SECONDS
 from .v33_specials import StrategicHeuristicV33
 
@@ -377,8 +377,10 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                     heading = world_heading(there[0] - here[0], there[1] - here[1])
                 if heading is None:
                     heading = self._path_heading(walk, (e.pos,), here, UNIT_RADIUS[HUNTER])
-            elif role in ("south", "east"):
-                post = self._exit_post(role)
+            elif role in ("south", "east", "storage", "field"):
+                post = self._exit_post(role) if role in ("south", "east") else self._zone_post(role, prey)
+                if not post:
+                    continue
                 if not all(walk[p] for p in post):
                     continue
                 dist = self._distance_to(walk, post)
@@ -398,3 +400,29 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
             lab = labels[u.name]
             labels[u.name] = AnyAngleLabel(lab.mask, True, lab.kind, lab.target, lab.goals, False, heading)
             self._count("role_" + role)
+
+    def _zone_post(self, role, prey):
+        """``storage``: the enemy storage cell nearest the enemy units out of base (their next deposit);
+        ``field``: the cell with the most battery value within 2 tiles (the richest pickup area)."""
+        ctx = self._teach_ctx
+        graphic, walk = ctx["graphic"], self._teach_walkable
+        if role == "storage":
+            cells = np.argwhere((graphic[..., STORAGE_ENEMY] > 0.5) & walk)
+            if not len(cells):
+                return ()
+            if prey:
+                pts = np.array([e.pos for e in prey], np.float32)
+                d = np.sqrt(((cells[:, None, :] - pts[None]) ** 2).sum(-1)).min(1)
+                c = cells[int(np.argmin(d))]
+            else:
+                c = cells[0]
+            return ((int(c[0]), int(c[1])),)
+        bat = graphic[..., BATTERY].astype(np.float32)
+        if bat.max() <= 0:
+            return ()
+        from numpy.lib.stride_tricks import sliding_window_view
+        pad = np.pad(bat, 2)
+        dens = sliding_window_view(pad, (5, 5)).sum((-1, -2))
+        dens = np.where(walk, dens, -1)
+        r, c = np.unravel_index(int(np.argmax(dens)), dens.shape)
+        return ((int(r), int(c)),)
