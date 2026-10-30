@@ -190,7 +190,7 @@ def raw_margin(t, cand, opps):
 def load_state():
     if STATE.exists():
         return json.loads(STATE.read_text())
-    seed = resolve_descriptor("V34") + ",reserve_count=2"
+    seed = resolve_descriptor("V34a")
     return {"gen": 0, "pool": {"B0": seed}, "champion": "B0", "counter": None, "phase": "improve", "stale": 0,
             "history": []}
 

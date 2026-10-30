@@ -45,6 +45,8 @@ ALIASES = {
 # Balance patch (max 2 Hunters per team): V33 with its Hunter knobs in the new ranges (same behaviour as V33)
 ALIASES["V33bp"] = ALIASES["V33"].replace("hunter_quota=4", "hunter_quota=2")
 ALIASES["V34"] = ALIASES["V33bp"].replace("strategic_v33:", "strategic_v34:")
+# V34a: + two staged reserves and cap_sync (reports/bp: +10 vs V34 + reserve_count=2, side gap 26 -> 24)
+ALIASES["V34a"] = ALIASES["V34"] + ",reserve_count=2,cap_sync=true,cap_enter=0.2"
 
 
 def parse_value(text: str):
@@ -199,6 +201,8 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("dom_margin", "int", 1, 2, "evasion", "enemy Hunters out minus ours that counts as dominated (V33)"),
     _k("h_evade_radius", "float", 1.0, 6.0, "hunters", "tiles: an outnumbered Hunter is repelled by enemy Hunters this close (V33; -1 = off)"),
     _k("carrier_delay", "float", 0.0, 30.0, "race", "s: no Carrier before this (0 = off; V34)"),
+    _k("cap_sync", "bool", 0, 1, "structural", "hold extra walkers out of the sanctuary while the Hunter cap is full (V34)", True),
+    _k("cap_enter", "float", 0.1, 0.6, "race", "tiles: Collectors this close to the sanctuary count as entering (V34 cap_sync)"),
     _k("carrier_on_monopoly", "bool", 0, 1, "race", "carrier_delay ends early once we hold a Hunter monopoly (V34)"),
     _k("h_trade_up", "bool", 0, 1, "structural", "when we have more Hunters, the closest pair becomes a strike (V33)", True),
     # -- structural switches (sampled only with structural=True)
