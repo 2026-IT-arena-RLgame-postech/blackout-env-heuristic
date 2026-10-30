@@ -28,7 +28,7 @@ import numpy as np
 
 from ..env.constants import MAX_HUNTERS, unit_index
 from .any_angle import UNIT_RADIUS, AnyAngleLabel, pixel_position, world_heading
-from .strategic import COLLECTOR, HUNTER, SITE_HUNTER
+from .strategic import CARRIER, COLLECTOR, HUNTER, SITE_HUNTER
 from .v17_planner import MATCH_SECONDS
 from .v33_specials import StrategicHeuristicV33
 
@@ -36,8 +36,10 @@ from .v33_specials import StrategicHeuristicV33
 class StrategicHeuristicV34(StrategicHeuristicV33):
     def __init__(self, *, carrier_delay: float = 0.0, carrier_on_monopoly: bool = True, cap_sync: bool = False,
                  cap_enter: float = 0.3, storm_units: int = 0, storm_after: float = 6.0, race_second: bool = False,
-                 rs_radius: float = 1.5, rs_wait: float = 0.6, early_reserve: float = 0.0, **kwargs):
+                 rs_radius: float = 1.5, rs_wait: float = 0.6, early_reserve: float = 0.0,
+                 carrier_retreat: float = 0.0, **kwargs):
         super().__init__(**kwargs)
+        self.carrier_retreat = float(carrier_retreat)
         self.early_reserve = float(early_reserve)
         self.race_second = bool(race_second)
         self.rs_radius = float(rs_radius)
@@ -121,6 +123,8 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
 
     def teach(self, obs):
         labels = super().teach(obs)
+        if self.carrier_retreat > 0:
+            self._retreat_carriers(labels)
         if self._cap_hold or self._cap_out:
             for n in list(labels):
                 lab = labels[n]
@@ -208,3 +212,29 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
             st = states[row_for[n]]
             self._staged_xy.add((float(st[0]), float(st[1])))
             self._count("early_reserve")
+
+    # ------------------------------------------------------------------ carrier retreat
+
+    def _retreat_carriers(self, labels):
+        """A Carrier outside our base runs home while an enemy Hunter (out of its base) is within
+        ``carrier_retreat`` tiles: Hunters are as fast as Carriers and our base is closed to them."""
+        ctx = self._teach_ctx
+        hunters = [e for e in ctx["enemies"] if e.cls == HUNTER and not e.in_base]
+        if not hunters:
+            return
+        shape = ctx["shape"]
+        base = self._cached_base_mask(ctx["ally_spawn"], shape)
+        tiles = None
+        for u in ctx["own"]:
+            if u.cls != CARRIER or u.name not in labels or base[u.pos]:
+                continue
+            here = pixel_position(ctx["states"][u.row], shape)
+            if min(np.hypot(here[0] - h.pos[0], here[1] - h.pos[1]) for h in hunters) > self.carrier_retreat:
+                continue
+            if tiles is None:
+                tiles = tuple((int(r), int(c)) for r, c in np.argwhere(base & ctx["walkable"]))
+            heading = self._path_heading(ctx["walkable"], tiles, here, UNIT_RADIUS[CARRIER])
+            if heading is not None:
+                lab = labels[u.name]
+                labels[u.name] = AnyAngleLabel(lab.mask, True, lab.kind, lab.target, lab.goals, False, heading)
+                self._count("carrier_retreat")
