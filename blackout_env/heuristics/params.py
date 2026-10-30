@@ -215,6 +215,7 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("east_engage", "float", 1.5, 6.0, "hunters", "tiles: the east-post Hunter engages enemies this close (V34)"),
     _k("raid_value", "float", 1.0, 4.0, "hunters", "raid: preference for cargo-holding prey (path distance divisor; V34)"),
     _k("raid_carrier", "float", 0.5, 4.0, "hunters", "raid: preference for enemy Carriers (path distance divisor; V34)"),
+    _k("raid_lead", "float", 0.0, 1.5, "hunters", "raid: intercept lead (x the prey's velocity over the closing steps; 0 = chase; V34)"),
     _k("carrier_on_monopoly", "bool", 0, 1, "race", "carrier_delay ends early once we hold a Hunter monopoly (V34)"),
     _k("h_trade_up", "bool", 0, 1, "structural", "when we have more Hunters, the closest pair becomes a strike (V33)", True),
     # -- structural switches (sampled only with structural=True)

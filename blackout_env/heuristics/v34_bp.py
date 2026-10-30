@@ -53,8 +53,10 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  rs_radius: float = 1.5, rs_wait: float = 0.6, early_reserve: float = 0.0,
                  carrier_retreat: float = 0.0, camp_path: bool = False, east_post: float = 0.0,
                  east_engage: float = 3.0, hunter_roles: str = "", roles_when: str = "free", raid_value: float = 2.0,
-                 raid_carrier: float = 1.0, **kwargs):
+                 raid_carrier: float = 1.0, raid_lead: float = 0.0, **kwargs):
         super().__init__(**kwargs)
+        self.raid_lead = float(raid_lead)
+        self._prev_enemy: dict[int, tuple[float, float]] = {}
         self.raid_carrier = float(raid_carrier)
         self.hunter_roles = [r for r in str(hunter_roles).replace("+", "/").split("/") if r]
         self.roles_when = str(roles_when)
@@ -341,6 +343,13 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
 
     def _assign_roles(self, labels):
         ctx = self._teach_ctx
+        try:
+            self._roles_body(labels, ctx)
+        finally:
+            shape = ctx["shape"]
+            self._prev_enemy = {e.row: pixel_position(ctx["states"][e.row], shape) for e in ctx["enemies"]}
+
+    def _roles_body(self, labels, ctx):
         if self.roles_when == "free" and any(e.cls == HUNTER and not e.in_base for e in ctx["enemies"]):
             return
         hunters = [u for u in ctx["own"] if u.cls == HUNTER and u.name in labels]
@@ -379,7 +388,16 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                 here = pixel_position(states[u.row], shape)
                 there = pixel_position(states[e.row], shape)
                 heading = None
-                if np.hypot(here[0] - there[0], here[1] - there[1]) < 1.5:
+                gap = float(np.hypot(here[0] - there[0], here[1] - there[1]))
+                prev = self._prev_enemy.get(e.row)
+                if self.raid_lead > 0 and prev is not None and gap < 4.0:
+                    # intercept: aim where the prey will be (its last-decision velocity x the steps to close the gap)
+                    vel = (there[0] - prev[0], there[1] - prev[1])
+                    if float(np.hypot(*vel)) < 0.5:  # not a respawn jump
+                        steps = min(8.0, gap / 0.24) * self.raid_lead
+                        aim = (there[0] + vel[0] * steps, there[1] + vel[1] * steps)
+                        heading = world_heading(aim[0] - here[0], aim[1] - here[1])
+                if heading is None and gap < 1.5:
                     heading = world_heading(there[0] - here[0], there[1] - here[1])
                 if heading is None:
                     heading = self._path_heading(walk, (e.pos,), here, UNIT_RADIUS[HUNTER])
