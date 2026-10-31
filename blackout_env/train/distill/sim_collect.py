@@ -248,6 +248,10 @@ class SimCollectorPool:
         self.group = group
         import multiprocessing as mp
 
+        # spawned workers read these at import: one thread each (numba's parallel render defaults to every core)
+        for var in ("NUMBA_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+            os.environ[var] = "1"
+
         self._executor = ProcessPoolExecutor(workers, mp_context=mp.get_context("spawn"), initializer=_init_worker)
         self._pending: dict[Future, list[MatchTask]] = {}
         self._buffer: list[MatchTask] = []
