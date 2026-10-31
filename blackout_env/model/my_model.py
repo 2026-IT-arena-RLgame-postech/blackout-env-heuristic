@@ -38,6 +38,7 @@ TYPE_GRAPHIC, TYPE_UNIT, TYPE_GLOBAL, TYPE_SPR_CLS = 0, 1, 2, 3
 TEMPORAL_PREFIX = "temporal."  # every temporal-memory parameter's state_dict key starts with this
 
 POLICY_HEADS = ("iqn", "logits")
+OFFICIAL_KEY = "official_obs_marker"  # present iff the net sees only competition information (official/obs_mask.py)
 _PATCH_KEY = "graphic_encoder.patch_embed.weight"  # only a ViT-style (patch4 / patch6) map encoder has it
 _PATCH_STRIDE_KEY = "graphic_encoder.patch_stride"  # marker buffer of the stride-2 patch arms (patch4 vs patch4s2 share a kernel)
 _IQN_KEY = "q_head.tau_proj.0.weight"  # only an IQN head has it (LogitsHead: q_head.in_scale instead)
@@ -174,8 +175,11 @@ class MyModel(nn.Module):
         map_xattn_layers: int = 2,
         map_encoder: str = "cnn",
         unit_extra_dim: int = 0,
+        official_obs: bool = False,
     ) -> None:
         super().__init__()
+        if official_obs:  # the competition's information only (official/obs_mask.py); the key marks the state
+            self.register_buffer(OFFICIAL_KEY, torch.ones(1))
         if map_encoder != "cnn" and map_xattn:
             raise ValueError("map_xattn reads the CNN's feature maps; it needs map_encoder='cnn'")
         if policy_head not in POLICY_HEADS:
@@ -312,6 +316,8 @@ class MyModel(nn.Module):
             k = state[_PATCH_KEY].shape[-1]
             stride = int(state[_PATCH_STRIDE_KEY]) if _PATCH_STRIDE_KEY in state else 4  # only the stride-2 arms store it
             config["map_encoder"] = next(n for n, (kk, ss, _) in PATCH_ENCODERS.items() if (kk, ss) == (k, stride))
+        if OFFICIAL_KEY in state:
+            config["official_obs"] = True
         if any(key.startswith(TEMPORAL_PREFIX) for key in state):
             heads = state["temporal.kda.b_proj.weight"].shape[0]
             config.update(temporal=True, temporal_heads=heads,
@@ -485,9 +491,17 @@ class MyModel(nn.Module):
         outputs = self._heads(vec_out, tokens_out[:, -1], n_quantiles, tau, q_units, angle)
         return outputs if self.temporal is None else (*outputs, new_memory)
 
+    @property
+    def official_obs(self) -> bool:
+        return hasattr(self, OFFICIAL_KEY)
+
     def _trunk(self, graphic, team_state, agent_states, unit_extra=None) -> torch.Tensor:
         """The 48 trunk tokens' post-attention output, [B, 48, hidden]."""
         B = graphic.shape[0]
+        if self.official_obs:  # enemy classes and battery amounts hidden, as in a competition frame
+            from blackout_env.official.obs_mask import mask_canonical
+
+            graphic, team_state, agent_states = mask_canonical(graphic, team_state, agent_states)
         # Features the env does not send, but that measured failures traced back to -- unit
         # occupancy, storage free capacity, fetchable batteries, and each unit's local
         # walkability. Derived here, the one point every caller flows through, so training,

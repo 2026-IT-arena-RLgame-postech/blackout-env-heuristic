@@ -109,6 +109,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--steps", type=int, default=100_000, help="total gradient steps")
     # collector
     p.add_argument("--workers", type=int, default=8)
+    p.add_argument("--official-obs", action="store_true",
+                   help="the student sees only what a competition frame gives (official/obs_mask.py: no enemy classes, no battery amounts)")
     p.add_argument("--sim", action="store_true", help="collect with the simulator (sim_collect.py) instead of Unity")
     p.add_argument("--sim-group", type=int, default=32, help="--sim: matches per worker job, played in lockstep")
     p.add_argument("--time-scale", type=float, default=20.0)
@@ -363,6 +365,11 @@ def load_weights(net: MyModel, state: dict) -> None:
     if "q_head.angle_scale" in state and net.angle_head:  # this run's --angle-arc-bins sets the range
         state = {**state, "q_head.angle_scale": net.state_dict()["q_head.angle_scale"]}
     state = net.with_init_angle_keys(state)
+    from blackout_env.model.my_model import OFFICIAL_KEY
+    if getattr(net, "official_obs", False) and OFFICIAL_KEY not in state:  # a full-information init
+        state = {**state, OFFICIAL_KEY: torch.ones(1)}
+    elif not getattr(net, "official_obs", False) and OFFICIAL_KEY in state:
+        raise ValueError("--init sees competition information only; pass --official-obs to keep it")
     if net.is_temporal and not any(k.startswith(TEMPORAL_PREFIX) for k in state):
         net.load_warm_start(state)  # a stateless checkpoint: the memory block starts as the identity
     else:
@@ -384,7 +391,8 @@ class Learner:
                            policy_head=args.policy_head, angle_head=args.angle_head,
                            angle_arc_bins=args.angle_arc_bins, map_xattn=getattr(args, "map_xattn", None),
                            map_xattn_layers=getattr(args, "map_xattn_layers", 2),
-                           map_encoder=getattr(args, "map_encoder", "cnn")).to(self.device)
+                           map_encoder=getattr(args, "map_encoder", "cnn"),
+                           official_obs=getattr(args, "official_obs", False)).to(self.device)
         self.angle = bool(args.angle_head)
         if args.compile:
             compile_modules(self.net)
