@@ -409,6 +409,17 @@ class TeachLabeller:
         memo[key] = (graphic, walkable, tiles)
         return tiles
 
+    def _walk_bytes(self, walkable: np.ndarray) -> bytes:
+        """``walkable.tobytes()``, memoised per tick and array (the same bytes object keeps its hash)."""
+        memo = self._tick_memo()
+        key = ("walk_bytes", id(walkable))
+        hit = memo.get(key)
+        if hit is not None and hit[0] is walkable:
+            return hit[1]
+        b = walkable.tobytes()
+        memo[key] = (walkable, b)
+        return b
+
     def _distance_to(self, walkable: np.ndarray, tiles: tuple[tuple[int, int], ...] | tuple[int, int]) -> np.ndarray:
         """Path distance from every cell to the nearest of ``tiles`` (one tile or a cluster)."""
         memo = self._tick_memo()
@@ -435,7 +446,7 @@ class TeachLabeller:
     def _teach_distance_to(self, walkable: np.ndarray, tiles) -> np.ndarray:
         if tiles and isinstance(tiles[0], (int, np.integer)):
             tiles = (tuple(tiles),)
-        key = (walkable.tobytes(), tuple(sorted(tiles)))
+        key = (self._walk_bytes(walkable), tuple(sorted(tiles)))
         cached = self._teach_distance_cache.get(key)
         if cached is None:
             # 8-neighbour, no corner cutting => symmetric, so a map from a tile is a map to it.

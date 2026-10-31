@@ -259,6 +259,28 @@ def _best_waypoint(blocked, distance, y, x, radius, margin, step, far_bias):
         return -1, -1
     # ascending value, ties (within 1e-4) to the farther cell
     keys = np.round(values[:n] * 1e4) * 1e3 - far[:n]
+    # Lazy selection: while the smallest remaining key is unique, the sorted order's next entry is
+    # unambiguous, so take it without sorting.  A tie (the quicksort's order among equal keys depends
+    # on the whole array) or too many rejections falls back to the full argsort, which re-checks the
+    # rejected cells (same result).
+    work = keys.copy()
+    for _ in range(6):
+        best = 0
+        ties = 1
+        for i in range(1, n):
+            ki = work[i]
+            if ki < work[best]:
+                best = i
+                ties = 1
+            elif ki == work[best]:
+                ties += 1
+        if ties != 1 or not (work[best] < np.inf):
+            break
+        cy = cells[best] // w
+        cx = cells[best] % w
+        if _segment_clear(blocked, y, x, float(cy), float(cx), required, step):
+            return cy, cx
+        work[best] = np.inf
     order = np.argsort(keys)
     for k in range(n):
         i = order[k]
@@ -988,7 +1010,7 @@ class AnyAngleFieldMixin:
         if not self.field_goals:  # TeachLabeller._distance_to on the octile map
             if tiles and isinstance(tiles[0], (int, np.integer)):
                 tiles = (tuple(tiles),)
-            key = ("octile", walkable.tobytes(), tuple(sorted(tiles)))
+            key = ("octile", self._walk_bytes(walkable), tuple(sorted(tiles)))
             cached = self._teach_distance_cache.get(key)
             if cached is None:
                 octile = super(AnyAngleFieldMixin, self)._distance_map
@@ -1003,7 +1025,7 @@ class AnyAngleFieldMixin:
             return cached
         if tiles and isinstance(tiles[0], (int, np.integer)):
             tiles = (tuple(tiles),)
-        key = (walkable.tobytes(), tuple(sorted(tiles)))
+        key = (self._walk_bytes(walkable), tuple(sorted(tiles)))
         cached = self._teach_distance_cache.get(key)
         if cached is None:
             shared_key = ("field_goal", walkable.shape, key[0], key[1])
