@@ -149,3 +149,13 @@ x18 (48 seeds × 2면, paired):
 
 - 자원 사고: bp_focus/bp_loop가 동시에 돌 때 각자 호스트 한도를 다 써서 4배 과다 (gpu1 64 프로세스). `host_budget`로 수정
   (우리 다른 작업의 워커 수를 빼고 배치 시작). 루프는 g016에서 수동 정지 (최근 세대 이득 ≈0).
+
+## 17:00–18:00 확인 단계 + 증류 시작
+
+- 96시드 확인 (B3 대비): gate_breakout=1 −0.2±2.5, raid_sticky=0.7 −3.5±1.4, stage_by_name+race_search=1 +1.7±2.3,
+  G(gate_split,breakout3,tol0.8) 부분 24시드 −0.5±5.6 → 1차 화면의 +3~+7은 기준 B3의 공통 잡음(같은 시드)으로 보임.
+  다만 궤적상 gate_split은 기지 근처 사망 42→26, 캐리어 사망 11.1→5.0 → 새 시드 조합 평가 f6comb (64→128 seeds)로 판정.
+- bait −6~−9 (보류), raid_idle ≈0, stage_by_name ≈0 (상대가 같은 결정에 반응 진입: 마지막 걸음 진입 규칙).
+- `gate_return` 추가 (기지로 돌아올 때도 안전한 출구로).
+- **증류 D1 시작 (18:00, wsl_gpu)**: 교사 act:B3, init p24c_v321, P24c 레시피 20k steps, 상대 = 패치 후 풀 + B3 섭동 + 옛 학생 + self
+  (`reports/bp/distill/launch.sh`, 출력 wsl ~/bpruns/d1_b3). wsl은 평가 호스트에서 제외.
