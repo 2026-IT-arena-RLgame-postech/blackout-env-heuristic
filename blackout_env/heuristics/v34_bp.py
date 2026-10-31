@@ -94,7 +94,7 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  raid_carrier: float = 1.0, raid_lead: float = 0.0, race_search: int = 0, rs_horizon: int = 10,
                  rs_trigger: float = 1.2, stage_by_name: bool = False, gate_split: bool = False,
                  gate_wait: float = 0.3, gate_tol: float = 0.4, gate_detour: float = 0.3, gate_commit: float = 4.0,
-                 gate_breakout: int = 2, raid_idle: str = "", raid_sticky: float = 1.0, bait: float = 0.0,
+                 gate_breakout: int = 2, gate_return: float = 0.0, raid_idle: str = "", raid_sticky: float = 1.0, bait: float = 0.0,
                  bait_reach: float = 5.0, **kwargs):
         super().__init__(**kwargs)
         self.stage_by_name = bool(stage_by_name)
@@ -109,6 +109,7 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
         self.gate_detour = float(gate_detour)
         self.gate_commit = float(gate_commit)
         self.gate_breakout = int(gate_breakout)
+        self.gate_return = float(gate_return)
         self._gate_of: dict[str, int] = {}
         self._gate_cache: dict = {}
         self._stage_hold: set[str] = set()
@@ -294,6 +295,9 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
             if not base[unit.pos]:
                 g = self._gate_of.get(unit.name)
                 if g is None:
+                    if self.gate_return > 0 and dist_base[unit.pos] <= self.gate_return and any(
+                            base[q] for tiles, _ in g_set for q in tiles):
+                        self._return_gate(unit, g_set, gates, masks, h_time, f_own, walk, states, shape, labels)
                     continue
                 if dist_base[unit.pos] > self.gate_commit:
                     del self._gate_of[unit.name]
@@ -351,6 +355,25 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                 labels[name] = opts[0][2]
                 self._gate_of[name] = opts[0][1]
                 self._count("gate_breakout")
+
+    def _return_gate(self, unit, g_set, gates, masks, h_time, f_own, walk, states, shape, labels):
+        """Heading home (a goal inside the base): come in through the exit we reach soonest before the Hunters."""
+        speed = 6.0 if unit.cls == CARRIER else 4.0
+        best = None
+        for k in range(len(gates)):
+            closed = np.zeros_like(walk)
+            for j, m in enumerate(masks):
+                if j != k:
+                    closed |= m
+            margin = h_time[k] - f_own[k][unit.pos] / speed
+            if best is not None and margin <= best[0]:
+                continue
+            lab = self._label(states[unit.row], states, g_set, walk & ~closed, shape)
+            if lab.valid:
+                best = (margin, lab)
+        if best is not None:
+            labels[unit.name] = best[1]
+            self._count("gate_return")
 
     def _stage_holds(self, controlled, row_for, states, graphic, walkable):
         """V27's reserve hold by unit name: stacked walkers share coordinates, so the xy test also froze the race

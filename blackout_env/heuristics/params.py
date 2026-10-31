@@ -226,6 +226,7 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("gate_tol", "float", 0.0, 1.5, "gate", "margin tolerance for spreading over exits (V34)"),
     _k("gate_commit", "float", 2.0, 8.0, "gate", "tiles from the base a unit keeps its exit (V34)"),
     _k("gate_breakout", "int", 1, 4, "gate", "waiting units that leave together (V34)"),
+    _k("gate_return", "float", 0.0, 12.0, "gate", "path tiles from the base within which units heading home pick the safest entry (0 = off; V34)"),
     _k("carrier_on_monopoly", "bool", 0, 1, "race", "carrier_delay ends early once we hold a Hunter monopoly (V34)"),
     _k("h_trade_up", "bool", 0, 1, "structural", "when we have more Hunters, the closest pair becomes a strike (V33)", True),
     # -- structural switches (sampled only with structural=True)
