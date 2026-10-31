@@ -39,6 +39,8 @@ class Team(container.TeamContainer):
 
 rc.MpsDaemon = Mps
 rc.TeamContainer = Team
+if os.environ.get("COMP_NO_RENDER"):  # --record keeps the replay .npz files, skips the 1x video rendering
+    rc.render_videos = lambda *a, **k: None
 
 if __name__ == "__main__":
     rc.main()
