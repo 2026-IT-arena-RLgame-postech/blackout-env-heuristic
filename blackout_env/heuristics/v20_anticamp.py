@@ -26,6 +26,8 @@ heuristic that plays it.
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 from .strategic import HUNTER
@@ -95,13 +97,21 @@ class StrategicHeuristicV20Teach(StrategicHeuristicV17Teach):
         return labels
 
     def _campers(self, ctx, base: np.ndarray) -> list[tuple[int, int]]:
-        cells = np.argwhere(base)
-        if not len(cells):
+        entry = self.__dict__.get("_base_cells_entry")
+        if entry is None or entry[0] is not base or base.flags.writeable:
+            entry = (base, [tuple(c) for c in np.argwhere(base).tolist()])
+            if not base.flags.writeable:  # (read-only: the cached base masks never change)
+                self._base_cells_entry = entry
+        cells = entry[1]
+        if not cells:
             return []
+        # (exact integer squared distances: sqrt is monotonic and correctly rounded, so this is the
+        # old float64 ``sqrt(((cells - pos) ** 2).sum(1)).min() <= camp_tiles``)
+        limit = self.camp_tiles
         return [
             enemy.pos for enemy in ctx["enemies"]
             if enemy.cls == HUNTER and not enemy.in_base
-            and float(np.sqrt(((cells - np.array(enemy.pos)) ** 2).sum(1)).min()) <= self.camp_tiles
+            and math.sqrt(min((enemy.pos[0] - r) ** 2 + (enemy.pos[1] - c) ** 2 for r, c in cells)) <= limit
         ]
 
     @staticmethod
