@@ -13,3 +13,8 @@ V34b    -21.9±3.5  -47.8±3.4  -19.2±3.7    --      avg -29.7
 11-01 01:24:42 f11_c: 4 cands (4 to play) x 2 opps x 96 seeds; mac:14w, poscat_gpu1:16w
 11-01 01:32:01 f11 confirm: -0.4±2.2; -1.8±2.6; -2.4±2.3
 11-01 01:32:29 f12_s: 5 cands (5 to play) x 2 opps x 48 seeds; mac:15w, poscat_gpu1:16w
+11-01 02:24:46 f13_s: 5 cands (5 to play) x 3 opps x 48 seeds; mac:15w, poscat_gpu1:16w
+11-01 02:58:45 f14_s: 4 cands (4 to play) x 3 opps x 48 seeds; mac:16w, poscat_gpu1:16w
+11-01 03:07:26 f14 screen: +27.9±2.6; -10.3±3.5; -10.6±4.0
+11-01 03:07:28 f14_c: 3 cands (3 to play) x 3 opps x 96 seeds; mac:13w, poscat_gpu1:16w
+11-01 03:16:22 f14 confirm: +29.4±1.8; -10.6±2.6
