@@ -109,8 +109,9 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--steps", type=int, default=100_000, help="total gradient steps")
     # collector
     p.add_argument("--workers", type=int, default=8)
-    p.add_argument("--official-obs", action="store_true",
-                   help="the student sees only what a competition frame gives (official/obs_mask.py: no enemy classes, no battery amounts)")
+    p.add_argument("--official-obs", type=int, nargs="?", const=1, default=0,
+                   help="the student sees only competition information (official/obs_mask.py): 1 = no enemy classes and "
+                        "no battery amounts, 2 = no battery amounts (enemy classes from the ONNX state tracker)")
     p.add_argument("--sim", action="store_true", help="collect with the simulator (sim_collect.py) instead of Unity")
     p.add_argument("--sim-group", type=int, default=32, help="--sim: matches per worker job, played in lockstep")
     p.add_argument("--time-scale", type=float, default=20.0)
@@ -366,8 +367,8 @@ def load_weights(net: MyModel, state: dict) -> None:
         state = {**state, "q_head.angle_scale": net.state_dict()["q_head.angle_scale"]}
     state = net.with_init_angle_keys(state)
     from blackout_env.model.my_model import OFFICIAL_KEY
-    if getattr(net, "official_obs", False) and OFFICIAL_KEY not in state:  # a full-information init
-        state = {**state, OFFICIAL_KEY: torch.ones(1)}
+    if getattr(net, "official_obs", False):  # this run's mode (a full-information or other-mode init)
+        state = {**state, OFFICIAL_KEY: net.state_dict()[OFFICIAL_KEY].clone()}
     elif not getattr(net, "official_obs", False) and OFFICIAL_KEY in state:
         raise ValueError("--init sees competition information only; pass --official-obs to keep it")
     if net.is_temporal and not any(k.startswith(TEMPORAL_PREFIX) for k in state):

@@ -175,11 +175,12 @@ class MyModel(nn.Module):
         map_xattn_layers: int = 2,
         map_encoder: str = "cnn",
         unit_extra_dim: int = 0,
-        official_obs: bool = False,
+        official_obs: int = 0,
     ) -> None:
         super().__init__()
         if official_obs:  # the competition's information only (official/obs_mask.py); the key marks the state
-            self.register_buffer(OFFICIAL_KEY, torch.ones(1))
+            # value = mode: 1 = enemy classes + battery amounts hidden, 2 = battery amounts only (classes tracked)
+            self.register_buffer(OFFICIAL_KEY, torch.full((1,), float(int(official_obs))))
         if map_encoder != "cnn" and map_xattn:
             raise ValueError("map_xattn reads the CNN's feature maps; it needs map_encoder='cnn'")
         if policy_head not in POLICY_HEADS:
@@ -317,7 +318,7 @@ class MyModel(nn.Module):
             stride = int(state[_PATCH_STRIDE_KEY]) if _PATCH_STRIDE_KEY in state else 4  # only the stride-2 arms store it
             config["map_encoder"] = next(n for n, (kk, ss, _) in PATCH_ENCODERS.items() if (kk, ss) == (k, stride))
         if OFFICIAL_KEY in state:
-            config["official_obs"] = True
+            config["official_obs"] = int(round(float(state[OFFICIAL_KEY].reshape(-1)[0])))
         if any(key.startswith(TEMPORAL_PREFIX) for key in state):
             heads = state["temporal.kda.b_proj.weight"].shape[0]
             config.update(temporal=True, temporal_heads=heads,
@@ -495,13 +496,17 @@ class MyModel(nn.Module):
     def official_obs(self) -> bool:
         return hasattr(self, OFFICIAL_KEY)
 
+    @property
+    def official_mode(self) -> int:
+        return int(round(float(getattr(self, OFFICIAL_KEY)[0]))) if self.official_obs else 0
+
     def _trunk(self, graphic, team_state, agent_states, unit_extra=None) -> torch.Tensor:
         """The 48 trunk tokens' post-attention output, [B, 48, hidden]."""
         B = graphic.shape[0]
         if self.official_obs:  # enemy classes and battery amounts hidden, as in a competition frame
             from blackout_env.official.obs_mask import mask_canonical
 
-            graphic, team_state, agent_states = mask_canonical(graphic, team_state, agent_states)
+            graphic, team_state, agent_states = mask_canonical(graphic, team_state, agent_states, self.official_mode)
         # Features the env does not send, but that measured failures traced back to -- unit
         # occupancy, storage free capacity, fetchable batteries, and each unit's local
         # walkability. Derived here, the one point every caller flows through, so training,

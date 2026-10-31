@@ -33,7 +33,10 @@ UNIT_PRE = 9          # official vector block per unit: x, y, team_sign, held on
 CLASS_AT = 90         # own class one-hot (3), then own score, opponent score, time left
 
 
-def mask_canonical(graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor):
+MASK_ALL, MASK_BATTERY = 1, 2  # official_obs modes: hide enemy classes + battery amounts / battery amounts only
+
+
+def mask_canonical(graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor, mode: int = MASK_ALL):
     """Fork canonical inputs [B,13,H,W], [B,4], [B,10,12] -> the same with only official information.
     Idempotent (the export adapter produces already-masked tensors)."""
     c = torch.as_tensor(BATTERY_CONST, dtype=graphic.dtype, device=graphic.device)
@@ -42,7 +45,7 @@ def mask_canonical(graphic: torch.Tensor, team_state: torch.Tensor, agent_states
     held_bat = agent_states[..., 4:5]
     enemy = torch.zeros_like(agent_states[:, :, 9:12])
     own_rows = (torch.arange(N_UNITS, device=agent_states.device) < N_TEAM).view(1, N_UNITS, 1)
-    classes = torch.where(own_rows, agent_states[..., 9:12], enemy)
+    classes = torch.where(own_rows, agent_states[..., 9:12], enemy) if mode == MASK_ALL else agent_states[..., 9:12]
     tl = team_state[:, 2:3]
     absorb = 1.0 - torch.remainder((1.0 - tl) * EPISODE_S, ABSORB_S) / ABSORB_S
     team_state = torch.cat([team_state[:, :3], absorb, team_state[:, 4:]], dim=1)
@@ -65,9 +68,17 @@ class OfficialTeamGraph(nn.Module):
         self.register_buffer("centres", 2 * math.pi * k / self.bins, persistent=False)
         self.register_buffer("static", static.to(torch.float32), persistent=False)
         self.register_buffer("roll", torch.tensor([(u + N_TEAM) % N_UNITS for u in range(N_UNITS)]), persistent=False)
+        self.register_buffer("regions", region_grid(), persistent=False)
+        self.tracked = getattr(net, "official_mode", 1) == MASK_BATTERY
 
-    def forward(self, vector: torch.Tensor, graphic: torch.Tensor) -> torch.Tensor:
-        fork_g, t, a, b = self.canonical(vector, graphic)
+    def forward(self, vector: torch.Tensor, graphic: torch.Tensor, state_in: torch.Tensor | None = None):
+        """mode 1: (vector, graphic) -> action; mode 2 (enemy classes tracked): (vector, graphic, state_in [5, S])
+        -> (action, state_out [5, S])."""
+        state_out = None
+        if self.tracked:
+            fork_g, t, a, b, state_out = self.canonical_tracked(vector, graphic, state_in)
+        else:
+            fork_g, t, a, b = self.canonical(vector, graphic)
         q, *_, offsets = self.net(fork_g.unsqueeze(0), t.unsqueeze(0), a.unsqueeze(0), q_units=N_TEAM, angle=True)
         q, offsets = q[0], offsets[0]
         best = torch.argmax(q, dim=-1)
@@ -76,7 +87,20 @@ class OfficialTeamGraph(nn.Module):
         angle = self.centres.index_select(0, k) + torch.gather(offsets, 1, k.unsqueeze(-1)).squeeze(-1)
         move = torch.stack([torch.cos(angle), torch.sin(angle)], dim=-1)
         move = torch.where(stand.unsqueeze(-1), torch.zeros_like(move), move)
-        return torch.where(b, move.flip(-1), move)
+        move = torch.where(b, move.flip(-1), move)
+        return move if state_out is None else (move, state_out)
+
+    def canonical_tracked(self, vector, graphic, state_in):
+        """``canonical`` with the enemy classes from the tracker (state: the freshest row, i.e. the largest step)."""
+        fork_g, t, a, b = self.canonical(vector, graphic)
+        r = torch.argmax(vector[:, 2].abs())
+        v0 = vector.index_select(0, r.reshape(1))[0]
+        pos = v0[:N_UNITS * UNIT_PRE].reshape(N_UNITS, UNIT_PRE)[:, :2] * 24.0
+        fresh = state_in.index_select(0, torch.argmax(state_in[:, _STEP]).reshape(1))[0]
+        cls_abs, new_state = track_classes(fresh, pos, vector[:, CLASS_AT:CLASS_AT + 3], b, self.regions)
+        cls_can = torch.where(b, cls_abs.index_select(0, self.roll), cls_abs)
+        a = torch.cat([a[:, :9], cls_can, a[:, 12:]], dim=-1)
+        return fork_g, t, a, b, new_state.unsqueeze(0).expand(vector.shape[0], STATE_SIZE).contiguous()
 
     def canonical(self, vector: torch.Tensor, graphic: torch.Tensor):
         """Official team inputs -> masked fork canonical (graphic [13,24,24], team_state [4], agents [10,12], is_b)."""
