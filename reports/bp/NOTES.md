@@ -205,3 +205,10 @@ x18 (48 seeds × 2면, paired):
   (불일치 1개 = 시리즈 첫 경기: 첫 에피소드 맵이 시드를 안 따름).
 - **numba 캐시 주의**: batch.py의 캐시가 core.py 변경을 추적 안 함 → core 변경 후 `find blackout_env -name '*.nb[ic]' -delete` (모든 호스트).
 - 증류: D6 (모드3, 포크 충돌) 10k → **D7 (모드3, 공식 충돌) gpu2 ~/bpruns/d7_off** 시작.
+
+## 03:30–04:00 (세션 압축 전 현황)
+
+- D7 (모드 3, 공식 충돌) gpu2 GPU0 진행 중 (~/bpruns/d7_off, 30k steps, ~17:05 UTC 완료 예상).
+- 교사 개선 서브에이전트: worktree ../blackout-env-teach (branch feat/bp-teacher), mac+gpu1 CPU, 새 별칭(B4) 보고 예정.
+  공식 충돌에서 B3 vs V17 +46.8±10.1 (16), 2 s 이상 끼임 0.
+- RL 준비: reports/bp/rl/ppo_bp1.sh (INIT=d7_final, GPU=2,0 비동기 2-GPU), 별칭 B3/C0 추가, ppo_league_b.sh에 EVAL_OPPS.
