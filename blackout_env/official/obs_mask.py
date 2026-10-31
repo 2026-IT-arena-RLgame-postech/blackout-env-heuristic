@@ -39,9 +39,9 @@ MASK_ALL, MASK_BATTERY = 1, 2  # official_obs modes: hide enemy classes + batter
 def mask_canonical(graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor, mode: int = MASK_ALL):
     """Fork canonical inputs [B,13,H,W], [B,4], [B,10,12] -> the same with only official information.
     Idempotent (the export adapter produces already-masked tensors)."""
-    c = torch.as_tensor(BATTERY_CONST, dtype=graphic.dtype, device=graphic.device)
+    # constants as Python scalars: no host->device copy (CUDA-graph capture in RL forbids it)
     bat = graphic[:, 8:9]
-    hidden_bat = torch.where(bat > 0, c, torch.zeros_like(bat))
+    hidden_bat = (bat > 0).to(bat.dtype) * BATTERY_CONST
     if mode == 3:  # storage amounts are tracked exactly (track_storage): only the floor's are unknown
         store = (graphic[:, 6:7] > 0) | (graphic[:, 7:8] > 0)
         hidden_bat = torch.where(store, bat, hidden_bat)
@@ -53,7 +53,7 @@ def mask_canonical(graphic: torch.Tensor, team_state: torch.Tensor, agent_states
     tl = team_state[:, 2:3]
     absorb = 1.0 - torch.remainder((1.0 - tl) * EPISODE_S, ABSORB_S) / ABSORB_S
     team_state = torch.cat([team_state[:, :3], absorb, team_state[:, 4:]], dim=1)
-    agent_states = torch.cat([agent_states[..., :4], torch.where(held_bat > 0, c.to(agent_states.dtype), torch.zeros_like(held_bat)),
+    agent_states = torch.cat([agent_states[..., :4], (held_bat > 0).to(held_bat.dtype) * BATTERY_CONST,
                               agent_states[..., 5:9], classes, agent_states[..., 12:]], dim=-1)
     return graphic, team_state, agent_states
 
