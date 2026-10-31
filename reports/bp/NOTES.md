@@ -205,3 +205,13 @@ x18 (48 seeds × 2면, paired):
   (불일치 1개 = 시리즈 첫 경기: 첫 에피소드 맵이 시드를 안 따름).
 - **numba 캐시 주의**: batch.py의 캐시가 core.py 변경을 추적 안 함 → core 변경 후 `find blackout_env -name '*.nb[ic]' -delete` (모든 호스트).
 - 증류: D6 (모드3, 포크 충돌) 10k → **D7 (모드3, 공식 충돌) gpu2 ~/bpruns/d7_off** 시작.
+
+## 2026-11-01 official-collision teacher round (feat/bp-teacher)
+
+- rr0 (48 seeds, official clamp): C0 +40.6 avg, B3 -4.9, V34c -6.0, V34b -29.7; C0 beats B3 by +36 (tie-order exploit below).
+- Wall slowdown is a non-issue (0.06 % of command steps in the first 10 s; later only idle units pressing base corners).
+- Agent update order (3,6,2,7,5,8,4,9,1,0) decides ties: B's racers 6,7 act before A's 1,2, so a hunter one tick earlier
+  wipes the stacked collectors at the entrance. `race_order=true` picks Hunter walkers/reserves by that order (A: units 3,2).
+  C0R = C0+race_order: vs B3 +76.7, V34c +73.4, V34b +77.0, C0 -1.3+-4.0 (64) / -4.9+-3.1 (96). B3R: +12.6 vs C0, loses to C0R -28.7.
+- race_beam (beam-searched open-loop race walk, arrives 1 tick earlier at 98): ~0 vs C0, much worse vs B3 (no wipe) -> off.
+- CEM around C0R (race,hunters,evasion): best confirmed +2.6+-1.4 over pool: noise level.
