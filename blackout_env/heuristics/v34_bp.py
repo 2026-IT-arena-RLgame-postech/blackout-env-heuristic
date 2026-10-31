@@ -48,9 +48,41 @@ import numpy as np
 
 from ..env.constants import MAX_HUNTERS, unit_index
 from .any_angle import UNIT_RADIUS, AnyAngleLabel, pixel_position, world_heading
+from .teach import _invalid
 from .strategic import BATTERY, CARRIER, COLLECTOR, HUNTER, SITE_HUNTER, STORAGE_ENEMY
 from .v17_planner import MATCH_SECONDS
 from .v33_specials import StrategicHeuristicV33
+
+
+def _grid_field(walk, sources):
+    """Octile path distance (tiles) from a set of cells over ``walk`` (no corner cutting); inf where unreachable."""
+    import heapq
+    H_, W_ = walk.shape
+    dist = np.full((H_, W_), np.inf)
+    heap = []
+    for q in sources:
+        dist[q] = 0.0
+        heap.append((0.0, q[0], q[1]))
+    heapq.heapify(heap)
+    r2 = 2 ** 0.5
+    while heap:
+        d, r, c = heapq.heappop(heap)
+        if d > dist[r, c]:
+            continue
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
+            nr, nc = r + dr, c + dc
+            if not (0 <= nr < H_ and 0 <= nc < W_) or not walk[nr, nc]:
+                continue
+            if dr and dc:
+                if not (walk[r + dr, c] and walk[r, c + dc]):
+                    continue
+                nd = d + r2
+            else:
+                nd = d + 1.0
+            if nd < dist[nr, nc]:
+                dist[nr, nc] = nd
+                heapq.heappush(heap, (nd, nr, nc))
+    return dist
 
 
 class StrategicHeuristicV34(StrategicHeuristicV33):
@@ -60,9 +92,19 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  carrier_retreat: float = 0.0, camp_path: bool = False, east_post: float = 0.0,
                  east_engage: float = 3.0, hunter_roles: str = "", roles_when: str = "free", raid_value: float = 2.0,
                  raid_carrier: float = 1.0, raid_lead: float = 0.0, race_search: int = 0, rs_horizon: int = 10,
-                 rs_trigger: float = 1.2, stage_by_name: bool = False, **kwargs):
+                 rs_trigger: float = 1.2, stage_by_name: bool = False, gate_split: bool = False,
+                 gate_wait: float = 0.3, gate_tol: float = 0.4, gate_detour: float = 0.3, gate_commit: float = 4.0,
+                 gate_breakout: int = 2, **kwargs):
         super().__init__(**kwargs)
         self.stage_by_name = bool(stage_by_name)
+        self.gate_split = bool(gate_split)
+        self.gate_wait = float(gate_wait)
+        self.gate_tol = float(gate_tol)
+        self.gate_detour = float(gate_detour)
+        self.gate_commit = float(gate_commit)
+        self.gate_breakout = int(gate_breakout)
+        self._gate_of: dict[str, int] = {}
+        self._gate_cache: dict = {}
         self._stage_hold: set[str] = set()
         self.race_search = int(race_search)
         self.rs_horizon = int(rs_horizon)
@@ -165,6 +207,144 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
         for _, _, n in sorted(near)[slots:]:
             self._cap_hold.add(n)
         return goals
+
+    # ------------------------------------------------------------------ gate_split
+
+    def _labels(self, ctx, goals, move_walkable):
+        labels = super()._labels(ctx, goals, move_walkable)
+        if self.gate_split:
+            self._split_gates(ctx, goals, move_walkable, labels)
+        return labels
+
+    def _gate_geometry(self, base, walk):
+        key = (base.tobytes(), walk.tobytes())
+        hit = self._gate_cache.get(key)
+        if hit is not None:
+            return hit
+        H_, W_ = walk.shape
+        cells = set()
+        for r, c in np.argwhere(base):
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                q = (r + dr, c + dc)
+                if 0 <= q[0] < H_ and 0 <= q[1] < W_ and walk[q] and not base[q]:
+                    cells.add((int(q[0]), int(q[1])))
+        gates, seen = [], set()
+        for c0 in sorted(cells):
+            if c0 in seen:
+                continue
+            comp, stack = [], [c0]
+            seen.add(c0)
+            while stack:
+                q = stack.pop()
+                comp.append(q)
+                for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        nb = (q[0] + dr, q[1] + dc)
+                        if nb in cells and nb not in seen:
+                            seen.add(nb)
+                            stack.append(nb)
+            gates.append(tuple(sorted(comp)))
+        enemy_map = walk & ~base
+        fields_enemy = [_grid_field(enemy_map, g) for g in gates]
+        fields_own = [_grid_field(walk, g) for g in gates]
+        outside = [_grid_field(enemy_map, g) for g in gates]  # gate -> anywhere outside the base
+        hit = (gates, fields_enemy, fields_own, outside, enemy_map)
+        if len(self._gate_cache) > 8:
+            self._gate_cache.clear()
+        self._gate_cache[key] = hit
+        return hit
+
+    def _split_gates(self, ctx, goals, walk, labels):
+        """Leave the base through the exit the enemy Hunters reach latest (time margin), spread units leaving together
+        over different exits, wait inside (enemies cannot enter) while every exit is covered."""
+        base = self._cached_base_mask(ctx["ally_spawn"], ctx["shape"])
+        walk = np.ascontiguousarray(walk, dtype=bool)
+        gates, f_en, f_own, _, enemy_map = self._gate_geometry(base, walk)
+        if len(gates) < 2:
+            return
+        hunters = [e.pos for e in ctx["enemies"] if e.cls == HUNTER and not e.in_base]
+        alive = {u.name for u in ctx["own"]}
+        self._gate_of = {n: g for n, g in self._gate_of.items() if n in alive}
+        if not hunters:
+            self._gate_of.clear()
+            return
+        h_time = [min(f[h] for h in hunters) / 6.0 for f in f_en]
+        states, shape = ctx["states"], ctx["shape"]
+        dist_base = self._gate_cache.get(("db", base.tobytes()))
+        if dist_base is None:
+            dist_base = self._gate_cache[("db", base.tobytes())] = _grid_field(walk, tuple(map(tuple, np.argwhere(base))))
+        masks = []
+        for g in gates:
+            m = np.zeros_like(walk)
+            for q in g:
+                m[q] = True
+            masks.append(m)
+        leaving, used = [], [0] * len(gates)
+        for unit in ctx["own"]:
+            if unit.cls == HUNTER or unit.name not in labels or not labels[unit.name].valid:
+                continue
+            g_set = goals.get(unit.name, ())
+            if not g_set:
+                continue
+            if not base[unit.pos]:
+                g = self._gate_of.get(unit.name)
+                if g is None:
+                    continue
+                if dist_base[unit.pos] > self.gate_commit:
+                    del self._gate_of[unit.name]
+                    continue
+                # keep the committed exit: the other exits stay closed on its plan
+                closed = np.zeros_like(walk)
+                for k, m in enumerate(masks):
+                    if k != g:
+                        closed |= m
+                lab = self._label(states[unit.row], states, g_set, walk & ~closed, shape)
+                if lab.valid:
+                    labels[unit.name] = lab
+                    self._count("gate_keep")
+                continue
+            # inside the base: is the goal outside?  (closing every exit makes it unreachable)
+            speed = 6.0 if unit.cls == CARRIER else 4.0
+            opts = []
+            for k in range(len(gates)):
+                closed = np.zeros_like(walk)
+                for j, m in enumerate(masks):
+                    if j != k:
+                        closed |= m
+                lab = self._label(states[unit.row], states, g_set, walk & ~closed, shape)
+                if not lab.valid:
+                    continue
+                margin = h_time[k] - f_own[k][unit.pos] / speed
+                opts.append([margin, k, lab])
+            if len(opts) < 1:
+                continue
+            leaving.append((unit.name, opts))
+        if not leaving:
+            return
+        waiting = []
+        for name, opts in leaving:
+            best = max(o[0] for o in opts)
+            # spread: among exits within gate_tol of the best margin, the one least used this decision
+            near = [o for o in opts if o[0] >= best - self.gate_tol]
+            near.sort(key=lambda o: (used[o[1]], -o[0]))
+            choice = near[0]
+            if choice[0] < self.gate_wait:
+                waiting.append((name, opts))
+                continue
+            used[choice[1]] += 1
+            labels[name] = choice[2]
+            self._gate_of[name] = choice[1]
+            self._count("gate_go")
+        if waiting and len(waiting) < self.gate_breakout:
+            for name, opts in waiting:
+                labels[name] = _invalid(goals.get(name, ()))
+                self._count("gate_wait")
+        else:
+            for name, opts in waiting:  # break out together, one per exit in turn
+                opts.sort(key=lambda o: (used[o[1]], -o[0]))
+                used[opts[0][1]] += 1
+                labels[name] = opts[0][2]
+                self._gate_of[name] = opts[0][1]
+                self._count("gate_breakout")
 
     def _stage_holds(self, controlled, row_for, states, graphic, walkable):
         """V27's reserve hold by unit name: stacked walkers share coordinates, so the xy test also froze the race
