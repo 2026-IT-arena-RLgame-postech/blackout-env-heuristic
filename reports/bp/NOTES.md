@@ -110,3 +110,11 @@ x18 (48 seeds × 2면, paired):
 - x21 raid_carrier 0.5 / 2 / 3: +5.3±2.9 / −3.7 / −3.5 (vs V34c), vs V34b −0.5 / −2.8 / −3.8 → 무효.
 - 속도: 서브에이전트 #1 (perf/bp-heur-speed 병합 71f480e) 결정당 10–17 % 단축, 9 조합 해시 동일
   (`examples/heur_perf_hash.py --check examples/heur_perf_hash_base.json`).
+
+## 06:25–12:40
+
+- x22 raid_lead 0.5 / 1.0 (가로채기 추격): −4.1 / −2.9 (vs V34c) → 무효. x23 escort(캐리어 호위) 조합: −15 ~ −73 → 보류.
+- 루프 (V34c 기준 g003–g013): improve 확인 대부분 0~+3, **g6 NEW CHAMPION B3** (+4.9±2.1 over pool; V34c + CEM 노브 다수,
+  `h_trade_up=true`, `h_evade_radius=1`, `dom_threat_radius=0.1`, `breakout_units=2`, `opening_seconds≈15`). g5/g9 파훼 실패,
+  **g12 COUNTER C0** (B3 상대 +14.5; `reserve_stage≈0`, `cap_enter 0.142`, `solo_sentry`, `hunt_threshold 0.15`, `h_trade_up`) → 풀 합류.
+- 서브에이전트 속도 최적화 #2 시작 (12:40, branch perf/bp-heur-speed2).
