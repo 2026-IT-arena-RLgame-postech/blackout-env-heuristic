@@ -109,6 +109,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--steps", type=int, default=100_000, help="total gradient steps")
     # collector
     p.add_argument("--workers", type=int, default=8)
+    p.add_argument("--sim", action="store_true", help="collect with the simulator (sim_collect.py) instead of Unity")
+    p.add_argument("--sim-group", type=int, default=32, help="--sim: matches per worker job, played in lockstep")
     p.add_argument("--time-scale", type=float, default=20.0)
     p.add_argument("--opponents", nargs="+", default=["mixture=0.75", "checkpoints=0.25"],
                    help="kind=weight pool drawn per collection match: mixture (all heuristics, V17-V19 perturbed "
@@ -876,7 +878,14 @@ class Run:
         args = self.args
         started = time.time()
         os.environ["BLACKOUT_STUDENT_DEVICE"] = args.collector_device  # spawned workers inherit it
-        with CollectorPool(args.build, args.workers, args.time_scale) as pool:
+        if args.sim:
+            from blackout_env.train.distill.sim_collect import SimCollectorPool
+
+            os.environ["BLACKOUT_SIM_NET_DEVICE"] = args.collector_device
+            pool_cm = SimCollectorPool(args.workers, args.sim_group)
+        else:
+            pool_cm = CollectorPool(args.build, args.workers, args.time_scale)
+        with pool_cm as pool:
             if not self.resumed and args.baseline_eval:
                 self.queue_eval(pool, "eval_teacher")
             self.top_up(pool)
