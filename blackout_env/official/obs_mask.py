@@ -294,31 +294,34 @@ def track_storage(store: torch.Tensor, v0: torch.Tensor, g_abs: torch.Tensor, b:
     """One decision of the storage tracker, absolute frame.  store [STORE_SIZE] (previous), v0 [96] a present row,
     g_abs [11, 24, 24] the pooled id map (rows top-down), b team B, first: first decision of the episode.
     Returns (amount per flat cell x * 24 + y [576], new store)."""
-    amounts, prev_pres = store[:576], store[576:1152] > 0.5
-    prev_scores, prev_held, prev_abs = store[1152:1154], store[1154:1164] > 0.5, store[1164]
+    # (presence / held flags as 0/1 floats: onnxruntime has no Where over bool tensors)
+    amounts, prev_pres_f = store[:576], store[576:1152]
+    prev_scores, prev_held_f, prev_abs = store[1152:1154], store[1154:1164], store[1164]
     # flat cell index x * 24 + y of the pooled map (row = 23 - y, col = x)
     flat = g_abs.flip(1).transpose(1, 2).reshape(11, 576)
-    presence = flat[6] > 0.5
+    presence_f = (flat[6] > 0.5).to(store.dtype)
     special = flat[7:11].amax(dim=0) > 0.5
     blocks = v0[:N_UNITS * UNIT_PRE].reshape(N_UNITS, UNIT_PRE)
     pos = blocks[:, :2] * 24.0
-    held = blocks[:, 4] > 0.5                          # held one-hot index 1 = a battery
+    held_f = (blocks[:, 4] > 0.5).to(store.dtype)      # held one-hot index 1 = a battery
     tile = torch.clamp(torch.floor(pos), 0, 23).to(torch.int64)
     tile_flat = tile[:, 0] * 24 + tile[:, 1]
     # a unit pixel on a tile's centre pixel hides its item: presence unknown there, keep the last one
     px = torch.floor(pos * 4.0)
     on_centre = (px == tile.to(px.dtype) * 4.0 + 2.0).all(dim=1)
     hidden = (torch.nn.functional.one_hot(tile_flat, 576) * on_centre.unsqueeze(1)).amax(dim=0) > 0
-    presence = torch.where(hidden, prev_pres, presence)
+    presence_f = torch.where(hidden, prev_pres_f, presence_f)
     own, opp = v0[CLASS_AT + 3] * 100.0, v0[CLASS_AT + 4] * 100.0
     scores = torch.round(torch.where(b, torch.stack([opp, own]), torch.stack([own, opp])))
     tl = v0[CLASS_AT + 5]
     absorb = 1.0 - torch.remainder((1.0 - tl) * EPISODE_S, ABSORB_S) / ABSORB_S
     amounts = torch.where(first, torch.zeros_like(amounts), amounts)
-    prev_pres = torch.where(first, presence, prev_pres)
+    prev_pres_f = torch.where(first, presence_f, prev_pres_f)
     prev_scores = torch.where(first, scores, prev_scores)
-    prev_held = torch.where(first, held, prev_held)
+    prev_held_f = torch.where(first, held_f, prev_held_f)
     prev_abs = torch.where(first, absorb, prev_abs)
+    presence, prev_pres = presence_f > 0.5, prev_pres_f > 0.5
+    held, prev_held = held_f > 0.5, prev_held_f > 0.5
     reg_cell = region                                   # [576]
     unit_reg = region.index_select(0, tile_flat)       # [10]
     for team in (0, 1):
@@ -343,5 +346,5 @@ def track_storage(store: torch.Tensor, v0: torch.Tensor, g_abs: torch.Tensor, b:
         amounts = amounts + (torch.nn.functional.one_hot(s, 576).to(fill.dtype) * fill.unsqueeze(1)).sum(dim=0)
     absorbed = absorb > prev_abs + 0.5
     amounts = torch.where(absorbed, torch.zeros_like(amounts), amounts)
-    new = torch.cat([amounts, presence.to(amounts.dtype), scores, held.to(amounts.dtype), absorb.reshape(1)])
+    new = torch.cat([amounts, presence_f, scores, held_f, absorb.reshape(1)])
     return amounts, new
