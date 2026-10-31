@@ -605,6 +605,9 @@ def _clamp_circle_square(px, py, r, tx, ty, ext):
     return px, py
 
 
+OFFICIAL_CLAMP = True  # competition build's wall collision (see move_unit); False = our fork's axis-split sliding
+
+
 @njit(cache=True, inline='always')
 def _clamp_axis(M, px, py, dx, dy, r, team):
     """UnitMovementSystem.ClampAxis."""
@@ -637,8 +640,13 @@ def move_unit(S, M, u, ix, iy):
     dy = ny * dt * spd
     r = CLS_WIDTH[ui[u, U_CLS]] / F2  # walls use the unscaled UnitData bound
     x, y = uf[u, 0], uf[u, 1]
-    x, y = _clamp_axis(M, x, y, dx, F0, r, team)
-    x, y = _clamp_axis(M, x, y, F0, dy, r, team)
+    if OFFICIAL_CLAMP:
+        # the official build (ist-tech-AI-games/blackout v1.0.2): one ClampPosition over the whole displacement
+        # (our fork split it into an x then a y pass, against concave-corner lock-ups)
+        x, y = _clamp_axis(M, x, y, dx, dy, r, team)
+    else:
+        x, y = _clamp_axis(M, x, y, dx, F0, r, team)
+        x, y = _clamp_axis(M, x, y, F0, dy, r, team)
     _change_pos(S, M, u, x, y)
     if S[5][G_OVER] == 0:
         _process_interactions(S, M, u, x, y)
