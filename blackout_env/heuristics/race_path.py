@@ -320,6 +320,9 @@ def _best_heading(blocked, nodes, node_g, boxes, inset, required, y, x, base, sp
     return best_a, best_v
 
 
+_BEAM_CACHE: dict = {}  # (map, goal, delta, start) -> open-loop race path (process-wide)
+
+
 class RacePlanner:
     """Exact shortest paths of a circle of ``radius`` from anywhere to a set of goal cells."""
 
@@ -419,12 +422,13 @@ class RacePlanner:
                 if len(hit):
                     a = float(ang[hit[0]])
                     return np.array([math.cos(a), -math.sin(a)], dtype=np.float32)
-        tried = self.__dict__.setdefault("_beam_tried", set())
-        key = (round(y, 3), round(x, 3))
-        if key in tried or self.distance(position) < 10.0:
-            return None
-        tried.add(key)
-        res = self._beam_path(y, x)
+        key = (self.blocked.tobytes(), self.boxes.tobytes(), self.delta, round(y, 3), round(x, 3))
+        if key in _BEAM_CACHE:
+            res = _BEAM_CACHE[key]
+        else:
+            if self.distance(position) < 15.3 or len(_BEAM_CACHE) > 24:
+                return None
+            res = _BEAM_CACHE[key] = self._beam_path(y, x)
         if res is None:
             return None
         tables.append(res)
