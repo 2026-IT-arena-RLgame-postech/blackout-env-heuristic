@@ -242,7 +242,7 @@ class StrategicHeuristicV22Teach(StrategicHeuristicV21Teach):
                 distance = self._distance_to(walkable, tiles)
                 reach = {name: float(distance[self._to_pixel(states[row_for[name]][:2], shape)]) for name in candidates}
                 ranked = sorted((name for name in candidates if math.isfinite(reach[name])),
-                                key=lambda name: (reach[name], unit_index(name)))
+                                key=lambda name: (reach[name], self._rk(name) if role == HUNTER else unit_index(name)))
             for name in ranked[:missing]:
                 goals[name] = ((tiles, "transform"),)
                 taken.add(name)

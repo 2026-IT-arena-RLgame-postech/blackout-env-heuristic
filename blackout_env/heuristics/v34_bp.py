@@ -195,7 +195,7 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                 continue
             d = planner.distance(p)
             if np.isfinite(d) and d <= self.cap_enter:
-                near.append((d, unit_index(n), n))
+                near.append((d, self._rk(n), n))
         slots = max(0, MAX_HUNTERS - hunters)
         if self.race_second and near:
             # let the enemy's walkers transform first (then ours enter onto them: trades), at most rs_wait s
@@ -450,7 +450,7 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                 continue
             d = planner.distance(pixel_position(st, shape))
             if np.isfinite(d):
-                cands.append((d, unit_index(n), n))
+                cands.append((d, self._rk(n), n))
         for _, _, n in sorted(cands)[:need]:
             goals[n] = ((tiles, "transform"),)
             if n not in self.committed:
@@ -487,7 +487,7 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                 continue  # holding is fine: a battery picked up on the way is lost on the transform
             d = planner.distance(pixel_position(st, shape))
             if np.isfinite(d):
-                cands.append((d, unit_index(n), n))
+                cands.append((d, self._rk(n), n))
         for _, _, n in sorted(cands)[:need]:
             goals[n] = ((tiles, "transform"),)
             self.staged.append(n)

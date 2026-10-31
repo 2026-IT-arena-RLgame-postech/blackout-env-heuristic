@@ -72,7 +72,7 @@ class StrategicHeuristicV27(StrategicHeuristicV25):
                 continue
             d = planner.distance(pixel_position(state, shape))
             if np.isfinite(d) and d > lead:
-                cands.append((d, unit_index(name), name))
+                cands.append((d, self._rk(name), name))
         for _, _, name in sorted(cands)[:self.reserve_count]:
             goals[name] = ((tiles, "transform"),)
             self.staged.append(name)
