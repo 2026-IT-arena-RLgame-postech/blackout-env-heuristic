@@ -80,6 +80,22 @@ def free_workers() -> dict[str, int]:
     return out
 
 
+OWN_PROCS = "ps -u $(id -u) -o args= | grep -c '[s]pawn_main'"
+
+
+def host_budget(h) -> int:
+    """Workers a new batch on ``h`` may start now: the host cap and its free cores, minus the worker processes
+    that our other jobs (bp_loop / bp_focus running side by side) already have there."""
+    cores, reserve, _ = HOSTS[h]
+    try:
+        r = sh(OWN_PROCS + "; " + FOREIGN_CPU, h, timeout=30)
+        own_s, foreign_s = (r.stdout.split() + ["999", "999"])[:2] if r.returncode == 0 else ("999", "999")
+        own, foreign = int(own_s), int(foreign_s)
+    except Exception:
+        return 0
+    return max(0, min(max_workers(h, cores) - own, cores - reserve - foreign - own))
+
+
 def sync_code():
     br = subprocess.run(["git", "-C", str(REPO), "branch", "--show-current"], capture_output=True, text=True).stdout.strip()
     for h, (_, _, repo) in HOSTS.items():
@@ -143,7 +159,13 @@ def play(gen, cands, opps, seeds, seed0, must_host_first=()):
                 del queue[:per]
             if not batch:
                 return
-            ok = run_on(h, batch, opps, seeds, seed0, f"{gen}/{h}_{k}", free[h])
+            w = min(free[h], host_budget(h))
+            if w < 2:  # our other jobs fill this host: give the batch back, retry later
+                with lock:
+                    queue[:0] = batch
+                time.sleep(120)
+                continue
+            ok = run_on(h, batch, opps, seeds, seed0, f"{gen}/{h}_{k}", w)
             k += 1
             if not ok:
                 with lock:
