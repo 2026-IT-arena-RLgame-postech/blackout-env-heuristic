@@ -28,6 +28,12 @@ Carrier made at 0.4 s is one walker fewer (it can never become a Hunter).  New k
   its base with the best (cargo bonus ``raid_value``) / path-distance score anywhere on the map, ``south`` / ``east`` =
   hold the enemy base's south (y = 17 row) / east (y 19-20 corridor) exit and strike within ``east_engage``.
   ``roles_when``: ``free`` = while the enemy has no Hunter out of base, ``always``.
+* ``race_search`` (0 = off, else the max delay in decisions): when Collectors (ours or theirs) are within
+  ``rs_trigger`` tiles of the Hunter sanctuary, the exact simulator is built from the observation and every
+  combination of entry delays 0..race_search for our near Collectors (<= 4) is rolled out ``rs_horizon`` decisions
+  against two opponent models (walk straight in / respect the Hunter cap); the combination with the best mean
+  (our Hunters - theirs, then Collectors lost) is played: a delayed unit stands this decision.  Ties keep the
+  inherited moves.
 * ``storm_units`` (0 = off): after the opening (``storm_after`` s), while the enemy has more Hunters out of base than
   we have, up to this many empty Collectors (nearest the sanctuary first) are *committed* walkers to the Hunter
   sanctuary: no threat evasion, plain-map path.  A Collector that reaches the sanctuary turns into a Hunter on entry
@@ -53,8 +59,12 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  rs_radius: float = 1.5, rs_wait: float = 0.6, early_reserve: float = 0.0,
                  carrier_retreat: float = 0.0, camp_path: bool = False, east_post: float = 0.0,
                  east_engage: float = 3.0, hunter_roles: str = "", roles_when: str = "free", raid_value: float = 2.0,
-                 raid_carrier: float = 1.0, raid_lead: float = 0.0, **kwargs):
+                 raid_carrier: float = 1.0, raid_lead: float = 0.0, race_search: int = 0, rs_horizon: int = 10,
+                 rs_trigger: float = 1.2, **kwargs):
         super().__init__(**kwargs)
+        self.race_search = int(race_search)
+        self.rs_horizon = int(rs_horizon)
+        self.rs_trigger = float(rs_trigger)
         self.raid_lead = float(raid_lead)
         self._prev_enemy: dict[int, tuple[float, float]] = {}
         self.raid_carrier = float(raid_carrier)
@@ -153,6 +163,11 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
 
     def teach(self, obs):
         labels = super().teach(obs)
+        if self.race_search > 0 and labels:
+            try:
+                self._race_search(obs, labels)
+            except Exception:  # never let the lookahead break a match
+                self._count("race_search_error")
         if self.carrier_retreat > 0:
             self._retreat_carriers(labels)
         if self.east_post > 0:
@@ -473,3 +488,107 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
         dens = np.where(walk, dens, -1)
         r, c = np.unravel_index(int(np.argmax(dens)), dens.shape)
         return ((int(r), int(c)),)
+
+    # ------------------------------------------------------------------ race search
+
+    def _race_search(self, obs, labels):
+        import itertools
+
+        from ..sim import core
+        from ..sim.state import SimState
+        ctx = self._teach_ctx
+        states = ctx["states"]
+        names = list(labels)
+        own_idx = {n: unit_index(n) for n in names}
+        sim0 = SimState.from_obs(obs)
+        pos = sim0.uf.copy()
+        cls = sim0.ui[:, core.U_CLS].copy()
+        centre = np.array([12.0, 12.0], np.float32)
+
+        def edge(p):  # distance to the 2x2 sanctuary (world x, y in [11, 13))
+            dx = max(11.0 - p[0], p[0] - 13.0, 0.0)
+            dy = max(11.0 - p[1], p[1] - 13.0, 0.0)
+            return float(np.hypot(dx, dy))
+
+        ours = sorted(own_idx.values())
+        team = 0 if ours[0] < 5 else 1
+        mine = range(5 * team, 5 * team + 5)
+        theirs = range(5 * (1 - team), 5 * (1 - team) + 5)
+        near = [u for u in mine if cls[u] == core.COLLECTOR and 0.0 < edge(pos[u]) <= self.rs_trigger]
+        enemy_near = [u for u in theirs if cls[u] == core.COLLECTOR and edge(pos[u]) <= self.rs_trigger + 0.5]
+        if not near or not (enemy_near or any(cls[u] == core.HUNTER for u in theirs)):
+            return
+        near = sorted(near, key=lambda u: edge(pos[u]))[:4]
+        name_of = {i: n for n, i in own_idx.items()}
+        # inherited moves of our units this decision (world frame)
+        base_move = np.zeros((10, 2), np.float32)
+        for u in mine:
+            n = name_of.get(u)
+            if n is None:
+                continue
+            lab = labels[n]
+            h = getattr(lab, "heading", None)
+            if h is not None and lab.valid:
+                base_move[u] = h
+        H = self.rs_horizon
+
+        def straight(p):
+            v = centre - p
+            n = float(np.hypot(*v))
+            return v / n if n > 1e-6 else np.zeros(2, np.float32)
+
+        def rollout(delays, model):
+            sim = sim0.copy()
+            for t in range(H):
+                p = sim.uf
+                c = sim.ui[:, core.U_CLS]
+                mv = np.zeros((10, 2), np.float32)
+                for u in mine:
+                    if u in delays:
+                        if t >= delays[u] and c[u] == core.COLLECTOR:
+                            mv[u] = base_move[u] if t == 0 else straight(p[u])
+                        elif c[u] == core.HUNTER:
+                            mv[u] = base_move[u] if t == 0 else 0.0
+                    elif t == 0:
+                        mv[u] = base_move[u]
+                their_h = sum(1 for u in theirs if c[u] == core.HUNTER)
+                slots = MAX_HUNTERS - their_h
+                for u in sorted(theirs, key=lambda u: edge(p[u])):
+                    if c[u] == core.COLLECTOR and edge(p[u]) <= self.rs_trigger + 0.5 + 0.24 * t:
+                        if model == 1 and edge(p[u]) <= 0.2:
+                            if slots <= 0:
+                                continue
+                            slots -= 1
+                        mv[u] = straight(p[u])
+                    elif c[u] == core.HUNTER:
+                        prey = [v for v in mine if c[v] != core.HUNTER]
+                        if prey:
+                            q = min(prey, key=lambda v: float(np.hypot(*(p[v] - p[u]))))
+                            d = p[q] - p[u]
+                            nn = float(np.hypot(*d))
+                            if nn < 3.0:
+                                mv[u] = d / max(nn, 1e-6)
+                sim.step(mv)
+            c = sim.ui[:, core.U_CLS]
+            hun = sum(1 for u in mine if c[u] == core.HUNTER) - sum(1 for u in theirs if c[u] == core.HUNTER)
+            # Collectors that died went home: far from the sanctuary now
+            lost = sum(1 for u in near if edge(sim.uf[u]) > 6.0)
+            return 10.0 * hun - lost
+
+        best = None
+        for combo in itertools.product(range(self.race_search + 1), repeat=len(near)):
+            delays = dict(zip(near, combo))
+            score = (rollout(delays, 0) + rollout(delays, 1)) / 2.0
+            key = (score, -sum(combo))
+            if best is None or key > best[0]:
+                best = (key, delays)
+        (score, _), delays = best
+        base_score = None
+        for u, d in delays.items():
+            if d > 0:
+                n = name_of[u]
+                lab = labels[n]
+                labels[n] = AnyAngleLabel(lab.mask, True, lab.kind, lab.target, lab.goals, False,
+                                          np.zeros(2, dtype=np.float32))
+                self._count("race_search_hold")
+        self._count("race_search")
