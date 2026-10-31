@@ -93,7 +93,7 @@ class TempNetPolicy:
         return {tm: mv[:, i] for i, tm in enumerate(sel)}
 
 
-def MaskBatteryPolicy(descriptor: str, amount: float = 5.0):
+def MaskBatteryPolicy(descriptor: str, amount: float = 5.0, parts=("floor", "store", "held")):
     """HeuristicPolicy whose observations carry no battery amounts (floor channel 8, held column 4): each battery
     reads as ``amount`` -- what an official competition frame tells (``official/obs_mask.py``)."""
     from blackout_env.sim import batch as _b
@@ -106,9 +106,16 @@ def MaskBatteryPolicy(descriptor: str, amount: float = 5.0):
                 obs = orig(*a, **k)
                 for o in obs.values():
                     g = o["graphic"]
-                    g[..., 8] = np.where(g[..., 8] > 0, amount / 15.0, 0.0).astype(g.dtype)
-                    st = o["agent_states"]
-                    st[:, 4] = np.where(st[:, 4] > 0, amount / 15.0, 0.0).astype(st.dtype)
+                    store = (g[..., 6] > 0) | (g[..., 7] > 0)
+                    hide = np.zeros(g.shape[:2], bool)
+                    if "floor" in parts:
+                        hide |= ~store
+                    if "store" in parts:
+                        hide |= store
+                    g[..., 8] = np.where(hide & (g[..., 8] > 0), amount / 15.0, g[..., 8]).astype(g.dtype)
+                    if "held" in parts:
+                        st = o["agent_states"]
+                        st[:, 4] = np.where(st[:, 4] > 0, amount / 15.0, 0.0).astype(st.dtype)
                 return obs
 
             _b.obs_from_raw = masked
@@ -129,6 +136,9 @@ def _policy(name: str):
 
     if name.startswith("maskbat:"):  # a heuristic that sees no battery amounts (competition frame): every battery = 5
         return MaskBatteryPolicy(name[len("maskbat:"):])
+    for part in ("floor", "store", "held"):  # one part of the amounts hidden
+        if name.startswith(f"mask{part}:"):
+            return MaskBatteryPolicy(name[len(f"mask{part}:"):], parts=(part,))
 
     if name.startswith("switch:"):
         _, sec, rest = name.split(":", 2)
