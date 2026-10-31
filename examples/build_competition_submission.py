@@ -89,6 +89,7 @@ def main() -> int:
     ap.add_argument("--checkpoint", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--opset", type=int, default=17)
+    ap.add_argument("--mode", type=int, default=2, help="mask for a full-information checkpoint: 1 hide classes too, 2 tracked")
     ap.add_argument("--check-states", type=int, default=40)
     ap.add_argument("--static", default=None, help="saved static_channels() tensor (export venv without the sim)")
     ap.add_argument("--check-only", action="store_true", help="only compare an existing <out>/model.onnx (sim venv)")
@@ -100,8 +101,8 @@ def main() -> int:
     ck = torch.load(a.checkpoint, map_location="cpu", weights_only=True)
     state = dict(ck["policy_state"])
     if OFFICIAL_KEY not in state:
-        print("[build] full-information checkpoint: masked at export")
-        state[OFFICIAL_KEY] = torch.ones(1)
+        print(f"[build] full-information checkpoint: masked at export (mode {a.mode})")
+        state[OFFICIAL_KEY] = torch.full((1,), float(a.mode))
     net = MyModel.from_state_dict(state).eval()
     static = torch.load(a.static) if a.static else static_channels()
     graph = OfficialTeamGraph(net, static).eval()
@@ -117,8 +118,14 @@ def main() -> int:
     vec, gr = torch.zeros(5, 96), torch.zeros(5, 11, 96, 96)
     vec[:, 2] = 1.0
     with torch.no_grad():
-        torch.onnx.export(graph, (vec, gr), str(out / "model.onnx"), input_names=["vector", "graphic"],
-                          output_names=["action"], opset_version=a.opset, dynamo=False)
+        if graph.tracked:  # enemy classes tracked in the recurrent state (official state_in / state_out)
+            from blackout_env.official.obs_mask import STATE_SIZE
+            torch.onnx.export(graph, (vec, gr, torch.zeros(5, STATE_SIZE)), str(out / "model.onnx"),
+                              input_names=["vector", "graphic", "state_in"], output_names=["action", "state_out"],
+                              opset_version=a.opset, dynamo=False)
+        else:
+            torch.onnx.export(graph, (vec, gr), str(out / "model.onnx"), input_names=["vector", "graphic"],
+                              output_names=["action"], opset_version=a.opset, dynamo=False)
     (out / "meta.json").write_text(json.dumps({"mode": "team"}) + "\n")
     print(f"[build] wrote {out}/model.onnx ({(out / 'model.onnx').stat().st_size / 1e6:.1f} MB)")
 
@@ -136,8 +143,10 @@ def _check(graph, out, check_states):
         from blackout_env.official.render import official_preprocessed
 
         sess = ort.InferenceSession(str(out / "model.onnx"), providers=["CPUExecutionProvider"])
+        from blackout_env.official.obs_mask import STATE_SIZE
         heur = HeuristicPolicy("V34c")
         worst, n = 0.0, 0
+        names = [i.name for i in sess.get_inputs()]
         for seed in range(3):
             heur.reset(1)
             bs = BatchSim([SimState.from_seed(100 + seed)])
@@ -147,21 +156,31 @@ def _check(graph, out, check_states):
             t = np.zeros((1, 2, 4), np.float32)
             ag = np.zeros((1, 2, 10, N_AGENT_COLS), np.float32)
             mv = np.zeros((1, 10, 2), np.float32)
+            st_onnx = [np.zeros((5, STATE_SIZE), np.float32) for _ in range(2)]
+            st_torch = [torch.zeros(5, STATE_SIZE) for _ in range(2)]
             for step in range(1200):
                 if bs.over[0] or n >= check_states:
                     break
                 bs.render(np.array([0]), g, t, ag)
-                if step % 30 == 0:
+                stateful = "state_in" in names
+                if stateful or step % 30 == 0:
                     st = bs.state(0)
                     for tm in (0, 1):
                         rows = [official_preprocessed(st, 5 * tm + k) for k in range(5)]
                         v = np.stack([r["vector"] for r in rows]).astype(np.float32)
                         gg = np.stack([np.moveaxis(r["graphic"], -1, 0) for r in rows]).astype(np.float32)
-                        onnx_out = sess.run(None, {"vector": v, "graphic": gg})[0]
-                        with torch.no_grad():
-                            ref = graph(torch.from_numpy(v), torch.from_numpy(gg)).numpy()
+                        if stateful:
+                            onnx_out, st_onnx[tm] = sess.run(None, {"vector": v, "graphic": gg, "state_in": st_onnx[tm]})[:2]
+                            with torch.no_grad():
+                                ref, st_torch[tm] = graph(torch.from_numpy(v), torch.from_numpy(gg), st_torch[tm])
+                            ref = ref.numpy()
+                        else:
+                            onnx_out = sess.run(None, {"vector": v, "graphic": gg})[0]
+                            with torch.no_grad():
+                                ref = graph(torch.from_numpy(v), torch.from_numpy(gg)).numpy()
                         worst = max(worst, float(np.abs(onnx_out - ref).max()))
-                    n += 1
+                    if step % 30 == 0:
+                        n += 1
                 mv[0] = 0
                 for tm in (0, 1):
                     mv[0, 5 * tm:5 * tm + 5] = heur.moves(bs, np.array([0]), (tm,), (g, t, ag))[tm]
