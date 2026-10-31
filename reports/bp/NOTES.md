@@ -159,3 +159,13 @@ x18 (48 seeds × 2면, paired):
 - `gate_return` 추가 (기지로 돌아올 때도 안전한 출구로).
 - **증류 D1 시작 (18:00, wsl_gpu)**: 교사 act:B3, init p24c_v321, P24c 레시피 20k steps, 상대 = 패치 후 풀 + B3 섭동 + 옛 학생 + self
   (`reports/bp/distill/launch.sh`, 출력 wsl ~/bpruns/d1_b3). wsl은 평가 호스트에서 제외.
+
+## 18:00–19:10
+
+- f6comb (새 시드 64): G(gate_split) −2.8, +gate_return −5.9/−6.3, G+race_search +0.6 → gate_split·gate_return 보류.
+- f7rs: B3+race_search=1 192 seeds +0.4±1.6, 96 seeds +0.7±2.3 → 무효, 보류. **B3 유지.**
+- 증류: Unity D1 (B3 교사) 4800 steps에서 중단 (워커 CPU 병목: 학생 CPU forward + 교사, 20k ≈ 3 h).
+  `run.py --sim` (sim_collect.py: BatchSim 32경기 묶음, 같은 shard 형식) 추가 → D2 = D1 s4800에서 이어서 sim 수집.
+  GPU 학생 forward는 학습과 GPU 경합 (190 rows/s = Unity와 같음) → 워커 CPU 묶음 forward로 재시작.
+- 시뮬 패치 반영 재확인: MAX_HUNTERS=2, 맵 6칸, V33(헌터 4 목표)도 시뮬에서 최대 2마리.
+- 루프 재시작 (19:10, g016부터).
