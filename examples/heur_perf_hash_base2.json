@@ -1,0 +1,86 @@
+{
+ "V34c|V34c": [
+  [
+   "0dc8a700a855",
+   "b781bd227546",
+   "8c09c58b25b2",
+   "870fb2892b3d",
+   "9db902a5e1ad",
+   "2fca79be9386",
+   "5a932ef46b06",
+   "ac662bec3f72"
+  ],
+  2999,
+  2
+ ],
+ "strategic_v34:reserve_stage=0.17,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1113,camp_engage_radius=6.5,hunter_quota=2,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,commit_margin=-0.3,guard_radius=7.691,late_after=16.0,carrier_col_scale=0.9054,camp_tiles=2.457,breakout_units=1,join_reach=1.137,trade_radius=0.7359,steal_weight=1.94,exposure_cost=0.7841,danger_hunter_radius=4.137,contest_factor=0.5747,w_dspd=5.0,w_bspd=4.5,reserve_count=2,cap_sync=true,cap_enter=0.17,early_reserve=5,hunter_roles=raid/raid,roles_when=always,camp_engage_radius=7.858,adapt_k=3,late_after=21.56,carrier_col_scale=0.8686,breakout_units=2,trade_radius=0.5,steal_weight=1.507,exposure_cost=0.66,contest_factor=0.5434,sweep_radius=8.079,sentry_offset=2.529,sentry_radius=6.153,hunt_spawn_radius=6.636,hunt_camp_radius=3.279,chase_equal=2.131,carrier_hunter_scale=0.9071,danger_tiles=2.675,opening_seconds=14.89,commit_reach=1.286,danger_weight=0.4563,deposit_band=0.1526,dom_threat_radius=0.1,h_evade_radius=1.0,h_trade_up=true|strategic_v34:reserve_stage=0.17,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1113,camp_engage_radius=6.5,hunter_quota=2,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,commit_margin=-0.3,guard_radius=7.691,late_after=16.0,carrier_col_scale=0.9054,camp_tiles=2.457,breakout_units=1,join_reach=1.137,trade_radius=0.7359,steal_weight=1.94,exposure_cost=0.7841,danger_hunter_radius=4.137,contest_factor=0.5747,w_dspd=5.0,w_bspd=4.5,reserve_count=2,cap_sync=true,cap_enter=0.17,early_reserve=5,hunter_roles=raid/raid,roles_when=always,camp_engage_radius=7.858,adapt_k=3,late_after=21.56,carrier_col_scale=0.8686,breakout_units=2,trade_radius=0.5,steal_weight=1.507,exposure_cost=0.66,contest_factor=0.5434,sweep_radius=8.079,sentry_offset=2.529,sentry_radius=6.153,hunt_spawn_radius=6.636,hunt_camp_radius=3.279,chase_equal=2.131,carrier_hunter_scale=0.9071,danger_tiles=2.675,opening_seconds=14.89,commit_reach=1.286,danger_weight=0.4563,deposit_band=0.1526,dom_threat_radius=0.1,h_evade_radius=1.0,h_trade_up=true": [
+  [
+   "ea44e48ecfe9",
+   "118ddae18151",
+   "96f694b3c710",
+   "7e89c12b97af",
+   "6868b34522be",
+   "0c4e07feca69",
+   "a633edf109e9",
+   "5be657b53e84"
+  ],
+  2999,
+  5
+ ],
+ "strategic_v34:reserve_stage=0.17,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1113,camp_engage_radius=6.5,hunter_quota=2,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,commit_margin=-0.3,guard_radius=7.691,late_after=16.0,carrier_col_scale=0.9054,camp_tiles=2.457,breakout_units=1,join_reach=1.137,trade_radius=0.7359,steal_weight=1.94,exposure_cost=0.7841,danger_hunter_radius=4.137,contest_factor=0.5747,w_dspd=5.0,w_bspd=4.5,reserve_count=2,cap_sync=true,cap_enter=0.17,early_reserve=5,hunter_roles=raid/raid,roles_when=always,camp_engage_radius=7.858,adapt_k=3,late_after=21.56,carrier_col_scale=0.8686,breakout_units=2,trade_radius=0.5,steal_weight=1.507,exposure_cost=0.66,contest_factor=0.5434,sweep_radius=8.079,sentry_offset=2.529,sentry_radius=6.153,hunt_spawn_radius=6.636,hunt_camp_radius=3.279,chase_equal=2.131,carrier_hunter_scale=0.9071,danger_tiles=2.675,opening_seconds=14.89,commit_reach=1.286,danger_weight=0.4563,deposit_band=0.1526,dom_threat_radius=0.1,h_evade_radius=1.0,h_trade_up=true|V34c": [
+  [
+   "56d5588ad9a9",
+   "aea107306a15",
+   "0a32bbeedf81",
+   "ef7670ef868f",
+   "2dc8ed8df5f3",
+   "ca4cf5579864",
+   "3c11132aee8a",
+   "133ae306674d"
+  ],
+  2999,
+  4
+ ],
+ "V34c|V34b": [
+  [
+   "6f1547c1057d",
+   "20e0804d2fd8",
+   "7e49968a42d2",
+   "101845b90e06",
+   "e663dcdbb031",
+   "b12fe93d09f2",
+   "caf3123238c3",
+   "15e790c9925e"
+  ],
+  2999,
+  4
+ ],
+ "V34c,hunter_roles=raid/escort|V34c": [
+  [
+   "bb00f370963a",
+   "37b1cfe2f27e",
+   "e4283766ef58",
+   "2f1e5e0601e5",
+   "9bd3df5c653c",
+   "f8a6cd822431",
+   "e5e5294ca780",
+   "35ab08abbfb3"
+  ],
+  2999,
+  3
+ ],
+ "V34c,raid_lead=1.0|V34c": [
+  [
+   "f8066d850407",
+   "022d83bc3c75",
+   "1e0a8febd6e2",
+   "b116d149275c",
+   "bdd3ad6bb4ba",
+   "904e0cb53c76",
+   "8f2ba72f728f",
+   "7f19968e12f3"
+  ],
+  2999,
+  4
+ ]
+}

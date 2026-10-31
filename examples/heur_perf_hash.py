@@ -21,6 +21,15 @@ PAIRS = [('V34b','V34b'),('V34a','V34a'),('V33bp','V33bp'),('V32.1','V32.1'),
          ('V34b,camp_path=true','V34b,camp_path=true'),('V34b,storm_units=2','V34b,storm_units=2'),
          ('V34b,carrier_retreat=4','V34b,carrier_retreat=4'),('V34b','V33bp'),('V33bp','V34b,camp_path=true')]
 
+B3_KNOBS=(',camp_engage_radius=7.858,adapt_k=3,late_after=21.56,carrier_col_scale=0.8686,breakout_units=2,trade_radius=0.5,'
+ 'steal_weight=1.507,exposure_cost=0.66,contest_factor=0.5434,sweep_radius=8.079,sentry_offset=2.529,sentry_radius=6.153,'
+ 'hunt_spawn_radius=6.636,hunt_camp_radius=3.279,chase_equal=2.131,carrier_hunter_scale=0.9071,danger_tiles=2.675,'
+ 'opening_seconds=14.89,commit_reach=1.286,danger_weight=0.4563,deposit_band=0.1526,dom_threat_radius=0.1,h_evade_radius=1.0,h_trade_up=true')
+def pairs2():
+    from blackout_env.heuristics.params import resolve_descriptor
+    b3=resolve_descriptor('V34c')+B3_KNOBS
+    return [('V34c','V34c'),(b3,b3),(b3,'V34c'),('V34c','V34b'),('V34c,hunter_roles=raid/escort','V34c'),('V34c,raid_lead=1.0','V34c')]
+
 def play(job):
     da, db, n, T, seed0 = job
     a=HeuristicPolicy(da); b=HeuristicPolicy(db); a.reset(n); b.reset(n)
@@ -44,10 +53,10 @@ if __name__=='__main__':
     ap = argparse.ArgumentParser()
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument('--write'); g.add_argument('--check')
-    ap.add_argument('--games', type=int, default=8); ap.add_argument('--cap', type=int, default=3000)
+    ap.add_argument('--pairs2', action='store_true', help='the V34c/B3 pairing set (base2.json)'); ap.add_argument('--games', type=int, default=8); ap.add_argument('--cap', type=int, default=3000)
     a = ap.parse_args()
     out = a.write or '/dev/null'; n, T = a.games, a.cap
-    jobs=[(a,b,n,T,12000000+100*i) for i,(a,b) in enumerate(PAIRS)]
+    jobs=[(a,b,n,T,12000000+100*i) for i,(a,b) in enumerate(pairs2() if a.pairs2 else PAIRS)]
     t0=time.time()
     with Pool(4) as p: res=p.map(play, jobs, chunksize=1)
     d={f'{a}|{b}':(h,t,o) for a,b,h,t,o in res}
