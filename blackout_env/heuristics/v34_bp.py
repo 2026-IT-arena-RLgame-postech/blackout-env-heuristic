@@ -60,8 +60,10 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  carrier_retreat: float = 0.0, camp_path: bool = False, east_post: float = 0.0,
                  east_engage: float = 3.0, hunter_roles: str = "", roles_when: str = "free", raid_value: float = 2.0,
                  raid_carrier: float = 1.0, raid_lead: float = 0.0, race_search: int = 0, rs_horizon: int = 10,
-                 rs_trigger: float = 1.2, **kwargs):
+                 rs_trigger: float = 1.2, stage_by_name: bool = False, **kwargs):
         super().__init__(**kwargs)
+        self.stage_by_name = bool(stage_by_name)
+        self._stage_hold: set[str] = set()
         self.race_search = int(race_search)
         self.rs_horizon = int(rs_horizon)
         self.rs_trigger = float(rs_trigger)
@@ -108,6 +110,9 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
             self._storm(controlled, row_for, states, graphic, walkable, goals)
         if self.early_reserve > 0:
             self._early_reserve(controlled, row_for, states, graphic, walkable, goals)
+        self._stage_hold = set()
+        if self.stage_by_name and self._staged_xy:
+            self._stage_holds(controlled, row_for, states, graphic, walkable)
         self._cap_hold, self._cap_out = set(), {}
         if not self.cap_sync:
             return goals
@@ -161,6 +166,20 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
             self._cap_hold.add(n)
         return goals
 
+    def _stage_holds(self, controlled, row_for, states, graphic, walkable):
+        """V27's reserve hold by unit name: stacked walkers share coordinates, so the xy test also froze the race
+        walkers on the reserve's tile at the sanctuary edge until ``early_reserve`` ran out (both sides standing ~1 s)."""
+        self._staged_xy = set()
+        tiles = self._site_tiles(graphic, SITE_HUNTER, walkable)
+        if not tiles:
+            return
+        planner = self._planner(np.ascontiguousarray(walkable, dtype=bool), tiles, UNIT_RADIUS[COLLECTOR])
+        shape = graphic.shape[:2]
+        for n in self.staged:
+            if n in row_for and n in controlled:
+                if planner.distance(pixel_position(states[row_for[n]], shape)) <= self.reserve_stage:
+                    self._stage_hold.add(n)
+
     def teach(self, obs):
         labels = super().teach(obs)
         if self.race_search > 0 and labels:
@@ -174,10 +193,13 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
             self._post_east(labels)
         if self.hunter_roles:
             self._assign_roles(labels)
-        if self._cap_hold or self._cap_out:
+        if self._cap_hold or self._cap_out or self._stage_hold:
             for n in list(labels):
                 lab = labels[n]
-                if n in self._cap_hold:
+                if n in self._stage_hold and n not in self._cap_out:
+                    heading = np.zeros(2, dtype=np.float32)
+                    self._count("stage_hold")
+                elif n in self._cap_hold:
                     heading = np.zeros(2, dtype=np.float32)
                     self._count("cap_hold")
                 elif n in self._cap_out:
