@@ -34,6 +34,7 @@ league_steps=0.05,0.10,0.20 league_ramp_every=20 league_ramp_min_games=${RAMP_GA
 league_anchor_min=0.4 league_warmup=2"
 setsid nohup nice -n 10 env PYTHONPATH=. .venv/bin/python examples/rl_train.py \
     --algo ppo --out $OUT --hours ${HOURS:-30} --max-decisions ${MAXDEC:?set MAXDEC} --eval-every ${EVAL_EVERY:-150} --eval-seeds ${EVAL_SEEDS:-16} \
+    ${EVAL_OPPS:+--eval-opps $EVAL_OPPS} \
     --save-every 10 $RES \
     --set "opponents=$OPPS" "opp_weights=$W" update_fp16=true critic_fp16=true update_compile=true critic_warmup=10 critic_head=reg pfsp=hard \
     games=${GAMES:-256} segment=${SEGMENT:-128} heur_workers=${HWORKERS:-6} \
