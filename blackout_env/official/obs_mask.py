@@ -252,7 +252,7 @@ def track_classes(state: torch.Tensor, pos: torch.Tensor, own_cls: torch.Tensor,
 # tiles holding another item type.  So with the scores, the battery pixels and who just put down a battery, the
 # amount on every storage tile is known exactly (official/storage tracker below; validated in sim at 50 Hz).
 
-STORE_SIZE = 576 * 2 + 2 + 10 + 1   # amounts [576], last presence [576], last scores [2], last held battery [10], last absorb clock
+STORE_SIZE = 576 * 2 + 2 + 10 + 1 + 2   # amounts, last presence, last scores [2], last held [10], last absorb clock, locked scores [2]
 MASK_STORE = 3                      # official_obs mode: floor / carried battery amounts hidden, storage amounts tracked
 
 
@@ -297,6 +297,7 @@ def track_storage(store: torch.Tensor, v0: torch.Tensor, g_abs: torch.Tensor, b:
     # (presence / held flags as 0/1 floats: onnxruntime has no Where over bool tensors)
     amounts, prev_pres_f = store[:576], store[576:1152]
     prev_scores, prev_held_f, prev_abs = store[1152:1154], store[1154:1164], store[1164]
+    locked = store[1165:1167]  # each team's score at the last absorption: storage total = score - locked
     # flat cell index x * 24 + y of the pooled map (row = 23 - y, col = x)
     flat = g_abs.flip(1).transpose(1, 2).reshape(11, 576)
     presence_f = (flat[6] > 0.5).to(store.dtype)
@@ -320,6 +321,7 @@ def track_storage(store: torch.Tensor, v0: torch.Tensor, g_abs: torch.Tensor, b:
     prev_scores = torch.where(first, scores, prev_scores)
     prev_held_f = torch.where(first, held_f, prev_held_f)
     prev_abs = torch.where(first, absorb, prev_abs)
+    locked = torch.where(first, torch.zeros_like(locked), locked)
     presence, prev_pres = presence_f > 0.5, prev_pres_f > 0.5
     held, prev_held = held_f > 0.5, prev_held_f > 0.5
     reg_cell = region                                   # [576]
@@ -346,5 +348,18 @@ def track_storage(store: torch.Tensor, v0: torch.Tensor, g_abs: torch.Tensor, b:
         amounts = amounts + (torch.nn.functional.one_hot(s, 576).to(fill.dtype) * fill.unsqueeze(1)).sum(dim=0)
     absorbed = absorb > prev_abs + 0.5
     amounts = torch.where(absorbed, torch.zeros_like(amounts), amounts)
-    new = torch.cat([amounts, presence_f, scores, held_f, absorb.reshape(1)])
+    locked = torch.where(absorbed, scores, locked)
+    # safety net (never needed in sim tests): each team's tiles must sum to score - locked; put a surplus into
+    # its present tiles in order up to 10, take a deficit from its fullest tiles first
+    for team in (0, 1):
+        tiles = (reg_cell >= 6 * team) & (reg_cell < 6 * team + 6)
+        diff = (scores[team] - locked[team]) - (amounts * tiles).sum()
+        room = torch.where(tiles & presence & ~special, torch.clamp(10.0 - amounts, min=0.0), torch.zeros_like(amounts))
+        before = torch.cumsum(room, 0) - room
+        add = torch.minimum(torch.clamp(diff - before, min=0.0), room)
+        have = torch.where(tiles, amounts, torch.zeros_like(amounts))
+        before_t = torch.cumsum(have, 0) - have
+        take = torch.minimum(torch.clamp(-diff - before_t, min=0.0), have)
+        amounts = amounts + torch.where(diff > 0.5, add, torch.zeros_like(add)) - torch.where(diff < -0.5, take, torch.zeros_like(take))
+    new = torch.cat([amounts, presence_f, scores, held_f, absorb.reshape(1), locked])
     return amounts, new
