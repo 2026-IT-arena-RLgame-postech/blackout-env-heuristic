@@ -169,3 +169,15 @@ x18 (48 seeds × 2면, paired):
   GPU 학생 forward는 학습과 GPU 경합 (190 rows/s = Unity와 같음) → 워커 CPU 묶음 forward로 재시작.
 - 시뮬 패치 반영 재확인: MAX_HUNTERS=2, 맵 6칸, V33(헌터 4 목표)도 시뮬에서 최대 2마리.
 - 루프 재시작 (19:10, g016부터).
+
+## 23:00–00:30 대회 형식 후속 (공식 env b5743f7: frame_stack + state_in/state_out 지원)
+
+- 공식 = 50 Hz (DecisionPeriod 1), 포크/시뮬 = 25 Hz. sim `ticks_per_decision=1` 추가. 혼합 속도 시험 (sim, paired 아님):
+  B3@50 vs B3@25 −3.4±7.0 (64), D3@50 vs D3@25 −4.1±8.3 (48), D3@50 vs B3@50 −4.5±10 (32), D3@25 vs B3@25 −1.5±6.8 (64)
+  → 50 Hz 추론의 뚜렷한 손해 없음 (성소 레이스 첫 헌터 틱도 동일) → 학습은 25 Hz 유지 (사용자 지시).
+- 적 클래스 추적기 (official/obs_mask.py track_classes, ONNX state용): 시뮬 규칙 (성소 진입 타일 변경, 중간 틱, 헌터 상한,
+  캐리어 잠금, 순간이동=사망, 에이전트 순서 3,6,2,7,5,8,4,9,1,0) → 10만 건 오류 0.
+- 배터리 양 가림 (B3, 모든 양=5): −54.7±4.6 (48 seeds) — 휴리스틱 계산이 깨지는 영향 포함. 부분별 (바닥/저장소/들고 있는 양) 측정 중.
+- 시드 크랙 (official/seed_crack.py): 첫 프레임 (빠진 저장소 후보 + 배터리 위치 집합)으로 후보 시드 검사, 배터리 12개 대조면 유일.
+  torch GPU(gpu2) 단계별 걸러내기 ~0.2 G seeds/s. **ORT 1.22 CUDA EP에 BitShift/BitwiseXor/BitwiseAnd 없음 (CPU로 넘어감)** →
+  GPU에서는 곱/나눗셈 + 바이트 XOR 조회표로 대체 필요 (추정 ~0.15 G seeds/s, 2^32 ≈ 30 s를 스텝당 ~20 ms로 분할).
