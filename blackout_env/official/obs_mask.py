@@ -129,3 +129,72 @@ def static_channels() -> torch.Tensor:
     g = np.zeros((1, 2, N_CH, H, W), np.float32)
     bs.render(np.array([0]), g, np.zeros((1, 2, 4), np.float32), np.zeros((1, 2, 10, N_AGENT_COLS), np.float32))
     return torch.from_numpy(g[0, 0, 2:6].copy())
+
+
+# ------------------------------------------------------------------------------------------- class tracker
+
+STATE_SIZE = 64            # per-row recurrent state (state_in / state_out): prev positions 20, classes 30, step 1
+_POS, _CLS, _STEP = slice(0, 20), slice(20, 50), 50
+JUMP_TILES = 0.6           # a move longer than this in one decision is a respawn teleport (max ~0.36 with a speed buff)
+COLLECTOR, HUNTER, CARRIER = 0, 1, 2
+AGENT_ORDER = (3, 6, 2, 7, 5, 8, 4, 9, 1, 0)  # sim/state.py DEFAULT_ORDER
+
+
+def region_grid() -> torch.Tensor:
+    """[24 * 24] region id by flat world cell x * 24 + y: 1 Hunter sanctuary, 2 / 3 team A / B Carrier sanctuary."""
+    g = torch.zeros(24, 24, dtype=torch.int64)
+    g[11:13, 11:13] = 1
+    g[1, 20] = 2
+    g[20, 1] = 3
+    return g.reshape(-1)
+
+
+def track_classes(state: torch.Tensor, pos: torch.Tensor, own_cls: torch.Tensor, b: torch.Tensor,
+                  regions: torch.Tensor):
+    """One decision of the enemy-class tracker (the sim's rules: a Collector turns into a Hunter when its tile
+    enters the Hunter sanctuary and its team has < 2 Hunters, into a Carrier on its own locked Carrier sanctuary
+    while its team has none; a teleport = death = Collector).
+
+    state [STATE_SIZE] (freshest row), pos [10, 2] world tiles, own_cls [5, 3] (rows = own slots), b: team B.
+    Returns (classes one-hot [10, 3] absolute unit order, new state [STATE_SIZE])."""
+    first = state[_STEP] < 0.5
+    prev = torch.where(first, pos.reshape(-1), state[_POS]).reshape(10, 2)
+    cls = state[_CLS].reshape(10, 3)
+    collector = torch.tensor([1.0, 0.0, 0.0])
+    cls = torch.where(first, collector.expand(10, 3), cls)
+    def region_of(p):
+        c = torch.clamp(torch.floor(p), 0, 23).to(torch.int64)
+        return regions.index_select(0, c[:, 0] * 24 + c[:, 1]), c
+
+    reg, cell = region_of(pos)
+    preg, pcell = region_of(prev)
+    mreg, mcell = region_of(0.5 * (prev + pos))  # a decision is two physics ticks: the tile in between
+    # the sanctuary a unit's tile entered this decision (0 = none), at the middle tick or at the end
+    via_mid = (mreg != preg) & (mreg > 0) & (mcell != pcell).any(dim=1)
+    via_end = (reg != torch.where(via_mid, mreg, preg)) & (reg > 0) & (cell != torch.where(via_mid.unsqueeze(1), mcell, pcell)).any(dim=1)
+    jump = (pos - prev).norm(dim=1) > JUMP_TILES
+    # a respawn teleport enters nothing on its way (its midpoint can fall on a sanctuary)
+    entered_reg = torch.where(via_mid, mreg, torch.where(via_end, reg, torch.zeros_like(reg)))
+    entered_reg = torch.where(jump, torch.zeros_like(entered_reg), entered_reg)
+    # own team: known exactly from the rows
+    cls = torch.where(b, torch.cat([cls[:5], own_cls]), torch.cat([own_cls, cls[5:]]))
+    hunter_oh = torch.tensor([0.0, 1.0, 0.0])
+    carrier_oh = torch.tensor([0.0, 0.0, 1.0])
+    new = [cls[u] for u in range(10)]
+    for u in AGENT_ORDER:  # the order the sim (ML-Agents AgentAct) moves units in
+        team = 0 if u < 5 else 1
+        c = torch.where(jump[u], collector, new[u])
+        is_col = c[COLLECTOR] > 0.5
+        cur = torch.stack(new[5 * team:5 * team + 5])
+        n_h = cur[:, HUNTER].sum()
+        n_c = cur[:, CARRIER].sum()
+        to_h = (entered_reg[u] == 1) & is_col & (n_h < 2)
+        to_c = (entered_reg[u] == 2 + team) & is_col & (n_c < 0.5)
+        new[u] = torch.where(to_h, hunter_oh, torch.where(to_c, carrier_oh, c))
+    rows = [n.unsqueeze(0) for n in new]
+    tracked = torch.cat(rows)
+    # own rows stay as observed (the tracker only fills the enemy's)
+    out = torch.where(b, torch.cat([tracked[:5], own_cls]), torch.cat([own_cls, tracked[5:]]))
+    new_state = torch.cat([pos.reshape(-1), out.reshape(-1), (state[_STEP:_STEP + 1] + 1.0),
+                           torch.zeros(STATE_SIZE - _STEP - 1)])
+    return out, new_state
