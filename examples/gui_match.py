@@ -34,9 +34,13 @@ class Player:
 
     def __init__(self, spec: str, device: str):
         if spec in POLICY_REGISTRY:
-            self.label, self._policy = spec, None
+            self.label, self._policy, self._desc = spec, None, None
             return
         label, sep, path = spec.partition("=")
+        if sep and not path.endswith(".pt"):  # label=heuristic descriptor or alias (e.g. B3=strategic_v34:..., X=V34c)
+            from blackout_env.heuristics.params import resolve_descriptor, split_descriptor
+            self.label, self._policy, self._desc = label, None, split_descriptor(resolve_descriptor(path))
+            return
         if not sep:
             raise SystemExit(f"unknown player {spec!r}: use a heuristic id or label=checkpoint.pt")
         trainer = QMIXTrainer(env=None, config=QMIXConfig(buffer_capacity=1, device=device, tb_log_dir=None))
@@ -46,7 +50,12 @@ class Player:
         self.label, self._policy = label, MyPolicy(trainer.net, device=device)
 
     def for_game(self):
-        return self._policy if self._policy is not None else POLICY_REGISTRY[self.label]()
+        if self._policy is not None:
+            return self._policy
+        if self._desc is not None:
+            from blackout_env.heuristics.mixture import make_heuristic
+            return make_heuristic(self._desc[0], **self._desc[1])
+        return POLICY_REGISTRY[self.label]()
 
 
 def main() -> int:
