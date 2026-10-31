@@ -31,8 +31,9 @@ OUT = REPO / "reports" / "bp"
 STATE = OUT / "state.json"
 THREADS = "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=."
 # host -> (cores we may fill, reserve kept free, remote repo or None for local)
-HOSTS = {"poscat_gpu2": (28, 2, "~/blackout-env-bp"), "wsl_gpu": (12, 2, "~/blackout-env-bp"), "mac": (18, 2, None),
+HOSTS = {"poscat_gpu2": (28, 2, "~/blackout-env-bp"), "mac": (18, 2, None),
          "poscat_gpu1": (28, 2, "~/blackout-env-bp")}
+# wsl_gpu (12, 2, "~/blackout-env-bp") left out from 10-31 18:00: it runs the post-patch distillation (Unity workers)
 MAX_WORKERS = {"poscat_gpu1": 16}  # user (2026-10-31): gpu1 CPU up to ~16 cores, never disturbing others
 # gpu2 is shared with another same-goal job (kyungdain): CPU as usual (user 05:20), but no GPU use without checking
 
