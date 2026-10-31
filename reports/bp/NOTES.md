@@ -118,3 +118,11 @@ x18 (48 seeds × 2면, paired):
   `h_trade_up=true`, `h_evade_radius=1`, `dom_threat_radius=0.1`, `breakout_units=2`, `opening_seconds≈15`). g5/g9 파훼 실패,
   **g12 COUNTER C0** (B3 상대 +14.5; `reserve_stage≈0`, `cap_enter 0.142`, `solo_sentry`, `hunt_threshold 0.15`, `h_trade_up`) → 풀 합류.
 - 서브에이전트 속도 최적화 #2 시작 (12:40, branch perf/bp-heur-speed2).
+
+## 14:15 (세션 압축 전)
+
+- 풀 리그 (league2, 32 seeds × 2면): B3 +115, C0 +94, V34c +70, V34b −78, V34a −201 (Elo). B3 − C0 +2.4 → C0의 +14.5는 승자의 저주.
+- f1race (B3 주변 레이스 노브 24개, 96 seeds 확인): 최고 +0.7±1.3 → B3가 국소 최적.
+- `race_search` (V34, d9dca78): 관측 → SimState.from_obs → 성소 근처 우리 콜렉터(≤4)의 진입 지연 0..k 조합을 10결정 굴림
+  (상대 모델 2: 직진 / 헌터 상한 존중), (우리 헌터 − 상대 헌터)×10 − 잃은 콜렉터 최대 조합 실행. 탐색 1회 ~50 ms.
+  f2rs 평가 중 (B3 + race_search 1/2/2,h15/3 vs B3, C0, V34c).
