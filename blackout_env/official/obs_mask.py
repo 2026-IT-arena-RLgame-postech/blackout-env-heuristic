@@ -41,11 +41,15 @@ def mask_canonical(graphic: torch.Tensor, team_state: torch.Tensor, agent_states
     Idempotent (the export adapter produces already-masked tensors)."""
     c = torch.as_tensor(BATTERY_CONST, dtype=graphic.dtype, device=graphic.device)
     bat = graphic[:, 8:9]
-    graphic = torch.cat([graphic[:, :8], torch.where(bat > 0, c, torch.zeros_like(bat)), graphic[:, 9:]], dim=1)
+    hidden_bat = torch.where(bat > 0, c, torch.zeros_like(bat))
+    if mode == 3:  # storage amounts are tracked exactly (track_storage): only the floor's are unknown
+        store = (graphic[:, 6:7] > 0) | (graphic[:, 7:8] > 0)
+        hidden_bat = torch.where(store, bat, hidden_bat)
+    graphic = torch.cat([graphic[:, :8], hidden_bat, graphic[:, 9:]], dim=1)
     held_bat = agent_states[..., 4:5]
     enemy = torch.zeros_like(agent_states[:, :, 9:12])
     own_rows = (torch.arange(N_UNITS, device=agent_states.device) < N_TEAM).view(1, N_UNITS, 1)
-    classes = torch.where(own_rows, agent_states[..., 9:12], enemy) if mode == MASK_ALL else agent_states[..., 9:12]
+    classes = torch.where(own_rows, agent_states[..., 9:12], enemy) if mode == MASK_ALL else agent_states[..., 9:12]  # 2, 3: tracked
     tl = team_state[:, 2:3]
     absorb = 1.0 - torch.remainder((1.0 - tl) * EPISODE_S, ABSORB_S) / ABSORB_S
     team_state = torch.cat([team_state[:, :3], absorb, team_state[:, 4:]], dim=1)
@@ -69,7 +73,13 @@ class OfficialTeamGraph(nn.Module):
         self.register_buffer("static", static.to(torch.float32), persistent=False)
         self.register_buffer("roll", torch.tensor([(u + N_TEAM) % N_UNITS for u in range(N_UNITS)]), persistent=False)
         self.register_buffer("regions", region_grid(), persistent=False)
-        self.tracked = getattr(net, "official_mode", 1) == MASK_BATTERY
+        mode = getattr(net, "official_mode", 1)
+        self.tracked = mode in (MASK_BATTERY, 3)
+        self.store_tracked = mode == 3
+        self.state_size = STATE_SIZE + (STORE_SIZE if self.store_tracked else 0)
+        sreg, sorder = storage_tables()
+        self.register_buffer("store_region", sreg, persistent=False)
+        self.register_buffer("store_order", sorder, persistent=False)
 
     def forward(self, vector: torch.Tensor, graphic: torch.Tensor, state_in: torch.Tensor | None = None):
         """mode 1: (vector, graphic) -> action; mode 2 (enemy classes tracked): (vector, graphic, state_in [5, S])
@@ -97,10 +107,21 @@ class OfficialTeamGraph(nn.Module):
         v0 = vector.index_select(0, r.reshape(1))[0]
         pos = v0[:N_UNITS * UNIT_PRE].reshape(N_UNITS, UNIT_PRE)[:, :2] * 24.0
         fresh = state_in.index_select(0, torch.argmax(state_in[:, _STEP]).reshape(1))[0]
-        cls_abs, new_state = track_classes(fresh, pos, vector[:, CLASS_AT:CLASS_AT + 3], b, self.regions)
+        cls_abs, new_state = track_classes(fresh[:STATE_SIZE], pos, vector[:, CLASS_AT:CLASS_AT + 3], b, self.regions)
         cls_can = torch.where(b, cls_abs.index_select(0, self.roll), cls_abs)
         a = torch.cat([a[:, :9], cls_can, a[:, 12:]], dim=-1)
-        return fork_g, t, a, b, new_state.unsqueeze(0).expand(vector.shape[0], STATE_SIZE).contiguous()
+        if self.store_tracked:
+            first = fresh[_STEP] < 0.5
+            g_abs = graphic.index_select(0, r.reshape(1))[0].reshape(11, 24, 4, 24, 4).amax(dim=(2, 4))
+            amounts, new_store = track_storage(fresh[STATE_SIZE:], v0, g_abs, b, first, self.store_region, self.store_order)
+            # storage tiles' amounts into the battery channel (team A rows top-down; canonical flip for team B)
+            amap = amounts.reshape(24, 24).transpose(0, 1).flip(0) / 15.0           # [row = 23 - y, col = x]
+            amap_b = amap.transpose(0, 1).flip(0).flip(1)
+            amap = torch.where(b, amap_b, amap)
+            store = (fork_g[6] > 0) | (fork_g[7] > 0)
+            fork_g = torch.cat([fork_g[:8], torch.where(store, amap, fork_g[8]).unsqueeze(0), fork_g[9:]], dim=0)
+            new_state = torch.cat([new_state, new_store])
+        return fork_g, t, a, b, new_state.unsqueeze(0).expand(vector.shape[0], self.state_size).contiguous()
 
     def canonical(self, vector: torch.Tensor, graphic: torch.Tensor):
         """Official team inputs -> masked fork canonical (graphic [13,24,24], team_state [4], agents [10,12], is_b)."""
@@ -222,3 +243,105 @@ def track_classes(state: torch.Tensor, pos: torch.Tensor, own_cls: torch.Tensor,
     new_state = torch.cat([pos.reshape(-1), out.reshape(-1), (state[_STEP:_STEP + 1] + 1.0),
                            torch.zeros(STATE_SIZE - _STEP - 1)])
     return out, new_state
+
+
+# ------------------------------------------------------------------------------------------- storage tracker
+# Score rises the moment a battery enters a storage and falls when one is stolen; an absorption (every 20 s)
+# empties the storages without touching the score.  Storage.TryDistributeItem fills the region's tiles in a fixed
+# order (farthest from the team's spawn first, then x, y; the bases' A1/B1 in rect order), each up to 10, skipping
+# tiles holding another item type.  So with the scores, the battery pixels and who just put down a battery, the
+# amount on every storage tile is known exactly (official/storage tracker below; validated in sim at 50 Hz).
+
+STORE_SIZE = 576 * 2 + 2 + 10 + 1   # amounts [576], last presence [576], last scores [2], last held battery [10], last absorb clock
+MASK_STORE = 3                      # official_obs mode: floor / carried battery amounts hidden, storage amounts tracked
+
+
+def storage_tables():
+    """(region id by flat world cell x * 24 + y [576] (-1 none; team A 0-5, team B 6-11: base storage, then candidates
+    0-4), fill order per region [12, 8] (flat cells, -1 padding))."""
+    from ..sim.mapdata import FIXED_REGIONS, SPAWN_CELL, STORAGE_CANDIDATES, _mirror
+    region = torch.full((576,), -1, dtype=torch.int64)
+    order = torch.full((12, 8), -1, dtype=torch.int64)
+
+    def cells_of(rects):
+        out = []
+        for (rx, ry, rw, rh) in rects:
+            for y in range(ry, ry + rh):
+                for x in range(rx, rx + rw):
+                    if (x, y) not in out:
+                        out.append((x, y))
+        return out
+
+    base = {0: next(r for n, t, r, *_ in FIXED_REGIONS if n == "Storage A1"),
+            1: next(r for n, t, r, *_ in FIXED_REGIONS if n == "Storage B1")}
+    for team in (0, 1):
+        regs = [cells_of(base[team])]
+        ax, ay = SPAWN_CELL[team]
+        for _, rects in STORAGE_CANDIDATES:
+            cells = cells_of(rects if team == 0 else _mirror(rects))
+            cells.sort(key=lambda c: (-(abs(c[0] - ax) + abs(c[1] - ay)), c[0], c[1]))
+            regs.append(cells)
+        for k, cells in enumerate(regs):
+            rid = 6 * team + k
+            for j, (x, y) in enumerate(cells):
+                region[x * 24 + y] = rid
+                order[rid, j] = x * 24 + y
+    return region, order
+
+
+def track_storage(store: torch.Tensor, v0: torch.Tensor, g_abs: torch.Tensor, b: torch.Tensor, first: torch.Tensor,
+                  region: torch.Tensor, order: torch.Tensor):
+    """One decision of the storage tracker, absolute frame.  store [STORE_SIZE] (previous), v0 [96] a present row,
+    g_abs [11, 24, 24] the pooled id map (rows top-down), b team B, first: first decision of the episode.
+    Returns (amount per flat cell x * 24 + y [576], new store)."""
+    amounts, prev_pres = store[:576], store[576:1152] > 0.5
+    prev_scores, prev_held, prev_abs = store[1152:1154], store[1154:1164] > 0.5, store[1164]
+    # flat cell index x * 24 + y of the pooled map (row = 23 - y, col = x)
+    flat = g_abs.flip(1).transpose(1, 2).reshape(11, 576)
+    presence = flat[6] > 0.5
+    special = flat[7:11].amax(dim=0) > 0.5
+    blocks = v0[:N_UNITS * UNIT_PRE].reshape(N_UNITS, UNIT_PRE)
+    pos = blocks[:, :2] * 24.0
+    held = blocks[:, 4] > 0.5                          # held one-hot index 1 = a battery
+    tile = torch.clamp(torch.floor(pos), 0, 23).to(torch.int64)
+    tile_flat = tile[:, 0] * 24 + tile[:, 1]
+    # a unit pixel on a tile's centre pixel hides its item: presence unknown there, keep the last one
+    px = torch.floor(pos * 4.0)
+    on_centre = (px == tile.to(px.dtype) * 4.0 + 2.0).all(dim=1)
+    hidden = (torch.nn.functional.one_hot(tile_flat, 576) * on_centre.unsqueeze(1)).amax(dim=0) > 0
+    presence = torch.where(hidden, prev_pres, presence)
+    own, opp = v0[CLASS_AT + 3] * 100.0, v0[CLASS_AT + 4] * 100.0
+    scores = torch.round(torch.where(b, torch.stack([opp, own]), torch.stack([own, opp])))
+    tl = v0[CLASS_AT + 5]
+    absorb = 1.0 - torch.remainder((1.0 - tl) * EPISODE_S, ABSORB_S) / ABSORB_S
+    amounts = torch.where(first, torch.zeros_like(amounts), amounts)
+    prev_pres = torch.where(first, presence, prev_pres)
+    prev_scores = torch.where(first, scores, prev_scores)
+    prev_held = torch.where(first, held, prev_held)
+    prev_abs = torch.where(first, absorb, prev_abs)
+    reg_cell = region                                   # [576]
+    unit_reg = region.index_select(0, tile_flat)       # [10]
+    for team in (0, 1):
+        tiles = (reg_cell >= 6 * team) & (reg_cell < 6 * team + 6)
+        removed = tiles & prev_pres & ~presence
+        stolen = (amounts * removed).sum()
+        amounts = torch.where(removed, torch.zeros_like(amounts), amounts)
+        dep = scores[team] - prev_scores[team] + stolen
+        put_down = prev_held[5 * team:5 * team + 5] & ~held[5 * team:5 * team + 5]
+        ureg = unit_reg[5 * team:5 * team + 5]
+        mine = put_down & (ureg >= 6 * team) & (ureg < 6 * team + 6)
+        new_tiles = tiles & presence & ~prev_pres
+        new_reg = torch.where(new_tiles, reg_cell, torch.full_like(reg_cell, -1)).amax()
+        r = torch.where(mine.any(), ureg[torch.argmax(mine.to(torch.int64))], new_reg)
+        slots = order.index_select(0, torch.clamp(r, 0, 11).reshape(1))[0]       # [8]
+        valid = (slots >= 0) & (r >= 0) & (dep > 0)
+        s = torch.clamp(slots, 0, 575)
+        cap = torch.where(valid & ~special.index_select(0, s), 10.0 - amounts.index_select(0, s), torch.zeros(8))
+        cap = torch.clamp(cap, min=0.0)
+        before = torch.cumsum(cap, 0) - cap
+        fill = torch.minimum(torch.clamp(dep - before, min=0.0), cap)
+        amounts = amounts + (torch.nn.functional.one_hot(s, 576).to(fill.dtype) * fill.unsqueeze(1)).sum(dim=0)
+    absorbed = absorb > prev_abs + 0.5
+    amounts = torch.where(absorbed, torch.zeros_like(amounts), amounts)
+    new = torch.cat([amounts, presence.to(amounts.dtype), scores, held.to(amounts.dtype), absorb.reshape(1)])
+    return amounts, new

@@ -119,8 +119,7 @@ def main() -> int:
     vec[:, 2] = 1.0
     with torch.no_grad():
         if graph.tracked:  # enemy classes tracked in the recurrent state (official state_in / state_out)
-            from blackout_env.official.obs_mask import STATE_SIZE
-            torch.onnx.export(graph, (vec, gr, torch.zeros(5, STATE_SIZE)), str(out / "model.onnx"),
+            torch.onnx.export(graph, (vec, gr, torch.zeros(5, graph.state_size)), str(out / "model.onnx"),
                               input_names=["vector", "graphic", "state_in"], output_names=["action", "state_out"],
                               opset_version=a.opset, dynamo=False)
         else:
@@ -156,8 +155,9 @@ def _check(graph, out, check_states):
             t = np.zeros((1, 2, 4), np.float32)
             ag = np.zeros((1, 2, 10, N_AGENT_COLS), np.float32)
             mv = np.zeros((1, 10, 2), np.float32)
-            st_onnx = [np.zeros((5, STATE_SIZE), np.float32) for _ in range(2)]
-            st_torch = [torch.zeros(5, STATE_SIZE) for _ in range(2)]
+            ss = getattr(graph, "state_size", STATE_SIZE)
+            st_onnx = [np.zeros((5, ss), np.float32) for _ in range(2)]
+            st_torch = [torch.zeros(5, ss) for _ in range(2)]
             for step in range(1200):
                 if bs.over[0] or n >= check_states:
                     break
