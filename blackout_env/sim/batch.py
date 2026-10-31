@@ -63,6 +63,22 @@ def _game(Sb, Mb, b):
 
 
 @njit(cache=True)
+def batch_step_n_seq(Sb, Mb, moves, order, idx, n_ticks):
+    for j in range(idx.shape[0]):
+        b = idx[j]
+        S, M = _game(Sb, Mb, b)
+        core.step_kernel_n(S, M, moves[b], order, n_ticks)
+
+
+@njit(cache=True, parallel=True)
+def batch_step_n_par(Sb, Mb, moves, order, idx, n_ticks):
+    for j in prange(idx.shape[0]):
+        b = idx[j]
+        S, M = _game(Sb, Mb, b)
+        core.step_kernel_n(S, M, moves[b], order, n_ticks)
+
+
+@njit(cache=True)
 def batch_step_seq(Sb, Mb, moves, order, idx):
     for j in range(idx.shape[0]):
         b = idx[j]
@@ -326,6 +342,11 @@ class BatchSim:
         idx = self.all if idx is None else np.ascontiguousarray(idx, dtype=np.int64)
         if parallel is None:
             parallel = len(idx) >= PARALLEL_MIN
+        n_ticks = getattr(self, "ticks_per_decision", 2)
+        if n_ticks != 2:  # the official 50 Hz build: one tick per decision
+            fn = batch_step_n_par if parallel else batch_step_n_seq
+            fn(self.Sb, self.Mb, np.ascontiguousarray(moves, dtype=F32), self.order, idx, n_ticks)
+            return
         fn = batch_step_par if parallel else batch_step_seq
         fn(self.Sb, self.Mb, np.ascontiguousarray(moves, dtype=F32), self.order, idx)
 

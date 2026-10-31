@@ -735,9 +735,16 @@ def step_kernel(S, M, moves, order):
     """One decision step: Unity runs two FixedUpdate ticks per decision (decisionPeriod 2), each
     = every unit's Move in ML-Agents AgentAct order, then the world update.  The first step of a
     match moves once (the first decision tick after reset is suppressed)."""
+    step_kernel_n(S, M, moves, order, 2)
+
+
+@njit(cache=True)
+def step_kernel_n(S, M, moves, order, n_ticks):
+    """``step_kernel`` with ``n_ticks`` FixedUpdate ticks per decision: 2 = the fork (25 Hz), 1 = the official
+    competition build (DecisionPeriod 1, a decision every tick, 50 Hz)."""
     g = S[5]
     g[G_NEV] = 0
-    for k in range(2):
+    for k in range(n_ticks):
         if g[G_OVER]:
             return
         if not (g[G_FIRST] and k == 1):
