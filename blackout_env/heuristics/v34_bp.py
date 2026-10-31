@@ -94,10 +94,13 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  raid_carrier: float = 1.0, raid_lead: float = 0.0, race_search: int = 0, rs_horizon: int = 10,
                  rs_trigger: float = 1.2, stage_by_name: bool = False, gate_split: bool = False,
                  gate_wait: float = 0.3, gate_tol: float = 0.4, gate_detour: float = 0.3, gate_commit: float = 4.0,
-                 gate_breakout: int = 2, **kwargs):
+                 gate_breakout: int = 2, raid_idle: str = "", raid_sticky: float = 1.0, **kwargs):
         super().__init__(**kwargs)
         self.stage_by_name = bool(stage_by_name)
         self.gate_split = bool(gate_split)
+        self.raid_idle = str(raid_idle)
+        self.raid_sticky = float(raid_sticky)
+        self._raid_target: dict[str, int] = {}
         self.gate_wait = float(gate_wait)
         self.gate_tol = float(gate_tol)
         self.gate_detour = float(gate_detour)
@@ -577,6 +580,7 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
         prey = [e for e in ctx["enemies"] if e.cls != HUNTER and not e.in_base]
         free = list(hunters)
         claimed = set()
+        idle_raiders = []
         for role in self.hunter_roles:
             if not free:
                 break
@@ -596,11 +600,16 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                         if not np.isfinite(d):
                             continue
                         score = d / ((self.raid_value if cargo else 1.0) * (self.raid_carrier if e.cls == CARRIER else 1.0))
+                        if self._raid_target.get(u.name) == e.row:
+                            score *= self.raid_sticky
                         if best is None or score < best[0]:
                             best = (score, u, e)
                 if best is None:
+                    if self.raid_idle == "gate":
+                        idle_raiders.append(role)
                     continue
                 _, u, e = best
+                self._raid_target[u.name] = e.row
                 claimed.add(e.row)
                 here = pixel_position(states[u.row], shape)
                 there = pixel_position(states[e.row], shape)
@@ -664,6 +673,39 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
             lab = labels[u.name]
             labels[u.name] = AnyAngleLabel(lab.mask, True, lab.kind, lab.target, lab.goals, False, heading)
             self._count("role_" + role)
+        if idle_raiders and free:
+            self._idle_gates(labels, ctx, free[:len(idle_raiders)])
+
+    def _idle_gates(self, labels, ctx, units):
+        """Raiders with no prey out of the enemy base wait on the enemy base's exits (one per exit): enemy units
+        respawn inside it and must come out there."""
+        shape, states = ctx["shape"], ctx["states"]
+        walk = np.ascontiguousarray(self._teach_walkable, dtype=bool)
+        ebase = self._cached_base_mask(ctx["enemy_spawn"], shape)
+        gates = self._gate_geometry(ebase, walk)[0]
+        if not gates:
+            return
+        posts = []
+        for g in gates:
+            cen = np.mean(np.asarray(g, np.float32), axis=0)
+            posts.append(min(g, key=lambda q: (q[0] - cen[0]) ** 2 + (q[1] - cen[1]) ** 2))
+        dist = [self._distance_to(walk & ~ebase, (p,)) for p in posts]
+        left = list(range(len(posts)))
+        for u in sorted(units, key=lambda v: unit_index(v.name)):
+            if not left:
+                break
+            k = min(left, key=lambda j: float(dist[j][u.pos]))
+            left.remove(k)
+            here = pixel_position(states[u.row], shape)
+            if float(dist[k][u.pos]) <= 0.5:
+                heading = np.zeros(2, dtype=np.float32)
+            else:
+                heading = self._path_heading(walk & ~ebase, (posts[k],), here, UNIT_RADIUS[HUNTER])
+                if heading is None:
+                    continue
+            lab = labels[u.name]
+            labels[u.name] = AnyAngleLabel(lab.mask, True, lab.kind, lab.target, lab.goals, False, heading)
+            self._count("raid_idle")
 
     def _zone_post(self, role, prey):
         """``storage``: the enemy storage cell nearest the enemy units out of base (their next deposit);

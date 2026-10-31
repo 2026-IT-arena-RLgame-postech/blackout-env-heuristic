@@ -219,6 +219,7 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("race_search", "int", 0, 3, "structural", "lookahead over entry delays at the sanctuary (max delay; 0 = off; V34)", True),
     _k("stage_by_name", "bool", 0, 1, "structural", "reserve hold by unit name, not xy (stacked race walkers stood still; V34)", True),
     _k("gate_split", "bool", 0, 1, "structural", "leave the base by the exit enemy Hunters reach latest, spread, wait inside (V34)", True),
+    _k("raid_sticky", "float", 0.5, 1.0, "roles", "score factor keeping the current raid target (1 = off; V34)"),
     _k("gate_wait", "float", -0.5, 1.5, "gate", "min time margin (s) to leave the base under gate_split (V34)"),
     _k("gate_tol", "float", 0.0, 1.5, "gate", "margin tolerance for spreading over exits (V34)"),
     _k("gate_commit", "float", 2.0, 8.0, "gate", "tiles from the base a unit keeps its exit (V34)"),
