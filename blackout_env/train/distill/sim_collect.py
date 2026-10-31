@@ -246,7 +246,9 @@ class SimCollectorPool:
     def __init__(self, workers: int, group: int = 32):
         self.workers = workers
         self.group = group
-        self._executor = ProcessPoolExecutor(workers, initializer=_init_worker)
+        import multiprocessing as mp
+
+        self._executor = ProcessPoolExecutor(workers, mp_context=mp.get_context("spawn"), initializer=_init_worker)
         self._pending: dict[Future, list[MatchTask]] = {}
         self._buffer: list[MatchTask] = []
 
