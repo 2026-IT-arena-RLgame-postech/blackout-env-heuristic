@@ -257,14 +257,19 @@ class SimCollectorPool:
         return len(self._buffer) + sum(len(v) for v in self._pending.values())
 
     def _flush(self, force: bool = False) -> None:
-        while self._buffer and (force or len(self._buffer) >= self.group or self._idle_workers() > 0):
+        """Eval tasks go out at once (their own job); collect tasks in full groups, or whatever is buffered when no job
+        is running at all (never idle with work queued)."""
+        while self._buffer:
             evals = [t for t in self._buffer if t.tag != "collect"]
-            batch = evals[:self.group] if evals else self._buffer[:self.group]
+            if evals:
+                batch = evals[:self.group]
+            elif force or len(self._buffer) >= self.group or not self._pending:
+                batch = self._buffer[:self.group]
+            else:
+                return
             ids = {id(t) for t in batch}
             self._buffer = [t for t in self._buffer if id(t) not in ids]
             self._pending[self._executor.submit(_run_group, batch)] = batch
-            if not force and len(self._buffer) < self.group and self._idle_workers() <= 0:
-                break
 
     def _idle_workers(self) -> int:
         return self.workers - len(self._pending)
