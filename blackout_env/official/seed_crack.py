@@ -52,3 +52,37 @@ def check_seeds(seeds: torch.Tensor, excluded: int, valid_count: int, observed: 
         ok = ok & observed.index_select(0, orig.clamp(0, valid_count - 1))
         s0, s1, s2, s3 = _next(s0, s1, s2, s3)  # the amount draw
     return ok
+
+
+def check_seeds_staged(seeds: torch.Tensor, excluded: int, valid_count: int, observed: torch.Tensor, k: int = 12):
+    """``check_seeds`` keeping only the survivors after each test (storage choice 1/5, then ~15 % per battery):
+    the first stage over every seed is the whole cost.  Returns the surviving seeds."""
+    s0 = seeds & M32
+    s1 = (MULT * s0 + 1) & M32
+    s2 = (MULT * s1 + 1) & M32
+    s3 = (MULT * s2 + 1) & M32
+    top = torch.full_like(s0, -1)
+    arg = torch.zeros_like(s0)
+    for i in range(5):
+        s0, s1, s2, s3 = _next(s0, s1, s2, s3)
+        key = s3 & 0x7FFFFF
+        better = key >= top  # ties: the later index is left out (stable OrderBy)
+        top = torch.where(better, key, top)
+        arg = torch.where(better, torch.full_like(arg, i), arg)
+    keep = arg == excluded
+    seeds, s0, s1, s2, s3 = seeds[keep], s0[keep], s1[keep], s2[keep], s3[keep]
+    picks = []
+    for i in range(k):
+        s0, s1, s2, s3 = _next(s0, s1, s2, s3)
+        r = s3 % (valid_count - i)
+        orig = r
+        for _ in range(i):
+            below = torch.zeros_like(r)
+            for p in picks:
+                below = below + (p <= orig).to(r.dtype)
+            orig = r + below
+        keep = observed.index_select(0, orig.clamp(0, valid_count - 1))
+        seeds, s0, s1, s2, s3, orig = seeds[keep], s0[keep], s1[keep], s2[keep], s3[keep], orig[keep]
+        picks = [p[keep] for p in picks] + [orig]
+        s0, s1, s2, s3 = _next(s0, s1, s2, s3)
+    return seeds
