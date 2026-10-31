@@ -193,3 +193,15 @@ x18 (48 seeds × 2면, paired):
   D3 기반 모드 3 그래프 vs 시뮬 학생 50 Hz 일치 99.8 %.
 - 증류: D5 (모드 2) → **D6 (모드 3, gpu2, ~/bpruns/d6_store)**.
 - 첫 스텝 30 s 허용은 시리즈 전체의 첫 호출에만 (remote_model stats.steps == 0).
+
+## 02:30–03:30 공식 v1.0.2 + 대회 실행기 검증
+
+- v1.0.2 (23:11 배포): 헌터 팀당 2 (MaxUnitsPerTeam, 변신한 유닛이 클래스가 바뀌면 자리 반환), 벽/개방 위치 = 우리 구현과 동일.
+- 대회 실행기 (Docker + MPS) gpu2 GPU1에서 실행 (`scripts/comp/run_official.py`: GPU 번호만 바꿈, COMP_NO_RENDER로 리플레이만 저장).
+  `--no-gpu`는 공식 정책 서버가 CUDA 세션에서 세그폴트 (gpu1) → GPU 경로 사용.
+  D3 모드3 vs D2 모드1: 8경기 전승 (101~104 : 15~20), 시간 초과 0, 최대 지연 59 ms.
+- **시뮬 ≠ 공식 원인: 벽 충돌**. 우리 포크는 x/y 분리 클램프(코너 교착 수정), 공식은 대각 변위 전체를 한 번에 클램프.
+  sim `core.OFFICIAL_CLAMP=True`로 공식 방식 채택 → 공식 리플레이 재생 시 위치 전 스텝 일치, 점수 5/6 일치
+  (불일치 1개 = 시리즈 첫 경기: 첫 에피소드 맵이 시드를 안 따름).
+- **numba 캐시 주의**: batch.py의 캐시가 core.py 변경을 추적 안 함 → core 변경 후 `find blackout_env -name '*.nb[ic]' -delete` (모든 호스트).
+- 증류: D6 (모드3, 포크 충돌) 10k → **D7 (모드3, 공식 충돌) gpu2 ~/bpruns/d7_off** 시작.
