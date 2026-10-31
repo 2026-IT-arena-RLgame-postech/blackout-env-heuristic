@@ -221,3 +221,16 @@ x18 (48 seeds × 2면, paired):
   C0R = C0+race_order: vs B3 +76.7, V34c +73.4, V34b +77.0, C0 -1.3+-4.0 (64) / -4.9+-3.1 (96). B3R: +12.6 vs C0, loses to C0R -28.7.
 - race_beam (beam-searched open-loop race walk, arrives 1 tick earlier at 98): ~0 vs C0, much worse vs B3 (no wipe) -> off.
 - CEM around C0R (race,hunters,evasion): best confirmed +2.6+-1.4 over pool: noise level.
+
+## 2026-11-01 RL(rl_bp1_final) 우위 출처 분석 (feat/bp-teacher)
+
+- RL vs B3 / B4 / C0 (48 seeds × 2면, seed0 8.1M, v27_eval cap 150 s): B3 상대 A면 +34.5±9.5 (승률 .69), B면 +69.8±3.6 (.98);
+  B4 상대 −24.9±9.4 / −22.9±9.3; C0 상대 −28.6±8.9 / −13.8±8.9. 같은 시드에서 B4 vs B3 = +72.9±4.2 (A) / +72.9±2.6 (B), B3R vs B3 −12.6 / +24.8, B3 vs B3 −24.7 / +24.7 (면 비대칭).
+- 결론: RL의 B3 대비 우위 = 성소 레이스 동시틱 와이프(race_order와 같은 트릭). RL은 100틱에 헌터 2.0 vs B3 0.0, 입구 와이프로 B3 콜렉터 3.3마리 vs 0.2 (B4: 4.0 vs 0).
+  마진 증가 구간 (궤적 24시드×2면): RL vs B3 110–400틱 +27.7, 400–800 +12.6 (합 ≈ +43) / B4 vs B3 +56.2, +11.9 (합 ≈ +68). RL은 B4의 열화판
+  (A면에서 31 %를 놓침, 와이프 후 헌터 1.58 vs 2.0 유지). RL vs B4는 와이프 쌍방(헌터 3.3마리씩 사망) 후 B4가 2차 헌터를 더 빨리 확보
+  (300틱 헌터 1.33 vs 0.85), 110–800틱에서 RL이 −23 손해. 따라서 B4에 없는 RL 고유 우위는 못 찾음.
+- 후반 (800틱+, 생존 경기만): RL 헌터 킬/헌터초 0.65 vs B4 0.58 (+12 %), RL 헌터는 항상 이동, 그러나 선택편향 + 마진 영향 +1~2에 그침.
+- 기존 노브 손시험 (B4 기준 32 seeds × {B4,C0,B3R,V34c}): solo_sentry=false −8/−16/0/0, late_hunter_quota=1 −8/−7/−4/−2, raid_sticky 0.8 ≈0, hunter_quota=1 −70;
+  sweep_camper, late_hunter_quota=2, hunt_threshold, carrier_on_monopoly, late_after는 B4에서 무효과(동일 결과). 새 노브/별칭 없음 → B4 유지.
+- 도구: reports/bp/rlsrc/{side,an,an2,an3,an4}.py (면별 표, 구간별 마진/킬, 헌터 수 추이). 주의: bp_focus는 원격 코드 동기화를 안 함 (원격에 `git push -f poscat_gpu1 BR:bp-incoming` + `checkout -f -B`).
