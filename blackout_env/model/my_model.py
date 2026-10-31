@@ -498,7 +498,14 @@ class MyModel(nn.Module):
 
     @property
     def official_mode(self) -> int:
-        return int(round(float(getattr(self, OFFICIAL_KEY)[0]))) if self.official_obs else 0
+        if not self.official_obs:
+            return 0
+        # reading the buffer syncs with the GPU, which a CUDA-graph capture forbids: reuse the last eager read there
+        cached = self.__dict__.get("_official_mode_cache")
+        if cached is not None and torch.cuda.is_available() and torch.cuda.is_current_stream_capturing():
+            return cached
+        self.__dict__["_official_mode_cache"] = m = int(round(float(getattr(self, OFFICIAL_KEY)[0])))
+        return m
 
     def _trunk(self, graphic, team_state, agent_states, unit_extra=None) -> torch.Tensor:
         """The 48 trunk tokens' post-attention output, [B, 48, hidden]."""
