@@ -94,11 +94,14 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  raid_carrier: float = 1.0, raid_lead: float = 0.0, race_search: int = 0, rs_horizon: int = 10,
                  rs_trigger: float = 1.2, stage_by_name: bool = False, gate_split: bool = False,
                  gate_wait: float = 0.3, gate_tol: float = 0.4, gate_detour: float = 0.3, gate_commit: float = 4.0,
-                 gate_breakout: int = 2, raid_idle: str = "", raid_sticky: float = 1.0, **kwargs):
+                 gate_breakout: int = 2, raid_idle: str = "", raid_sticky: float = 1.0, bait: float = 0.0,
+                 bait_reach: float = 5.0, **kwargs):
         super().__init__(**kwargs)
         self.stage_by_name = bool(stage_by_name)
         self.gate_split = bool(gate_split)
         self.raid_idle = str(raid_idle)
+        self.bait = float(bait)
+        self.bait_reach = float(bait_reach)
         self.raid_sticky = float(raid_sticky)
         self._raid_target: dict[str, int] = {}
         self.gate_wait = float(gate_wait)
@@ -376,6 +379,8 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
             self._post_east(labels)
         if self.hunter_roles:
             self._assign_roles(labels)
+        if self.bait > 0:
+            self._bait(labels)
         if self._cap_hold or self._cap_out or self._stage_hold:
             for n in list(labels):
                 lab = labels[n]
@@ -675,6 +680,42 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
             self._count("role_" + role)
         if idle_raiders and free:
             self._idle_gates(labels, ctx, free[:len(idle_raiders)])
+
+    def _bait(self, labels):
+        """An enemy Hunter within ``bait`` tiles of our Carrier: our nearest empty Collector (out of base, within
+        ``bait_reach`` path tiles of that Hunter) runs at it -- a nearer prey for the Hunter, a free death for us
+        (instant respawn) -- so the Carrier keeps collecting."""
+        ctx = self._teach_ctx
+        shape, states = ctx["shape"], ctx["states"]
+        walk = self._teach_walkable
+        carriers = [u for u in ctx["own"] if u.cls == CARRIER]
+        if not carriers:
+            return
+        base = self._cached_base_mask(ctx["ally_spawn"], shape)
+        used = set()
+        for car in carriers:
+            cp = pixel_position(states[car.row], shape)
+            threats = [e for e in ctx["enemies"] if e.cls == HUNTER and not e.in_base
+                       and np.hypot(cp[0] - e.pos[0], cp[1] - e.pos[1]) <= self.bait]
+            for h in sorted(threats, key=lambda e: np.hypot(cp[0] - e.pos[0], cp[1] - e.pos[1])):
+                dist = self._distance_to(walk, (h.pos,))
+                cands = [u for u in ctx["own"] if u.cls == COLLECTOR and u.name not in used and u.name in labels
+                         and not base[u.pos] and not self._is_holding(states[u.row])
+                         and float(dist[u.pos]) <= self.bait_reach]
+                if not cands:
+                    continue
+                u = min(cands, key=lambda v: (float(dist[v.pos]), unit_index(v.name)))
+                used.add(u.name)
+                here = pixel_position(states[u.row], shape)
+                there = pixel_position(states[h.row], shape)
+                heading = (world_heading(there[0] - here[0], there[1] - here[1])
+                           if np.hypot(here[0] - there[0], here[1] - there[1]) < 1.5
+                           else self._path_heading(walk, (h.pos,), here, UNIT_RADIUS[COLLECTOR]))
+                if heading is None:
+                    continue
+                lab = labels[u.name]
+                labels[u.name] = AnyAngleLabel(lab.mask, True, lab.kind, lab.target, lab.goals, False, heading)
+                self._count("bait")
 
     def _idle_gates(self, labels, ctx, units):
         """Raiders with no prey out of the enemy base wait on the enemy base's exits (one per exit): enemy units
