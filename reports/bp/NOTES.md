@@ -212,3 +212,12 @@ x18 (48 seeds × 2면, paired):
 - 교사 개선 서브에이전트: worktree ../blackout-env-teach (branch feat/bp-teacher), mac+gpu1 CPU, 새 별칭(B4) 보고 예정.
   공식 충돌에서 B3 vs V17 +46.8±10.1 (16), 2 s 이상 끼임 0.
 - RL 준비: reports/bp/rl/ppo_bp1.sh (INIT=d7_final, GPU=2,0 비동기 2-GPU), 별칭 B3/C0 추가, ppo_league_b.sh에 EVAL_OPPS.
+## 2026-11-01 official-collision teacher round (feat/bp-teacher)
+
+- rr0 (48 seeds, official clamp): C0 +40.6 avg, B3 -4.9, V34c -6.0, V34b -29.7; C0 beats B3 by +36 (tie-order exploit below).
+- Wall slowdown is a non-issue (0.06 % of command steps in the first 10 s; later only idle units pressing base corners).
+- Agent update order (3,6,2,7,5,8,4,9,1,0) decides ties: B's racers 6,7 act before A's 1,2, so a hunter one tick earlier
+  wipes the stacked collectors at the entrance. `race_order=true` picks Hunter walkers/reserves by that order (A: units 3,2).
+  C0R = C0+race_order: vs B3 +76.7, V34c +73.4, V34b +77.0, C0 -1.3+-4.0 (64) / -4.9+-3.1 (96). B3R: +12.6 vs C0, loses to C0R -28.7.
+- race_beam (beam-searched open-loop race walk, arrives 1 tick earlier at 98): ~0 vs C0, much worse vs B3 (no wipe) -> off.
+- CEM around C0R (race,hunters,evasion): best confirmed +2.6+-1.4 over pool: noise level.

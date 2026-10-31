@@ -1,0 +1,72 @@
+{
+ "gen": 19,
+ "pool": {
+  "B0": "strategic_v34:reserve_stage=0.5523,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1113,camp_engage_radius=6.5,hunter_quota=2,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,commit_margin=-0.3,guard_radius=7.691,late_after=16.0,carrier_col_scale=0.9054,camp_tiles=2.457,breakout_units=1,join_reach=1.137,trade_radius=0.7359,steal_weight=1.94,exposure_cost=0.7841,danger_hunter_radius=4.137,contest_factor=0.5747,w_dspd=5.0,w_bspd=4.5,reserve_count=2,cap_sync=true,cap_enter=0.2",
+  "B1": "strategic_v34:reserve_stage=0.17,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1113,camp_engage_radius=6.5,hunter_quota=2,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,commit_margin=-0.3,guard_radius=7.691,late_after=16.0,carrier_col_scale=0.9054,camp_tiles=2.457,breakout_units=1,join_reach=1.137,trade_radius=0.7359,steal_weight=1.94,exposure_cost=0.7841,danger_hunter_radius=4.137,contest_factor=0.5747,w_dspd=5.0,w_bspd=4.5,reserve_count=2,cap_sync=true,cap_enter=0.17,early_reserve=5",
+  "B2": "strategic_v34:reserve_stage=0.17,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1113,camp_engage_radius=6.5,hunter_quota=2,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,commit_margin=-0.3,guard_radius=7.691,late_after=16.0,carrier_col_scale=0.9054,camp_tiles=2.457,breakout_units=1,join_reach=1.137,trade_radius=0.7359,steal_weight=1.94,exposure_cost=0.7841,danger_hunter_radius=4.137,contest_factor=0.5747,w_dspd=5.0,w_bspd=4.5,reserve_count=2,cap_sync=true,cap_enter=0.17,early_reserve=5,hunter_roles=raid/raid,roles_when=always",
+  "B3": "strategic_v34:reserve_stage=0.17,trade_hold=advance,reserve_join=reserve,solo_sentry=false,threat_radius=0.1113,camp_engage_radius=7.858,hunter_quota=2,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=3,commit_margin=-0.3,guard_radius=7.691,late_after=21.56,carrier_col_scale=0.8686,camp_tiles=2.457,breakout_units=2,join_reach=1.137,trade_radius=0.5,steal_weight=1.507,exposure_cost=0.66,danger_hunter_radius=4.137,contest_factor=0.5434,w_dspd=5.0,w_bspd=4.5,reserve_count=2,cap_sync=true,cap_enter=0.17,early_reserve=5,hunter_roles=raid/raid,roles_when=always,sweep_radius=8.079,sentry_offset=2.529,sentry_radius=6.153,hunt_spawn_radius=6.636,hunt_camp_radius=3.279,chase_equal=2.131,carrier_hunter_scale=0.9071,danger_tiles=2.675,opening_seconds=14.89,commit_reach=1.286,danger_weight=0.4563,deposit_band=0.1526,dom_threat_radius=0.1,h_evade_radius=1.0,h_trade_up=true",
+  "C0": "strategic_v34:reserve_stage=0.0026,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.1171,camp_engage_radius=6.766,hunter_quota=2,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,commit_margin=-0.3,guard_radius=9.006,late_after=16.0,carrier_col_scale=0.7163,camp_tiles=2.457,breakout_units=2,join_reach=0.9831,trade_radius=0.8124,steal_weight=1.94,exposure_cost=0.306,danger_hunter_radius=3.076,contest_factor=0.5747,w_dspd=5.0,w_bspd=1.782,reserve_count=2,cap_sync=true,cap_enter=0.142,early_reserve=5,hunter_roles=raid/raid,roles_when=always,sweep_radius=10.52,adapt_at=6.243,hunt_threshold=0.15,hunt_spawn_value=8.518,hunt_camp_radius=2.0,hunt_camp_value=4.534,opening_seconds=14.92,commit_reach=0.5,join_margin=0.0,carrier_field_value=22.56,danger_collector_radius=2.371,score_band=1.069,exclusion_margin=1.097,deposit_band=0.5622,idle_band=0.2481,w_bsize=0.6031,dom_danger_hunter_radius=3.0,h_evade_radius=1.0,h_trade_up=true",
+  "B4": "strategic_v34:reserve_stage=0.17,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.1113,camp_engage_radius=8.56,hunter_quota=2,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=3,commit_margin=-0.3,guard_radius=9.108,late_after=21.56,carrier_col_scale=0.5956,camp_tiles=2.457,breakout_units=2,join_reach=1.137,trade_radius=0.5,steal_weight=1.507,exposure_cost=0.6293,danger_hunter_radius=4.137,contest_factor=0.5434,w_dspd=5.0,w_bspd=4.5,reserve_count=2,cap_sync=true,cap_enter=0.17,early_reserve=5,hunter_roles=raid/raid,roles_when=always,sweep_radius=8.079,sentry_offset=1.958,sentry_radius=5.972,hunt_spawn_radius=6.636,hunt_camp_radius=3.242,chase_equal=2.43,carrier_hunter_scale=0.9071,danger_tiles=2.675,opening_seconds=14.89,commit_reach=1.286,danger_weight=0.4563,deposit_band=0.2542,dom_threat_radius=0.1,h_evade_radius=1.0,h_trade_up=true,join_margin=0.0,trade_reach=0.531,trade_floor=0.2388,score_band=1.178,exclusion_margin=1.415,w_bsize=0.3966,raid_value=1.047,raid_lead=0.1496,bait_reach=3.815,gate_commit=5.49,gate_return=1.018",
+  "B5": "strategic_v34:reserve_stage=0.1397,trade_hold=advance,reserve_join=reserve,solo_sentry=true,threat_radius=0.1113,camp_engage_radius=8.56,hunter_quota=2,sentry_min_hunters=3,exit_guards=1,guard_min_hunters=2,sweep=true,cargo_transform=true,adapt_k=4,commit_margin=-0.3,guard_radius=9.108,late_after=21.56,carrier_col_scale=0.5956,camp_tiles=2.128,breakout_units=3,join_reach=1.083,trade_radius=0.5,steal_weight=1.507,exposure_cost=0.6293,danger_hunter_radius=4.137,contest_factor=0.5434,w_dspd=5.0,w_bspd=4.5,reserve_count=2,cap_sync=true,cap_enter=0.17,early_reserve=5,hunter_roles=raid/raid,roles_when=always,sweep_radius=8.079,sentry_offset=1.958,sentry_radius=5.972,hunt_spawn_radius=6.636,hunt_camp_radius=2.903,chase_equal=2.286,carrier_hunter_scale=1.0,danger_tiles=2.947,opening_seconds=15.05,commit_reach=1.576,danger_weight=0.5237,deposit_band=0.2125,dom_threat_radius=0.1446,h_evade_radius=1.0,h_trade_up=true,join_margin=0.0,trade_reach=0.531,trade_floor=0.2388,score_band=1.178,exclusion_margin=1.592,w_bsize=0.3966,raid_value=1.047,raid_lead=0.1496,bait_reach=3.083,gate_commit=6.232,gate_return=1.018,raid_carrier=0.5,sweep_camper=false"
+ },
+ "champion": "B5",
+ "counter": "C0",
+ "phase": "improve",
+ "stale": 0,
+ "history": [
+  {
+   "gen": 1,
+   "event": "manual",
+   "name": "B1",
+   "note": "V34b (early_reserve + tight staging), +22.6 vs V34a"
+  },
+  {
+   "gen": 3,
+   "event": "manual",
+   "name": "B2",
+   "note": "V34c = V34b + hunter_roles raid/raid always (+27 vs V34b)"
+  },
+  {
+   "gen": 5,
+   "event": "no_counter",
+   "margin": 3.2109375
+  },
+  {
+   "gen": 6,
+   "event": "champion",
+   "name": "B3",
+   "gain": 4.864583333333333,
+   "se": 2.056484724287395
+  },
+  {
+   "gen": 9,
+   "event": "no_counter",
+   "margin": -0.5625
+  },
+  {
+   "gen": 12,
+   "event": "counter",
+   "name": "C0",
+   "margin": 14.5390625
+  },
+  {
+   "gen": 15,
+   "event": "no_counter",
+   "margin": 1.7734375
+  },
+  {
+   "gen": 17,
+   "event": "champion",
+   "name": "B4",
+   "gain": 6.15625,
+   "se": 2.2504094128450554
+  },
+  {
+   "gen": 18,
+   "event": "champion",
+   "name": "B5",
+   "gain": 3.7630208333333335,
+   "se": 1.5139268942845787
+  }
+ ]
+}

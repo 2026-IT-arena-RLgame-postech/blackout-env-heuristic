@@ -154,7 +154,7 @@ class StrategicHeuristicV32(StrategicHeuristicV31):
         shape = graphic.shape[:2]
         planner = self._planner(np.ascontiguousarray(walkable, dtype=bool), tiles, UNIT_RADIUS[COLLECTOR])
         tile_set = set(tiles)
-        walkers = sorted((planner.distance(pixel_position(states[row_for[n]], shape)), unit_index(n), n)
+        walkers = sorted((planner.distance(pixel_position(states[row_for[n]], shape)), self._rk(n), n)
                          for n in controlled if n in goals and n not in self.staged
                          and any(kind == "transform" and set(t) & tile_set for t, kind in goals[n]))
         if len(walkers) < min(self.hunter_quota, MAX_HUNTERS) or not np.isfinite(walkers[0][0]):

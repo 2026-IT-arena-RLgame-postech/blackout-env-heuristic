@@ -39,6 +39,7 @@ except ImportError:  # pragma: no cover
         return wrap if not args or not callable(args[0]) else args[0]
 
 ARC_STEP_DEG = 7.5  # angular spacing of the nodes on a corner arc
+OFFICIAL_CLAMP = True  # emulate the official wall collision in the heading lookahead (False: fork axis split)
 DELTA = 2e-3  # clearance beyond the unit radius kept by node chords (tiles)
 
 
@@ -297,8 +298,11 @@ def emulate_move(blocked, y, x, hy, hx, tick_step, ticks, r):
     """Position after ``ticks`` movement ticks along unit heading (hy, hx) (pixel frame), X axis
     (columns) resolved before Y as Unity does."""
     for _ in range(ticks):
-        y, x = _clamp_axis_px(blocked, y, x, 0.0, hx * tick_step, r)
-        y, x = _clamp_axis_px(blocked, y, x, hy * tick_step, 0.0, r)
+        if OFFICIAL_CLAMP:  # one ClampPosition over the whole diagonal displacement (sim core.OFFICIAL_CLAMP)
+            y, x = _clamp_axis_px(blocked, y, x, hy * tick_step, hx * tick_step, r)
+        else:
+            y, x = _clamp_axis_px(blocked, y, x, 0.0, hx * tick_step, r)
+            y, x = _clamp_axis_px(blocked, y, x, hy * tick_step, 0.0, r)
     return y, x
 
 
@@ -314,6 +318,9 @@ def _best_heading(blocked, nodes, node_g, boxes, inset, required, y, x, base, sp
         if v < best_v - 1e-12:
             best_v, best_a = v, a
     return best_a, best_v
+
+
+_BEAM_CACHE: dict = {}  # (map, goal, delta, start) -> open-loop race path (process-wide)
 
 
 class RacePlanner:
@@ -378,11 +385,64 @@ class RacePlanner:
             return None
         return ty, tx
 
-    def heading(self, position, *, lookahead: bool = True, tick_step: float = 0.08, ticks: int = 2,
+    def _beam_path(self, y0, x0, *, width=40, nh=61, span=0.12, tick_step=0.08, ticks=2, max_steps=200):
+        """Open-loop heading sequence from (y0, x0) reaching the goal in the fewest decisions: a beam search over
+        emulated moves (the walk is deterministic), ranked by the exact remaining path.  The greedy lookahead of
+        ``heading`` loses ~0.01 tiles round the bends, which is a whole decision at the sanctuary.
+        Returns (positions [n, 2] before each step, angles [n]) or None."""
+        beam = [(float(self.distance((y0, x0))), y0, x0, [], [])]
+        for _ in range(max_steps):
+            cand = {}
+            for _g, y, x, ph, ah in beam:
+                t = self.target((y, x))
+                if t is None:
+                    continue
+                base = math.atan2(t[0] - y, t[1] - x)
+                for i in range(nh):
+                    a = base - span + 2.0 * span * i / (nh - 1)
+                    ny, nx = emulate_move(self.blocked, y, x, math.sin(a), math.cos(a), tick_step, ticks, self.radius)
+                    v = _query(self.blocked, self.nodes, self.node_g, self.boxes, self.inset, ny, nx, self.q_required)[0]
+                    k = (round(ny, 5), round(nx, 5))
+                    if k not in cand or cand[k][0] > v:
+                        cand[k] = (v, ny, nx, ph + [(y, x)], ah + [a])
+            if not cand:
+                return None
+            beam = sorted(cand.values(), key=lambda z: z[0])[:width]
+            if beam[0][0] <= 0.0:
+                _g, _y, _x, ph, ah = beam[0]
+                return np.array(ph, dtype=np.float64), np.array(ah, dtype=np.float64)
+        return None
+
+    def _beam_heading(self, position):
+        tables = self.__dict__.setdefault("_beam_tables", [])
+        y, x = float(position[0]), float(position[1])
+        for pos, ang in tables:
+            if len(pos):
+                hit = np.nonzero((np.abs(pos[:, 0] - y) < 2e-3) & (np.abs(pos[:, 1] - x) < 2e-3))[0]
+                if len(hit):
+                    a = float(ang[hit[0]])
+                    return np.array([math.cos(a), -math.sin(a)], dtype=np.float32)
+        key = (self.blocked.tobytes(), self.boxes.tobytes(), self.delta, round(y, 3), round(x, 3))
+        if key in _BEAM_CACHE:
+            res = _BEAM_CACHE[key]
+        else:
+            if self.distance(position) < 15.3 or len(_BEAM_CACHE) > 24:
+                return None
+            res = _BEAM_CACHE[key] = self._beam_path(y, x)
+        if res is None:
+            return None
+        tables.append(res)
+        return self._beam_heading(position)
+
+    def heading(self, position, *, lookahead: bool = True, beam: bool = False, tick_step: float = 0.08, ticks: int = 2,
                 span_deg: float = 20.0, n: int = 161):
         """World-frame unit move (+x = col + 1, +y = row - 1), or None.  Without ``lookahead``: toward
         ``target``.  With it: of ``n`` headings within ``span_deg`` of that direction, the one whose
         emulated move (``ticks`` x ``tick_step`` tiles, wall clamps) leaves the shortest exact path."""
+        if beam:
+            h = self._beam_heading(position)
+            if h is not None:
+                return h
         t = self.target(position)
         if t is None:
             return None

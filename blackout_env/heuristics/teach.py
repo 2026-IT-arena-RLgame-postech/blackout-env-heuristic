@@ -192,12 +192,21 @@ def label_action(label: TeachLabel) -> np.ndarray:
     return (vector / float(np.linalg.norm(vector))).astype(np.float32)
 
 
+# the sim's agent update order (sim/state.py DEFAULT_ORDER): rank of each unit row
+_ACT_RANK = {u: i for i, u in enumerate((3, 6, 2, 7, 5, 8, 4, 9, 1, 0))}
+
+
 class TeachLabeller:
     """Goal -> label machinery shared by the relabelling teachers; mix in before a heuristic.
 
     A teacher implements ``teach(obs) -> {name: TeachLabel}``: it picks goals as a function of the
     observation alone and turns each unit's goals into a label with ``_label``.  ``act`` follows
     the labels, which checks that they lead somewhere."""
+
+    race_order = False  # race walkers/reserves picked by the sim's update order, not the unit index (V34)
+
+    def _rk(self, name):
+        return _ACT_RANK[unit_index(name)] if self.race_order else unit_index(name)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -264,7 +273,7 @@ class TeachLabeller:
             distance = self._distance_to(walkable, tiles)
             reach = {name: float(distance[self._to_pixel(states[row_for[name]][:2], shape)]) for name in candidates}
             ranked = sorted((name for name in candidates if math.isfinite(reach[name])),
-                            key=lambda name: (reach[name], unit_index(name)))
+                            key=lambda name: (reach[name], self._rk(name) if role == HUNTER else unit_index(name)))
             for name in ranked[:missing]:
                 goals[name] = ((tiles, "transform"),)
                 candidates.remove(name)

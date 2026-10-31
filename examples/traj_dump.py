@@ -56,6 +56,7 @@ def play_chunk(job):
     cls = np.full((n, T, 10), -1, np.int8)
     held = np.full((n, T, 10), -1, np.int8)
     score = np.zeros((n, T, 2), np.int16)
+    mv = np.full((n, T, 10, 2), np.nan, np.float32)
     kills = []  # (b, t, killer, victim, vcls, kcls)
     for t in range(T):
         live = np.nonzero(~bs.over)[0]
@@ -71,6 +72,7 @@ def play_chunk(job):
                 s_in = sub if sel.all() else tuple(x[sel] for x in sub)
                 moves[live[sel], 5 * team:5 * team + 5] = pol.moves(bs, live[sel], (team,), s_in)[team]
         pos[live, t] = bs.uf[live, :, :2]
+        mv[live, t] = moves[live]
         cls[live, t] = bs.ui[live, :, core.U_CLS]
         h = bs.ui[live, :, core.U_HELD]
         held[live, t] = np.where(h >= 0, bs.it[live[:, None], np.maximum(h, 0), core.I_TYPE], -1)
@@ -82,7 +84,7 @@ def play_chunk(job):
                 if int(e[1]) == core.EV_KILL:
                     kills.append((b, t, int(e[2]), int(e[3]), int(e[4]), int(e[5])))
     fn = Path(out) / f"{tag(ours_name)}__{tag(opp_name)}__{seeds[0]}_{sides[0]}.npz"
-    np.savez_compressed(fn, seeds=np.asarray(seeds), sides=sides, pos=pos, cls=cls, held=held, score=score,
+    np.savez_compressed(fn, seeds=np.asarray(seeds), sides=sides, pos=pos, mv=mv, cls=cls, held=held, score=score,
                         kills=np.asarray(kills, np.int64).reshape(-1, 6))
     return str(fn)
 

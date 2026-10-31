@@ -45,7 +45,7 @@ class StrategicHeuristicV25(StrategicHeuristicV23):
     """V23 + exact race walk (``race_walk``) + last-step commit (``race_commit``);
     ``race_lookahead`` picks race headings by an emulated move (no gain measured, off)."""
 
-    def __init__(self, *, race_walk: bool = True, race_lookahead: bool = False, race_delta: float = 2e-3,
+    def __init__(self, *, race_walk: bool = True, race_lookahead: bool = False, race_beam: bool = False, race_order: bool = False, race_delta: float = 2e-3,
                  race_commit: bool = True, commit_reach: float = 1.0, **kwargs):
         super().__init__(**kwargs)
         self.race_commit = bool(race_commit)
@@ -53,6 +53,8 @@ class StrategicHeuristicV25(StrategicHeuristicV23):
         self.last_step: list[str] = []  # for inspection: walkers committed by race_commit this tick
         self.race_walk = bool(race_walk)
         self.race_lookahead = bool(race_lookahead)
+        self.race_beam = bool(race_beam)
+        self.race_order = bool(race_order)
         self.race_delta = float(race_delta)
         self._planners: dict = {}
 
@@ -88,7 +90,7 @@ class StrategicHeuristicV25(StrategicHeuristicV23):
                 plan_map = getattr(self, "_teach_walkable", walkable)
                 heading = self._planner(np.ascontiguousarray(plan_map, dtype=bool), tiles,
                                         UNIT_RADIUS[COLLECTOR]).heading(pixel_position(state, shape),
-                                                                        lookahead=self.race_lookahead)
+                                                                        lookahead=self.race_lookahead, beam=self.race_beam)
                 if heading is not None:
                     self._count("race_walk")
                     return heading
