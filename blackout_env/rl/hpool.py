@@ -41,7 +41,7 @@ def _worker(conn) -> None:
         elif op == "ninst":
             conn.send(sum(1 for k in inst if k[0] == msg[1]))
         elif op == "act":
-            _, key, desc, seed, bs, tms, rs, rm = msg
+            _, key, desc, seed, bs, tms, rs, rm, ticket = msg
             out = np.zeros((len(bs), 5, 2), np.float32)
             obs_cache: dict = {}
             for j in range(len(bs)):
@@ -55,7 +55,7 @@ def _worker(conn) -> None:
                 acts = inst[(key, b, tm)].act({n: obs[n] for n in names})
                 for n_, a in acts.items():
                     out[j, int(n_.split("_")[1]) - 5 * tm] = np.clip(np.asarray(a, np.float32), -1, 1)
-            conn.send(out)
+            conn.send((ticket, out))
 
 
 class HeuristicWorkers:
@@ -79,6 +79,21 @@ class HeuristicWorkers:
                 else:
                     os.environ[k] = v
         self._keys = 0
+        self._tickets = 0
+        self._stash = [dict() for _ in range(n)]   # per worker: replies that arrived while waiting for another ticket
+
+    def send_act(self, k: int, *args) -> int:
+        """Send an ``act`` request to worker ``k``; returns its ticket (replies may be collected in any order)."""
+        self._tickets += 1
+        self.conns[k].send(("act", *args, self._tickets))
+        return self._tickets
+
+    def recv_act(self, k: int, ticket: int):
+        st = self._stash[k]
+        while ticket not in st:
+            t, out = self.conns[k].recv()
+            st[t] = out
+        return st.pop(ticket)
 
     def new_key(self) -> int:
         self._keys += 1
@@ -126,15 +141,14 @@ class ParallelHeuristic(HeuristicPolicy):
         for k, c in enumerate(self.w.conns):
             rows = np.nonzero(owner == k)[0]
             if len(rows):
-                c.send(("act", self.key, self.descriptor, self.seed, idx[rows], tms[rows], rs[rows], rm[rows]))
-                sent.append((k, rows))
+                sent.append((k, rows, self.w.send_act(k, self.key, self.descriptor, self.seed, idx[rows], tms[rows], rs[rows], rm[rows])))
         return len(idx), sent
 
     def finish(self, handle) -> np.ndarray:
         n, sent = handle
         out = np.zeros((n, 5, 2), np.float32)
-        for k, rows in sent:
-            out[rows] = self.w.conns[k].recv()
+        for k, rows, ticket in sent:
+            out[rows] = self.w.recv_act(k, ticket)
         return out
 
     def moves(self, bsim, idx, teams, inputs):
