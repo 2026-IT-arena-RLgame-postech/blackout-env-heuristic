@@ -406,8 +406,16 @@ class PPOTrainer(GRPOTrainer):
         for s in st["snaps"]:
             sn = self._attach_snapshot(os.path.join(c.league_dir or ".", s["file"]), s["level"], s["added"], s["last_step"])
             sn["win"].extend(tuple(x) for x in s["win"])
-        self.opp_score = np.asarray(st["opp_score"], np.float64).copy()
-        self.fin = np.asarray(st["fin"], np.float64).copy()
+        sc = np.asarray(st["opp_score"], np.float64).copy()
+        fin = np.asarray(st["fin"], np.float64).copy()
+        old_fixed = len(sc) - len(st["snaps"])
+        add = self.n_fixed - old_fixed
+        assert add >= 0, "resume: opponents may only be appended to the fixed pool"
+        if add:  # new fixed opponents appended (--set opponents longer than at save): fresh scores, before the snapshots
+            print(f"resume: {add} new fixed opponent(s) appended", flush=True)
+            sc = np.concatenate([sc[:old_fixed], np.full(add, 0.5), sc[old_fixed:]])
+            fin = np.vstack([fin[:old_fixed], np.zeros((add, fin.shape[1])), fin[old_fixed:]])
+        self.opp_score, self.fin = sc, fin
         assert len(self.opp_score) == len(self.opps) == len(self.fin)
         self.fixed_win.extend(tuple(x) for x in st["fixed_win"])
         self.last_snap_iter, self.warm_until = st["last_snap_iter"], st["warm_until"]
