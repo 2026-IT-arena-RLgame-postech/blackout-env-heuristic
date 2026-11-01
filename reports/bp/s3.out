@@ -1,0 +1,8 @@
+11-02 01:23:15 s3: 7 cands (7 to play) x 3 opps x 32 seeds; mac:16w, poscat_gpu1:16w
+11-02 01:33:25 s3 base=B5 seeds=32x2 seed0=81000000
+refill_free=true,refill_reach=16,refill_safe=false,refill_after=3 paired -0.5±2.8 raw +19.9 | B5:-3.8 C0:+2.5 B3R:-0.2
+refill_free=true,refill_reach=20,refill_safe=false,refill_after=3 paired -0.5±2.8 raw +19.9 | B5:-3.8 C0:+2.5 B3R:-0.2
+refill_free=true,refill_reach=20,refill_safe=false,refill_after=0 paired -0.5±2.8 raw +19.9 | B5:-3.8 C0:+2.5 B3R:-0.2
+refill_free=true,refill_reach=20,refill_safe=false,refill_after=8 paired -2.1±2.3 raw +18.3 | B5:-8.0 C0:+2.1 B3R:-0.2
+refill_free=true,refill_reach=20,refill_safe=true,refill_after=3 paired +0.0±0.0 raw +20.4 | B5:+0.0 C0:+0.0 B3R:+0.0
+refill_free=true,refill_reach=28,refill_safe=false,refill_after=5 paired -1.4±2.5 raw +18.9 | B5:-8.1 C0:+4.1 B3R:-0.2

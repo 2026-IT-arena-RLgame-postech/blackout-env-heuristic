@@ -353,3 +353,7 @@ def knob_table(base: str = "V32.1") -> str:
 
 if __name__ == "__main__":
     print(knob_table())
+
+# B6 = B5 + a retuned bundle found by CEM around B5 (reports/bp/NOTES.md, round 4): guard_radius 9.4, late_after 26, adapt_at 5.7,
+# commit_reach 0.98, hunt_hh 11.5, sentry_offset 5.8, ... (descriptor diff below); fresh seeds 96 x 2 sides: B5 +13.3, B4 +14.2, C0 +10.4, B3R +3.6, V34c +1.0
+ALIASES["B6"] = ALIASES["B5"] + ",guard_radius=9.358,late_after=25.95,exposure_cost=0.6541,w_dspd=4.49,adapt_at=5.732,hunt_camp_radius=2.53,commit_reach=0.9771,idle_band=0.2026,w_bsize=0.9526,dom_danger_hunter_radius=3.756,sentry_offset=5.831,hunt_hh=11.49,carrier_hunter_scale=0.8389,trade_floor=0.239,w_dsize=0.0523,raid_carrier=0.5195"
