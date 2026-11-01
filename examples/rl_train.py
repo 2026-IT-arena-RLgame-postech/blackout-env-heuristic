@@ -47,6 +47,13 @@ def parse_set(cfg, items):
     return cfg
 
 
+def _eval_label(spec: str) -> str:
+    """Eval key: a checkpoint's parent dir + name (rl_bp3/iter_750), so same-named checkpoints of different runs don't collide."""
+    if spec.startswith("net:") and "/" in spec:
+        return "/".join(spec[4:].replace(".pt", "").split("/")[-2:])
+    return os.path.basename(spec).replace(".pt", "")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--algo", choices=("grpo", "ppo"), required=True)
@@ -85,11 +92,11 @@ def main():
         if args.eval_fast:
             res = eval_batched(tr.net, eval_opps, seeds, cfg.device, graphs=bool(cfg.graphs), workers=getattr(tr, "hworkers", None),
                                fine=getattr(tr, "fine", None))
-            return {os.path.basename(spec).replace(".pt", ""): {k: res[spec][k] for k in ("win", "margin", "se")}
+            return {_eval_label(spec): {k: res[spec][k] for k in ("win", "margin", "se")}
                     for spec in eval_opps}
         for spec in eval_opps:
             wr, m, se = eval_matches(tr.net, spec, seeds, cfg.device, fine=getattr(tr, "fine", None))
-            out[os.path.basename(spec).replace(".pt", "")] = {"win": wr, "margin": m, "se": se}
+            out[_eval_label(spec)] = {"win": wr, "margin": m, "se": se}
         return out
 
     t_start = time.time()
