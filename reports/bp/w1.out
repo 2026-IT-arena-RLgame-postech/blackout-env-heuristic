@@ -1,0 +1,6 @@
+11-01 10:29:32 w1_s: 8 cands (8 to play) x 2 opps x 32 seeds; mac:16w, poscat_gpu1:16w
+11-01 10:29:36   poscat_gpu1 failed (attempt 0): 
+11-01 10:30:39   poscat_gpu1 failed (attempt 1): 
+11-01 10:37:17 w1 screen: +4.7±1.8; +3.7±3.0; +1.5±1.5; +1.5±1.5; +0.0±0.0; +0.0±0.0; +0.0±0.0
+11-01 10:37:19 w1_c: 3 cands (3 to play) x 2 opps x 96 seeds; mac:16w, poscat_gpu1:16w
+11-01 10:44:29 w1 confirm: +0.5±1.5; -1.5±1.6

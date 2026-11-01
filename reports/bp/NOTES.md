@@ -252,3 +252,4 @@ x18 (48 seeds × 2면, paired):
   guard_until/guard_enemy/sentry_radius는 차이 없음. 별칭 **B5 = B4 + guard_fill=true,guard_after=3,sentry_offset=6**.
 - 확인 (rr5, 96 seeds × 2면, seed0 70M): B5 vs B4 +26.8±3.2, C0 +27.9±3.2, B3R +30.7±2.9, V34c +75.4±1.5 (평균 +40.2); B4 vs C0 +1.1±3.0.
 - 도구: `reports/bp/rl2src/` (an2/an3/an5~an16, ts.py, screen.py, tab.py, diag_*.py, sync.sh), `examples/v27_eval.py`에 `mixcls:<클래스숫자>:<A>|<B>` 정책.
+- B5 vs RL2 (rl_bp2_300, 48 seeds × 2면 두 블록): seeds 8.1M +45.1±5.6 (승률 .76), seeds 9.0M +36.9±6.0 (.75). (B4 vs RL2: RL2가 +23.4 / +18.6.)
