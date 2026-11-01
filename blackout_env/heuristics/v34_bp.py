@@ -95,8 +95,13 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  rs_trigger: float = 1.2, stage_by_name: bool = False, gate_split: bool = False,
                  gate_wait: float = 0.3, gate_tol: float = 0.4, gate_detour: float = 0.3, gate_commit: float = 4.0,
                  gate_breakout: int = 2, gate_return: float = 0.0, raid_idle: str = "", raid_sticky: float = 1.0, bait: float = 0.0,
-                 bait_reach: float = 5.0, **kwargs):
+                 bait_reach: float = 5.0, refill_reach: float = 0.0, refill_after: float = 6.0,
+                 refill_safe: bool = True, refill_margin: float = 0.0, **kwargs):
         super().__init__(**kwargs)
+        self.refill_reach = float(refill_reach)
+        self.refill_after = float(refill_after)
+        self.refill_safe = bool(refill_safe)
+        self.refill_margin = float(refill_margin)
         self.stage_by_name = bool(stage_by_name)
         self.gate_split = bool(gate_split)
         self.raid_idle = str(raid_idle)
@@ -151,10 +156,68 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                     carriers = 0
         return hunters, carriers
 
+    # ------------------------------------------------------------------ refill
+
+    def _refill(self, controlled, row_for, states, graphic, walkable, goals):
+        """RL2 second-wave rule (reports/bp/NOTES.md): refill the Hunter quota *while an enemy Hunter is out*, also at
+        1 v 1.  V21's composition drops every route that passes within ``danger_tiles`` of an enemy Hunter and only
+        the last-step commit (``commit_reach`` tiles) overrides that, so a side that is down to 0-1 Hunters stays
+        there (the refill rate at 1 v 1 is 0.2 per 100 ticks for B4 vs 0.9 for RL2).  Here, after ``refill_after`` s,
+        the Collectors (no special item) nearest the sanctuary by exact path, within ``refill_reach`` tiles, are
+        sent in and committed (no threat evasion, plain-map path) for as many Hunters as we are short of the quota,
+        when (``refill_safe``) they get there ``refill_margin`` s before an enemy Hunter running straight at them
+        could touch them."""
+        ctx = self._teach_ctx
+        if MATCH_SECONDS - ctx["remaining"] < self.refill_after:
+            return
+        enemies = [e for e in ctx["enemies"] if e.cls == HUNTER and not e.in_base]
+        if not enemies:
+            return
+        own = sum(u.cls == HUNTER for u in ctx["own"])
+        tiles = tuple(sorted((int(y), int(x)) for y, x in np.argwhere((graphic[..., SITE_HUNTER] > 0.5) & walkable)))
+        if not tiles:
+            return
+        tile_set = set(tiles)
+        want = min(self.hunter_quota, MAX_HUNTERS) - own
+        want -= sum(1 for g in goals.values() if any(kind == "transform" and set(t) & tile_set for t, kind in g))
+        if want <= 0:
+            return
+        from .v22_teacher import CONTACT_RADIUS
+        shape = graphic.shape[:2]
+        planner = self._planner(np.ascontiguousarray(walkable, dtype=bool), tiles, UNIT_RADIUS[COLLECTOR])
+        v_me = self._speed(ctx, COLLECTOR)
+        v_them = self._speed(ctx, HUNTER, enemy=True)
+        contact = CONTACT_RADIUS[HUNTER] * ctx["enemy_size"] + CONTACT_RADIUS[COLLECTOR] * ctx["own_size"]
+        scored = []
+        for name in controlled:
+            state = states[row_for[name]]
+            if self._class_id(state) != COLLECTOR or name in self.committed or float(state[5:9].max()) >= 0.5:
+                continue
+            if self._is_holding(state):
+                continue
+            here = pixel_position(state, shape)
+            d = planner.distance(here)
+            if not (0.0 < d <= self.refill_reach):
+                continue
+            if self.refill_safe:
+                arrive = d / v_me + self.refill_margin
+                caught = min((float(np.hypot(*np.subtract(pixel_position(states[e.row], shape), here))) - contact)
+                             / (v_them + v_me) for e in enemies)
+                if not arrive < caught:
+                    continue
+            scored.append((d, unit_index(name), name, state))
+        for _, _, name, state in sorted(scored)[:want]:
+            goals[name] = ((tiles, "transform"),)
+            self.committed.append(name)
+            self._committed_xy.add((float(state[0]), float(state[1])))
+            self._count("refill")
+
     # ------------------------------------------------------------------ cap_sync
 
     def _composition_goals(self, controlled, row_for, states, graphic, walkable):
         goals = super()._composition_goals(controlled, row_for, states, graphic, walkable)
+        if self.refill_reach > 0:
+            self._refill(controlled, row_for, states, graphic, walkable, goals)
         if self.storm_units > 0:
             self._storm(controlled, row_for, states, graphic, walkable, goals)
         if self.early_reserve > 0:
