@@ -100,10 +100,12 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  bait_reach: float = 5.0, refill_reach: float = 0.0, refill_after: float = 6.0,
                  refill_safe: bool = True, refill_margin: float = 0.0, guard_fill: bool = False,
                  guard_after: float = 6.0, guard_until: float = 1e9, guard_enemy: int = 0, guard_leave: float = 0.0, guard_deny: bool = False,
+                 hunt_hh: float = 0.0,
                  **kwargs):
         super().__init__(**kwargs)
         self.guard_leave = float(guard_leave)
         self.guard_deny = bool(guard_deny)
+        self.hunt_hh = float(hunt_hh)
         self.guard_fill = bool(guard_fill)
         self.guard_after = float(guard_after)
         self.guard_until = float(guard_until)
@@ -706,6 +708,30 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                     free = [u for u in free if u.name not in self.sentries]
         claimed = set()
         idle_raiders = []
+        if self.hunt_hh > 0 and len(hunters) >= 2:
+            # RL3 conversion of a Hunter lead: at 2 v 1 (RL3: 34 of 36 times) one of ours runs down the enemy's lone Hunter
+            # (a 1-for-1 trade, then 1 v 0 and its refill walks in); B5's raiders only look at Collectors/Carriers
+            enemy_h = [e for e in ctx["enemies"] if e.cls == HUNTER and not e.in_base]
+            if 1 <= len(enemy_h) < len(hunters):
+                best = None
+                for e in enemy_h:
+                    dist = self._distance_to(walk, (e.pos,))
+                    for u in hunters:
+                        d = float(dist[u.pos])
+                        if np.isfinite(d) and d <= self.hunt_hh and (best is None or d < best[0]):
+                            best = (d, u, e)
+                if best is not None:
+                    _, u, e = best
+                    here = pixel_position(states[u.row], shape)
+                    there = pixel_position(states[e.row], shape)
+                    gap = float(np.hypot(here[0] - there[0], here[1] - there[1]))
+                    heading = (world_heading(there[0] - here[0], there[1] - here[1]) if gap < 1.5
+                               else self._path_heading(walk, (e.pos,), here, UNIT_RADIUS[HUNTER]))
+                    if heading is not None:
+                        lab = labels[u.name]
+                        labels[u.name] = AnyAngleLabel(lab.mask, True, lab.kind, lab.target, lab.goals, False, heading)
+                        free = [v for v in free if v.name != u.name]
+                        self._count("role_hunt_hunter")
         for role in self.hunter_roles:
             if not free:
                 break
