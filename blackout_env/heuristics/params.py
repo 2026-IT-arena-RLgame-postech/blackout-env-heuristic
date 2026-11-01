@@ -60,9 +60,9 @@ ALIASES["B4"] = ALIASES["C0R"]  # C0 + race walkers picked by the sim agent upda
 # B5 = B4 + guard_fill (reports/bp/NOTES.md, RL2 diagnosis): after the opening trade the lone Hunter keeps the sanctuary
 # (post 6 tiles out toward the enemy spawn) until the quota of 2 is refilled, instead of raiding; B4 +31 (96 seeds x 2 sides)
 ALIASES["B5"] = ALIASES["B4"] + ",guard_fill=true,guard_after=3,sentry_offset=6"
-# B6 = B5 + hunt_hh (reports/bp/NOTES.md, RL3 diagnosis): with more Hunters than the enemy has out, one of ours runs down the enemy's
-# lone Hunter (RL3 converts 2 v 1 into a 1-for-1 trade 34 of 36 times, B5 11 of 32)
-ALIASES["B6"] = ALIASES["B5"] + ",hunt_hh=30"
+# B5H = B5 + hunt_hh (RL3 diagnosis, reports/bp/NOTES.md): with more Hunters than the enemy has out one of ours runs down the enemy's
+# lone Hunter.  NOT a champion: vs B5 +0.3+-1.8 / -2.3+-1.4 (128 seeds x 2 sides, two blocks), V34c -2.9; B5 stays the champion.
+ALIASES["B5H"] = ALIASES["B5"] + ",hunt_hh=30"
 
 
 def parse_value(text: str):
