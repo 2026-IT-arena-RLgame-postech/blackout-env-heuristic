@@ -77,3 +77,46 @@ V34c    -75.4±1.5  -73.4±1.5  -36.2±3.0   -5.9±3.6    --      avg -47.7
 11-01 19:20:10 g3j screen: +0.7±0.8
 11-01 19:20:12 g3j_c: 2 cands (2 to play) x 5 opps x 128 seeds; mac:16w, poscat_gpu1:16w
 11-01 19:34:51 g3j confirm: +0.4±0.9
+11-02 00:38:35 s1: 8 cands (8 to play) x 3 opps x 24 seeds; mac:15w, poscat_gpu1:3w
+11-02 00:58:48 s1 base=B5 seeds=24x2 seed0=80000000
+sentry_track=12                                              paired -5.0±3.9 raw +18.8 | B5:-2.9 C0:-11.6 B3R:-0.4
+sentry_track=12,track_hold=4                                 paired -7.5±3.6 raw +16.3 | B5:-10.9 C0:-13.4 B3R:+1.8
+sentry_track=9,track_hold=4                                  paired -5.2±3.9 raw +18.6 | B5:+3.2 C0:-21.6 B3R:+2.9
+guard_trip=0.3                                               paired -3.9±3.0 raw +19.9 | B5:-4.8 C0:-5.4 B3R:-1.4
+guard_trip=0.8                                               paired -2.2±2.6 raw +21.6 | B5:-3.8 C0:-2.2 B3R:-0.5
+guard_trip=0.3,trip_post=east                                paired -44.4±4.0 raw -20.7 | B5:-53.9 C0:-63.0 B3R:-16.4
+guard_trip=0.3,sentry_track=12,track_hold=4                  paired -3.5±3.0 raw +20.2 | B5:-6.7 C0:-5.5 B3R:+1.5
+11-02 01:16:39 s2: 8 cands (8 to play) x 3 opps x 24 seeds; mac:16w, poscat_gpu1:15w
+11-02 01:23:04 s2 base=B5 seeds=24x2 seed0=80500000
+refill_free=true,refill_reach=20,refill_safe=false,refill_after=3 paired +3.9±3.6 raw +29.4 | B5:+13.8 C0:-1.0 B3R:-1.0
+refill_free=true,refill_reach=40,refill_safe=false,refill_after=3 paired +3.9±3.6 raw +29.4 | B5:+13.8 C0:-1.0 B3R:-1.0
+refill_free=true,refill_reach=12,refill_safe=false,refill_after=3 paired +0.9±1.0 raw +26.4 | B5:+0.8 C0:+0.7 B3R:+1.4
+race_second=true                                             paired -24.5±4.0 raw +1.0 | B5:-24.6 C0:-40.2 B3R:-8.8
+race_second=true,rs_wait=0.2,rs_radius=3                     paired -24.6±3.9 raw +0.9 | B5:-26.3 C0:-40.8 B3R:-6.7
+cap_enter=0.5                                                paired -66.0±3.7 raw -40.4 | B5:-73.8 C0:-111.3 B3R:-12.7
+cap_enter=0.05                                               paired -0.6±0.9 raw +24.9 | B5:-3.3 C0:+1.0 B3R:+0.5
+11-02 01:23:15 s3: 7 cands (7 to play) x 3 opps x 32 seeds; mac:16w, poscat_gpu1:16w
+11-02 01:33:25 s3 base=B5 seeds=32x2 seed0=81000000
+refill_free=true,refill_reach=16,refill_safe=false,refill_after=3 paired -0.5±2.8 raw +19.9 | B5:-3.8 C0:+2.5 B3R:-0.2
+refill_free=true,refill_reach=20,refill_safe=false,refill_after=3 paired -0.5±2.8 raw +19.9 | B5:-3.8 C0:+2.5 B3R:-0.2
+refill_free=true,refill_reach=20,refill_safe=false,refill_after=0 paired -0.5±2.8 raw +19.9 | B5:-3.8 C0:+2.5 B3R:-0.2
+refill_free=true,refill_reach=20,refill_safe=false,refill_after=8 paired -2.1±2.3 raw +18.3 | B5:-8.0 C0:+2.1 B3R:-0.2
+refill_free=true,refill_reach=20,refill_safe=true,refill_after=3 paired +0.0±0.0 raw +20.4 | B5:+0.0 C0:+0.0 B3R:+0.0
+refill_free=true,refill_reach=28,refill_safe=false,refill_after=5 paired -1.4±2.5 raw +18.9 | B5:-8.1 C0:+4.1 B3R:-0.2
+11-02 01:33:41 f1_s: 65 cands (65 to play) x 1 opps x 32 seeds; mac:15w, poscat_gpu1:16w
+11-02 01:49:34 f1 screen: +14.5±6.5; +12.1±6.8; +11.5±7.9; +10.4±5.6; +9.7±5.5; +8.2±6.8; +7.4±7.8; +7.2±5.7
+11-02 01:49:36 f1_c: 5 cands (5 to play) x 1 opps x 128 seeds; mac:15w, poscat_gpu1:16w
+11-02 01:55:51 f1 confirm: +17.6±2.9; +12.1±2.9; +11.7±3.4; +7.2±3.1
+11-02 01:56:24 c1: 4 cands (4 to play) x 5 opps x 96 seeds; mac:16w, poscat_gpu1:16w
+11-02 02:09:32 c1 base=B5 seeds=96x2 seed0=90000000
+commit_margin=-0.8359,guard_radius=10.0,late_after=25.39,trade_radius=1.109,danger_hunter_radius=3.512,w_bspd=0.8383,sweep_radius=9.265,adapt_at=8.145,hunt_camp_value=4.464,commit_reach=0.7826,carrier_field_value=22.49,exclusion_margin=1.507,h_evade_radius=1.19,sentry_radius=7.924,trade_reach=1.233 paired -0.9±1.6 raw +30.1 | B5:+10.8 B4:-7.9 C0:-5.3 B3R:-3.0 V34c:+1.2
+guard_radius=9.358,late_after=25.95,exposure_cost=0.6541,w_dspd=4.49,adapt_at=5.732,hunt_camp_radius=2.53,commit_reach=0.9771,idle_band=0.2026,w_bsize=0.9526,dom_danger_hunter_radius=3.756,sentry_offset=5.831,hunt_hh=11.49,carrier_hunter_scale=0.8389,trade_floor=0.239,w_dsize=0.0523,raid_carrier=0.5195 paired +8.5±1.4 raw +39.4 | B5:+13.3 B4:+14.2 C0:+10.4 B3R:+3.6 V34c:+1.0
+commit_margin=-0.2279,guard_radius=10.0,carrier_col_scale=0.6994,trade_radius=0.9779,steal_weight=2.144,exposure_cost=0.3,danger_hunter_radius=3.281,contest_factor=0.5,sweep_radius=9.56,adapt_at=4.689,hunt_camp_value=3.753,commit_reach=0.5911,exclusion_margin=1.536,deposit_band=0.5564,idle_band=0.4596,hunt_hh=4.096,trade_floor=0.3002 paired -2.2±1.6 raw +28.8 | B5:+5.6 B4:-7.9 C0:-6.4 B3R:+1.8 V34c:-3.8
+11-02 02:10:07 rrB6: 6 cands (6 to play) x 6 opps x 64 seeds; mac:11w, poscat_gpu1:16w
+11-02 02:32:31 row-vs-col mean margin (+- se)
+B6        --      +11.7±5.0  +32.7±4.7  +30.3±4.4  +34.7±3.9  +77.4±1.5  avg +37.4
+B5      -11.7±5.0    --      +24.9±4.0  +26.7±4.1  +30.0±3.3  +78.1±1.3  avg +29.6
+B4      -32.7±4.7  -24.9±4.0    --       -1.3±4.0  +28.7±3.5  +73.4±1.9  avg +8.6
+C0      -30.3±4.4  -26.7±4.1   +1.3±4.0    --      -12.6±4.5  +35.9±3.7  avg -6.5
+B3R     -34.7±3.9  -30.0±3.3  -28.7±3.5  +12.6±4.5    --       +6.8±4.5  avg -14.8
+V34c    -77.4±1.5  -78.1±1.3  -73.4±1.9  -35.9±3.7   -6.8±4.5    --      avg -54.3

@@ -100,12 +100,21 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  bait_reach: float = 5.0, refill_reach: float = 0.0, refill_after: float = 6.0,
                  refill_safe: bool = True, refill_margin: float = 0.0, guard_fill: bool = False,
                  guard_after: float = 6.0, guard_until: float = 1e9, guard_enemy: int = 0, guard_leave: float = 0.0, guard_deny: bool = False,
-                 hunt_hh: float = 0.0,
+                 hunt_hh: float = 0.0, sentry_track: float = 0.0, track_hold: float = 0.0,
+                 guard_trip: float = -1.0, refill_free: bool = False, trip_post: str = "south", trip_engage: float = 3.0,
                  **kwargs):
         super().__init__(**kwargs)
         self.guard_leave = float(guard_leave)
         self.guard_deny = bool(guard_deny)
         self.hunt_hh = float(hunt_hh)
+        self.sentry_track = float(sentry_track)
+        self.track_hold = float(track_hold)
+        self._track_dir = None
+        self._track_t = -1e9
+        self.guard_trip = float(guard_trip)
+        self.refill_free = bool(refill_free)
+        self.trip_post = str(trip_post)
+        self.trip_engage = float(trip_engage)
         self.guard_fill = bool(guard_fill)
         self.guard_after = float(guard_after)
         self.guard_until = float(guard_until)
@@ -183,7 +192,7 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
         if MATCH_SECONDS - ctx["remaining"] < self.refill_after:
             return
         enemies = [e for e in ctx["enemies"] if e.cls == HUNTER and not e.in_base]
-        if not enemies:
+        if not enemies and not self.refill_free:
             return
         own = sum(u.cls == HUNTER for u in ctx["own"])
         tiles = tuple(sorted((int(y), int(x)) for y, x in np.argwhere((graphic[..., SITE_HUNTER] > 0.5) & walkable)))
@@ -211,7 +220,7 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
             d = planner.distance(here)
             if not (0.0 < d <= self.refill_reach):
                 continue
-            if self.refill_safe:
+            if self.refill_safe and enemies:
                 arrive = d / v_me + self.refill_margin
                 caught = min((float(np.hypot(*np.subtract(pixel_position(states[e.row], shape), here))) - contact)
                              / (v_them + v_me) for e in enemies)
@@ -648,6 +657,76 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
         labels[h.name] = AnyAngleLabel(lab.mask, True, lab.kind, lab.target, lab.goals, False, heading)
         self._count("east_post")
 
+    # ------------------------------------------------------------------ moving sentry post / exit-camp excursion
+
+    def _sentry_post(self, walkable, centre, spawn):
+        """``sentry_track`` > 0: the post lies ``sentry_offset`` tiles from the sanctuary toward the nearest enemy walker
+        within ``sentry_track`` tiles of it (RL3 walkers circled to the side opposite the static post), else toward the
+        enemy spawn; the last bearing is kept ``track_hold`` seconds."""
+        if self.sentry_track <= 0:
+            return super()._sentry_post(walkable, centre, spawn)
+        ctx = self._teach_ctx
+        now = MATCH_SECONDS - ctx["remaining"]
+        best = None
+        for e in ctx["enemies"]:
+            if e.cls == HUNTER or e.in_base:
+                continue
+            d = math.dist(e.pos, centre)
+            if d <= self.sentry_track and (best is None or d < best[0]):
+                best = (d, e)
+        if best is not None:
+            direction = (best[1].pos[0] - centre[0], best[1].pos[1] - centre[1])
+            self._track_dir, self._track_t = direction, now
+        elif self._track_dir is not None and now - self._track_t <= self.track_hold:
+            direction = self._track_dir
+        else:
+            direction = (spawn[0] - centre[0], spawn[1] - centre[1])
+        norm = math.hypot(*direction) or 1.0
+        target = (centre[0] + direction[0] / norm * self.sentry_offset, centre[1] + direction[1] / norm * self.sentry_offset)
+        cells = self._static_masks.get("track_cells")
+        if cells is None:
+            cells = self._static_masks["track_cells"] = np.argwhere(walkable)
+        i = int(np.argmin((cells[:, 0] - target[0]) ** 2 + (cells[:, 1] - target[1]) ** 2))
+        return (int(cells[i, 0]), int(cells[i, 1]))
+
+    def _exit_trip(self, labels, ctx, sentry_u, tiles):
+        """``guard_trip`` (seconds of margin, < 0 = off): the lone sentry camps the enemy exit while it could still be back
+        at the sanctuary before every enemy Collector that is out (Hunter 6 vs Collector 4 tiles/s); it strikes an enemy
+        walker that comes within ``trip_engage`` tiles of it.  Returns True when it has taken over the unit's label."""
+        walk, shape, states = self._teach_walkable, ctx["shape"], ctx["states"]
+        dS = self._distance_to(walk, [tuple(int(v) for v in t) for t in tiles])
+        d_h = float(dS[sentry_u.pos])
+        if not np.isfinite(d_h):
+            return False
+        t_back = d_h / self._speed(ctx, HUNTER)
+        here = pixel_position(states[sentry_u.row], shape)
+        walkers = [e for e in ctx["enemies"] if e.cls == COLLECTOR and not e.in_base]
+        for e in walkers:
+            d_e = float(dS[e.pos])
+            if np.isfinite(d_e) and d_e / self._speed(ctx, COLLECTOR, enemy=True) < t_back + self.guard_trip:
+                return False
+        near = [e for e in walkers if np.hypot(here[0] - e.pos[0], here[1] - e.pos[1]) <= self.trip_engage]
+        if near:
+            e = min(near, key=lambda q: np.hypot(here[0] - q.pos[0], here[1] - q.pos[1]))
+            there = pixel_position(states[e.row], shape)
+            heading = (world_heading(there[0] - here[0], there[1] - here[1])
+                       if np.hypot(here[0] - there[0], here[1] - there[1]) < 1.5
+                       else self._path_heading(walk, (e.pos,), here, UNIT_RADIUS[HUNTER]))
+            self._count("trip_strike")
+        else:
+            post = self._exit_post(self.trip_post)
+            if not all(walk[p] for p in post):
+                return False
+            dist = self._distance_to(walk, post)
+            heading = (np.zeros(2, dtype=np.float32) if float(dist[sentry_u.pos]) <= 0.5
+                       else self._path_heading(walk, post, here, UNIT_RADIUS[HUNTER]))
+            self._count("trip_camp")
+        if heading is None:
+            return False
+        lab = labels[sentry_u.name]
+        labels[sentry_u.name] = AnyAngleLabel(lab.mask, True, lab.kind, lab.target, lab.goals, False, heading)
+        return True
+
     # ------------------------------------------------------------------ Hunter roles
 
     def _exit_post(self, which):
@@ -704,6 +783,11 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                         centre = (float(tiles[:, 0].mean()), float(tiles[:, 1].mean()))
                         stay = any(e.cls == COLLECTOR and not e.in_base and math.dist(e.pos, centre) <= self.guard_leave
                                    for e in ctx["enemies"])
+                if stay and self.guard_trip >= 0 and len(hunters) == 1 and hunters[0].name in self.sentries:
+                    tiles = np.argwhere(ctx["graphic"][..., SITE_HUNTER] > 0.5)
+                    if len(tiles) and self._exit_trip(labels, ctx, hunters[0], tiles):
+                        free = []
+                        stay = False
                 if stay:
                     free = [u for u in free if u.name not in self.sentries]
         claimed = set()
