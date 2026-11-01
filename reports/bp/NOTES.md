@@ -234,3 +234,21 @@ x18 (48 seeds × 2면, paired):
 - 기존 노브 손시험 (B4 기준 32 seeds × {B4,C0,B3R,V34c}): solo_sentry=false −8/−16/0/0, late_hunter_quota=1 −8/−7/−4/−2, raid_sticky 0.8 ≈0, hunter_quota=1 −70;
   sweep_camper, late_hunter_quota=2, hunt_threshold, carrier_on_monopoly, late_after는 B4에서 무효과(동일 결과). 새 노브/별칭 없음 → B4 유지.
 - 도구: reports/bp/rlsrc/{side,an,an2,an3,an4}.py (면별 표, 구간별 마진/킬, 헌터 수 추이). 주의: bp_focus는 원격 코드 동기화를 안 함 (원격에 `git push -f poscat_gpu1 BR:bp-incoming` + `checkout -f -B`).
+
+## 2026-11-01 RL2(rl_bp2_300) 분석 → B5 (feat/bp-teacher)
+
+- RL2 vs B4 / C0 (v27_eval cap 150 s, 48 seeds × 2면 두 블록): seeds 8.1M(mac) +23.4±5.4 / +21.8±5.7, seeds 9.0M(gpu1) +18.6±5.7 / +10.7±6.3
+  (부모가 본 −2.8과 다름 — 같은 체크포인트(md5 일치), 오프닝 레이스는 99/99 동시틱 와이프). 2차 레이스 RL 37승/7무/11패 (B4 상대).
+- 출처 분해 (mixcls 정책: 클래스별로 RL/B4 수 선택, 48 seeds×2면): RL 헌터만 + B4 나머지 +10.4±6.1, RL 콜렉터·캐리어만 + B4 헌터 +2.8±7.5 → 헌터 운용이 핵심.
+- 궤적 (24 seeds × 2면, `reports/bp/rl2src/an*.py`): 오프닝 와이프 후 (RL 헌터수, B4 헌터수) = (1,1)이 흔한데(130틱, 28/48판), RL은 70틱 안에 13/28판에서 2번째 헌터를 확보하고 B4는 거의 못 함
+  (1v1 상태 재충원율 RL 0.86 vs B4 0.21 /100틱). 이후 상대가 헌터 2마리 나와 있으면 재충원율 0.05~0.1/100틱 (고착 상태) → 400–800틱 헌터 수 RL 1.66 vs B4 0.89, 콜렉터 킬 13.5 vs 5.9.
+  원인: B4는 `hunter_roles=raid/raid,roles_when=always`라 남은 헌터 1마리가 성소를 떠나 레이드(예: 성소에서 13칸) → 상대 예비 콜렉터가 막힘 없이 성소로, 우리 재충원은 hunter-free 경로 규칙에 막힘.
+  RL은 남은 헌터를 성소 접근로 ~4.7칸 지점에 세워 두고 (적 예비 콜렉터 킬) 자기 콜렉터를 들여보냄.
+- 시도: `refill_reach` (헌터 있는 상태에서 재충원 워커 강제 커밋; safe=true는 거의 발동 안 함, safe=false는 확인 96 seeds +0.5±1.5 → 무효).
+- **`guard_fill`** (v34_bp, 기본 off): 팀 헌터 < quota(2)이고 `guard_after` ≤ t < `guard_until`이면 sentry 헌터(`solo_sentry`가 만드는 성소 파수)를 raid 역할에서 제외 → 쿼터가 찰 때까지 성소 post 유지.
+  `guard_enemy`(적 헌터 ≥ N일 때만) 노브 포함. post = `sentry_offset`(성소 중심에서 적 스폰 방향 거리, 기본 2.5).
+  스크린/확인 (vs B4;C0 합, 확인은 신선 seeds 96×2면): guard_fill(after 6) −3.9→ 무효, **guard_after=3** (오프닝 직후부터) +13.5 스크린/+6.5±2.8 확인,
+  +sentry_offset 4.5 +27.7±3.2, offset 6 +31.5±3.2 (w3), offset 6/7 확인 +19.4/+18.7 (w4, 다른 seed 블록), offset 8 +28 스크린, offset 10 −27 (post가 막힘/적 기지 쪽).
+  guard_until/guard_enemy/sentry_radius는 차이 없음. 별칭 **B5 = B4 + guard_fill=true,guard_after=3,sentry_offset=6**.
+- 확인 (rr5, 96 seeds × 2면, seed0 70M): B5 vs B4 +26.8±3.2, C0 +27.9±3.2, B3R +30.7±2.9, V34c +75.4±1.5 (평균 +40.2); B4 vs C0 +1.1±3.0.
+- 도구: `reports/bp/rl2src/` (an2/an3/an5~an16, ts.py, screen.py, tab.py, diag_*.py, sync.sh), `examples/v27_eval.py`에 `mixcls:<클래스숫자>:<A>|<B>` 정책.
