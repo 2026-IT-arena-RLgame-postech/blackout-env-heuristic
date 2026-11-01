@@ -99,10 +99,11 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  gate_breakout: int = 2, gate_return: float = 0.0, raid_idle: str = "", raid_sticky: float = 1.0, bait: float = 0.0,
                  bait_reach: float = 5.0, refill_reach: float = 0.0, refill_after: float = 6.0,
                  refill_safe: bool = True, refill_margin: float = 0.0, guard_fill: bool = False,
-                 guard_after: float = 6.0, guard_until: float = 1e9, guard_enemy: int = 0, guard_leave: float = 0.0,
+                 guard_after: float = 6.0, guard_until: float = 1e9, guard_enemy: int = 0, guard_leave: float = 0.0, guard_deny: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
         self.guard_leave = float(guard_leave)
+        self.guard_deny = bool(guard_deny)
         self.guard_fill = bool(guard_fill)
         self.guard_after = float(guard_after)
         self.guard_until = float(guard_until)
@@ -679,7 +680,13 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
         walk = self._teach_walkable
         prey = [e for e in ctx["enemies"] if e.cls != HUNTER and not e.in_base]
         free = list(hunters)
-        if self.guard_fill and len(hunters) < min(self.hunter_quota, MAX_HUNTERS) and self.sentries:
+        quota = min(self.hunter_quota, MAX_HUNTERS)
+        deny = False
+        if self.guard_fill and self.guard_deny and self.sentries and len(hunters) >= quota:
+            # RL3: with the quota full the sentry still keeps the sanctuary while the enemy is below its quota (its refill
+            # walks in unopposed otherwise: B5's two raiders left the post, RL3 refilled 18 of 32 times at 1 v 2)
+            deny = sum(e.cls == HUNTER and not e.in_base for e in ctx["enemies"]) < quota
+        if self.guard_fill and (len(hunters) < quota or deny) and self.sentries:
             # RL2 second wave: the Hunter that is left keeps the sanctuary (strikes walkers near it, holds the post)
             # until the team has its quota again, instead of raiding -- its own refill walks in under cover and the
             # enemy's reserve is killed on the approach
