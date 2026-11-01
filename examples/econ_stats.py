@@ -69,7 +69,9 @@ def play_chunk(job):
     moves = np.zeros((n, 10, 2), F32)
     st = [[defaultdict(float), defaultdict(float)] for _ in range(n)]
     spev = [[] for _ in range(n)]  # special-item events (tick, kind, item type, team or -1)
-    for t in range(cap_s * 25):
+    from blackout_env.sim import batch as _batch
+    PS = 50 // _batch.DEFAULT_TPD  # decisions per second (25 = training rate, 50 = official; env BLACKOUT_TPD=1)
+    for t in range(cap_s * PS):
         live = np.nonzero(~bs.over)[0]
         if not len(live):
             break
@@ -133,24 +135,24 @@ def play_chunk(job):
             for i in np.nonzero(stored[j] & (it[j, :, core.I_TYPE] > 0))[0]:
                 ctx = int(it[j, i, core.I_CTX])
                 if ctx in (0, 1):
-                    st[b][ctx][f"own{SPECIAL[int(it[j, i, core.I_TYPE])]}_s"] += 1.0 / 25.0
+                    st[b][ctx][f"own{SPECIAL[int(it[j, i, core.I_TYPE])]}_s"] += 1.0 / float(PS)
         for j, b in enumerate(live):
             for team in (0, 1):
                 c = cls[j, 5 * team:5 * team + 5]
                 d = st[b][team]
                 for k, nm in enumerate(CLS):
-                    d[f"{nm}_s"] += float((c == k).sum()) / 25.0
-                d["held_s"] += float(held[j, 5 * team:5 * team + 5].sum()) / 25.0
-        if (t + 1) % 25 == 0 and (t + 1) // 25 in WIN_S:
+                    d[f"{nm}_s"] += float((c == k).sum()) / float(PS)
+                d["held_s"] += float(held[j, 5 * team:5 * team + 5].sum()) / float(PS)
+        if (t + 1) % PS == 0 and (t + 1) // PS in WIN_S:
             for b in live:
                 for team in (0, 1):
                     d = st[b][team]
-                    d.update({f"w{(t + 1) // 25}.{k}": v for k, v in list(d.items()) if "." not in k})
-        if (t + 1) % 25 == 0 and (t + 1) // 25 in SNAP_S:
+                    d.update({f"w{(t + 1) // PS}.{k}": v for k, v in list(d.items()) if "." not in k})
+        if (t + 1) % PS == 0 and (t + 1) // PS in SNAP_S:
             sc = bs.scores
             for b in live:
                 for team in (0, 1):
-                    st[b][team][f"score{(t + 1) // 25}"] = float(sc[b, team])
+                    st[b][team][f"score{(t + 1) // PS}"] = float(sc[b, team])
     sc = bs.scores
     rows = []
     for j, (s, sd) in enumerate(zip(seeds, sides)):
@@ -270,6 +272,7 @@ def main():
     q.add_argument("--seed0", type=int, default=5_100_000)
     q.add_argument("--chunk", type=int, default=16)
     q.add_argument("--cap-s", type=int, default=425)
+    q.add_argument("--hz", type=int, default=0, choices=(0, 25, 50), help="0 = env BLACKOUT_TPD / 25; 50 = official")
     q.add_argument("--workers", type=int, default=8)
     q.add_argument("--device", default="cpu")
     q.add_argument("--out", required=True)
@@ -277,6 +280,10 @@ def main():
     q.add_argument("--base", required=True)
     q.add_argument("--out", required=True)
     args = p.parse_args()
+    if getattr(args, "hz", 0) == 50:
+        os.environ["BLACKOUT_TPD"] = "1"
+        from blackout_env.sim import batch as _batch
+        _batch.DEFAULT_TPD = 1
     {"play": cmd_play, "report": cmd_report}[args.cmd](args)
 
 

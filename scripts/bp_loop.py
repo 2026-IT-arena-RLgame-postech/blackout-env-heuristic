@@ -29,7 +29,7 @@ from blackout_env.heuristics.params import resolve_descriptor, sample_overrides,
 
 OUT = REPO / "reports" / "bp"
 STATE = OUT / "state.json"
-THREADS = "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=."
+THREADS = (f"BLACKOUT_TPD={os.environ['BLACKOUT_TPD']} " if "BLACKOUT_TPD" in os.environ else "") + "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=."
 # host -> (cores we may fill, reserve kept free, remote repo or None for local)
 HOSTS = {"mac": (18, 2, None), "poscat_gpu1": (28, 2, "~/blackout-env-bp")}
 # poscat_gpu2 (28, 2, "~/blackout-env-bp") left out from 10-31 19:40: it runs the sim distillation (user)
