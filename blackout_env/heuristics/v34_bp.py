@@ -96,8 +96,13 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  gate_wait: float = 0.3, gate_tol: float = 0.4, gate_detour: float = 0.3, gate_commit: float = 4.0,
                  gate_breakout: int = 2, gate_return: float = 0.0, raid_idle: str = "", raid_sticky: float = 1.0, bait: float = 0.0,
                  bait_reach: float = 5.0, refill_reach: float = 0.0, refill_after: float = 6.0,
-                 refill_safe: bool = True, refill_margin: float = 0.0, **kwargs):
+                 refill_safe: bool = True, refill_margin: float = 0.0, guard_fill: bool = False,
+                 guard_after: float = 6.0, guard_until: float = 1e9, guard_enemy: int = 0, **kwargs):
         super().__init__(**kwargs)
+        self.guard_fill = bool(guard_fill)
+        self.guard_after = float(guard_after)
+        self.guard_until = float(guard_until)
+        self.guard_enemy = int(guard_enemy)
         self.refill_reach = float(refill_reach)
         self.refill_after = float(refill_after)
         self.refill_safe = bool(refill_safe)
@@ -670,6 +675,14 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
         walk = self._teach_walkable
         prey = [e for e in ctx["enemies"] if e.cls != HUNTER and not e.in_base]
         free = list(hunters)
+        if self.guard_fill and len(hunters) < min(self.hunter_quota, MAX_HUNTERS) and self.sentries:
+            # RL2 second wave: the Hunter that is left keeps the sanctuary (strikes walkers near it, holds the post)
+            # until the team has its quota again, instead of raiding -- its own refill walks in under cover and the
+            # enemy's reserve is killed on the approach
+            elapsed = MATCH_SECONDS - ctx["remaining"]
+            theirs = sum(e.cls == HUNTER and not e.in_base for e in ctx["enemies"])
+            if self.guard_after <= elapsed < self.guard_until and theirs >= self.guard_enemy:
+                free = [u for u in free if u.name not in self.sentries]
         claimed = set()
         idle_raiders = []
         for role in self.hunter_roles:
