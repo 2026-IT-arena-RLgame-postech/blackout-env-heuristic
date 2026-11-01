@@ -1,0 +1,13 @@
+12 chunks
+[B4,guard_fill=true,guard_after=3,guard_until=12 vs B4] 16 margin +28.5 wall 50s
+[B4,guard_fill=true,guard_after=3,guard_until=12 vs C0] 16 margin +17.3 wall 64s
+[B4,guard_fill=true,guard_after=3,guard_until=12 vs C0] 16 margin +3.9 wall 67s
+[B4,guard_fill=true,guard_after=3,guard_until=12 vs B4] 16 margin -7.1 wall 71s
+[B4,guard_fill=true,guard_after=3,guard_until=12 vs B4] 16 margin -0.9 wall 72s
+[B4,guard_fill=true,guard_after=3,guard_until=12 vs C0] 16 margin -7.2 wall 73s
+[B4,guard_fill=true,guard_after=3,guard_until=12 vs B4] 16 margin +26.9 wall 74s
+[B4,guard_fill=true,guard_after=3,guard_until=12 vs B4] 16 margin +10.9 wall 78s
+[B4,guard_fill=true,guard_after=3,guard_until=12 vs C0] 16 margin +23.2 wall 82s
+[B4,guard_fill=true,guard_after=3,guard_until=12 vs B4] 16 margin +2.8 wall 89s
+[B4,guard_fill=true,guard_after=3,guard_until=12 vs C0] 16 margin -11.2 wall 97s
+[B4,guard_fill=true,guard_after=3,guard_until=12 vs C0] 16 margin +13.6 wall 102s
