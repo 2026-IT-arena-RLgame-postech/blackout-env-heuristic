@@ -44,6 +44,8 @@ Defaults = V33 exactly.
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 from ..env.constants import MAX_HUNTERS, unit_index
@@ -97,8 +99,10 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  gate_breakout: int = 2, gate_return: float = 0.0, raid_idle: str = "", raid_sticky: float = 1.0, bait: float = 0.0,
                  bait_reach: float = 5.0, refill_reach: float = 0.0, refill_after: float = 6.0,
                  refill_safe: bool = True, refill_margin: float = 0.0, guard_fill: bool = False,
-                 guard_after: float = 6.0, guard_until: float = 1e9, guard_enemy: int = 0, **kwargs):
+                 guard_after: float = 6.0, guard_until: float = 1e9, guard_enemy: int = 0, guard_leave: float = 0.0,
+                 **kwargs):
         super().__init__(**kwargs)
+        self.guard_leave = float(guard_leave)
         self.guard_fill = bool(guard_fill)
         self.guard_after = float(guard_after)
         self.guard_until = float(guard_until)
@@ -682,7 +686,17 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
             elapsed = MATCH_SECONDS - ctx["remaining"]
             theirs = sum(e.cls == HUNTER and not e.in_base for e in ctx["enemies"])
             if self.guard_after <= elapsed < self.guard_until and theirs >= self.guard_enemy:
-                free = [u for u in free if u.name not in self.sentries]
+                stay = True
+                if self.guard_leave > 0:
+                    # RL3: the lone Hunter leaves the post (raids the enemy exits) while no enemy Collector is within
+                    # ``guard_leave`` tiles of the sanctuary, and is back on the post when one comes
+                    tiles = np.argwhere(ctx["graphic"][..., SITE_HUNTER] > 0.5)
+                    if len(tiles):
+                        centre = (float(tiles[:, 0].mean()), float(tiles[:, 1].mean()))
+                        stay = any(e.cls == COLLECTOR and not e.in_base and math.dist(e.pos, centre) <= self.guard_leave
+                                   for e in ctx["enemies"])
+                if stay:
+                    free = [u for u in free if u.name not in self.sentries]
         claimed = set()
         idle_raiders = []
         for role in self.hunter_roles:
