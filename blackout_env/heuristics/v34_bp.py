@@ -101,7 +101,7 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
                  refill_safe: bool = True, refill_margin: float = 0.0, guard_fill: bool = False,
                  guard_after: float = 6.0, guard_until: float = 1e9, guard_enemy: int = 0, guard_leave: float = 0.0, guard_deny: bool = False,
                  hunt_hh: float = 0.0, sentry_track: float = 0.0, track_hold: float = 0.0,
-                 guard_trip: float = -1.0, trip_post: str = "south", trip_engage: float = 3.0,
+                 guard_trip: float = -1.0, refill_free: bool = False, trip_post: str = "south", trip_engage: float = 3.0,
                  **kwargs):
         super().__init__(**kwargs)
         self.guard_leave = float(guard_leave)
@@ -112,6 +112,7 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
         self._track_dir = None
         self._track_t = -1e9
         self.guard_trip = float(guard_trip)
+        self.refill_free = bool(refill_free)
         self.trip_post = str(trip_post)
         self.trip_engage = float(trip_engage)
         self.guard_fill = bool(guard_fill)
@@ -191,7 +192,7 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
         if MATCH_SECONDS - ctx["remaining"] < self.refill_after:
             return
         enemies = [e for e in ctx["enemies"] if e.cls == HUNTER and not e.in_base]
-        if not enemies:
+        if not enemies and not self.refill_free:
             return
         own = sum(u.cls == HUNTER for u in ctx["own"])
         tiles = tuple(sorted((int(y), int(x)) for y, x in np.argwhere((graphic[..., SITE_HUNTER] > 0.5) & walkable)))
@@ -219,7 +220,7 @@ class StrategicHeuristicV34(StrategicHeuristicV33):
             d = planner.distance(here)
             if not (0.0 < d <= self.refill_reach):
                 continue
-            if self.refill_safe:
+            if self.refill_safe and enemies:
                 arrive = d / v_me + self.refill_margin
                 caught = min((float(np.hypot(*np.subtract(pixel_position(states[e.row], shape), here))) - contact)
                              / (v_them + v_me) for e in enemies)
