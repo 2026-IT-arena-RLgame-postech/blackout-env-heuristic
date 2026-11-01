@@ -29,7 +29,7 @@ from blackout_env.sim.batch import N_AGENT_COLS, BatchRollout, H, W, unpack_grap
 from blackout_env.value.model import REG_SCALE, load_value_net
 
 from . import league as lg
-from .grpo import GRPOConfig, GRPOTrainer, LearnerPolicy, Seats, forget, make_opponent_policy
+from .grpo import GRPOConfig, GRPOTrainer, LearnerPolicy, Seats, _heuristic_aliases, forget, make_opponent_policy
 
 
 @dataclass
@@ -83,6 +83,11 @@ class PPOConfig(GRPOConfig):
     actor_device: str = ""             # "" = auto: the other GPU when "auto" turns async on, else the learner's device
     async_decoupled: bool = True       # decoupled PPO: clip vs the proximal policy (weights at update start) x truncated IS pi_prox/pi_beh
     async_is_cap: float = 2.0          # truncation of that importance weight
+    # ---- teacher distillation in the first iterations (default off = old behaviour, bit-identical; blackout_env/rl/teach.py)
+    teach: str = ""                    # heuristic teacher (alias "B5" / make_opponent descriptor); "" = off.  The teacher plays no moves: it is stepped on
+                                       # the learner's own team (stateful, per game, in the heuristic workers) and its action is the label of every learner decision
+    teach_coef: float = 0.5            # weight of CE(learner bin logits, teacher action) over the labelled unit rows
+    teach_iters: int = 100             # coef(iter) = teach_coef * max(0, 1 - iter / teach_iters) (iter = trainer iteration, restored on resume); 0 after: no teacher stepping at all
 
 
 class _HLLogits(torch.nn.Module):
@@ -164,6 +169,24 @@ class PPOTrainer(GRPOTrainer):
         if self._async:
             self._init_actor()
         self.cscaler = torch.amp.GradScaler("cuda", init_scale=1024.0, growth_interval=10**9, enabled=bool(cfg.critic_fp16) and self.dev.type == "cuda")
+        self._teacher = None
+        if cfg.teach:
+            assert not cfg.joint, "teach needs joint=False"
+            from .teach import TeachLabeler
+
+            desc = _heuristic_aliases().get(cfg.teach, cfg.teach)
+            self._teacher = TeachLabeler(desc, cfg.seed + 1013, self.hworkers)
+
+    # ------------------------------------------------------------------ teacher distillation
+    def teach_coef(self, it: int | None = None) -> float:
+        c = self.cfg
+        if not c.teach or c.teach_iters <= 0:
+            return 0.0
+        return c.teach_coef * max(0.0, 1.0 - (self.iter if it is None else it) / c.teach_iters)
+
+    def _teach_active(self) -> bool:
+        """Label the batch being collected?  Async: it is used by the update one iteration later."""
+        return self._teacher is not None and self.teach_coef(self.iter + int(self._async)) > 0
 
     # ------------------------------------------------------------------ async actor-learner
     def _init_actor(self) -> None:
@@ -513,6 +536,11 @@ class PPOTrainer(GRPOTrainer):
         else:
             learner = LearnerPolicy(self.own, self.dev, 10**9, c.temperature, seed=int(self.rng.integers(2**31)),
                                     graphs=self.learner_gf, **self._learner_kw())
+        tact = self._teach_active()
+        learner.teacher = self._teacher if tact else None
+        if self._teacher is not None and not tact:
+            self._teacher.pol.reset(0)   # decayed to 0: free the teacher's per-game instances, no more stepping
+            self._teacher = None
         res = self._rollout(self.trunk, learner, self.trunk_opp, self.trunk_side, c.segment)
         t1 = time.perf_counter()
         recs = learner.records
@@ -521,6 +549,7 @@ class PPOTrainer(GRPOTrainer):
         ag = np.concatenate([r[3] for r in recs]); act = np.concatenate([r[4] for r in recs])
         off = np.concatenate([r[5] for r in recs]) if c.offset_rl else None
         fine = np.concatenate([r[5] for r in recs]) if c.fine_bins > 0 else None
+        teach = np.concatenate([r[-1] for r in recs]) if tact else None
         if not self._prefit_done:
             self._prefit_head(g, ts, ag)
         v = self._values_np(g, ts, ag, actor=self._async)
@@ -607,6 +636,8 @@ class PPOTrainer(GRPOTrainer):
             self.trunk_side[b] = self.rng.integers(0, 2)
         for p in self.opps:
             forget(p, ended)
+        if tact:
+            self._teacher.forget(ended)
         self.trunk = roots
         a_std = adv_used.std() + 1e-8
         ev = 1.0 - float(np.var(ret - v) / (np.var(ret) + 1e-12))
@@ -616,6 +647,8 @@ class PPOTrainer(GRPOTrainer):
             batch["off"] = off
         if fine is not None:
             batch["fine"] = fine
+        if teach is not None:
+            batch["teach"] = teach
         if self.dev.type == "cuda" and not self._async:
             self._collect_peak = torch.cuda.max_memory_allocated() / 2**20
             torch.cuda.reset_peak_memory_stats()

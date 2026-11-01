@@ -93,6 +93,7 @@ class LearnerPolicy(BatchPolicy):
         self.offset_sigma = offset_sigma   # not None: sampled units also sample the chosen bin's angle offset ~ N(mu, sigma^2) and record it
         self.fine, self.tap = fine, tap    # fine: a FineHead (units also pick a fine sub-bin; sampled rows sample it and record it); tap: its FeatTap
         self._feat = None                  # the last forward's angle-head input features [m, 5, H] float32 (fine only)
+        self.teacher = None                # a rl.teach.TeachLabeler: every record then ends with the teacher's action indices [m, 5] int8
 
     def _sample_offsets(self, off, rows, chosen):
         """Replace, in ``off`` [n, 5, K] (canonical frame), the chosen bin's offset of the sampled ``rows`` by a draw
@@ -143,6 +144,7 @@ class LearnerPolicy(BatchPolicy):
         out = {}
         for i, tm in enumerate(teams):
             g, ts, ag = graphic[:n][:, tm], team[:n][:, tm], agents[:n][:, tm]
+            th = self.teacher.start(bsim, idx, tm) if self.teacher is not None else None   # teacher runs (workers) during the forward
             q, off = self._forward(g, ts, ag)
             samp = self.t[idx] < self.sample_steps
             chosen = q.argmax(-1)
@@ -161,10 +163,11 @@ class LearnerPolicy(BatchPolicy):
                 off, fj = self._fine_apply(off, chosen, rows if r is not None else None)
                 f_np = fj.cpu().numpy().astype(np.int8)
             chosen_np = chosen.cpu().numpy()
+            lab = self.teacher.finish(th, tm, q.shape[-1]) if th is not None else None
             if r is not None:
                 self.records.append((idx[r].copy(), g[r].copy(), ts[r].copy(), ag[r].copy(),
                                      chosen_np[r].astype(np.int8)) + ((o_np,) if o_np is not None else ())
-                                    + ((f_np[r],) if f_np is not None else ()))
+                                    + ((f_np[r],) if f_np is not None else ()) + ((lab[r],) if lab is not None else ()))
             onehot = np.zeros(q.shape, np.float32)
             np.put_along_axis(onehot, chosen_np[..., None], 1.0, -1)
             team_b = np.full(n, tm == 1)
@@ -178,6 +181,7 @@ def _moves_views(self, idx, g, ts, ag, team, chunks):
     ``chunks`` = [(lo, hi), ...]: contiguous row ranges that the sequential per-team calls would have been; sampling
     (multinomial draws, ``records``) is done chunk by chunk in that order, so the RNG stream and the record order are
     those of the per-team ``moves`` calls (only the forward's batch composition differs)."""
+    assert self.teacher is None, "teach needs joint=False (the teacher steps on the per-team path)"
     q, off = self._forward(g, ts, ag)
     chosen = q.argmax(-1)
     sampled, offs = [], []
@@ -550,7 +554,7 @@ class GRPOTrainer:
             self.learner_gf = GraphForward(self.own, self.dev, angle=True, max_batch=2048, tap=self.tap, expose_feat=self.fine is not None)
         nw = cfg.heur_workers if cfg.heur_workers >= 0 else (4 if self.dev.type == "cuda" else 0)
         self.hworkers = None
-        if nw > 0 and any(not s.startswith("net:") for s in cfg.opponents):
+        if nw > 0 and (any(not s.startswith("net:") for s in cfg.opponents) or getattr(cfg, "teach", "")):
             from blackout_env.rl.hpool import HeuristicWorkers
 
             self.hworkers = HeuristicWorkers(nw)
@@ -808,6 +812,9 @@ class GRPOTrainer:
         k = off.shape[-1]
         return off.gather(-1, act.clamp(max=k - 1).unsqueeze(-1)).squeeze(-1), (act < k).float()
 
+    def teach_coef(self) -> float:
+        return 0.0
+
     def update(self, batch):
         c = self.cfg
         n = len(batch["act"])
@@ -819,6 +826,8 @@ class GRPOTrainer:
         to = lambda x: torch.from_numpy(x).to(self.dev)
         g, t, a = to(batch["g"]), to(batch["t"]), to(batch["a"])
         act, adv = to(batch["act"]).long(), to(batch["adv"])
+        tcoef = self.teach_coef() if "teach" in batch else 0.0   # PPO: teacher distillation weight of this iteration (0: no term)
+        tlab = to(batch["teach"]).long() if tcoef > 0 else None
         fc = c.fine_bins > 0
         if oc:
             o_samp = to(batch["off"]).float()
@@ -876,6 +885,8 @@ class GRPOTrainer:
             st.update({"offset_sigma": 0.0, "off_mu_shift": 0.0, "kl_off": 0.0, "kl_bin": 0.0})
         if fc:
             st.update({"kl_fine": 0.0, "ent_fine": 0.0, "grad_norm_fine": 0.0})
+        if tlab is not None:
+            st.update({"teach_ce": 0.0, "teach_acc": 0.0})
         for _ in range(c.epochs):
             perm = torch.randperm(n, device=self.dev)
             for s in range(0, n, c.minibatch):
@@ -918,6 +929,12 @@ class GRPOTrainer:
                         kl_fine = (nonstand * (flp_all.exp() * (flp_all - ref_flp[ids])).sum(-1)).mean()
                         kl = kl + c.fine_kl * kl_fine
                     loss = pg + c.beta * kl
+                    if tlab is not None:   # teacher CE (mean over this chunk's labelled unit rows; -1 = unlabelled)
+                        tl = tlab[ids]
+                        tm_ = tl >= 0
+                        nll = -lp_all.gather(-1, tl.clamp_min(0).unsqueeze(-1)).squeeze(-1)
+                        tce = (nll * tm_).sum() / tm_.sum().clamp_min(1)
+                        loss = loss + tcoef * tce
                     sl = loss * frac if sub < m_all else loss
                     if self.scaler.is_enabled():
                         self.scaler.scale(sl).backward()
@@ -927,6 +944,9 @@ class GRPOTrainer:
                         st["loss"] += loss.item() * frac; st["pg"] += pg.item() * frac; st["kl"] += kl.item() * frac
                         st["ent"] += -(p * lp_all).sum(-1).mean().item() * frac
                         st["clipfrac"] += ((ratio - 1).abs() > c.clip).float().mean().item() * frac
+                        if tlab is not None:
+                            st["teach_ce"] += tce.item() * frac
+                            st["teach_acc"] += ((lp_all.argmax(-1) == tl) & tm_).sum().item() / max(tm_.sum().item(), 1) * frac
                         if fc:
                             st["kl_fine"] += kl_fine.item() * frac
                             st["ent_fine"] += (-(nonstand * (flp_all.exp() * flp_all).sum(-1)).sum() / nonstand.sum().clamp_min(1.0)).item() * frac
@@ -947,6 +967,8 @@ class GRPOTrainer:
                 st["grad_norm"] += gn.item(); st["n_mb"] += 1
         m = max(st.pop("n_mb"), 1)
         out = {k: v / m for k, v in st.items()}
+        if tlab is not None:
+            out["teach_coef"] = tcoef
         if dec:
             out["isw_mean"] = float(isw_raw.mean()); out["isw_trunc"] = float((isw_raw > c.async_is_cap).float().mean())
             out["lag_kl"] = float((isw_raw.log() * -1).mean())   # mean log(pi_beh / pi_prox) on the taken actions

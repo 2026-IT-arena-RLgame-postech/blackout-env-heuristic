@@ -233,3 +233,30 @@ def test_ppo_async_collect_auto_resolution():
         assert c.async_collect is want
     c = PPOConfig(device="cpu", async_collect="true", critic_head="hlgauss"); _resolve_async(c)
     assert c.async_collect is True   # forced: the trainer's own assert then rejects the unsupported recipe
+
+
+def test_teach_moves_to_bins_roundtrip():
+    """moves_to_bins inverts decode_moves' bin decode (bin centres, both teams, STAND)."""
+    from blackout_env.rl.teach import moves_to_bins
+    from blackout_env.sim.batch import decode_moves
+
+    rng = np.random.default_rng(0)
+    for width in (16, 17):
+        q = rng.normal(size=(6, 5, width)).astype(np.float32)
+        team_b = np.array([0, 1, 0, 1, 1, 0], bool)
+        mv = decode_moves(q, None, team_b)
+        got = moves_to_bins(mv, team_b, 16, stand=width == 17)
+        assert np.array_equal(got, q.argmax(-1).astype(np.int8))
+
+
+def test_ppo_teach_cpu():
+    """teach on: labelled batch, finite CE, coef decays to 0, then the teacher is dropped (batch without labels)."""
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    cfg = PPOConfig(init=CKPT, value=VALUE, device="cpu", games=3, segment=8, minibatch=8, epochs=1, critic_warmup=0,
+                    opponents=["random"], teach="B5", teach_coef=0.5, teach_iters=2, async_collect="false", heur_workers=0)
+    tr = PPOTrainer(cfg)
+    s0, s1, s2 = tr.step(), tr.step(), tr.step()
+    assert np.isfinite(s0["teach_ce"]) and 0 <= s0["teach_acc"] <= 1 and s0["teach_coef"] == 0.5
+    assert s1["teach_coef"] == 0.25
+    assert "teach_ce" not in s2 and tr._teacher is None

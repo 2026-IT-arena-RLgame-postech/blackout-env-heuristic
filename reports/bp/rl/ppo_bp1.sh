@@ -3,6 +3,8 @@
 # (mask mode 3: enemy classes + storage amounts tracked in the ONNX state, floor/carried amounts hidden), sim with the
 # official v1.0.2 collision.  Pool = post-patch heuristics (B3 x2, C0, V34c, V34b) + distilled students + gated self-play.
 # Usage on poscat_gpu2 (never GPU 3):  INIT=~/bpruns/d7_final.pt GPU=2 MAXDEC=20000000 reports/bp/rl/ppo_bp1.sh
+# Optional early teacher distillation (the heuristic alias is stepped on the learner's own states; CE coef decays linearly to 0 over teach_iters):
+#   EXTRA="teach=B5 teach_coef=0.5 teach_iters=100"
 set -e
 cd ${REPO:-$HOME/blackout-env-bp}
 FZ=$HOME/bpruns
