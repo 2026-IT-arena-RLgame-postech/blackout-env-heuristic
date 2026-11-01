@@ -1,0 +1,39 @@
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+12 chunks
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+OMP: Warning #234: OMP_NUM_THREADS: Invalid symbols found. Check the value "1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.".
+[net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp5_450.pt vs B6] 8 matches margin +53.2 wall 76s
+[net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp5_450.pt vs B6] 8 matches margin +42.2 wall 80s
+[net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp5_450.pt vs B6] 8 matches margin +56.6 wall 81s
+[net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp5_450.pt vs B6] 8 matches margin +27.9 wall 84s
+[net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp5_450.pt vs B6] 8 matches margin +15.8 wall 84s
+[net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp5_450.pt vs B6] 8 matches margin +39.9 wall 86s
+[net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp5_450.pt vs B6] 8 matches margin +51.6 wall 87s
+[net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp5_450.pt vs B6] 8 matches margin +56.6 wall 92s
+[net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp5_450.pt vs B6] 8 matches margin +63.8 wall 94s
+[net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp5_450.pt vs B6] 8 matches margin +18.4 wall 94s
+[net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp5_450.pt vs B6] 8 matches margin +39.5 wall 106s
+[net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp5_450.pt vs B6] 8 matches margin +27.9 wall 107s

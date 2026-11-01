@@ -51,7 +51,8 @@ def play_chunk(job):
     bs = BatchSim([SimState.from_seed(int(s)) for s in seeds])
     bufs = (np.zeros((n, 2, N_CH, H, W), F32), np.zeros((n, 2, 4), F32), np.zeros((n, 2, 10, N_AGENT_COLS), F32))
     moves = np.zeros((n, 10, 2), F32)
-    T = cap_s * 25
+    from blackout_env.sim import batch as _batch
+    T = cap_s * (50 // _batch.DEFAULT_TPD)  # t = decision index (50 per s at --hz 50: the 25 Hz tick phases of the notes double)
     pos = np.full((n, T, 10, 2), np.nan, np.float32)
     cls = np.full((n, T, 10), -1, np.int8)
     held = np.full((n, T, 10), -1, np.int8)
@@ -98,8 +99,11 @@ def main():
     p.add_argument("--chunk", type=int, default=16)
     p.add_argument("--cap-s", type=int, default=60)
     p.add_argument("--workers", type=int, default=8)
+    p.add_argument("--hz", type=int, default=25, choices=(25, 50))
     p.add_argument("--out", required=True)
     a = p.parse_args()
+    if a.hz == 50:
+        os.environ["BLACKOUT_TPD"] = "1"
     Path(a.out).mkdir(parents=True, exist_ok=True)
     jobs = []
     for opp in a.opponent.split(";"):
