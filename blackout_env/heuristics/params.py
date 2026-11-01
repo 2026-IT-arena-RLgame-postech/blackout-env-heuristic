@@ -57,6 +57,9 @@ ALIASES["C0"] = "strategic_v34:reserve_stage=0.0026,trade_hold=advance,reserve_j
 ALIASES["C0R"] = ALIASES["C0"] + ",race_order=true"
 ALIASES["B3R"] = ALIASES["B3"] + ",race_order=true"
 ALIASES["B4"] = ALIASES["C0R"]  # C0 + race walkers picked by the sim agent update order (team A units 3,2 act before B racers)
+# B5 = B4 + guard_fill (reports/bp/NOTES.md, RL2 diagnosis): after the opening trade the lone Hunter keeps the sanctuary
+# (post 6 tiles out toward the enemy spawn) until the quota of 2 is refilled, instead of raiding; B4 +31 (96 seeds x 2 sides)
+ALIASES["B5"] = ALIASES["B4"] + ",guard_fill=true,guard_after=3,sentry_offset=6"
 
 
 def parse_value(text: str):
