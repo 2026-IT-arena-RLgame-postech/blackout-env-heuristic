@@ -1,7 +1,7 @@
 import json,sys,numpy as np,collections
 rows=[json.loads(l) for l in open(sys.argv[1]+'/matches.jsonl')]
 g=collections.defaultdict(dict)
-for r in rows: g[(r['ours'][-12:] if 'net:' in r['ours'] else r['ours'][:20],r['opponent'][:20])][(r['seed'],r['side'])]=r
+for r in rows: g[((r['ours'][:9]+r['ours'][-5:]) if 'net:' in r['ours'] or 'mixcls' in r['ours'] else r['ours'][:20],r['opponent'][:20])][(r['seed'],r['side'])]=r
 for (u,o),d in sorted(g.items()):
     out=[]
     for s in (0,1):

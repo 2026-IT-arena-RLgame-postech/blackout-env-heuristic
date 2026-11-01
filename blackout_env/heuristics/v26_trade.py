@@ -32,7 +32,7 @@ Rules (all off = V25 exactly, ``tests/test_v26_trade.py``):
   enemy Hunter running straight at it could touch it -- V25's ``race_commit`` beyond its 1-tile
   reach, one walker at a time.  0 = off.  ``trade_walk_count="deficit"``: as many walkers as the
   enemy has Hunters out beyond ours (walkers already on their way in count), not only while we
-  have none.  ``trade_walk_safe=False`` drops the "before it could be touched" test: a Collector a
+  have none; ``"fill"``: as many as we are short of ``hunter_quota`` (also at 1 v 1).  ``trade_walk_safe=False`` drops the "before it could be touched" test: a Collector a
   step from the sanctuary that turns away from a Hunter beside it is caught anyway (a Hunter runs
   6 tiles/s to its 4), while one that steps in transforms first and trades on contact.
 """
@@ -43,7 +43,7 @@ import math
 
 import numpy as np
 
-from ..env.constants import unit_index
+from ..env.constants import MAX_HUNTERS, unit_index
 from .any_angle import UNIT_RADIUS, pixel_position
 from .strategic import COLLECTOR, HUNTER, SITE_HUNTER
 from .v17_planner import MATCH_SECONDS
@@ -52,7 +52,7 @@ from .v25_race import StrategicHeuristicV25
 
 TRADE_MODES = ("parity", "deficit", "always", "camper", "surplus")
 CAMP_RADIUS = 7.0  # tiles from our spawn: V17 values an enemy Hunter there at 12 (a camper)
-WALK_COUNTS = ("one", "deficit")
+WALK_COUNTS = ("one", "deficit", "fill")
 
 
 class StrategicHeuristicV26(StrategicHeuristicV25):
@@ -130,6 +130,8 @@ class StrategicHeuristicV26(StrategicHeuristicV25):
         own_hunters = sum(u.cls == HUNTER for u in ctx["own"])
         if self.trade_walk_count == "one":
             want = 0 if own_hunters else 1
+        elif self.trade_walk_count == "fill":  # refill to the quota whenever an enemy Hunter is out (the RL2 second-wave rule)
+            want = min(self.hunter_quota, MAX_HUNTERS) - own_hunters
         else:
             want = len(hunters) - own_hunters
         if not hunters or want <= 0:

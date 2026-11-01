@@ -66,6 +66,31 @@ class SwitchPolicy:
         return {tm: np.where(late, mb[tm], ma[tm]) for tm in teams}
 
 
+class ClassMixPolicy:
+    """``mixcls:<digits>:<A>|<B>``: units whose *current* class is one of the digits (0 Collector, 1 Hunter, 2 Carrier)
+    take A's move, the others B's (both policies are stepped every decision).  Attribution tool (reports/bp/rl2)."""
+
+    def __init__(self, classes: str, a, b):
+        self.classes = [int(c) for c in classes]
+        self.a, self.b = a, b
+        self.needs_inputs = getattr(a, "needs_inputs", True) or getattr(b, "needs_inputs", True)
+
+    def reset(self, n: int) -> None:
+        self.a.reset(n)
+        self.b.reset(n)
+
+    def moves(self, bsim, idx, teams, inputs):
+        from blackout_env.sim import core
+
+        ma, mb = self.a.moves(bsim, idx, teams, inputs), self.b.moves(bsim, idx, teams, inputs)
+        out = {}
+        for tm in teams:
+            cls = bsim.ui[idx][:, 5 * tm:5 * tm + 5, core.U_CLS]
+            use_a = np.isin(cls, self.classes)[..., None]
+            out[tm] = np.where(use_a, ma[tm], mb[tm])
+        return out
+
+
 class TempNetPolicy:
     """``temp:<T>:<net>`` (OOD-26, docs §56): the net's per-unit bin sampled from softmax(logits / T) instead of its
     argmax (Gumbel-max: argmax(logits + T * Gumbel)); the angle offset of the sampled bin is kept.  A fixed RNG per
@@ -139,6 +164,11 @@ def _policy(name: str):
     for part in ("floor", "store", "held"):  # one part of the amounts hidden
         if name.startswith(f"mask{part}:"):
             return MaskBatteryPolicy(name[len(f"mask{part}:"):], parts=(part,))
+
+    if name.startswith("mixcls:"):
+        _, cl, rest = name.split(":", 2)
+        a, b = rest.split("|")
+        return ClassMixPolicy(cl, _policy(a), _policy(b))
 
     if name.startswith("switch:"):
         _, sec, rest = name.split(":", 2)
