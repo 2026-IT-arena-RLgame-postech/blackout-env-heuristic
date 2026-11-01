@@ -27,6 +27,7 @@ Pieces (docs/policy_v2_design_ko.md "S3 준비 — 배치 롤아웃"):
 
 from __future__ import annotations
 
+import os
 import math
 import time
 from dataclasses import dataclass
@@ -269,6 +270,8 @@ def batch_raw_seq(Sb, bg, idx, raws, maps):
         core.render_raw_map(S, bg[b], maps[j])
 
 
+# sim ticks per decision when a BatchSim sets none: 2 = 25 Hz (training), 1 = the official 50 Hz (env BLACKOUT_TPD)
+DEFAULT_TPD = int(os.environ.get("BLACKOUT_TPD", "2"))
 PARALLEL_MIN = 16  # below this many games numba's thread pool costs more than it saves
 
 
@@ -342,7 +345,7 @@ class BatchSim:
         idx = self.all if idx is None else np.ascontiguousarray(idx, dtype=np.int64)
         if parallel is None:
             parallel = len(idx) >= PARALLEL_MIN
-        n_ticks = getattr(self, "ticks_per_decision", 2)
+        n_ticks = getattr(self, "ticks_per_decision", DEFAULT_TPD)
         if n_ticks != 2:  # the official 50 Hz build: one tick per decision
             fn = batch_step_n_par if parallel else batch_step_n_seq
             fn(self.Sb, self.Mb, np.ascontiguousarray(moves, dtype=F32), self.order, idx, n_ticks)

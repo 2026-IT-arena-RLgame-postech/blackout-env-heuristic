@@ -35,7 +35,8 @@ def _heur(desc: str, shift: int, workers):
 
 
 def eval_batched(net_or_path, opp_specs, seeds, device: str, horizon: int = 11000, graphs: bool = True,
-                 fp16: bool = True, heur_workers: int = 0, joint: bool = False, workers=None, fine=None, angle_quant: int = 0):
+                 fp16: bool = True, heur_workers: int = 0, joint: bool = False, workers=None, fine=None, angle_quant: int = 0,
+                 tpd: int = 2):
     """Greedy learner vs each of ``opp_specs`` on ``seeds``, both sides, all games in one rollout.
 
     Returns ``{opp_spec: {"margin_side0": [...], "margin_side1": [...], "win", "margin", "se"}}`` (margins from the
@@ -97,13 +98,18 @@ def eval_batched(net_or_path, opp_specs, seeds, device: str, horizon: int = 1100
             sl = slice((sd * O + o) * S, (sd * O + o + 1) * S)
             opp_of[sl], side[sl] = k[sd], sd
     roots = [SimState.from_seed(s) for _ in range(O * 2) for s in seeds]
+    # tpd: sim ticks per decision, 2 = 25 Hz (training), 1 = the official 50 Hz (same match length: twice the decisions)
+    from blackout_env.sim.batch import BatchSim
+    bsim = BatchSim(roots)
+    bsim.ticks_per_decision = int(tpd)
+    horizon = horizon * 2 // int(tpd)
     try:
         if joint or workers is not None:
             pj = JointSeats(learner, opps, opp_of, side, split=not joint)
-            res = BatchRollout(pj, pj, packed=True).run(roots, horizon)
+            res = BatchRollout(pj, pj, packed=True).run(None, horizon, bsim=bsim)
         else:
             res = BatchRollout(Seats(0, learner, opps, opp_of, side), Seats(1, learner, opps, opp_of, side),
-                               packed=True).run(roots, horizon)
+                               packed=True).run(None, horizon, bsim=bsim)
     finally:
         for p in opps:
             if hasattr(p, "w") and hasattr(p, "key"):

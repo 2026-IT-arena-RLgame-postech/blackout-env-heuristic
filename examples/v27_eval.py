@@ -221,7 +221,8 @@ def play_chunk(job):
     reserve = np.full(n, np.nan)
     h99 = np.full((n, 2), -1, np.int64)  # Hunters of each team after decision 99 (OOD1 / V32, docs §56 / §58)
     stopped = np.zeros(n, bool)
-    for t in range(cap_s * 25):
+    from blackout_env.sim import batch as _batch
+    for t in range(cap_s * 50 // _batch.DEFAULT_TPD):
         live = np.nonzero(~bs.over & ~stopped)[0]
         if not len(live):
             break
@@ -379,6 +380,7 @@ def main():
     q.add_argument("--seed0", type=int, default=4_000_000)
     q.add_argument("--chunk", type=int, default=32)
     q.add_argument("--cap-s", type=int, default=150)
+    q.add_argument("--hz", type=int, default=25, choices=(25, 50), help="decision rate: 25 (training) or 50 (official, one tick per decision)")
     q.add_argument("--workers", type=int, default=3)
     q.add_argument("--stop-exhausted", action="store_true", help="end a match at an absorption leaving no battery")
     q.add_argument("--device", default="cpu", help="net device (cpu / cuda)")
@@ -387,6 +389,10 @@ def main():
     q.add_argument("--base", default="strategic_v25")
     q.add_argument("--out", default=str(REPO / "reports/late_search_why/v27"))
     args = p.parse_args()
+    if getattr(args, "hz", 25) == 50:   # before any worker starts: spawned workers read it at import
+        os.environ["BLACKOUT_TPD"] = "1"
+        from blackout_env.sim import batch as _batch
+        _batch.DEFAULT_TPD = 1
     {"play": cmd_play, "report": cmd_report}[args.cmd](args)
 
 
