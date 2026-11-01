@@ -1,0 +1,5 @@
+11-01 04:52:42 rs1_s: 13 cands (13 to play) x 4 opps x 32 seeds; mac:16w, poscat_gpu1:16w
+11-01 04:52:46   poscat_gpu1 failed (attempt 0): 
+11-01 04:53:50   poscat_gpu1 failed (attempt 1): 
+11-01 05:06:09 rs1 screen: +0.0±0.0; +0.0±0.0; +0.0±0.0; +0.0±0.0; +0.0±0.0; +0.0±0.0; +0.0±0.0; +0.0±0.0
+11-01 05:06:12 rs1_c: 3 cands (3 to play) x 4 opps x 96 seeds; mac:15w, poscat_gpu1:16w

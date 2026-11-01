@@ -1,0 +1,12 @@
+[
+ {
+  "d": 19.4140625,
+  "se": 3.365255535395174,
+  "desc": "B4,guard_fill=true,guard_after=3,sentry_offset=6,guard_until=30"
+ },
+ {
+  "d": 18.671875,
+  "se": 3.355172555052517,
+  "desc": "B4,guard_fill=true,guard_after=3,sentry_offset=7"
+ }
+]

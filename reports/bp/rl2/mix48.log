@@ -1,0 +1,17 @@
+16 chunks
+[mixcls:1:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin -8.8 wall 56s
+[mixcls:02:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin -7.5 wall 72s
+[mixcls:02:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin +7.0 wall 78s
+[mixcls:1:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin +29.7 wall 88s
+[mixcls:1:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin +11.4 wall 100s
+[mixcls:02:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin +7.9 wall 100s
+[mixcls:1:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin -3.4 wall 104s
+[mixcls:1:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin +9.8 wall 108s
+[mixcls:1:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin +6.6 wall 110s
+[mixcls:02:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin +7.2 wall 113s
+[mixcls:1:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin +3.4 wall 119s
+[mixcls:1:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin +34.5 wall 125s
+[mixcls:02:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin -26.2 wall 62s
+[mixcls:02:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin +13.3 wall 89s
+[mixcls:02:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin +3.5 wall 59s
+[mixcls:02:net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp2_300.pt|B4 vs B4] 12 matches margin +17.1 wall 77s

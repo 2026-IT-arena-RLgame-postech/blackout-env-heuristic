@@ -60,6 +60,9 @@ ALIASES["B4"] = ALIASES["C0R"]  # C0 + race walkers picked by the sim agent upda
 # B5 = B4 + guard_fill (reports/bp/NOTES.md, RL2 diagnosis): after the opening trade the lone Hunter keeps the sanctuary
 # (post 6 tiles out toward the enemy spawn) until the quota of 2 is refilled, instead of raiding; B4 +31 (96 seeds x 2 sides)
 ALIASES["B5"] = ALIASES["B4"] + ",guard_fill=true,guard_after=3,sentry_offset=6"
+# B5H = B5 + hunt_hh (RL3 diagnosis, reports/bp/NOTES.md): with more Hunters than the enemy has out one of ours runs down the enemy's
+# lone Hunter.  NOT a champion: vs B5 +0.3+-1.8 / -2.3+-1.4 (128 seeds x 2 sides, two blocks), V34c -2.9; B5 stays the champion.
+ALIASES["B5H"] = ALIASES["B5"] + ",hunt_hh=30"
 
 
 def parse_value(text: str):
@@ -160,7 +163,8 @@ KNOBS: dict[str, Knob] = {k.name: k for k in [
     _k("guard_radius", "float", 4.0, 10.0, "hunters", "tiles around our exit in which a guard strikes enemy Hunters"),
     _k("sweep_radius", "float", 5.0, 12.0, "hunters", "tiles from the sanctuary / Hunter in which Hunters strike enemy Collectors"),
     _k("sentry_min_hunters", "int", 1, 3, "hunters", "Hunters needed before one is posted as sanctuary sentry"),
-    _k("sentry_offset", "float", 1.0, 4.0, "hunters", "tiles from sanctuary centre toward the enemy spawn where the sentry stands"),
+    _k("sentry_offset", "float", 1.0, 9.0, "hunters", "tiles from sanctuary centre toward the enemy spawn where the sentry stands"),
+    _k("hunt_hh", "float", 0.0, 30.0, "hunters", "tiles: with more Hunters than the enemy has out (>=1) one of ours runs down the enemy Hunter within this path distance (0 = off; B6)", True),
     _k("sentry_radius", "float", 4.0, 10.0, "hunters", "tiles around the sanctuary in which the sentry strikes enemy Collectors"),
     _k("camp_engage_radius", "float", 3.0, 9.0, "hunters", "camper strikes enemies within this many tiles of its post"),
     _k("late_after", "float", 4.0, 60.0, "hunters", "seconds into the match after which late_hunter_quota refills Hunters (inert while that is off)"),

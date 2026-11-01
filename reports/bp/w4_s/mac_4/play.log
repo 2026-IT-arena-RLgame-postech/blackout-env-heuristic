@@ -1,0 +1,13 @@
+12 chunks
+[B4,guard_fill=true,guard_after=3,sentry_offset=6,guard_enemy=1 vs B4] 16 margin +46.0 wall 51s
+[B4,guard_fill=true,guard_after=3,sentry_offset=6,guard_enemy=1 vs B4] 16 margin +35.7 wall 63s
+[B4,guard_fill=true,guard_after=3,sentry_offset=6,guard_enemy=1 vs C0] 16 margin +41.1 wall 64s
+[B4,guard_fill=true,guard_after=3,sentry_offset=6,guard_enemy=1 vs C0] 16 margin +33.3 wall 70s
+[B4,guard_fill=true,guard_after=3,sentry_offset=6,guard_enemy=1 vs B4] 16 margin +7.1 wall 77s
+[B4,guard_fill=true,guard_after=3,sentry_offset=6,guard_enemy=1 vs C0] 16 margin +27.5 wall 78s
+[B4,guard_fill=true,guard_after=3,sentry_offset=6,guard_enemy=1 vs C0] 16 margin +41.4 wall 78s
+[B4,guard_fill=true,guard_after=3,sentry_offset=6,guard_enemy=1 vs C0] 16 margin +24.9 wall 80s
+[B4,guard_fill=true,guard_after=3,sentry_offset=6,guard_enemy=1 vs C0] 16 margin +28.4 wall 83s
+[B4,guard_fill=true,guard_after=3,sentry_offset=6,guard_enemy=1 vs B4] 16 margin +14.0 wall 83s
+[B4,guard_fill=true,guard_after=3,sentry_offset=6,guard_enemy=1 vs B4] 16 margin +33.0 wall 87s
+[B4,guard_fill=true,guard_after=3,sentry_offset=6,guard_enemy=1 vs B4] 16 margin +30.4 wall 90s

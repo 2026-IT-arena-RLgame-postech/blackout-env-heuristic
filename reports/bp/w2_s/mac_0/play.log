@@ -1,0 +1,17 @@
+16 chunks
+[B4,guard_fill=true vs B4] 16 margin -7.5 wall 50s
+[B4 vs B4] 16 margin +0.0 wall 55s
+[B4 vs C0] 16 margin -3.9 wall 55s
+[B4,guard_fill=true vs C0] 16 margin +0.8 wall 59s
+[B4,guard_fill=true vs C0] 16 margin -13.2 wall 62s
+[B4 vs C0] 16 margin +9.2 wall 62s
+[B4 vs B4] 16 margin +0.0 wall 64s
+[B4,guard_fill=true vs B4] 16 margin -7.8 wall 66s
+[B4 vs B4] 16 margin +0.0 wall 68s
+[B4,guard_fill=true vs C0] 16 margin +3.1 wall 73s
+[B4,guard_fill=true vs B4] 16 margin -2.1 wall 73s
+[B4,guard_fill=true vs C0] 16 margin -0.4 wall 74s
+[B4,guard_fill=true vs B4] 16 margin -15.9 wall 75s
+[B4 vs C0] 16 margin -2.6 wall 75s
+[B4 vs B4] 16 margin +0.0 wall 77s
+[B4 vs C0] 16 margin -14.8 wall 79s
