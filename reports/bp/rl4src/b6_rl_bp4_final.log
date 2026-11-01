@@ -1,0 +1,7 @@
+6 chunks
+[B6 vs net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp4_final.pt] 32 matches margin -11.8 wall 114s
+[B6 vs net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp4_final.pt] 32 matches margin -26.0 wall 125s
+[B6 vs net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp4_final.pt] 32 matches margin -22.5 wall 128s
+[B5 vs net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp4_final.pt] 32 matches margin -15.4 wall 149s
+[B5 vs net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp4_final.pt] 32 matches margin -29.5 wall 157s
+[B5 vs net:/Users/mac/project/26rl/blackout-env-teach/checkpoints/bp/rl_bp4_final.pt] 32 matches margin -24.0 wall 158s

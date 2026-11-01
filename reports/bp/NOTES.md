@@ -273,3 +273,20 @@ x18 (48 seeds × 2면, paired):
 - 결론: RL3의 우위는 (a) 2v1 헌터 교환 전환 (b) 외로운 헌터의 출구 앞 대기 + 적 콜렉터 접근 시 복귀 (c) 정적 보초의 반대편으로 도는 워커의 조합이며 개별 규칙은 B5 대비 이득이 없음.
   다음 시도 후보: 보초 위치를 적 워커 접근 방향에 따라 이동시키는 규칙(정적 보초 착취 방지), 출구 대기와 복귀를 시간 계산(헌터 속도 6 vs 콜렉터 4)으로 묶은 `guard_leave`.
 - 도구: reports/bp/rl3src/ (cmp.py 쌍별 비교, an*.py 궤적), examples/diag_{refill,walk,trace,hh}.py, scripts/bp_focus.py (--n 0 --extra 로 수작업 후보).
+
+## 2026-11-02 RL4(rl_bp4_final) 분석 → B6 (feat/bp-teacher)
+
+- RL4-final vs B5 (v27_eval cap 150, 48 seeds × 2면, seed0 8.1M): A면 +39.2±6.4 (.75), B면 +28.2±8.3 (.71) (RL 우위 평균 +33.7). 궤적(24×2, reports/bp/rl4src): 오프닝 후 RL·B5 모두 헌터 1 (1v1, 110틱 0.98 vs 0.98),
+  마진 110–400 +13, 400–800 +15, 800–1500 +7. 110–400 RL 콜렉터 킬 7.1 vs B5 3.1 (헌터당 0.56 vs 0.25), RL 헌터가 B5 출구 근처 24 % vs 3 %, RL 콜렉터 보유율 .97 vs .63.
+- 새 노브 (모두 기본 off, 효과 없음): `sentry_track`(보초 post가 성소 근처 적 워커 방향으로 이동; track_hold), `guard_trip`(외로운 보초가 헌터 6 vs 콜렉터 4 시간 계산으로 돌아올 수 있는 동안만 적 출구 "south" post 캠프; trip_post, trip_engage),
+  `refill_free`(적 헌터 없어도 refill 커밋). 스크린 (24 seeds×2, B5;C0;B3R, paired vs B5): track12 −5.0, track12+hold4 −7.5, track9 −5.2, trip0.3 −3.9, trip0.8 −2.2, trip east −44, trip+track −3.5.
+  vs RL4-final (48×2): trip0.3 +1.9±6.2, trip0.8 +2.5±5.3, track −6.1±6.1 → RL 상대로도 무효. refill_free reach 20: 24 seeds에서 B5 +13.8였으나 32 seeds 재측정 −3.8 (노이즈).
+- 진단 (B5 미러, 24 seeds): 미러는 100틱 주기의 락스텝 파도. 오프닝 직후 양 팀 콜렉터 4마리가 0v0로 같은 틱에 성소 진입 → 동시 변신·상호 사망 (후속 변신 중 life ≤5틱 짧은 헌터 약 23/경기, 같은 틱 782/1096,
+  ±3틱 이내 거의 전부). 110–400틱 중 72 %가 헌터 0v0. RL 상대로는 이 루프가 없음(변신 1.3–1.9/경기). → 외로운 헌터(1v1)용 규칙(guard_trip, sentry_track)은 미러에서 거의 발동 안 함. RL 우위의 출처와 B5 미러의 약점은 다른 체제.
+- 해결: 노브가 아니라 **CEM** (bp_focus f1: B5 기준, groups hunters,race,economy,hunting,evasion,specials, n=64, scale 1.0, vs B5만, 32 seeds 스크린 → 128 seeds 확인 +17.6/+12.1/+11.7/+7.2).
+  상위 3개를 풀(B5;B4;C0;B3R;V34c)에 확인 (신선 seeds 90M, 96×2, paired vs B5): #1 −0.9±1.6, #3 −2.2±1.6 (B5 전용 카운터), **#2 +8.5±1.4** (B5 +13.3, B4 +14.2, C0 +10.4, B3R +3.6, V34c +1.0, 전부 ≥0).
+- **B6 = B5 + #2**: guard_radius 9.358, late_after 25.95, exposure_cost 0.6541, w_dspd 4.49, adapt_at 5.732, hunt_camp_radius 2.53, commit_reach 0.9771, idle_band 0.2026, w_bsize 0.9526, dom_danger_hunter_radius 3.756,
+  sentry_offset 5.831, hunt_hh 11.49, carrier_hunter_scale 0.8389, trade_floor 0.239, w_dsize 0.0523, raid_carrier 0.5195 (params.py `ALIASES["B6"]`).
+- rr (seed0 70M, 64 seeds × 2면): B6 vs B5 +11.7±5.0, B4 +32.7±4.7, C0 +30.3±4.4, B3R +34.7±3.9, V34c +77.4±1.5 (평균 +37.4; B5 평균 +29.6). B5 vs B4 +24.9, C0 +26.7, B3R +30.0.
+- RL 상대 (cap 425, --stop-exhausted, 48×2, seed0 8.3M, 헌터 해석 B6/B5): vs RL3-750 B6 −24.0±6.1 / B5 −21.6±6.5 (paired −2.4±6.2); vs RL4-final B6 −20.1±6.7 / B5 −23.0±5.8 (paired +2.9±6.1) → RL 대비 변화 없음 (여전히 RL이 우세 ~−20).
+- 한계: B6는 노브 16개 번들(CEM)이라 개별 기여는 미분해. RL 우위(1v1 후 재충원·출구 캠프)는 이식 못 함. 도구: scripts/bp_cand.py (수작업 후보 paired), reports/bp/rl4src/ (pos.py, churn*.py, waves.py).
