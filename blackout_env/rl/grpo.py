@@ -609,7 +609,8 @@ class GRPOTrainer:
         return w / w.sum()
 
     def _fresh_seed(self) -> SimState:
-        return SimState.from_seed(int(self.rng.integers(0, 2**31 - 1)))
+        # the full 32-bit seed space (Unity's int seed; negative seeds = the upper half after the uint32 cast)
+        return SimState.from_seed(int(self.rng.integers(0, 2**32)))
 
     def _rollout(self, roots, learner, opp_of, side, horizon, reseeds=None, opps=None):
         opps = self.opps if opps is None else opps
