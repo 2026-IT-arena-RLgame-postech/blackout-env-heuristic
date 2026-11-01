@@ -312,6 +312,7 @@ def track_storage(store: torch.Tensor, v0: torch.Tensor, g_abs: torch.Tensor, b:
     on_centre = (px == tile.to(px.dtype) * 4.0 + 2.0).all(dim=1)
     hidden = (torch.nn.functional.one_hot(tile_flat, 576) * on_centre.unsqueeze(1)).amax(dim=0) > 0
     presence_f = torch.where(hidden, prev_pres_f, presence_f)
+    allow_f = torch.maximum(presence_f, hidden.to(store.dtype))
     own, opp = v0[CLASS_AT + 3] * 100.0, v0[CLASS_AT + 4] * 100.0
     scores = torch.round(torch.where(b, torch.stack([opp, own]), torch.stack([own, opp])))
     tl = v0[CLASS_AT + 5]
@@ -342,7 +343,9 @@ def track_storage(store: torch.Tensor, v0: torch.Tensor, g_abs: torch.Tensor, b:
         valid = (slots >= 0) & (r >= 0) & (dep > 0)
         s = torch.clamp(slots, 0, 575)
         cap = torch.where(valid & ~special.index_select(0, s), 10.0 - amounts.index_select(0, s), torch.zeros(8))
-        cap = torch.clamp(cap, min=0.0)
+        # a deposit only lands on tiles that show a battery now (or are hidden under a unit): a steal of the
+        # first tile in the same tick otherwise refills that emptied tile instead of the next one
+        cap = torch.clamp(cap, min=0.0) * allow_f.index_select(0, s)
         before = torch.cumsum(cap, 0) - cap
         fill = torch.minimum(torch.clamp(dep - before, min=0.0), cap)
         amounts = amounts + (torch.nn.functional.one_hot(s, 576).to(fill.dtype) * fill.unsqueeze(1)).sum(dim=0)
