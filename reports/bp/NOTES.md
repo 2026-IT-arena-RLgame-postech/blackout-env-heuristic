@@ -315,3 +315,26 @@ x18 (48 seeds × 2면, paired):
   약점: RL6 vs raid_south −27.6 (확인 −19.6, 합 96매치 ≈ −21.6, 패율 .64, 대패(<−50) 50 %), RL6 vs blockade −12.9 (확인 +0.4 → 합 ≈ −3); RL5 vs blockade −27.7 (확인 −1.5 → 합 ≈ −8), RL5 vs raid_south +26 → −2 (합 ≈ +4).
   즉 RL은 "헌터 한 마리는 레이드, 한 마리는 적 남쪽 출구"와 "성소 봉쇄" 같은 헌터 운용 변형에 B6보다 약하거나 비슷하고, 나머지(스틸러/노이즈/turtle/storm 등)는 B6보다 훨씬 강함. B6 자체는 storm(−8)·raid_south(−5)에 진다.
   → RL 학습 풀 추가 우선순위: raid_south, blockade(+ storm, stealer).
+
+## 2026-11-02 익스플로이터: RL7(rl_bp7_1200)을 이기는 휴리스틱 (feat/bp-teacher, 50 Hz)
+
+- 방침 변경: RL의 강점을 휴리스틱에 이식하지 않고, RL 단계마다 최신 RL을 이기는 익스플로이터를 만들어 다음 RL 풀에 넣는다. 레지스트리 `blackout_env/train/distill/exploit_bp.py` (`EXPLOITERS` = (이름, 전체 디스크립터, 설명); RL 상대 로더가 그대로 받는 `switch:<s>:<A>|<B>` / `strategic_v34:...` 문자열, `oodbp=` 문법 아님), 테스트 `tests/test_exploit_bp.py`.
+- RL7 약점 (cap 425, stop-exhausted, 24 seeds x 2면 = 48매치, seed0 20.0M; RL 기준 margin): raid_south -27.9±8.6 (승률 .33), blockade -13.4±7.7 (.40); 나머지는 RL 우세 (turtle +43, fwd_post +38, hunter_duel +29, exit_camp +29, camp_after_open +28, stealer +27, storm +18).
+  raid_south 풀링(5블록, ~290매치) RL7 ≈ -21; blockade ≈ -10.
+- 진단 (traj_dump 48매치, `reports/bp/exp/an*.py`): 오프닝 레이스(tick ~200) 직후 raid_south/blockade 상대로는 양 팀 헌터가 전멸(0 v 0, tick 250; B6 상대로는 1.5 v 1.5 유지).
+  이후 2차 파도: 익스플로이터의 예비 콜렉터 3.8마리가 tick 350에 성소 6칸 안 (RL 1.8) → tick 450에 헌터 2 (RL 0.1~0.5) 선점 → 400~1000 구간 헌터 1.7 v 0.4.
+  RL 경제가 멈춤: 점수 RL 35→43 (400→1600틱) vs 익스플로이터 28→79 (B6 상대는 RL 30→60 / B6 29→49). RL 콜렉터는 자기 남쪽 출구 근처에서 매치당 ~7.9마리 사망(B6 상대 mirror보다 큼), 출구를 바꾸지 않음(S 출구 사용 비율 그대로).
+  RL은 상대 헌터가 있으면 성소 재진입을 포기 → 한 번 뺏기면 못 되찾음.
+- 핵심 발견: 역할(hunter_roles)을 끝까지 유지하면 약해지고, **오프닝+2차 파도 동안만(6~8 s) 쓰고 B6로 복귀**하면 훨씬 강하다.
+  switch 시점 (raid_south|B6, RL7, 96매치): 4 s -25.8 (레이스 깨짐), 5/6/7 s +53.6 (동일), 8 s +44.7~52.6, 9 s +40.7, 10 s +27, 13 s +33, 17 s +27, 영구 유지 +19 (CB). B6 후 raid_south(6 s) -20.
+  blockade 첫 단계 (switch:T:BL|B6): 6/7 s +49.4, 8 s +50~52, 10 s +32, 12 s +30, 16 s +26; 첫 단계의 sentry_offset 3 / radius 14 / min_hunters 2 / guard_deny는 결과 동일(+51.4) → 효과는 B6의 `hunter_roles=raid/raid`(기본)를 오프닝 동안 꺼서 헌터가 레이드 대신 성소/기본 행동을 하는 것에서 나옴 (offset 0.5는 -4.3로 깨짐).
+  지속형 노브 튜닝(east_engage, raid_value, hunt_hh, storm, refill_reach, steal_weight, reserve_count, guard_after, raid/east, exit_guards, bait ...)은 모두 24~96 시드 노이즈 범위(±6~8) 안, 24 시드 스크린 +39→재측정 +19처럼 사라짐.
+- 익스플로이터 (margin = 익스플로이터 기준, 신선 시드; RL7 96매치 seed0 28.0M / RL6-1050 48매치 29.0M / RL5-450 48매치 29.0M / B6 48매치 30.0M):
+  | 이름 | RL7 | RL6 | RL5 | B6 |
+  | X2_bl8 (blockade 8 s → B6) | +51.8±4.8 (.83) | +48.9±7.1 | +39.1±8.3 | +3.2±8.2 |
+  | X3_combo8 (raid_south+blockade 8 s → B6) | +39.1±6.1 (.74) | +18.8±9.6 | +26.8±9.4 | -15.4±7.7 |
+  | X4_combo (영구) | +35.8±5.8 (.75) | +9.5±9.1 | +13.7±9.0 | -22.4±6.8 |
+  | X1_rs6 (raid_south 6 s → B6) | +29.9±6.2 (.71) (스크린 +45.7/+53.6 → 3블록 ≈ +43, n=288) | +36.2±7.9 | +0.4±9.9 | +6.5±7.8 |
+  | X5_exits8 (south/east 8 s → B6) | +27.8±6.3 (.68) | +33.6±8.1 | +7.9±10.0 | -5.1±8.5 |
+  X2_bl8이 가장 일반적(세 RL 모두 +39~52, B6와는 동률)이라 풀 우선순위 1순위, X1/X5는 RL7/RL6에 강하나 RL5에는 약함(체크포인트별 편향), X3/X4는 B6에 지는 극단형.
+- 도구: `reports/bp/exp/` (screen1.sh = 로컬 스크린, screen_gpu1.sh = gpu1 실행, tab.py/tab2.py/sumry.py 집계, an1~an7.py 궤적 분석, base7.sh), `examples/traj_dump.py` 태그에서 "/" 제거.
