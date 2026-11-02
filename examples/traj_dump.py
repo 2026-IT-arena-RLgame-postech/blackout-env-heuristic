@@ -23,7 +23,7 @@ sys.path.insert(0, str(REPO / "examples"))
 def tag(name: str) -> str:
     if name.startswith("net:"):
         return name.split("/")[-2]
-    t = name.replace(":", "_").replace(",", "_").replace("=", "")
+    t = name.replace(":", "_").replace(",", "_").replace("=", "").replace("/", "-")
     if len(t) > 60:  # long descriptors: policy id + a stable hash
         import hashlib
         t = name.split(":")[0] + "_" + hashlib.md5(name.encode()).hexdigest()[:8]
