@@ -45,8 +45,10 @@ OODBP: list[tuple[str, str, str, str]] = [
     ("turtle", "B6,hunter_roles=,exit_guards=2,guard_radius=10,exposure_cost=2.0,steal_weight=0.8,guard_fill=false",
      "hunter", "both Hunters guard our own exit/storages, deposits only to the safe storage, minimal offence"),
     # (b) economy personalities
-    ("stealer", "B6,steal_weight=3.0,exposure_cost=0.3,hunter_roles=raid/raid,raid_value=4,raid_carrier=0.5", "econ",
-     "steals from enemy storages (weight 3), ignores exposure of its own"),
+    ("stealer", _oodbp("raid_squad=3,steal_weight=3.0,exposure_cost=2.0,hunter_roles=raid/raid,raid_value=4"), "econ",
+     "three Collectors never take field batteries and live off the enemy's storages; loot goes to the safe storage"),
+    ("pure_stealer", _oodbp("raid_squad=5,field_weight=0,steal_weight=3.0,exposure_cost=2.0"), "econ",
+     "all five units only steal (no field pickups at all); stalemate-prone, long games"),
     ("eco_boom", _oodbp("hunter_plan=0:2/12:0,hide=home"), "econ", "wins/loses the opening, then wants no Hunters: survivors hide in base, pure economy"),
     ("late_burst", _oodbp("hunter_plan=0:2/20:0/50:2"), "econ", "no Hunter refills 20-50 s (economy), then refills to two again"),
     # (c) tempo / tricks

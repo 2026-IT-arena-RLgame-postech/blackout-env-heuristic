@@ -6,6 +6,10 @@ none wanted from 25 s (no Collector is sent to the sanctuary, the quota-refill r
 While the target is 0 the Hunters that are still alive ``hide`` (``hide=home``: walk into our own base, which enemies
 cannot enter; ``hide=stay``: stand still) instead of raiding -- an economy-only mid-game that saves its Hunters for
 a late burst (or never bursts: ``hunter_plan="0:2,25:0"``).
+
+``raid_squad`` Collectors (the lowest unit indices that are empty-handed Collectors) never take field batteries and
+``field_weight`` scales the value of everyone's field batteries: ``raid_squad=5,field_weight=0`` is a pure stealer that
+lives off the enemy's storages (V17 raider idea on the V34 opening/Hunter war).
 """
 
 from __future__ import annotations
@@ -13,7 +17,8 @@ from __future__ import annotations
 import numpy as np
 
 from .any_angle import UNIT_RADIUS, AnyAngleLabel, pixel_position
-from .strategic import HUNTER
+from ..env.constants import unit_index
+from .strategic import COLLECTOR, HUNTER
 from .v17_planner import MATCH_SECONDS
 from .v34_bp import StrategicHeuristicV34
 
@@ -27,8 +32,11 @@ def parse_plan(text: str) -> list[tuple[float, int]]:
 
 
 class StrategicOODBP(StrategicHeuristicV34):
-    def __init__(self, *, hunter_plan: str = "", hide: str = "", **kwargs):
+    def __init__(self, *, hunter_plan: str = "", hide: str = "", raid_squad: int = 0, field_weight: float = 1.0,
+                 **kwargs):
         super().__init__(**kwargs)
+        self.raid_squad = int(raid_squad)
+        self.field_weight = float(field_weight)
         self.plan = parse_plan(hunter_plan)
         self.hide = str(hide)
 
@@ -47,6 +55,21 @@ class StrategicOODBP(StrategicHeuristicV34):
         if want is not None:
             hunters = min(hunters, want)
         return hunters, carriers
+
+    def _economy_pairs(self, ctx, units):
+        tasks, pairs, pickup = super()._economy_pairs(ctx, units)
+        if self.raid_squad <= 0 and self.field_weight == 1.0:
+            return tasks, pairs, pickup
+        squad = {u.name for u in sorted((u for u in ctx["own"] if u.cls == COLLECTOR and not u.holding),
+                                        key=lambda u: unit_index(u.name))[: self.raid_squad]}
+        kept = []
+        for score, name, task_index in pairs:
+            if tasks[task_index][1] == "battery":
+                if name in squad:
+                    continue
+                score *= self.field_weight
+            kept.append((score, name, task_index))
+        return tasks, kept, pickup
 
     def teach(self, obs):
         labels = super().teach(obs)
