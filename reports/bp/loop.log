@@ -138,3 +138,7 @@ refill_reach=14,refill_margin=-1.0                           paired +1.3±1.2 ra
 refill_reach=14,refill_margin=-2.0                           paired +1.6±2.8 raw +1.8 | B6:+2.3 C0:+1.2 net:checkpoints/bp/rl_bp5_450.pt:+1.3
 refill_reach=7,refill_safe=false                             paired -2.0±1.4 raw -1.9 | B6:+0.4 C0:-0.0 net:checkpoints/bp/rl_bp5_450.pt:-6.4
 refill_reach=14,refill_safe=false                            paired +3.4±2.6 raw +3.5 | B6:+0.9 C0:+2.9 net:checkpoints/bp/rl_bp5_450.pt:+6.4
+11-02 04:49:42 g1_s: 65 cands (65 to play) x 3 opps x 24 seeds; mac:16w, poscat_gpu1:16w
+11-02 07:43:20 g1 screen: +8.3±3.6; +7.4±5.1; +7.3±6.1; +4.9±4.8; +4.7±5.4; +4.6±4.1; +4.3±4.0; +3.5±5.5
+11-02 07:43:22 g1_c: 5 cands (5 to play) x 3 opps x 96 seeds; mac:16w, poscat_gpu1:16w
+11-02 08:39:05 g1 confirm: +1.0±2.7; +0.2±2.0; -5.0±2.5; -5.7±2.7

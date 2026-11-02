@@ -1,0 +1,8 @@
+11-02 04:00:03 r5a: 7 cands (7 to play) x 3 opps x 24 seeds; mac:16w, poscat_gpu1:16w
+11-02 04:21:29 r5a base=B6 seeds=24x2 seed0=90000000
+refill_reach=10                                              paired +0.0±0.0 raw -4.5 | B6:+0.0 C0:+0.0 net:checkpoints/bp/rl_bp5_450.pt:+0.0
+refill_reach=14                                              paired -0.1±0.0 raw -4.5 | B6:+0.0 C0:+0.0 net:checkpoints/bp/rl_bp5_450.pt:-0.2
+refill_reach=20                                              paired -0.1±0.0 raw -4.5 | B6:+0.0 C0:+0.0 net:checkpoints/bp/rl_bp5_450.pt:-0.2
+refill_reach=14,refill_safe=false                            paired +4.7±2.8 raw +0.2 | B6:+1.1 C0:+6.9 net:checkpoints/bp/rl_bp5_450.pt:+6.0
+refill_reach=14,refill_margin=-0.4                           paired +0.1±0.4 raw -4.3 | B6:+0.3 C0:+0.4 net:checkpoints/bp/rl_bp5_450.pt:-0.4
+refill_reach=14,refill_after=3                               paired +0.0±0.0 raw -4.5 | B6:+0.0 C0:+0.0 net:checkpoints/bp/rl_bp5_450.pt:+0.0
