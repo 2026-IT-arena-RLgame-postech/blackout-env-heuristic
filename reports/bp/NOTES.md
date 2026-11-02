@@ -299,3 +299,19 @@ x18 (48 seeds × 2면, paired):
 - 신선 시드 확인 (seed0 91M, 96×2, 풀 B6;B5;B4;C0;B3R;RL5): reach14+safe=false+after=3 paired +1.0±1.2 (B6 −0.8, B5 −3.0, B4 +2.7, C0 +0.1, B3R 0.0, RL5 +6.7);
   reach14+safe=false +0.4±1.0 (B5 −2.5, B3R −1.5). → B5에 지고 전체 무효. 스크린 이득은 노이즈/RL5 전용. 결론: B7 없음.
 - 교훈: 24 seeds 스크린의 +5는 반복해서 확인에서 사라짐; RL 우위(재충원·출구 캠프)는 규칙 하나로 이식 안 됨. 결과: reports/bp/r5/*.out.
+
+## 2026-11-02 OOD-BP: 패치 후 OOD 상대 스위트 (feat/bp-teacher)
+
+- 구성: `blackout_env/train/distill/ood_bp.py` (OODBP = 20개 (이름, 디스크립터, 그룹, 설명)), `v27_eval.py play --hz 50 --opponent oodbp | oodbp:<그룹>[+..] | oodbp=<이름>,..`,
+  리포트 `examples/oodbp_report.py --out <dir> --base B6` (상대별 margin±SE / 승·패율 / cat(<-20) / p10 / vs base paired, 후보별 약점 요약), 테스트 `tests/test_ood_bp.py`.
+  새 정책 클래스 `strategic_oodbp` (`heuristics/oodbp.py`, V34 + `hunter_plan="0:2/20:0/50:2"`(시간별 헌터 목표수) + `hide=home|stay` + `raid_squad`/`field_weight`(필드 배터리 안 줍는 스틸러 분대)).
+- 핵심 사실: 패치 후 경기는 ~40–100 s(stop-exhausted)에 끝나고 오프닝 헌터 레이스에서 지면 뭘 해도 B6에게 −80 (random/idle/V17 스타일/eps≥0.03 노이즈/hunter_quota 0–1 전부).
+  따라서 "유능한" 성격은 B6 오프닝을 유지하고 이후만 다르게 한다 (B6 노브, 또는 `switch:25:B6|perturb:..`). 노이즈를 tick 0부터 주면 레이스만 망가짐 → `sloppy`(freeze 0.04) 하나만 남김.
+  "늦은 폭발"은 150 s 이후 의미 없음(경기가 이미 끝남) → late_burst는 20–50 s 창. 캐리어는 규칙상 1명뿐이라 carrier-heavy는 불가. mixcls(B6 헌터 + idle/random 나머지)는 레이스 패배 → 제외.
+- 스위트 (B6가 이긴 margin, 24매치): exit_camp(양 헌터 적 출구 캠프) +14, raid_south(1 레이드 + 1 남쪽 출구) +5, blockade(성소 봉쇄) +17, hunter_duel +20, fwd_post +3, turtle +23,
+  stealer(3명 분대 스틸 전용) +20, pure_stealer +26, eco_boom(12 s 후 헌터 0, 기지 은신) +60, late_burst +12, storm −8, decoy(bait) +4, camp_after_open +16, noisy_eps +16, laggy +21, sloppy +53, v34c +12,
+  random +97, idle +102, early_rush(V17) +80. 행동 검증: reports/bp/ood/behav.py + econ/ (헌터-초 timeline, 스틸 비율: stealer 27/89, pure_stealer 24/41 vs B6 20/90, exit_camp 헌터 킬 4 vs B6 92 등).
+- 베이스라인 (50 Hz, cap 425, stop-exhausted, 12 seeds×2, seed0 6.0M; reports/bp/ood/base, 확인 36 seeds×2 `confirm/`): 17 비-crushed 평균 margin RL6-1050 +32.6, RL5-450 +37.1, B6 +18.4. crushed는 전원 승률 1.00 (+78~+102).
+  약점: RL6 vs raid_south −27.6 (확인 −19.6, 합 96매치 ≈ −21.6, 패율 .64, 대패(<−50) 50 %), RL6 vs blockade −12.9 (확인 +0.4 → 합 ≈ −3); RL5 vs blockade −27.7 (확인 −1.5 → 합 ≈ −8), RL5 vs raid_south +26 → −2 (합 ≈ +4).
+  즉 RL은 "헌터 한 마리는 레이드, 한 마리는 적 남쪽 출구"와 "성소 봉쇄" 같은 헌터 운용 변형에 B6보다 약하거나 비슷하고, 나머지(스틸러/노이즈/turtle/storm 등)는 B6보다 훨씬 강함. B6 자체는 storm(−8)·raid_south(−5)에 진다.
+  → RL 학습 풀 추가 우선순위: raid_south, blockade(+ storm, stealer).
