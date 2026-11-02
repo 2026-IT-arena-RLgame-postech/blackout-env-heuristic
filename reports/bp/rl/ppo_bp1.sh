@@ -12,6 +12,6 @@ export OPPS="${OPPS:-B3;B3;C0;V34c;V34b;net:$FZ/d3_final.pt;net:$FZ/d4_final.pt}
 export EVAL_OPPS="${EVAL_OPPS:-B3,C0,V34c,net:$FZ/d3_final.pt}"
 export W=${W:-"1,1,1,1,0.5,1,0.5"}
 export OUT=${OUT:-$HOME/bpruns/rl_bp1}
-export EXTRA="beta=${BETA:-0.01} lr=${LR:-6e-6} init=${INIT:?set INIT} value=${VALUE:-$HOME/blackout-env-abl/checkpoints/value/s2v_f3xd2/iter2.pt} critic_warmup=${CWARM:-10} $EXTRA"
+export EXTRA="beta=${BETA:-0.015} lr=${LR:-6e-6} init=${INIT:?set INIT} value=${VALUE:-$HOME/blackout-env-abl/checkpoints/value/s2v_f3xd2/iter2.pt} critic_warmup=${CWARM:-10} $EXTRA"
 export REPO=$PWD
 exec reports/rl/ppo_league_b.sh
