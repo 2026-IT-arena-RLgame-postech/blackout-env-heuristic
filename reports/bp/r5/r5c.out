@@ -1,0 +1,4 @@
+11-02 12:34:36 r5c: 3 cands (3 to play) x 6 opps x 96 seeds; mac:16w, poscat_gpu1:16w
+11-02 13:23:07 r5c base=B6 seeds=96x2 seed0=91000000
+refill_reach=14,refill_safe=false,refill_after=3             paired +1.0±1.2 raw +8.9 | B6:-0.8 B5:-3.0 B4:+2.7 C0:+0.1 B3R:+0.0 net:checkpoints/bp/rl_bp5_450.pt:+6.7
+refill_reach=14,refill_safe=false                            paired +0.4±1.0 raw +8.3 | B6:+1.6 B5:-2.5 B4:+0.7 C0:+2.2 B3R:-1.5 net:checkpoints/bp/rl_bp5_450.pt:+2.2

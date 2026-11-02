@@ -290,3 +290,12 @@ x18 (48 seeds × 2면, paired):
 - rr (seed0 70M, 64 seeds × 2면): B6 vs B5 +11.7±5.0, B4 +32.7±4.7, C0 +30.3±4.4, B3R +34.7±3.9, V34c +77.4±1.5 (평균 +37.4; B5 평균 +29.6). B5 vs B4 +24.9, C0 +26.7, B3R +30.0.
 - RL 상대 (cap 425, --stop-exhausted, 48×2, seed0 8.3M, 헌터 해석 B6/B5): vs RL3-750 B6 −24.0±6.1 / B5 −21.6±6.5 (paired −2.4±6.2); vs RL4-final B6 −20.1±6.7 / B5 −23.0±5.8 (paired +2.9±6.1) → RL 대비 변화 없음 (여전히 RL이 우세 ~−20).
 - 한계: B6는 노브 16개 번들(CEM)이라 개별 기여는 미분해. RL 우위(1v1 후 재충원·출구 캠프)는 이식 못 함. 도구: scripts/bp_cand.py (수작업 후보 paired), reports/bp/rl4src/ (pos.py, churn*.py, waves.py).
+
+## 2026-11-02 라운드 5: RL5(rl_bp5_450) → B7 시도 (50 Hz) — B7 없음, B6 유지
+
+- 50 Hz 진단 (rl5 vs B6, 24 seeds×2면, 청크 12개 평균): RL5 마진 ≈ +41 (청크별 +16~+64) → 50 Hz에서도 RL이 B6보다 크게 우세. 궤적 덤프: reports/bp/r5/traj, 스크립트 reports/bp/r5/sides.py.
+- CEM g1 (B6 기준 65 후보, 풀 B6;C0;RL5, 24 seeds 스크린 → 96 확인): 스크린 최고 +8.3±3.6, 확인 +1.0±2.7 / +0.2±2.0 / −5.0 / −5.7 → 무효.
+- 손 후보 (refill 노브, 24 seeds×2, B6;C0;RL5 paired vs B6): reach14+safe=false +4.7/+3.4, +after=3 +5.2±2.4, reach20 +4.1, reach10 +0.8, reach7 −2.0, margin 계열 ≤+1.6.
+- 신선 시드 확인 (seed0 91M, 96×2, 풀 B6;B5;B4;C0;B3R;RL5): reach14+safe=false+after=3 paired +1.0±1.2 (B6 −0.8, B5 −3.0, B4 +2.7, C0 +0.1, B3R 0.0, RL5 +6.7);
+  reach14+safe=false +0.4±1.0 (B5 −2.5, B3R −1.5). → B5에 지고 전체 무효. 스크린 이득은 노이즈/RL5 전용. 결론: B7 없음.
+- 교훈: 24 seeds 스크린의 +5는 반복해서 확인에서 사라짐; RL 우위(재충원·출구 캠프)는 규칙 하나로 이식 안 됨. 결과: reports/bp/r5/*.out.
