@@ -12,6 +12,9 @@ non-walker's distance to the Hunter sanctuary at decision 100.  Rows append to
 Policies: heuristic descriptors, distill students (``p11`` / ``p14b`` / BLACKOUT_NETS names / ``net:<path>``),
 small rollout nets (BLACKOUT_SMALL names / ``small:<path>``).
 
+``--opponent oodbp`` (or ``oodbp:<group>``, ``oodbp=<name>,...``) plays the post-patch OOD-BP suite
+(blackout_env/train/distill/ood_bp.py; report: examples/oodbp_report.py; use ``--hz 50 --stop-exhausted``).
+
 ``--opponent ood26`` (or ``ood26:<group>``, ``ood26=<name>,...``) plays the OOD-26 suite (docs §56,
 blackout_env/train/distill/ood_suite.py; metrics: examples/ood_report.py); ``temp:<T>:<net>`` samples a net's bins.
 
@@ -287,9 +290,10 @@ def cmd_play(args):
     out.mkdir(parents=True, exist_ok=True)
     done = {(r["ours"], r["opponent"], r["seed"], r["side"]) for r in load_rows(out)}
     jobs = []
+    from blackout_env.train.distill.ood_bp import expand as expand_bp  # ``oodbp`` / ``oodbp:<group>`` = OOD-BP (post-patch)
     from blackout_env.train.distill.ood_suite import expand  # ``ood26`` / ``ood26:<group>`` = the OOD-26 suite (§56)
 
-    opps = list(dict.fromkeys(d for e in args.opponent.split(";") for d in expand(e)))
+    opps = list(dict.fromkeys(d for e in args.opponent.split(";") for x in expand_bp(e) for d in expand(x)))
     for opp in opps:
         for ours in args.ours.split(";"):
             todo = [(s, sd) for s in range(args.seed0, args.seed0 + args.seeds) for sd in (0, 1)
