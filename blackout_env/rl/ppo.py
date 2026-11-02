@@ -88,6 +88,7 @@ class PPOConfig(GRPOConfig):
                                        # the learner's own team (stateful, per game, in the heuristic workers) and its action is the label of every learner decision
     teach_coef: float = 0.5            # weight of CE(learner bin logits, teacher action) over the labelled unit rows
     teach_iters: int = 100             # coef(iter) = teach_coef * max(0, 1 - iter / teach_iters) (iter = trainer iteration, restored on resume); 0 after: no teacher stepping at all
+    teach_opps: str = ""               # comma-separated fixed-pool opponent indices: only games against these get teacher labels (and teacher stepping); "" = every game
 
 
 class _HLLogits(torch.nn.Module):
@@ -546,6 +547,9 @@ class PPOTrainer(GRPOTrainer):
                                     graphs=self.learner_gf, **self._learner_kw())
         tact = self._teach_active()
         learner.teacher = self._teacher if tact else None
+        if tact and c.teach_opps:   # opponent-conditional distillation: label only the games against these opponents
+            sel = np.array([int(x) for x in c.teach_opps.split(",") if x.strip()], np.int64)
+            learner.teach_games = np.isin(np.asarray(self.trunk_opp), sel)
         if self._teacher is not None and not tact:
             self._teacher.pol.reset(0)   # decayed to 0: free the teacher's per-game instances, no more stepping
             self._teacher = None

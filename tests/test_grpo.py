@@ -263,3 +263,20 @@ def test_ppo_teach_cpu():
     assert np.isfinite(s0["teach_ce"]) and 0 <= s0["teach_acc"] <= 1 and s0["teach_coef"] == 0.5
     assert s1["teach_coef"] == 0.25
     assert "teach_ce" not in s2 and tr._teacher is None
+
+
+def test_ppo_teach_opps_cpu():
+    """teach_opps: only games against the listed opponents carry teacher labels (others -1)."""
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    cfg = PPOConfig(init=CKPT, value=VALUE, device="cpu", games=4, segment=8, minibatch=8, epochs=1, critic_warmup=0,
+                    opponents=["random", "idle"], teach="B5", teach_coef=0.5, teach_iters=10, teach_opps="1",
+                    async_collect="false", heur_workers=0)
+    tr = PPOTrainer(cfg)
+    tr.trunk_opp[:] = np.array([0, 1, 0, 1])
+    batch, _ = tr.collect()
+    lab = batch["teach"]
+    rows = lab.reshape(len(lab), -1)
+    labelled = (rows >= 0).all(1)
+    unl = (rows < 0).all(1)
+    assert labelled.any() and unl.any() and (labelled | unl).all()

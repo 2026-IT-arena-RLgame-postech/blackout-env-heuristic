@@ -144,7 +144,11 @@ class LearnerPolicy(BatchPolicy):
         out = {}
         for i, tm in enumerate(teams):
             g, ts, ag = graphic[:n][:, tm], team[:n][:, tm], agents[:n][:, tm]
-            th = self.teacher.start(bsim, idx, tm) if self.teacher is not None else None   # teacher runs (workers) during the forward
+            tsel = None
+            if self.teacher is not None and getattr(self, "teach_games", None) is not None:
+                tsel = self.teach_games[idx]   # opponent-conditional: only these games are labelled / stepped
+            th = (self.teacher.start(bsim, idx if tsel is None else idx[tsel], tm)
+                  if self.teacher is not None and (tsel is None or tsel.any()) else None)   # teacher runs (workers) during the forward
             q, off = self._forward(g, ts, ag)
             samp = self.t[idx] < self.sample_steps
             chosen = q.argmax(-1)
@@ -164,6 +168,11 @@ class LearnerPolicy(BatchPolicy):
                 f_np = fj.cpu().numpy().astype(np.int8)
             chosen_np = chosen.cpu().numpy()
             lab = self.teacher.finish(th, tm, q.shape[-1]) if th is not None else None
+            if self.teacher is not None and tsel is not None:   # unlabelled games: -1 (masked out of the teacher CE)
+                full = np.full((n, 5), -1, np.int8)
+                if lab is not None:
+                    full[tsel] = lab
+                lab = full
             if r is not None:
                 self.records.append((idx[r].copy(), g[r].copy(), ts[r].copy(), ag[r].copy(),
                                      chosen_np[r].astype(np.int8)) + ((o_np,) if o_np is not None else ())
