@@ -241,3 +241,33 @@ def test_league_ref_reset_cpu(tmp_path):
             tr2 = PPOTrainer(_cfg(**kw, league_ref_reset=True))
             tr2.load_resume(path)
             assert same(tr2.ref.net.state_dict(), snap)
+
+
+@needs_ckpt
+def test_stop_exhausted_ends_game():
+    """stop_exhausted: the rollout is asked to stop at exhaustion and an exhausted game counts as ended (terminal reward,
+    no bootstrap, restarted from a fresh seed)."""
+    from blackout_env.rl.ppo import PPOTrainer
+
+    tr = PPOTrainer(_cfg(stop_exhausted=True, games=3, segment=6))
+    orig = tr._rollout
+
+    def fake(*a, **kw):
+        assert kw.get("stop_when_exhausted") is True
+        res = orig(*a, **kw)
+        res.exhausted[:] = False
+        res.exhausted[1] = True   # pretend game 1 just ran out of batteries
+        return res
+
+    tr._rollout = fake
+    cap = {}
+    tr.diag_hook = lambda d: cap.update(d)
+    old = tr.trunk[1]
+    _, stats = tr.collect()
+    assert stats["trunk_restarts"] == 1
+    assert cap["over"].tolist() == [False, True, False]
+    assert cap["boot"][1] == 0.0 and cap["boot"][0] != 0.0
+    assert tr.trunk[1] is not old
+    rows = np.nonzero(cap["game"] == 1)[0]
+    last = rows[-1]   # terminal step: advantage = final reward - V
+    assert np.isclose(cap["adv"][last], cap["final_r"][1] - cap["v"][last])

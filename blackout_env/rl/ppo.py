@@ -84,6 +84,8 @@ class PPOConfig(GRPOConfig):
     async_decoupled: bool = True       # decoupled PPO: clip vs the proximal policy (weights at update start) x truncated IS pi_prox/pi_beh
     async_is_cap: float = 2.0          # truncation of that importance weight
     # ---- teacher distillation in the first iterations (default off = old behaviour, bit-identical; blackout_env/rl/teach.py)
+    stop_exhausted: bool = False       # (opt-in) a trunk game also ends at an absorption that leaves no battery in play (the score
+                                       # can no longer change: same final lead as playing on to 420 s, ~70 % of the decisions saved)
     teach: str = ""                    # heuristic teacher (alias "B5" / make_opponent descriptor); "" = off.  The teacher plays no moves: it is stepped on
                                        # the learner's own team (stateful, per game, in the heuristic workers) and its action is the label of every learner decision
     teach_coef: float = 0.5            # weight of CE(learner bin logits, teacher action) over the labelled unit rows
@@ -553,7 +555,7 @@ class PPOTrainer(GRPOTrainer):
         if self._teacher is not None and not tact:
             self._teacher.pol.reset(0)   # decayed to 0: free the teacher's per-game instances, no more stepping
             self._teacher = None
-        res = self._rollout(self.trunk, learner, self.trunk_opp, self.trunk_side, c.segment)
+        res = self._rollout(self.trunk, learner, self.trunk_opp, self.trunk_side, c.segment, stop_when_exhausted=c.stop_exhausted)
         t1 = time.perf_counter()
         recs = learner.records
         game = np.concatenate([r[0] for r in recs])
@@ -569,7 +571,8 @@ class PPOTrainer(GRPOTrainer):
         # bootstrap: the learner's view of every unfinished game's final state
         side = self.trunk_side
         bs = res.bsim
-        live = np.nonzero(~bs.over)[0]
+        over = bs.over | res.exhausted if res.exhausted is not None else bs.over.copy()   # exhausted = ended (stop_exhausted)
+        live = np.nonzero(~over)[0]
         boot = np.zeros(n, np.float64)
         if len(live):
             pk = np.zeros((len(live), 2, H, W), np.int16)
@@ -591,7 +594,7 @@ class PPOTrainer(GRPOTrainer):
                 continue
             vb = v[rows].astype(np.float64)
             self.gv[b] += (len(rows), vb.sum(), (vb * vb).sum())
-            nxt = final_r[b] if bs.over[b] else boot[b]   # value after the last step (terminal: reward, V=0)
+            nxt = final_r[b] if over[b] else boot[b]   # value after the last step (terminal: reward, V=0)
             gae = 0.0
             for j in range(len(rows) - 1, -1, -1):
                 v_next = nxt if j == len(rows) - 1 else vb[j + 1]
@@ -599,7 +602,7 @@ class PPOTrainer(GRPOTrainer):
                 gae = delta + c.gae_lambda * gae
                 adv[rows[j]] = gae
                 ret[rows[j]] = gae + vb[j]
-        ended = np.nonzero(bs.over)[0]
+        ended = np.nonzero(over)[0]
         # per-opponent advantage statistics / optional centering (``adv`` stays the raw GAE; ``adv_used`` feeds the policy)
         n_opp = len(self.opps)
         row_opp = self.trunk_opp[game]
@@ -626,7 +629,7 @@ class PPOTrainer(GRPOTrainer):
         hook = getattr(self, "diag_hook", None)   # offline diagnostics (examples/critic_shift_diag.py); no effect when unset
         if hook is not None:
             hook(dict(game=game, g=g, t=ts, a=ag, v=v, adv=adv, ret=ret, opp_of=self.trunk_opp.copy(), side=side.copy(),
-                      over=bs.over.copy(), boot=boot, final_r=final_r, lead=lead, bsim=bs))
+                      over=over.copy(), boot=boot, final_r=final_r, lead=lead, bsim=bs))
         # PFSP: per-opponent EMA of the learner's result on the games that ended (no branch leaves here)
         score = (np.sign(lead) + 1.0) / 2.0
         for i in range(len(self.opps)):
