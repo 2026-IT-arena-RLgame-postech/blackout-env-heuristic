@@ -350,3 +350,16 @@ x18 (48 seeds × 2면, paired):
 - KDA 시간 메모리 RL 프로토타입: 동작함 (메모리 사용 확인), 아직 stateless 대비 우위 없음. 상태 ~4 MB/호출, 공식 최대 지연 96 ms → 축소 필요.
 - 서브에이전트: 11-03 오후부터 403 (조직이 Claude Code 구독 접근 차단) → 직접 진행.
 - 진행 중: rl_bp10 (rl9 it1200에서), rl9 final 공식 테스트 (vs rl4f 16판), rl9 final OOD 스캔 (gpu1), KDA 계속 (GPU1).
+
+## 2026-11-04 정체 진단 + stop_exhausted (feat/bp-stopex)
+
+- **학습 샘플의 ~72 %가 점수 확정 이후.** rl9 final vs B6 / vs rl9 final (50 Hz, 16 seeds × 2면, seed0 77M, gpu2 `~/bpruns/plat/ex_{stop,full}`): 소진 종료 on/off 마진 **64/64 동일**,
+  소진 시각 평균 55 / 44 s vs 끝까지 평균 209 / 150 s → 게임 시간의 74 % / 71 %가 점수 불변 구간. PPO trunk는 소진 종료가 없어 평균 게임 ≈ 8k 결정(반복당 종료 ~4판) →
+  단계당 ~5k판, 49 상대 → 상대당 ~100판 결과만 학습.
+- **승부 결정 시점** (traj 200 s, `plat/traj`): 리드-최종 상관 0–10 s ≈ 0 (부호 일치 .25–.56), 15 s .16/.59, 20 s .71/.88, 30 s .82/.95, 45 s .95/.98, 점수 마지막 변화 중앙값 42–44 s.
+  λ=0.975 @50 Hz = 신용 지평 ~0.8 s → 초반(0–20 s) 결정의 신호는 전부 critic 의존.
+- **단계 내 개선은 풀 특화**: rl_bp10 상대별 EMA (it30→끝) 휴리스틱/옛 넷 +0.1~+0.3, 최신 넷 rl9_1200 −0.09, rl8 −0.03, rl7 −0.02. 학습 중 평가 32판 SE ±10–14 → 단계 간 차이 판별 불가.
+- 구현: `PPOConfig.stop_exhausted` (기본 off = 기존과 동일; on이면 소진된 trunk 게임을 종료로 처리: 종료 보상, 부트스트랩 없음, 새 시드 재시작),
+  `rl_train.py --eval-stop-exhausted` (평가도 소진 종료, 마진 동일). 테스트 `tests/test_league.py::test_stop_exhausted_ends_game`. 학습 A/B는 빈 GPU가 없어 미실행.
+- 다음 후보: (1) 다음 RL 단계에 `stop_exhausted=true` + `--eval-stop-exhausted` + eval seeds ×3, (2) 초반 신용할당 (λ 0.99 / 오프닝 이후 action repeat / 0–20 s 분기 CRN 롤아웃 이득 = GRPO r3),
+  (3) 최신 자기 비중↑ 또는 RL 익스플로이터, (4) 탐색 Q 회귀 증류.
