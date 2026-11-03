@@ -36,7 +36,7 @@ def _heur(desc: str, shift: int, workers):
 
 def eval_batched(net_or_path, opp_specs, seeds, device: str, horizon: int = 11000, graphs: bool = True,
                  fp16: bool = True, heur_workers: int = 0, joint: bool = False, workers=None, fine=None, angle_quant: int = 0,
-                 tpd: int = 2):
+                 tpd: int = 2, stop_exhausted: bool = False):
     """Greedy learner vs each of ``opp_specs`` on ``seeds``, both sides, all games in one rollout.
 
     Returns ``{opp_spec: {"margin_side0": [...], "margin_side1": [...], "win", "margin", "se"}}`` (margins from the
@@ -106,7 +106,7 @@ def eval_batched(net_or_path, opp_specs, seeds, device: str, horizon: int = 1100
     try:
         if joint or workers is not None:
             pj = JointSeats(learner, opps, opp_of, side, split=not joint)
-            res = BatchRollout(pj, pj, packed=True).run(None, horizon, bsim=bsim)
+            res = BatchRollout(pj, pj, packed=True).run(None, horizon, bsim=bsim, stop_when_exhausted=stop_exhausted)
         else:
             res = BatchRollout(Seats(0, learner, opps, opp_of, side), Seats(1, learner, opps, opp_of, side),
                                packed=True).run(None, horizon, bsim=bsim)
