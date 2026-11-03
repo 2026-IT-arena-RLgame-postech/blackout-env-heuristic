@@ -175,7 +175,7 @@ def _policy(name: str):
 
     if name.startswith("switch:"):
         _, sec, rest = name.split(":", 2)
-        a, b = rest.split("|")
+        a, _, b = rest.partition("|")  # b may itself be a switch: (right-nested multi-phase personalities)
         return SwitchPolicy(float(sec), _policy(a), _policy(b))
 
     if name in SMALL or name.startswith("small:"):
