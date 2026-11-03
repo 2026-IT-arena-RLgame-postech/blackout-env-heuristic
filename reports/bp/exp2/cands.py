@@ -60,6 +60,53 @@ SETS["T"] = {
     "bl6_plain": sw(6, "B6,hunter_roles=,sentry_offset=1.5"),
 }
 
+SETS["O"] = {  # opening-phase knobs inside the 6 s blockade phase (paired vs bl6)
+    "o_base": sw(6, BL),
+    "o_rstage1": sw(6, BL + ",reserve_stage=1.0"),
+    "o_rstage2": sw(6, BL + ",reserve_stage=2.0"),
+    "o_rcount1": sw(6, BL + ",reserve_count=1"),
+    "o_rcount3": sw(6, BL + ",reserve_count=3"),
+    "o_early0": sw(6, BL + ",early_reserve=0"),
+    "o_early12": sw(6, BL + ",early_reserve=12"),
+    "o_open6": sw(6, BL + ",opening_seconds=6"),
+    "o_capenter": sw(6, BL + ",cap_enter=0.35"),
+    "o_cm_neg": sw(6, BL + ",commit_margin=-1.0"),
+    "o_cm_pos": sw(6, BL + ",commit_margin=0.2"),
+    "o_trade2": sw(6, BL + ",trade_radius=2.0,trade_reach=2.0"),
+    "o_cdelay": sw(6, BL + ",carrier_delay=30,carrier_on_monopoly=false"),
+    "o_cdelay4": sw(6, BL + ",carrier_delay=4"),
+    "o_byname": sw(6, BL + ",stage_by_name=true"),
+    "o_noorder": sw(6, BL + ",race_order=false"),
+}
+
+SETS["S"] = {  # economy / specials knobs after the 6 s blockade phase (paired vs s_base)
+    "s_base": sw(6, BL),
+    "s_dspd8": sw(6, BL, b6k("w_dspd=8")),
+    "s_bspd6": sw(6, BL, b6k("w_bspd=6")),
+    "s_bsize15": sw(6, BL, b6k("w_bsize=1.5")),
+    "s_dsize15": sw(6, BL, b6k("w_dsize=1.5")),
+    "s_allsp": sw(6, BL, b6k("w_dspd=8,w_bspd=6,w_bsize=1.5,w_dsize=1.5")),
+    "s_nosp": sw(6, BL, b6k("w_dspd=0,w_bspd=0,w_bsize=0,w_dsize=0")),
+    "s_steal3": sw(6, BL, b6k("steal_weight=3.0")),
+    "s_steal08": sw(6, BL, b6k("steal_weight=0.8")),
+    "s_expo2": sw(6, BL, b6k("exposure_cost=2.0")),
+    "s_expo03": sw(6, BL, b6k("exposure_cost=0.3")),
+    "s_cfv10": sw(6, BL, b6k("carrier_field_value=10")),
+    "s_cfv40": sw(6, BL, b6k("carrier_field_value=40")),
+    "s_danger6": sw(6, BL, b6k("danger_hunter_radius=6,danger_weight=0.9,threat_radius=0.2")),
+    "s_danger25": sw(6, BL, b6k("danger_hunter_radius=2.5,threat_radius=0.08")),
+    "s_retreat": sw(6, BL, b6k("carrier_retreat=6")),
+}
+
+SETS["F"] = {  # final confirmation on fresh seeds: best singles + combos
+    "s_base": sw(6, BL),
+    "o_capenter": sw(6, BL + ",cap_enter=0.35"),
+    "s_danger25": sw(6, BL, b6k("danger_hunter_radius=2.5,threat_radius=0.08")),
+    "f_combo": sw(6, BL + ",cap_enter=0.35", b6k("danger_hunter_radius=2.5,threat_radius=0.08")),
+    "f_combo_st": sw(6, BL + ",cap_enter=0.35", b6k("danger_hunter_radius=2.5,threat_radius=0.08,storm_units=2,storm_after=5")),
+    "f_combo_d4": sw(6, BL + ",cap_enter=0.35", b6k("w_dspd=8,danger_hunter_radius=2.5,threat_radius=0.08")),
+}
+
 if __name__ == "__main__":
     s = SETS[sys.argv[1]]
     sel = sys.argv[2].split(",") if len(sys.argv) > 2 else list(s)
