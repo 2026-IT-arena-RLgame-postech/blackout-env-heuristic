@@ -338,3 +338,15 @@ x18 (48 seeds × 2면, paired):
   | X5_exits8 (south/east 8 s → B6) | +27.8±6.3 (.68) | +33.6±8.1 | +7.9±10.0 | -5.1±8.5 |
   X2_bl8이 가장 일반적(세 RL 모두 +39~52, B6와는 동률)이라 풀 우선순위 1순위, X1/X5는 RL7/RL6에 강하나 RL5에는 약함(체크포인트별 편향), X3/X4는 B6에 지는 극단형.
 - 도구: `reports/bp/exp/` (screen1.sh = 로컬 스크린, screen_gpu1.sh = gpu1 실행, tab.py/tab2.py/sumry.py 집계, an1~an7.py 궤적 분석, base7.sh), `examples/traj_dump.py` 태그에서 "/" 제거.
+
+## 11-01 ~ 11-03 요약 (세션 압축 전)
+
+- RL 단계 1~9 (league PPO). 50 Hz로 전환 (25 Hz 평가가 이득 과대평가: rl4 vs rl3 +16@25 → +4@50). beta 0.015, clip 0.15.
+- ONNX 저장소 추적기 버그 수정 (같은 틱 입금+도난, 13d1f84): 그래프-시뮬 행동 일치 93.8% → 99.6%. 이전 ONNX 전부 무효, `*f`만 사용.
+- 휴리스틱: B4 (race_order) → B5 (guard_fill) → B6 (CEM). RL 이득 이식은 수확 체감 → 사용자 지시로 **RL 약점 공략(exploiter)** 방향 전환.
+- OOD-BP (20 개성 정책, ood_bp.py) 구축. RL7은 raid_south −32, X2_bl8(8초 블로케이드 후 B6) −52로 취약.
+- exploiter 풀 투입 (rl_bp8~9): 교사(B6) 조건부 증류는 실패 (오프닝 붕괴). 교사 없이 풀만으로 rl9 final: X2 +24.9, raid_south +37.1, rl7 +21.8, rl8 +19.0 → 제출 후보.
+- 공식 RR (수정 ONNX): rl4f 14-10, rl6 13-11, rl5 12-12, rl3 9-15 (노이즈 수준).
+- KDA 시간 메모리 RL 프로토타입: 동작함 (메모리 사용 확인), 아직 stateless 대비 우위 없음. 상태 ~4 MB/호출, 공식 최대 지연 96 ms → 축소 필요.
+- 서브에이전트: 11-03 오후부터 403 (조직이 Claude Code 구독 접근 차단) → 직접 진행.
+- 진행 중: rl_bp10 (rl9 it1200에서), rl9 final 공식 테스트 (vs rl4f 16판), rl9 final OOD 스캔 (gpu1), KDA 계속 (GPU1).
