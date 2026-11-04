@@ -13,7 +13,7 @@ set -e
 cd ${REPO:-~/blackout-env-league}
 # GPU may be a list ("2,0"): the first is the learner, the second the async actor (PPO async_collect=auto turns it on).
 if [ -n "$GPU" ]; then export CUDA_VISIBLE_DEVICES=$GPU
-  for g in ${GPU//,/ }; do [ "$g" != 3 ] || { echo "GPU 3 is off limits"; exit 1; }
+  for g in ${GPU//,/ }; do [ "$g" != 3 ] || [ -n "$ALLOW_GPU3" ] || { echo "GPU 3 is off limits (ALLOW_GPU3=1 when the user okays it)"; exit 1; }
     if [ -n "$ALLOW_OWN" ]; then   # tolerate only my own processes on that GPU (e.g. a running eval of the previous trial)
       u=$(nvidia-smi -i $g --query-gpu=uuid --format=csv,noheader)
       for p in $(nvidia-smi --query-compute-apps=gpu_uuid,pid --format=csv,noheader | awk -F', ' -v u="$u" '$1==u{print $2}'); do
