@@ -365,3 +365,5 @@ x18 (48 seeds × 2면, paired):
   (3) 최신 자기 비중↑ 또는 RL 익스플로이터, (4) 탐색 Q 회귀 증류.
 - **A/B it600** (rl_bp11sx = rl_bp11 레시피 + stop_exhausted, gpu2 GPU2,0; 종료 게임/반복 13.6 vs 3.7, 반복 시간 동일): gpu1 `~/bpruns/sx/cmp_600`, 48 seeds × 2면, seed0 62M, stop-exhausted.
   h2h sx vs base **+14.0±6.7** (.62). paired sx−base: X6 **+21.0±9.2**, X2 **+17.9±8.5**, blockade **+23.5±7.1**, rl9f +14.7±9.8, raid_south +3.2, B6 +2.0, rl10_1050 −1.5. final 비교는 학습 종료 후 자동 실행.
+- **A/B final** (rl_bp11sx final vs rl_bp11 final, gpu1 `~/bpruns/sx/cmp_final`, 96 games/opp): h2h **+18.8±7.1** (.62). paired sx−base: X6 **+28.5±9.4**, rl9f **+19.7±9.2**, rl10_1050 +8.9, X2 +7.3, raid_south +6.5, blockade +0.8, **B6 −8.1±7.4** (sx still +31.1, win .75). Mean over 7 opponents +9.1.
+  → stop_exhausted adopted as the default candidate for later RL phases; rl_bp11sx final is the new candidate (OOD scan and official ONNX check not done yet).
