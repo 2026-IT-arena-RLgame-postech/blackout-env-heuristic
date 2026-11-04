@@ -350,3 +350,11 @@ x18 (48 seeds × 2면, paired):
 - KDA 시간 메모리 RL 프로토타입: 동작함 (메모리 사용 확인), 아직 stateless 대비 우위 없음. 상태 ~4 MB/호출, 공식 최대 지연 96 ms → 축소 필요.
 - 서브에이전트: 11-03 오후부터 403 (조직이 Claude Code 구독 접근 차단) → 직접 진행.
 - 진행 중: rl_bp10 (rl9 it1200에서), rl9 final 공식 테스트 (vs rl4f 16판), rl9 final OOD 스캔 (gpu1), KDA 계속 (GPU1).
+
+## 11-04
+- rl_bp10 종료: final은 rl9 수준 정체. 50 Hz 확인 (64판): **rl10 it1050이 exploiter에 가장 강건** (X6 -2.4 vs rl9f -30.9, X2 +50.9, blockade +52.5). 공식 rl10_1050f vs rl9f 8-7-1 (-2.6±16.8), 최대 지연 55 ms → 제출 후보 rl10_1050.
+- exploiter 2라운드: X6_cap6 (blockade 6 s + cap_enter 0.35) rl9f 상대 +20.7±6, X7_capd6 +15.5. pool11에 추가.
+- rl_bp11: rl10 it1050에서 시작, pool11 (49개).
+- rl9 final OOD: 평균 +50.7, 최약 blockade +19.8.
+- KDA kda_b: stateless 대비 우위 없음 → 보류.
+- 예정 (GPU 비면): **오라클 실험** — 바닥/보유 배터리 개수를 보는 모델을 rl10 it1050에서 ~600 it 학습해 마스킹 모델과 비교. +20 이상이면 배터리 개수 추정 트래커 구현, 아니면 exploiter/풀 방향 유지.
