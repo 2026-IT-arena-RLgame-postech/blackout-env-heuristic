@@ -107,6 +107,22 @@ SETS["F"] = {  # final confirmation on fresh seeds: best singles + combos
     "f_combo_d4": sw(6, BL + ",cap_enter=0.35", b6k("w_dspd=8,danger_hunter_radius=2.5,threat_radius=0.08")),
 }
 
+CAP = BL + ",cap_enter=0.35"
+SETS["G"] = {  # round 3 vs rl10 it1050: X6 family variations
+    "X6": sw(6, CAP),
+    "g_cap05": sw(6, BL + ",cap_enter=0.5"),
+    "g_cap025": sw(6, BL + ",cap_enter=0.25"),
+    "g_cap8": sw(8, CAP),
+    "g_cap4": sw(4.5, CAP),
+    "g_cap_rs30": sw(6, CAP, sw(30, RS)),
+    "g_cap_storm": sw(6, CAP, "B6,storm_units=2,storm_after=5"),
+    "g_cap_bait": sw(6, CAP, "B6,bait=6"),
+    "g_cap_steal": sw(6, CAP, "B6,steal_weight=3.0"),
+    "g_cap_res3": sw(6, CAP + ",reserve_count=3"),
+    "g_cap_q1": sw(6, CAP, "B6,hunter_quota=1"),
+    "g_cap_cm": sw(6, CAP + ",commit_margin=-1.0"),
+}
+
 if __name__ == "__main__":
     s = SETS[sys.argv[1]]
     sel = sys.argv[2].split(",") if len(sys.argv) > 2 else list(s)
