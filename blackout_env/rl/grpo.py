@@ -621,14 +621,15 @@ class GRPOTrainer:
         # the full 32-bit seed space (Unity's int seed; negative seeds = the upper half after the uint32 cast)
         return SimState.from_seed(int(self.rng.integers(0, 2**32)))
 
-    def _rollout(self, roots, learner, opp_of, side, horizon, reseeds=None, opps=None):
+    def _rollout(self, roots, learner, opp_of, side, horizon, reseeds=None, opps=None, stop_when_exhausted=False):
         opps = self.opps if opps is None else opps
+        kw = {"stop_when_exhausted": True} if stop_when_exhausted else {}
         if self.cfg.joint or self.cfg.overlap_heur:
             pj = JointSeats(learner, opps, opp_of, side, split=not self.cfg.joint)
-            return BatchRollout(pj, pj, packed=True).run(roots, horizon, reseeds=reseeds)
+            return BatchRollout(pj, pj, packed=True).run(roots, horizon, reseeds=reseeds, **kw)
         pa = Seats(0, learner, opps, opp_of, side)
         pb = Seats(1, learner, opps, opp_of, side)
-        return BatchRollout(pa, pb, packed=True).run(roots, horizon, reseeds=reseeds)
+        return BatchRollout(pa, pb, packed=True).run(roots, horizon, reseeds=reseeds, **kw)
 
     # -------- collection
     def collect(self):

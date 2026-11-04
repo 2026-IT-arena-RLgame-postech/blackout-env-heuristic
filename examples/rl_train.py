@@ -67,6 +67,8 @@ def main():
     ap.add_argument("--eval-opps", default=DEFAULT_EVAL)
     ap.add_argument("--eval-hz", type=int, default=50, choices=(25, 50),
                     help="in-run eval decision rate (fast path): 50 = the official one tick per decision (default), 25 = training rate")
+    ap.add_argument("--eval-stop-exhausted", action="store_true",
+                    help="fast-path evals end a game at an absorption leaving no battery (same margins, ~3.5x less eval time)")
     ap.add_argument("--eval-fast", action=argparse.BooleanOptionalAction, default=True,
                     help="in-run evals: all opponents x seeds x sides in ONE batched rollout (evalfast.eval_batched; fp16 + "
                          "CUDA graphs on CUDA, so margins can differ slightly from the old path); --no-eval-fast: one "
@@ -93,7 +95,8 @@ def main():
         out = {}
         if args.eval_fast:
             res = eval_batched(tr.net, eval_opps, seeds, cfg.device, graphs=bool(cfg.graphs), workers=getattr(tr, "hworkers", None),
-                               fine=getattr(tr, "fine", None), tpd=1 if args.eval_hz == 50 else 2)
+                               fine=getattr(tr, "fine", None), tpd=1 if args.eval_hz == 50 else 2,
+                               stop_exhausted=args.eval_stop_exhausted)
             return {_eval_label(spec): {k: res[spec][k] for k in ("win", "margin", "se")}
                     for spec in eval_opps}
         for spec in eval_opps:
