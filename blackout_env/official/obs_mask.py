@@ -34,6 +34,7 @@ CLASS_AT = 90         # own class one-hot (3), then own score, opponent score, t
 
 
 MASK_ALL, MASK_BATTERY = 1, 2  # official_obs modes: hide enemy classes + battery amounts / battery amounts only
+MASK_ORACLE = 4  # research only (not exportable): like mode 3 but floor / carried battery amounts stay visible
 
 
 def mask_canonical(graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor, mode: int = MASK_ALL):
@@ -41,19 +42,20 @@ def mask_canonical(graphic: torch.Tensor, team_state: torch.Tensor, agent_states
     Idempotent (the export adapter produces already-masked tensors)."""
     # constants as Python scalars: no host->device copy (CUDA-graph capture in RL forbids it)
     bat = graphic[:, 8:9]
-    hidden_bat = (bat > 0).to(bat.dtype) * BATTERY_CONST
+    hidden_bat = bat if mode == MASK_ORACLE else (bat > 0).to(bat.dtype) * BATTERY_CONST
     if mode == 3:  # storage amounts are tracked exactly (track_storage): only the floor's are unknown
         store = (graphic[:, 6:7] > 0) | (graphic[:, 7:8] > 0)
         hidden_bat = torch.where(store, bat, hidden_bat)
     graphic = torch.cat([graphic[:, :8], hidden_bat, graphic[:, 9:]], dim=1)
     held_bat = agent_states[..., 4:5]
+    held = held_bat if mode == MASK_ORACLE else (held_bat > 0).to(held_bat.dtype) * BATTERY_CONST
     enemy = torch.zeros_like(agent_states[:, :, 9:12])
     own_rows = (torch.arange(N_UNITS, device=agent_states.device) < N_TEAM).view(1, N_UNITS, 1)
     classes = torch.where(own_rows, agent_states[..., 9:12], enemy) if mode == MASK_ALL else agent_states[..., 9:12]  # 2, 3: tracked
     tl = team_state[:, 2:3]
     absorb = 1.0 - torch.remainder((1.0 - tl) * EPISODE_S, ABSORB_S) / ABSORB_S
     team_state = torch.cat([team_state[:, :3], absorb, team_state[:, 4:]], dim=1)
-    agent_states = torch.cat([agent_states[..., :4], (held_bat > 0).to(held_bat.dtype) * BATTERY_CONST,
+    agent_states = torch.cat([agent_states[..., :4], held,
                               agent_states[..., 5:9], classes, agent_states[..., 12:]], dim=-1)
     return graphic, team_state, agent_states
 
@@ -74,6 +76,8 @@ class OfficialTeamGraph(nn.Module):
         self.register_buffer("roll", torch.tensor([(u + N_TEAM) % N_UNITS for u in range(N_UNITS)]), persistent=False)
         self.register_buffer("regions", region_grid(), persistent=False)
         mode = getattr(net, "official_mode", 1)
+        if mode == MASK_ORACLE:
+            raise ValueError("official_obs mode 4 (oracle) sees battery amounts the competition hides: not exportable")
         self.tracked = mode in (MASK_BATTERY, 3)
         self.store_tracked = mode == 3
         self.state_size = STATE_SIZE + (STORE_SIZE if self.store_tracked else 0)
