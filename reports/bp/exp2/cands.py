@@ -123,6 +123,22 @@ SETS["G"] = {  # round 3 vs rl10 it1050: X6 family variations
     "g_cap_cm": sw(6, CAP + ",commit_margin=-1.0"),
 }
 
+STEAL = OOD["stealer"]
+SETS["H"] = {  # round 4 vs rl12 it600: economy / tempo exploiters (+ X6 opening combos)
+    "X6": sw(6, CAP),
+    "h_cap_steal": sw(6, CAP, STEAL),
+    "h_cap_steal30": sw(6, CAP, sw(30, B6, STEAL)),
+    "h_cap_pure": sw(6, CAP, OOD["pure_stealer"]),
+    "h_cap_late": sw(6, CAP, OOD["late_burst"]),
+    "h_cap_eco": sw(6, CAP, OOD["eco_boom"]),
+    "h_cap_storm3": sw(6, CAP, "B6,storm_units=3,storm_after=4"),
+    "h_cap_storm_bait": sw(6, CAP, "B6,storm_units=2,storm_after=5,bait=6"),
+    "h_steal_rs": sw(20, STEAL, RS),
+    "h_rs_steal": sw(6, RS, STEAL),
+    "h_cap_v34c": sw(6, CAP, "V34c"),
+    "h_cap_camp30": sw(6, CAP, sw(30, B6, "B6,hunter_roles=south/east,roles_when=always")),
+}
+
 if __name__ == "__main__":
     s = SETS[sys.argv[1]]
     sel = sys.argv[2].split(",") if len(sys.argv) > 2 else list(s)
