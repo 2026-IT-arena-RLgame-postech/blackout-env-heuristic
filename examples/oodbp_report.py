@@ -24,10 +24,10 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from blackout_env.train.distill.ood_bp import OODBP, short  # noqa: E402
+from blackout_env.train.distill.ood_bp import OODBP, OODHO, short  # noqa: E402
 
-GROUP = {d: g for _, d, g, _ in OODBP}
-ORDER = [d for _, d, _, _ in OODBP]
+GROUP = {d: g for _, d, g, _ in OODBP + OODHO}
+ORDER = [d for _, d, _, _ in OODBP + OODHO]
 
 
 def se(x) -> float:
