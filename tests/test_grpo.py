@@ -324,3 +324,30 @@ def test_grpo_root_max_s_cpu():
         assert (ticks <= 100 + 2 * 60).all()
     s = tr.step()
     assert np.isfinite(s["loss"])
+
+
+def test_ppo_hlgauss_async_and_critic_init_cpu():
+    """hlgauss now runs with async_collect; a critic_init that carries a trained bin head skips the pre-fit and is
+    loaded exactly; a reg critic_init still gets a fresh (pre-fitted) bin head."""
+    import os
+    import tempfile
+
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    kw = dict(init=CKPT, value=VALUE, device="cpu", games=4, segment=6, minibatch=8, epochs=1, critic_warmup=0, seed=5,
+              opponents=[f"net:{CKPT}", "random"], pfsp="hard", critic_head="hlgauss", critic_bins=21)
+    tr = PPOTrainer(PPOConfig(**kw, async_collect="true"))
+    s0, s1 = tr.step(), tr.step()
+    assert np.isfinite(s1["vf_loss"]) and np.isfinite(s1["pg"]) and 0 < s1["pmf_entropy"] <= np.log(21) + 1e-4
+    with tempfile.TemporaryDirectory() as d:
+        tr.save(os.path.join(d, "x.pt"))
+        cp = os.path.join(d, "x_critic.pt")
+        tr2 = PPOTrainer(PPOConfig(**kw, critic_init=cp, async_collect="true"))
+        assert tr2._prefit_done
+        assert torch.equal(tr2.critic.bin_out.weight, tr.critic.bin_out.weight)
+        assert np.isfinite(tr2.step()["vf_loss"])
+        sd = {k: v for k, v in torch.load(cp, weights_only=True).items() if not k.startswith("bin_out")}
+        rp = os.path.join(d, "reg_critic.pt")
+        torch.save(sd, rp)
+        tr3 = PPOTrainer(PPOConfig(**kw, critic_init=rp))
+        assert not tr3._prefit_done

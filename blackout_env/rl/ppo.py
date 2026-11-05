@@ -116,7 +116,7 @@ def _resolve_async(cfg) -> None:
         if a == "auto":
             dev = torch.device(cfg.device)
             ok = (dev.type == "cuda" and torch.cuda.is_available() and torch.cuda.device_count() >= 2
-                  and cfg.critic_head == "reg" and cfg.fine_bins == 0 and not cfg.offset_rl and not cfg.value_train
+                  and cfg.critic_head in ("reg", "hlgauss") and cfg.fine_bins == 0 and not cfg.offset_rl and not cfg.value_train
                   and not cfg.joint)
             if ok and not cfg.actor_device:
                 cfg.actor_device = f"cuda:{1 if (dev.index or 0) == 0 else 0}"
@@ -150,11 +150,6 @@ class PPOTrainer(GRPOTrainer):
                 if gf is not None:
                     gf._pool = self._gpool
         self.critic = load_value_net(cfg.value, device=self.dev)
-        if cfg.critic_init:
-            sd = torch.load(cfg.critic_init, map_location=self.dev, weights_only=True)
-            if cfg.critic_opp and "opp_emb.weight" in sd:   # warm start from a critic_opp run: same opponent table
-                self.critic.enable_opp(sd["opp_emb.weight"].shape[0])
-            self.critic.load_state_dict(sd)
         if cfg.critic_opp and self.critic.opp_emb is None:
             if len(self.opps) + cfg.league_max > cfg.critic_opp_slots:
                 raise ValueError(f"critic_opp_slots={cfg.critic_opp_slots} < {len(self.opps)} opponents + {cfg.league_max} league slots")
@@ -175,6 +170,17 @@ class PPOTrainer(GRPOTrainer):
             cr.register_buffer("bin_centers", (e[:-1] + e[1:]) / 2, persistent=False)
             self.hl_edges = e
             self.hl_sigma = cfg.critic_sigma * (cfg.critic_vmax - cfg.critic_vmin) / cfg.critic_bins
+        if cfg.critic_init:   # after the optional heads exist: a hlgauss / critic_opp critic_init carries them
+            sd = torch.load(cfg.critic_init, map_location=self.dev, weights_only=True)
+            if cfg.critic_opp and "opp_emb.weight" in sd and self.critic.opp_emb.weight.shape != sd["opp_emb.weight"].shape:
+                self.critic.enable_opp(sd["opp_emb.weight"].shape[0])
+            if self.hl and "bin_out.weight" not in sd:   # a reg critic_init: the bin head stays fresh (pre-fit as usual)
+                sd = {**sd, **{f"bin_out.{k}": v for k, v in self.critic.bin_out.state_dict().items()}}
+            elif self.hl:
+                self._prefit_done = True   # trained bin head (e.g. examples/critic_bench.py --save): no pre-fit
+            if not cfg.critic_opp:
+                sd = {k: v for k, v in sd.items() if not k.startswith("opp_emb")}
+            self.critic.load_state_dict(sd)
         self.copt = torch.optim.AdamW(self.critic.parameters(), lr=cfg.critic_lr, weight_decay=0.0)
         self._async = bool(cfg.async_collect)
         self.adev = torch.device(cfg.actor_device or cfg.device)
@@ -204,8 +210,8 @@ class PPOTrainer(GRPOTrainer):
     def _init_actor(self) -> None:
         """Actor-side copies (policy + its CUDA graphs, critic) on ``adev`` and a behaviour copy of the policy on ``dev``."""
         c = self.cfg
-        assert not self.hl and c.fine_bins == 0 and not c.offset_rl and not c.value_train and not c.joint, \
-            "async_collect: reg critic, plain head, no value_train / joint"
+        assert c.fine_bins == 0 and not c.offset_rl and not c.value_train and not c.joint, \
+            "async_collect: plain head, no value_train / joint"
         from blackout_env.train.distill.inference import _OwnQ
 
         self._act_net = copy.deepcopy(self.net).to(self.adev).eval().requires_grad_(False)
@@ -468,8 +474,13 @@ class PPOTrainer(GRPOTrainer):
         return (v, None) if self.hl else v
 
     def _value_actor(self, g, t, a, o=None):
-        """``_value_reg`` with the actor's critic copy on ``adev`` (eager)."""
+        """``_value_reg`` (hlgauss: ``_value``'s (E[pmf], logits)) with the actor's critic copy on ``adev`` (eager)."""
         g = unpack_graphic(g) if g.dim() == 3 else g
+        if self.hl:
+            with torch.autocast(self.adev.type, dtype=torch.float16, enabled=self.cfg.critic_fp16 and self.adev.type == "cuda"):
+                lg = self._act_critic.forward_full(g, t, a, opp=o)[1]
+            lg = lg.float()
+            return (torch.softmax(lg, -1) * self._act_critic.bin_centers).sum(-1), lg
         with torch.autocast(self.adev.type, dtype=torch.float16, enabled=self.cfg.critic_fp16 and self.adev.type == "cuda"):
             out = self._act_critic(g, t, a, opp=o)
         out = out.float()
