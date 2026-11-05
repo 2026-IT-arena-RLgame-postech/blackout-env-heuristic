@@ -219,6 +219,9 @@ def cmd_train(a):
             nxt += a.eval_every
             json.dump(log, open(a.out, "w"))
     json.dump(log, open(a.out, "w"))
+    if a.save:
+        torch.save(cr.state_dict(), a.save)
+        print("saved", a.save, flush=True)
 
 
 def cmd_score(a):
@@ -276,6 +279,7 @@ def main():
     t.add_argument("--eval-every", type=int, default=500_000)
     t.add_argument("--device", default="cuda")
     t.add_argument("--out", required=True)
+    t.add_argument("--save", default="", help="state dict of the trained critic (PPO critic_init format; hl: bin_out incl.)")
     sc = sub.add_parser("score")
     sc.add_argument("--evals", required=True)
     sc.add_argument("--value", required=True)
