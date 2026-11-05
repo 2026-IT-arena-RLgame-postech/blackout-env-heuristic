@@ -308,3 +308,19 @@ def test_ppo_critic_opp_cpu():
         tr2 = PPOTrainer(PPOConfig(**kw, critic_opp=True, critic_opp_slots=16, critic_init=cp, async_collect="true"))
         assert torch.equal(tr2.critic.opp_emb.weight, tr.critic.opp_emb.weight)
         assert np.isfinite(tr2.step()["vf_loss"]) and np.isfinite(tr2.step()["vf_loss"])
+
+
+def test_grpo_root_max_s_cpu():
+    """Opening-only GRPO: trunk games restart once past their threshold, so every root stays in the opening."""
+    from blackout_env.sim import core
+
+    cfg = GRPOConfig(init=CKPT, value=VALUE, device="cpu", groups=3, k=2, trunk_step=60, sample_steps=3, leaf_steps=4,
+                     minibatch=16, epochs=1, root_max_s=2.0)
+    tr = GRPOTrainer(cfg)
+    assert ((tr.root_thr >= 50) & (tr.root_thr <= 100)).all()
+    for _ in range(4):
+        tr.collect()
+        ticks = np.array([s.g[core.G_TICK] for s in tr.trunk])
+        assert (ticks <= 100 + 2 * 60).all()
+    s = tr.step()
+    assert np.isfinite(s["loss"])
