@@ -221,6 +221,27 @@ def cmd_train(a):
     json.dump(log, open(a.out, "w"))
 
 
+def cmd_score(a):
+    """Score saved critics (PPO <ckpt>_critic.pt, or "s2v" = the bare value net) on the eval sets."""
+    dev = torch.device(a.device)
+    ev = load_evals(a.evals, [])
+    out = {}
+    for c in a.critics:
+        cr = build_critic({}, a.value, "", dev, 0)
+        if c != "s2v":
+            sd = torch.load(c, map_location=dev, weights_only=True)
+            cr.load_state_dict({k: v for k, v in sd.items() if not k.startswith("opp_emb")}, strict=False)
+        r = evaluate(cr, ev, dev, False, False)
+        out[c] = r
+        row = []
+        for T in sorted({k.split("@")[1] for k in r}, key=float):
+            ks = [k for k in r if k.endswith("@" + T)]
+            row.append(f"T{T} r2 {np.mean([r[k]['r2'] for k in ks]):+.2f} b {np.mean([r[k]['bias'] for k in ks]):+.2f}")
+        print(f"{c[-40:]:40s}", " | ".join(row), flush=True)
+    if a.out:
+        json.dump(out, open(a.out, "w"))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -250,8 +271,14 @@ def main():
     t.add_argument("--eval-every", type=int, default=500_000)
     t.add_argument("--device", default="cuda")
     t.add_argument("--out", required=True)
+    sc = sub.add_parser("score")
+    sc.add_argument("--evals", required=True)
+    sc.add_argument("--value", required=True)
+    sc.add_argument("--critics", nargs="+", required=True)
+    sc.add_argument("--device", default="cuda")
+    sc.add_argument("--out", default="")
     a = p.parse_args()
-    {"collect": cmd_collect, "train": cmd_train}[a.cmd](a)
+    {"collect": cmd_collect, "train": cmd_train, "score": cmd_score}[a.cmd](a)
 
 
 if __name__ == "__main__":
