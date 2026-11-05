@@ -70,12 +70,37 @@ OODBP: list[tuple[str, str, str, str]] = [
 NAMES = {d: n for n, d, _, _ in OODBP}
 GROUPS = sorted({g for _, _, g, _ in OODBP})
 
+# OOD-HO (2026-11-05): HELD-OUT evaluation personalities.  OOD-BP entries were later put into the RL training pool
+# (pool12: stealer, storm, late_burst, ...), so OOD-BP no longer measures out-of-distribution play.  These are new
+# combinations / phase changes that no training pool contains -- never add them to a pool (``oodho`` in v27_eval).
+_BL = "B6,hunter_roles=,solo_sentry=true,sentry_min_hunters=1,sentry_offset=1.5,sentry_radius=10,guard_fill=true"
+_RS = "B6,hunter_roles=raid/south,roles_when=always"
+OODHO: list[tuple[str, str, str, str]] = [
+    ("ho_one_hunter", _oodbp("hunter_plan=0:2/10:1"), "ho_econ", "race with two, then keeps a single Hunter (refills to one)"),
+    ("ho_late_steal", "switch:60:B6|" + _oodbp("raid_squad=3,steal_weight=3.0,exposure_cost=2.0,hunter_roles=raid/raid,raid_value=4"),
+     "ho_econ", "plays B6 for 60 s, then turns into a three-Collector storage thief"),
+    ("ho_steal_camp", _oodbp("raid_squad=2,steal_weight=2.5,hunter_roles=south/east,roles_when=always"), "ho_econ",
+     "two Collectors steal while both Hunters camp our exits"),
+    ("ho_lead_turtle", "switch:45:B6|B6,hunter_roles=,exit_guards=2,guard_radius=10,exposure_cost=2.0,steal_weight=0.8,guard_fill=false",
+     "ho_tempo", "plays B6 for 45 s, then turtles on its lead"),
+    ("ho_phase3", f"switch:15:B6|switch:60:{_RS}|{_BL}", "ho_tempo", "B6 opening, raid_south 15-60 s, then blockade"),
+    ("ho_storm_bait", "B6,storm_units=2,storm_after=8,bait=5", "ho_tempo", "two-unit storm plus Carrier bait"),
+    ("ho_east_camp", "B6,hunter_roles=east/east,roles_when=always", "ho_hunter", "both Hunters camp our east exit only"),
+    ("ho_fwd_raid", "B6,sentry_offset=6,hunter_roles=raid/raid,roles_when=always,raid_value=4", "ho_hunter",
+     "forward post plus double raid on Collectors"),
+    ("ho_late_chaos", "switch:60:B6|perturb:eps=0.3:B6", "ho_noise", "B6 that degrades to 30 % random unit-ticks after 60 s"),
+    ("ho_v34b", "V34b", "ho_legacy", "older post-patch heuristic (not in any pool)"),
+]
+HO_NAMES = {d: n for n, d, _, _ in OODHO}
+
 
 def expand(entry: str) -> list[str]:
     """``oodbp`` -> every descriptor; ``oodbp:<group>[+<group>]`` -> those groups; ``oodbp=<name>,<name>`` -> those
     names; anything else -> itself."""
     if entry == "oodbp":
         return [d for _, d, _, _ in OODBP]
+    if entry == "oodho":
+        return [d for _, d, _, _ in OODHO]
     if entry.startswith("oodbp:"):
         groups = set(entry[6:].split("+"))
         unknown = groups - set(GROUPS)
@@ -89,4 +114,4 @@ def expand(entry: str) -> list[str]:
 
 
 def short(descriptor: str) -> str:
-    return NAMES.get(descriptor, descriptor if len(descriptor) < 40 else descriptor[:37] + "...")
+    return NAMES.get(descriptor) or HO_NAMES.get(descriptor, descriptor if len(descriptor) < 40 else descriptor[:37] + "...")

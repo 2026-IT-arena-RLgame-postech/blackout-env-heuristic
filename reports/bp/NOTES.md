@@ -379,3 +379,7 @@ x18 (48 seeds × 2면, paired):
   worst: sx camp_after_open +28.4 / base stealer +27.8 / rl9 blockade +19.8; cat (<−20) .10 / .08 / .07; crushed win 1.00 for all.
   paired sx−base, 20 opps: **−3.5±1.8**. Losses concentrated in opponents that switch mid-game: camp_after_open (switch 30 s) −22, laggy (lag after 25 s) −18, noisy_eps (25 s) −13, hunt_hh30 −11.5, storm −7;
   gains raid_south +5, blockade +6.5, stealer +12 (by margin). → sx: strong opponents/exploiters +9~+28, OOD slightly weaker (mid-game behaviour change). Next phase: stop_exhausted + more weight on switch:25–30 personalities in the pool.
+- 11-05 오라클 결론: 배터리 개수를 보여줘도 이득 없음 (it300 vs rl10_1050 -4.8±8.1, 64판; it600 학습 중 평가도 rl11과 동급) → 정보 부족은 병목 아님, 추정 트래커 안 만듦.
+- exploiter 3라운드 (X6 계열 12개) vs rl10_1050: 이기는 후보 없음.
+- rl10_1050 OOD: 평균 +44.7 (rl9f +50.7). blockade +51.8로 개선, 대신 stealer +19.8 / storm +26.5 등 경제·템포형 약화.
+- rl_bp12: rl10_1050에서, pool12 (경제·템포 OOD 가중치 상향) — blockade 대응 유지 + 경제형 회복 목표.
