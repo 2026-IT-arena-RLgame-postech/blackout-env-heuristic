@@ -224,14 +224,19 @@ def cmd_train(a):
 def cmd_score(a):
     """Score saved critics (PPO <ckpt>_critic.pt, or "s2v" = the bare value net) on the eval sets."""
     dev = torch.device(a.device)
-    ev = load_evals(a.evals, [])
+    names = json.load(open(a.opps))["opponents"] if a.opps else []
+    ev = load_evals(a.evals, names)
     out = {}
     for c in a.critics:
         cr = build_critic({}, a.value, "", dev, 0)
+        use_opp = False
         if c != "s2v":
             sd = torch.load(c, map_location=dev, weights_only=True)
-            cr.load_state_dict({k: v for k, v in sd.items() if not k.startswith("opp_emb")}, strict=False)
-        r = evaluate(cr, ev, dev, False, False)
+            if "opp_emb.weight" in sd and names:
+                cr.enable_opp(sd["opp_emb.weight"].shape[0])
+                use_opp = True
+            cr.load_state_dict({k: v for k, v in sd.items() if use_opp or not k.startswith("opp_emb")}, strict=False)
+        r = evaluate(cr, ev, dev, False, use_opp)
         out[c] = r
         row = []
         for T in sorted({k.split("@")[1] for k in r}, key=float):
@@ -275,6 +280,7 @@ def main():
     sc.add_argument("--evals", required=True)
     sc.add_argument("--value", required=True)
     sc.add_argument("--critics", nargs="+", required=True)
+    sc.add_argument("--opps", default="", help="opps.json (the run's fixed pool order): critic_opp critics get the eval opponent's index")
     sc.add_argument("--device", default="cuda")
     sc.add_argument("--out", default="")
     a = p.parse_args()
