@@ -280,3 +280,31 @@ def test_ppo_teach_opps_cpu():
     labelled = (rows >= 0).all(1)
     unl = (rows < 0).all(1)
     assert labelled.any() and unl.any() and (labelled | unl).all()
+
+
+def test_ppo_critic_opp_cpu():
+    """critic_opp: zero-init opponent embedding -> V identical to the plain critic at start; it trains; async works;
+    the embedding round-trips through _critic.pt and critic_init."""
+    import os
+    import tempfile
+
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    kw = dict(init=CKPT, value=VALUE, device="cpu", games=4, segment=6, minibatch=8, epochs=1, critic_warmup=0, seed=5,
+              opponents=[f"net:{CKPT}", "random"], pfsp="hard")
+    base = PPOTrainer(PPOConfig(**kw))
+    tr = PPOTrainer(PPOConfig(**kw, critic_opp=True, critic_opp_slots=16))
+    assert tr.critic.opp_emb is not None and tr.critic.opp_emb.weight.shape[0] == 16
+    b, _ = base.collect()
+    v0 = base._values_np(b["g"], b["t"], b["a"])
+    v1 = tr._values_np(b["g"], b["t"], b["a"], o=np.zeros(len(v0), np.int64) + 1)
+    assert np.allclose(v0, v1, atol=1e-6)
+    s = tr.step()
+    assert np.isfinite(s["vf_loss"]) and tr.critic.opp_emb.weight.abs().sum() > 0
+    with tempfile.TemporaryDirectory() as d:
+        tr.save(os.path.join(d, "x.pt"))
+        cp = os.path.join(d, "x_critic.pt")
+        assert torch.load(cp, weights_only=True)["opp_emb.weight"].shape[0] == 16
+        tr2 = PPOTrainer(PPOConfig(**kw, critic_opp=True, critic_opp_slots=16, critic_init=cp, async_collect="true"))
+        assert torch.equal(tr2.critic.opp_emb.weight, tr.critic.opp_emb.weight)
+        assert np.isfinite(tr2.step()["vf_loss"]) and np.isfinite(tr2.step()["vf_loss"])

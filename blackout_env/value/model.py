@@ -112,6 +112,15 @@ class ValueNet(nn.Module):
         self.bin_out = nn.Linear(hidden_size, self.n_bins) if self.n_bins else None
         if self.bin_out is not None:
             self.register_buffer("bin_centers", bin_centers(self.n_bins, self.bin_range), persistent=False)
+        self.opp_emb = None   # optional opponent embedding (enable_opp; PPO's privileged critic_opp)
+
+    def enable_opp(self, n: int) -> None:
+        """Add a zero-initialised opponent embedding (``n`` ids) to the head input: the critic is exactly unchanged until
+        it learns per-opponent offsets.  Training-only privileged information (the policy never sees it)."""
+        d_in = self.head_in.normalized_shape[0]
+        p = next(self.parameters())
+        self.opp_emb = nn.Embedding(int(n), d_in).to(device=p.device, dtype=p.dtype)
+        nn.init.zeros_(self.opp_emb.weight)
 
     def init_quantiles_from_final(self) -> None:
         """Every quantile output starts as a copy of the scalar final-change output."""
@@ -144,7 +153,7 @@ class ValueNet(nn.Module):
             (list(self.bin_out.parameters()) if self.bin_out is not None else [])
 
     def forward_full(self, graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor,
-                     agent_vel: torch.Tensor | None = None):
+                     agent_vel: torch.Tensor | None = None, opp: torch.Tensor | None = None):
         """-> (outputs [B, H + 4], quantiles [B, Q] or None); with quantiles the final column = their mean.
         ``agent_vel`` [B, 10, 3] (vel nets only; None = no velocity known = zeros, valid 0)."""
         extra = None
@@ -157,6 +166,8 @@ class ValueNet(nn.Module):
             feats = torch.cat((glob, tokens[:, -1], self.attn_pool(tokens)), dim=-1)
         else:
             feats = torch.cat((glob, units[:, :N_TEAM].mean(1), units[:, N_TEAM:].mean(1), tokens[:, -1]), dim=-1)
+        if self.opp_emb is not None and opp is not None:
+            feats = feats + self.opp_emb(opp.long()).to(feats.dtype)
         hidden = self.head[:-1](self.head_in(feats))
         out = self.head[-1](hidden)
         if self.bin_out is not None:  # HL-Gauss: the scalar final column = the pmf mean
@@ -172,9 +183,9 @@ class ValueNet(nn.Module):
         return out, q
 
     def forward(self, graphic: torch.Tensor, team_state: torch.Tensor, agent_states: torch.Tensor,
-                agent_vel: torch.Tensor | None = None) -> torch.Tensor:
+                agent_vel: torch.Tensor | None = None, opp: torch.Tensor | None = None) -> torch.Tensor:
         """graphic [B, C, H, W] float (decoded), team_state [B, 4], agent_states [B, 10, D] -> [B, H + 4]."""
-        return self.forward_full(graphic, team_state, agent_states, agent_vel)[0]
+        return self.forward_full(graphic, team_state, agent_states, agent_vel, opp)[0]
 
     def forward_full_u8(self, graphic_u8, team_state, agent_states, agent_vel=None):
         graphic = graphic_u8.permute(0, 3, 1, 2).float() / GRAPHIC_SCALE
