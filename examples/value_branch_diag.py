@@ -81,6 +81,7 @@ def main():
     p.add_argument("--modes", default="sample,greedy", help="learner in the branches: sampled (training) / greedy (eval)")
     p.add_argument("--device", default="cuda:0")
     p.add_argument("--out", default="")
+    p.add_argument("--save", default="", help="npz of the roots (learner views, T, mu, var) for examples/critic_bench.py")
     args = p.parse_args()
     dev = torch.device(args.device)
     critic = load_value_net(args.value, device=dev)
@@ -89,6 +90,7 @@ def main():
     opp = NetPolicy.from_checkpoint(args.opponent, device=args.device, fp16=dev.type == "cuda")
     seeds = list(range(args.seed0, args.seed0 + args.roots))
     rows = []
+    keep = {"pk": [], "tm": [], "am": [], "T": [], "mu": [], "var_w": []}
     for mode in args.modes.split(","):
         learner = make_learner(args.learner, dev, mode == "sample")
         for T in [float(x) for x in args.times.split(",")]:
@@ -113,6 +115,9 @@ def main():
             br = play(learner, opp, broots, 425 * DPS, reseeds=bseeds)
             R = reward(br.scores[:, 0] - br.scores[:, 1]).reshape(len(states), K)
             mu, var_w = R.mean(1), R.var(1, ddof=1)
+            if args.save and mode == "sample":
+                keep["pk"].append(pk[:, 0]); keep["tm"].append(tm[:, 0]); keep["am"].append(am[:, 0])
+                keep["T"].append(np.full(len(mu), T)); keep["mu"].append(mu); keep["var_w"].append(var_w)
             irr = float(var_w.mean())
             expl = float(mu.var(ddof=1) - irr / K)
             cm = float(np.mean((v - mu) ** 2) - irr / K)
@@ -127,6 +132,8 @@ def main():
     if args.out:
         with open(args.out, "w") as f:
             json.dump(rows, f, indent=1)
+    if args.save and keep["mu"]:
+        np.savez(args.save, **{k: np.concatenate(v) for k, v in keep.items()}, k=args.k, opponent="net:" + args.opponent)
 
 
 if __name__ == "__main__":
