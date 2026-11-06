@@ -351,3 +351,21 @@ def test_ppo_hlgauss_async_and_critic_init_cpu():
         torch.save(sd, rp)
         tr3 = PPOTrainer(PPOConfig(**kw, critic_init=rp))
         assert not tr3._prefit_done
+
+
+def test_ppo_critic_lambda_mc_cpu():
+    """critic_lambda=1: every row's critic target is its game's segment-end value (final reward or bootstrap) -- the
+    deltas telescope -- while the advantages still use gae_lambda."""
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    got = {}
+    tr = PPOTrainer(PPOConfig(init=CKPT, value=VALUE, device="cpu", games=3, segment=8, minibatch=8, epochs=1,
+                              critic_warmup=0, gae_lambda=0.9, critic_lambda=1.0))
+    tr.diag_hook = lambda d: got.update(d)
+    tr.collect()
+    for b in np.unique(got["game"]):
+        rows = got["game"] == b
+        end = got["final_r"][b] if got["over"][b] else got["boot"][b]
+        assert np.allclose(got["ret"][rows], end, atol=1e-5)
+    adv_v = got["ret"] - got["v"]
+    assert not np.allclose(got["adv"], adv_v)

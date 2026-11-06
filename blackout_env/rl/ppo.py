@@ -36,6 +36,8 @@ from .grpo import GRPOConfig, GRPOTrainer, LearnerPolicy, Seats, _heuristic_alia
 class PPOConfig(GRPOConfig):
     games: int = 256           # on-policy trunk games
     segment: int = 128         # decisions per game per iteration
+    critic_lambda: float = -1.0   # >= 0: the critic's targets use their own lambda (1 = Monte Carlo to the segment end / final
+                                  # reward); < 0: the policy's gae_lambda (old behaviour).  The advantages keep gae_lambda.
     gae_lambda: float = 0.95
     critic_lr: float = 1e-5
     critic_warmup: int = 5     # iterations with critic updates only
@@ -619,12 +621,18 @@ class PPOTrainer(GRPOTrainer):
             self.gv[b] += (len(rows), vb.sum(), (vb * vb).sum())
             nxt = final_r[b] if over[b] else boot[b]   # value after the last step (terminal: reward, V=0)
             gae = 0.0
+            lv = c.critic_lambda if c.critic_lambda >= 0 else c.gae_lambda
+            gv = 0.0
             for j in range(len(rows) - 1, -1, -1):
                 v_next = nxt if j == len(rows) - 1 else vb[j + 1]
                 delta = v_next - vb[j]                      # r = 0 except folded into the terminal v_next
                 gae = delta + c.gae_lambda * gae
                 adv[rows[j]] = gae
-                ret[rows[j]] = gae + vb[j]
+                if lv == c.gae_lambda:
+                    ret[rows[j]] = gae + vb[j]
+                else:
+                    gv = delta + lv * gv
+                    ret[rows[j]] = gv + vb[j]
         ended = np.nonzero(over)[0]
         # per-opponent advantage statistics / optional centering (``adv`` stays the raw GAE; ``adv_used`` feeds the policy)
         n_opp = len(self.opps)
