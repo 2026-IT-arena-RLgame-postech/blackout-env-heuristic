@@ -36,6 +36,9 @@ from .grpo import GRPOConfig, GRPOTrainer, LearnerPolicy, Seats, _heuristic_alia
 class PPOConfig(GRPOConfig):
     games: int = 256           # on-policy trunk games
     segment: int = 128         # decisions per game per iteration
+    critic_anchor: float = 0.0    # > 0: after every critic step each weight is pulled this fraction of the way back to its value
+                                  # at start (critic_init): a trust region that keeps a good offline critic from drifting
+    critic_max_grad_norm: float = -1.0  # >= 0: the critic's own grad-norm clip (< 0: max_grad_norm)
     critic_lambda: float = -1.0   # >= 0: the critic's targets use their own lambda (1 = Monte Carlo to the segment end / final
                                   # reward); < 0: the policy's gae_lambda (old behaviour).  The advantages keep gae_lambda.
     gae_lambda: float = 0.95
@@ -184,6 +187,7 @@ class PPOTrainer(GRPOTrainer):
                 sd = {k: v for k, v in sd.items() if not k.startswith("opp_emb")}
             self.critic.load_state_dict(sd)
         self.copt = torch.optim.AdamW(self.critic.parameters(), lr=cfg.critic_lr, weight_decay=0.0)
+        self._critic0 = [p.detach().clone() for p in self.critic.parameters()] if cfg.critic_anchor > 0 else None
         self._async = bool(cfg.async_collect)
         self.adev = torch.device(cfg.actor_device or cfg.device)
         if self._async:
@@ -745,14 +749,19 @@ class PPOTrainer(GRPOTrainer):
                     else:
                         sl.backward()
                     vl += loss.item() * frac
+                cg = c.critic_max_grad_norm if c.critic_max_grad_norm >= 0 else c.max_grad_norm
                 if self.cscaler.is_enabled():
                     self.cscaler.unscale_(self.copt)
-                    torch.nn.utils.clip_grad_norm_(self.critic.parameters(), c.max_grad_norm)
+                    torch.nn.utils.clip_grad_norm_(self.critic.parameters(), cg)
                     self.cscaler.step(self.copt)
                     self.cscaler.update()
                 else:
-                    torch.nn.utils.clip_grad_norm_(self.critic.parameters(), c.max_grad_norm)
+                    torch.nn.utils.clip_grad_norm_(self.critic.parameters(), cg)
                     self.copt.step()
+                if self._critic0 is not None:
+                    with torch.no_grad():
+                        for p_, p0 in zip(self.critic.parameters(), self._critic0):
+                            p_.lerp_(p0, c.critic_anchor)
                 nv += 1
         self.critic.eval()
         st = {"vf_loss": vl / max(nv, 1)}

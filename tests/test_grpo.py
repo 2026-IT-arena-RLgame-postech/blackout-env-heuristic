@@ -369,3 +369,15 @@ def test_ppo_critic_lambda_mc_cpu():
         assert np.allclose(got["ret"][rows], end, atol=1e-5)
     adv_v = got["ret"] - got["v"]
     assert not np.allclose(got["adv"], adv_v)
+
+
+def test_ppo_critic_anchor_cpu():
+    """critic_anchor=1: every critic step is undone (weights pulled all the way back to the start)."""
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    tr = PPOTrainer(PPOConfig(init=CKPT, value=VALUE, device="cpu", games=3, segment=8, minibatch=8, epochs=1,
+                              critic_warmup=0, critic_anchor=1.0, critic_max_grad_norm=0.5))
+    w0 = [p.detach().clone() for p in tr.critic.parameters()]
+    s = tr.step()
+    assert np.isfinite(s["vf_loss"])
+    assert all(torch.allclose(p, q) for p, q in zip(tr.critic.parameters(), w0))
