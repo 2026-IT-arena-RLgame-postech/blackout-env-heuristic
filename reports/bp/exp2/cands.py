@@ -139,6 +139,17 @@ SETS["H"] = {  # round 4 vs rl12 it600: economy / tempo exploiters (+ X6 opening
     "h_cap_camp30": sw(6, CAP, sw(30, B6, "B6,hunter_roles=south/east,roles_when=always")),
 }
 
+from blackout_env.train.distill.exploit_bp import BY_NAME as _X
+from blackout_env.train.distill.ood_bp import OODHO as _HO
+SETS["I"] = {  # round 5 vs rl15: best exploiters so far + held-out personalities + hunter OODs
+    **{n: _X[n] for n in ("X1_rs6", "X2_bl8", "X3_combo8", "X6_cap6", "X7_capd6")},
+    "g_cap4": SETS["G"]["g_cap4"], "g_cap025": SETS["G"]["g_cap025"],
+    "h_cap_steal30": SETS["H"]["h_cap_steal30"], "h_cap_late": SETS["H"]["h_cap_late"], "h_cap_camp30": SETS["H"]["h_cap_camp30"],
+    **{n: d for n, d, _, _ in _HO},
+    "raid_south": OOD["raid_south"], "blockade": OOD["blockade"], "fwd_post": OOD["fwd_post"], "hunter_duel": OOD["hunter_duel"],
+    "B6": "B6",
+}
+
 if __name__ == "__main__":
     s = SETS[sys.argv[1]]
     sel = sys.argv[2].split(",") if len(sys.argv) > 2 else list(s)
