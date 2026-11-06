@@ -476,6 +476,8 @@ class GRPOConfig:
     groups: int = 64           # G roots per iteration (= trunk games)
     k: int = 8                 # branches per root
     trunk_step: int = 250      # decisions the trunk games advance between roots (10 s)
+    root_max_s: float = 0.0    # >0: opening-only GRPO -- a trunk game also restarts (fresh seed) once its clock passes a per-game
+                               # threshold drawn U(root_max_s / 2, root_max_s) at each restart, so every root lies in the opening
     sample_steps: int = 25     # sampled learner decisions per branch (1 s)
     leaf_steps: int = 125      # greedy decisions after them before the value read (5 s)
     temperature: float = 1.0
@@ -583,6 +585,7 @@ class GRPOTrainer:
         self.trunk = [self._fresh_seed() for _ in range(g)]
         self.trunk_opp = self.rng.choice(len(self.opps), g, p=self.opp_w)
         self.trunk_side = self.rng.integers(0, 2, g)
+        self.root_thr = np.array([self._draw_root_thr() for _ in range(g)], np.int64)   # opening-only GRPO (root_max_s)
         self.iter = 0
         self.vbuf = ValueBuffer(cfg.value_buffer) if cfg.value_train else None
         if cfg.value_train:
@@ -631,6 +634,11 @@ class GRPOTrainer:
         pb = Seats(1, learner, opps, opp_of, side)
         return BatchRollout(pa, pb, packed=True).run(roots, horizon, reseeds=reseeds, **kw)
 
+    def _draw_root_thr(self) -> int:
+        """Trunk restart threshold in sim ticks (50 per second): U(root_max_s / 2, root_max_s)."""
+        m = self.cfg.root_max_s
+        return int(self.rng.uniform(m / 2, m) * 50) if m > 0 else 2**62
+
     # -------- collection
     def collect(self):
         c = self.cfg
@@ -646,13 +654,18 @@ class GRPOTrainer:
             if c.value_train:
                 self._snapshot(res)
         # restart finished trunk games (fresh seed, opponent, side); their heuristic state is dropped
-        ended = np.nonzero(res.over)[0]
+        done = res.over.copy()
+        if c.root_max_s > 0:
+            done |= res.bsim.g[:, core.G_TICK] >= self.root_thr
+        ended = np.nonzero(done)[0]
         if c.value_train:
             self._label(ended, res.bsim.scores)
         for b in ended:
             roots[b] = self._fresh_seed()
             self.trunk_opp[b] = self.rng.choice(len(self.opps), p=self.opp_w)
             self.trunk_side[b] = self.rng.integers(0, 2)
+            if c.root_max_s > 0:
+                self.root_thr[b] = self._draw_root_thr()
         for p in self.opps:
             forget(p, ended)
         self.trunk = roots

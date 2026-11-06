@@ -280,3 +280,104 @@ def test_ppo_teach_opps_cpu():
     labelled = (rows >= 0).all(1)
     unl = (rows < 0).all(1)
     assert labelled.any() and unl.any() and (labelled | unl).all()
+
+
+def test_ppo_critic_opp_cpu():
+    """critic_opp: zero-init opponent embedding -> V identical to the plain critic at start; it trains; async works;
+    the embedding round-trips through _critic.pt and critic_init."""
+    import os
+    import tempfile
+
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    kw = dict(init=CKPT, value=VALUE, device="cpu", games=4, segment=6, minibatch=8, epochs=1, critic_warmup=0, seed=5,
+              opponents=[f"net:{CKPT}", "random"], pfsp="hard")
+    base = PPOTrainer(PPOConfig(**kw))
+    tr = PPOTrainer(PPOConfig(**kw, critic_opp=True, critic_opp_slots=16))
+    assert tr.critic.opp_emb is not None and tr.critic.opp_emb.weight.shape[0] == 16
+    b, _ = base.collect()
+    v0 = base._values_np(b["g"], b["t"], b["a"])
+    v1 = tr._values_np(b["g"], b["t"], b["a"], o=np.zeros(len(v0), np.int64) + 1)
+    assert np.allclose(v0, v1, atol=1e-6)
+    s = tr.step()
+    assert np.isfinite(s["vf_loss"]) and tr.critic.opp_emb.weight.abs().sum() > 0
+    with tempfile.TemporaryDirectory() as d:
+        tr.save(os.path.join(d, "x.pt"))
+        cp = os.path.join(d, "x_critic.pt")
+        assert torch.load(cp, weights_only=True)["opp_emb.weight"].shape[0] == 16
+        tr2 = PPOTrainer(PPOConfig(**kw, critic_opp=True, critic_opp_slots=16, critic_init=cp, async_collect="true"))
+        assert torch.equal(tr2.critic.opp_emb.weight, tr.critic.opp_emb.weight)
+        assert np.isfinite(tr2.step()["vf_loss"]) and np.isfinite(tr2.step()["vf_loss"])
+
+
+def test_grpo_root_max_s_cpu():
+    """Opening-only GRPO: trunk games restart once past their threshold, so every root stays in the opening."""
+    from blackout_env.sim import core
+
+    cfg = GRPOConfig(init=CKPT, value=VALUE, device="cpu", groups=3, k=2, trunk_step=60, sample_steps=3, leaf_steps=4,
+                     minibatch=16, epochs=1, root_max_s=2.0)
+    tr = GRPOTrainer(cfg)
+    assert ((tr.root_thr >= 50) & (tr.root_thr <= 100)).all()
+    for _ in range(4):
+        tr.collect()
+        ticks = np.array([s.g[core.G_TICK] for s in tr.trunk])
+        assert (ticks <= 100 + 2 * 60).all()
+    s = tr.step()
+    assert np.isfinite(s["loss"])
+
+
+def test_ppo_hlgauss_async_and_critic_init_cpu():
+    """hlgauss now runs with async_collect; a critic_init that carries a trained bin head skips the pre-fit and is
+    loaded exactly; a reg critic_init still gets a fresh (pre-fitted) bin head."""
+    import os
+    import tempfile
+
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    kw = dict(init=CKPT, value=VALUE, device="cpu", games=4, segment=6, minibatch=8, epochs=1, critic_warmup=0, seed=5,
+              opponents=[f"net:{CKPT}", "random"], pfsp="hard", critic_head="hlgauss", critic_bins=21)
+    tr = PPOTrainer(PPOConfig(**kw, async_collect="true"))
+    s0, s1 = tr.step(), tr.step()
+    assert np.isfinite(s1["vf_loss"]) and np.isfinite(s1["pg"]) and 0 < s1["pmf_entropy"] <= np.log(21) + 1e-4
+    with tempfile.TemporaryDirectory() as d:
+        tr.save(os.path.join(d, "x.pt"))
+        cp = os.path.join(d, "x_critic.pt")
+        tr2 = PPOTrainer(PPOConfig(**kw, critic_init=cp, async_collect="true"))
+        assert tr2._prefit_done
+        assert torch.equal(tr2.critic.bin_out.weight, tr.critic.bin_out.weight)
+        assert np.isfinite(tr2.step()["vf_loss"])
+        sd = {k: v for k, v in torch.load(cp, weights_only=True).items() if not k.startswith("bin_out")}
+        rp = os.path.join(d, "reg_critic.pt")
+        torch.save(sd, rp)
+        tr3 = PPOTrainer(PPOConfig(**kw, critic_init=rp))
+        assert not tr3._prefit_done
+
+
+def test_ppo_critic_lambda_mc_cpu():
+    """critic_lambda=1: every row's critic target is its game's segment-end value (final reward or bootstrap) -- the
+    deltas telescope -- while the advantages still use gae_lambda."""
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    got = {}
+    tr = PPOTrainer(PPOConfig(init=CKPT, value=VALUE, device="cpu", games=3, segment=8, minibatch=8, epochs=1,
+                              critic_warmup=0, gae_lambda=0.9, critic_lambda=1.0))
+    tr.diag_hook = lambda d: got.update(d)
+    tr.collect()
+    for b in np.unique(got["game"]):
+        rows = got["game"] == b
+        end = got["final_r"][b] if got["over"][b] else got["boot"][b]
+        assert np.allclose(got["ret"][rows], end, atol=1e-5)
+    adv_v = got["ret"] - got["v"]
+    assert not np.allclose(got["adv"], adv_v)
+
+
+def test_ppo_critic_anchor_cpu():
+    """critic_anchor=1: every critic step is undone (weights pulled all the way back to the start)."""
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    tr = PPOTrainer(PPOConfig(init=CKPT, value=VALUE, device="cpu", games=3, segment=8, minibatch=8, epochs=1,
+                              critic_warmup=0, critic_anchor=1.0, critic_max_grad_norm=0.5))
+    w0 = [p.detach().clone() for p in tr.critic.parameters()]
+    s = tr.step()
+    assert np.isfinite(s["vf_loss"])
+    assert all(torch.allclose(p, q) for p, q in zip(tr.critic.parameters(), w0))

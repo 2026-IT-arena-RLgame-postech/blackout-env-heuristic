@@ -36,6 +36,11 @@ from .grpo import GRPOConfig, GRPOTrainer, LearnerPolicy, Seats, _heuristic_alia
 class PPOConfig(GRPOConfig):
     games: int = 256           # on-policy trunk games
     segment: int = 128         # decisions per game per iteration
+    critic_anchor: float = 0.0    # > 0: after every critic step each weight is pulled this fraction of the way back to its value
+                                  # at start (critic_init): a trust region that keeps a good offline critic from drifting
+    critic_max_grad_norm: float = -1.0  # >= 0: the critic's own grad-norm clip (< 0: max_grad_norm)
+    critic_lambda: float = -1.0   # >= 0: the critic's targets use their own lambda (1 = Monte Carlo to the segment end / final
+                                  # reward); < 0: the policy's gae_lambda (old behaviour).  The advantages keep gae_lambda.
     gae_lambda: float = 0.95
     critic_lr: float = 1e-5
     critic_warmup: int = 5     # iterations with critic updates only
@@ -44,6 +49,8 @@ class PPOConfig(GRPOConfig):
     critic_fp16: bool = False  # (opt-in, changes numerics) fp16 autocast + GradScaler for the critic (update epochs and value reads)
     overlap_heur: bool = True  # (bit-identical) heuristic opponents overlap the network forwards
     # distributional critic ("Stop Regressing", Farebrother et al. 2024): categorical pmf over the *return*, HL-Gauss CE loss
+    critic_opp: bool = False   # privileged critic: + a learned (zero-init) embedding of the opponent index (fixed pool + league slots)
+    critic_opp_slots: int = 128  # embedding rows (>= fixed opponents + league_max)
     critic_head: str = "reg"   # "reg" (Huber on the S2 heads' V) | "hlgauss"
     critic_bins: int = 101
     critic_vmin: float = -1.4  # returns lie in about [-(1 + lam), 1 + lam] = [-1.2, 1.2]
@@ -114,7 +121,7 @@ def _resolve_async(cfg) -> None:
         if a == "auto":
             dev = torch.device(cfg.device)
             ok = (dev.type == "cuda" and torch.cuda.is_available() and torch.cuda.device_count() >= 2
-                  and cfg.critic_head == "reg" and cfg.fine_bins == 0 and not cfg.offset_rl and not cfg.value_train
+                  and cfg.critic_head in ("reg", "hlgauss") and cfg.fine_bins == 0 and not cfg.offset_rl and not cfg.value_train
                   and not cfg.joint)
             if ok and not cfg.actor_device:
                 cfg.actor_device = f"cuda:{1 if (dev.index or 0) == 0 else 0}"
@@ -148,8 +155,10 @@ class PPOTrainer(GRPOTrainer):
                 if gf is not None:
                     gf._pool = self._gpool
         self.critic = load_value_net(cfg.value, device=self.dev)
-        if cfg.critic_init:
-            self.critic.load_state_dict(torch.load(cfg.critic_init, map_location=self.dev, weights_only=True))
+        if cfg.critic_opp and self.critic.opp_emb is None:
+            if len(self.opps) + cfg.league_max > cfg.critic_opp_slots:
+                raise ValueError(f"critic_opp_slots={cfg.critic_opp_slots} < {len(self.opps)} opponents + {cfg.league_max} league slots")
+            self.critic.enable_opp(cfg.critic_opp_slots)   # fixed size: resume with appended opponents keeps the table
         self.critic.train(False)
         self.hl = cfg.critic_head == "hlgauss"
         if cfg.critic_head not in ("reg", "hlgauss"):
@@ -166,7 +175,19 @@ class PPOTrainer(GRPOTrainer):
             cr.register_buffer("bin_centers", (e[:-1] + e[1:]) / 2, persistent=False)
             self.hl_edges = e
             self.hl_sigma = cfg.critic_sigma * (cfg.critic_vmax - cfg.critic_vmin) / cfg.critic_bins
+        if cfg.critic_init:   # after the optional heads exist: a hlgauss / critic_opp critic_init carries them
+            sd = torch.load(cfg.critic_init, map_location=self.dev, weights_only=True)
+            if cfg.critic_opp and "opp_emb.weight" in sd and self.critic.opp_emb.weight.shape != sd["opp_emb.weight"].shape:
+                self.critic.enable_opp(sd["opp_emb.weight"].shape[0])
+            if self.hl and "bin_out.weight" not in sd:   # a reg critic_init: the bin head stays fresh (pre-fit as usual)
+                sd = {**sd, **{f"bin_out.{k}": v for k, v in self.critic.bin_out.state_dict().items()}}
+            elif self.hl:
+                self._prefit_done = True   # trained bin head (e.g. examples/critic_bench.py --save): no pre-fit
+            if not cfg.critic_opp:
+                sd = {k: v for k, v in sd.items() if not k.startswith("opp_emb")}
+            self.critic.load_state_dict(sd)
         self.copt = torch.optim.AdamW(self.critic.parameters(), lr=cfg.critic_lr, weight_decay=0.0)
+        self._critic0 = [p.detach().clone() for p in self.critic.parameters()] if cfg.critic_anchor > 0 else None
         self._async = bool(cfg.async_collect)
         self.adev = torch.device(cfg.actor_device or cfg.device)
         if self._async:
@@ -195,8 +216,8 @@ class PPOTrainer(GRPOTrainer):
     def _init_actor(self) -> None:
         """Actor-side copies (policy + its CUDA graphs, critic) on ``adev`` and a behaviour copy of the policy on ``dev``."""
         c = self.cfg
-        assert not self.hl and c.fine_bins == 0 and not c.offset_rl and not c.value_train and not c.joint, \
-            "async_collect: reg critic, plain head, no value_train / joint"
+        assert c.fine_bins == 0 and not c.offset_rl and not c.value_train and not c.joint, \
+            "async_collect: plain head, no value_train / joint"
         from blackout_env.train.distill.inference import _OwnQ
 
         self._act_net = copy.deepcopy(self.net).to(self.adev).eval().requires_grad_(False)
@@ -436,33 +457,38 @@ class PPOTrainer(GRPOTrainer):
         mass = (cdf[:, 1:] - cdf[:, :-1]) / 2
         return mass / mass.sum(1, keepdim=True).clamp_min(1e-12)
 
-    def _hl_logits(self, g, t, a):
+    def _hl_logits(self, g, t, a, o=None):
         """fp32 bin logits [B, bins] (compiled in training for full-size minibatches, like the regression critic)."""
         c = self.cfg
-        if self.critic.training and c.update_compile and self.dev.type == "cuda" and g.shape[0] in (c.minibatch, c.update_micro):
+        if o is None and self.critic.training and c.update_compile and self.dev.type == "cuda" and g.shape[0] in (c.minibatch, c.update_micro):
             key = (id(self.critic), c.critic_fp16, "hl")
             if key not in self._compiled:
                 self._compiled[key] = torch.compile(_HLLogits(self.critic, c.critic_fp16, self.dev.type), dynamic=False)
             return self._compiled[key](g, t, a)
         with torch.autocast(self.dev.type, dtype=torch.float16, enabled=c.critic_fp16 and self.dev.type == "cuda"):
-            lg = self.critic.forward_full(g, t, a)[1]
+            lg = self.critic.forward_full(g, t, a, opp=o)[1]
         return lg.float()
 
-    def _value(self, g, t, a, orig=False):
+    def _value(self, g, t, a, orig=False, o=None):
         """Critic V for canonical own-team views (differentiable).  hlgauss: E[pmf] over the return bins (``orig=True``:
         the S2 heads' V instead, used by the pre-fit)."""
         if self.hl and not orig:
             g = unpack_graphic(g) if g.dim() == 3 else g
-            lg = self._hl_logits(g, t, a)
+            lg = self._hl_logits(g, t, a, o)
             return (torch.softmax(lg, -1) * self.critic.bin_centers).sum(-1), lg
-        v = self._value_reg(g, t, a)
+        v = self._value_reg(g, t, a, o)
         return (v, None) if self.hl else v
 
-    def _value_actor(self, g, t, a):
-        """``_value_reg`` with the actor's critic copy on ``adev`` (eager)."""
+    def _value_actor(self, g, t, a, o=None):
+        """``_value_reg`` (hlgauss: ``_value``'s (E[pmf], logits)) with the actor's critic copy on ``adev`` (eager)."""
         g = unpack_graphic(g) if g.dim() == 3 else g
+        if self.hl:
+            with torch.autocast(self.adev.type, dtype=torch.float16, enabled=self.cfg.critic_fp16 and self.adev.type == "cuda"):
+                lg = self._act_critic.forward_full(g, t, a, opp=o)[1]
+            lg = lg.float()
+            return (torch.softmax(lg, -1) * self._act_critic.bin_centers).sum(-1), lg
         with torch.autocast(self.adev.type, dtype=torch.float16, enabled=self.cfg.critic_fp16 and self.adev.type == "cuda"):
-            out = self._act_critic(g, t, a)
+            out = self._act_critic(g, t, a, opp=o)
         out = out.float()
         h = out.shape[1] - 4
         lead = (t[:, 0] - t[:, 1]).float() * 100.0
@@ -470,13 +496,13 @@ class PPOTrainer(GRPOTrainer):
         p = torch.softmax(out[:, h + 1:], -1)
         return (p[:, 2] - p[:, 0]) + self.cfg.lam * torch.tanh(final / self.cfg.scale)
 
-    def _value_reg(self, g, t, a):
+    def _value_reg(self, g, t, a, o=None):
         g = unpack_graphic(g) if g.dim() == 3 else g
-        if self.critic.training and self.cfg.update_compile and self.dev.type == "cuda" and g.shape[0] in (self.cfg.minibatch, self.cfg.update_micro):
+        if o is None and self.critic.training and self.cfg.update_compile and self.dev.type == "cuda" and g.shape[0] in (self.cfg.minibatch, self.cfg.update_micro):
             out = self._compiled_fwd(self.critic, self.cfg.critic_fp16, logits=False)(g, t, a)
         else:
             with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.critic_fp16 and self.dev.type == "cuda"):
-                out = self.critic(g, t, a)
+                out = self.critic(g, t, a, opp=o)
             out = out.float()
         h = out.shape[1] - 4
         lead = (t[:, 0] - t[:, 1]).float() * 100.0          # team_state scores are /100
@@ -485,13 +511,14 @@ class PPOTrainer(GRPOTrainer):
         return (p[:, 2] - p[:, 0]) + self.cfg.lam * torch.tanh(final / self.cfg.scale)
 
     @torch.no_grad()
-    def _values_np(self, g, t, a, bs=None, orig=False, actor=False):
+    def _values_np(self, g, t, a, bs=None, orig=False, actor=False, o=None):
         bs = bs or self.cfg.critic_read_batch
         out, ent = [], []
         dev = self.adev if actor else self.dev
         for s in range(0, len(g), bs):
             to = lambda x: torch.from_numpy(np.ascontiguousarray(x[s:s + bs])).to(dev)
-            v = self._value_actor(to(g), to(t), to(a)) if actor else self._value(to(g), to(t), to(a), orig=orig)
+            oo = to(o) if o is not None else None
+            v = self._value_actor(to(g), to(t), to(a), oo) if actor else self._value(to(g), to(t), to(a), orig=orig, o=oo)
             if self.hl:
                 v, lg = v
                 if lg is not None:
@@ -566,7 +593,8 @@ class PPOTrainer(GRPOTrainer):
         teach = np.concatenate([r[-1] for r in recs]) if tact else None
         if not self._prefit_done:
             self._prefit_head(g, ts, ag)
-        v = self._values_np(g, ts, ag, actor=self._async)
+        o_rows = self.trunk_opp[game] if c.critic_opp else None   # opponent index of every row (privileged critic)
+        v = self._values_np(g, ts, ag, actor=self._async, o=o_rows)
         v_ent = self._hl_ent_last
         # bootstrap: the learner's view of every unfinished game's final state
         side = self.trunk_side
@@ -581,7 +609,8 @@ class PPOTrainer(GRPOTrainer):
             bs.render_packed(live, pk, tm, am)
             r = np.arange(len(live))
             s_ = side[live]
-            boot[live] = self._values_np(pk[r, s_], tm[r, s_], am[r, s_], actor=self._async)
+            boot[live] = self._values_np(pk[r, s_], tm[r, s_], am[r, s_], actor=self._async,
+                                         o=self.trunk_opp[live] if c.critic_opp else None)
         lead = (bs.scores[:, 0] - bs.scores[:, 1]).astype(np.float64)
         lead = np.where(side == 0, lead, -lead)
         final_r = np.sign(lead) + c.lam * np.tanh(lead / c.scale)
@@ -596,12 +625,18 @@ class PPOTrainer(GRPOTrainer):
             self.gv[b] += (len(rows), vb.sum(), (vb * vb).sum())
             nxt = final_r[b] if over[b] else boot[b]   # value after the last step (terminal: reward, V=0)
             gae = 0.0
+            lv = c.critic_lambda if c.critic_lambda >= 0 else c.gae_lambda
+            gv = 0.0
             for j in range(len(rows) - 1, -1, -1):
                 v_next = nxt if j == len(rows) - 1 else vb[j + 1]
                 delta = v_next - vb[j]                      # r = 0 except folded into the terminal v_next
                 gae = delta + c.gae_lambda * gae
                 adv[rows[j]] = gae
-                ret[rows[j]] = gae + vb[j]
+                if lv == c.gae_lambda:
+                    ret[rows[j]] = gae + vb[j]
+                else:
+                    gv = delta + lv * gv
+                    ret[rows[j]] = gv + vb[j]
         ended = np.nonzero(over)[0]
         # per-opponent advantage statistics / optional centering (``adv`` stays the raw GAE; ``adv_used`` feeds the policy)
         n_opp = len(self.opps)
@@ -658,6 +693,8 @@ class PPOTrainer(GRPOTrainer):
         ev = 1.0 - float(np.var(ret - v) / (np.var(ret) + 1e-12))
         batch = {"g": g, "t": ts, "a": ag, "act": act, "adv": (adv_used / a_std).astype(np.float32),
                  "ret": ret.astype(np.float32)}
+        if c.critic_opp:
+            batch["opp"] = o_rows.astype(np.int64)
         if off is not None:
             batch["off"] = off
         if fine is not None:
@@ -688,6 +725,7 @@ class PPOTrainer(GRPOTrainer):
         n = len(batch["act"])
         to = lambda x: torch.from_numpy(x).to(self.dev)
         g, t, a, ret = to(batch["g"]), to(batch["t"]), to(batch["a"]), to(batch["ret"])
+        op = to(batch["opp"]) if "opp" in batch else None
         vl, nv = 0.0, 0
         self.critic.train()
         for _ in range(c.epochs):
@@ -701,24 +739,29 @@ class PPOTrainer(GRPOTrainer):
                     ids = mb[u:u + sub]
                     frac = len(ids) / m_all
                     if self.hl:
-                        _, lg = self._value(g[ids], t[ids], a[ids])
+                        _, lg = self._value(g[ids], t[ids], a[ids], o=None if op is None else op[ids])
                         loss = -(self._hl_target(ret[ids]) * torch.log_softmax(lg, -1)).sum(-1).mean()   # fp32 log_softmax
                     else:
-                        loss = F.smooth_l1_loss(self._value(g[ids], t[ids], a[ids]), ret[ids], beta=c.vf_huber)
+                        loss = F.smooth_l1_loss(self._value(g[ids], t[ids], a[ids], o=None if op is None else op[ids]), ret[ids], beta=c.vf_huber)
                     sl = loss * frac if sub < m_all else loss
                     if self.cscaler.is_enabled():   # loss scaling: fp16 activation gradients of a ~1e-2 Huber loss underflow
                         self.cscaler.scale(sl).backward()
                     else:
                         sl.backward()
                     vl += loss.item() * frac
+                cg = c.critic_max_grad_norm if c.critic_max_grad_norm >= 0 else c.max_grad_norm
                 if self.cscaler.is_enabled():
                     self.cscaler.unscale_(self.copt)
-                    torch.nn.utils.clip_grad_norm_(self.critic.parameters(), c.max_grad_norm)
+                    torch.nn.utils.clip_grad_norm_(self.critic.parameters(), cg)
                     self.cscaler.step(self.copt)
                     self.cscaler.update()
                 else:
-                    torch.nn.utils.clip_grad_norm_(self.critic.parameters(), c.max_grad_norm)
+                    torch.nn.utils.clip_grad_norm_(self.critic.parameters(), cg)
                     self.copt.step()
+                if self._critic0 is not None:
+                    with torch.no_grad():
+                        for p_, p0 in zip(self.critic.parameters(), self._critic0):
+                            p_.lerp_(p0, c.critic_anchor)
                 nv += 1
         self.critic.eval()
         st = {"vf_loss": vl / max(nv, 1)}
