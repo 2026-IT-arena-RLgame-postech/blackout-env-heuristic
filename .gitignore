@@ -14,3 +14,4 @@ reports/**/shards/
 .DS_Store
 .claude/
 reports/heur_econ/traj*/
+reports/bp/videos/
