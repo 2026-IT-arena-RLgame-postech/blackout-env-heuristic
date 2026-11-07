@@ -40,8 +40,13 @@ def main():
     p.add_argument("--every", type=int, default=4, help="sim ticks per frame")
     p.add_argument("--fps", type=float, default=25.0)
     p.add_argument("--max-s", type=float, default=425.0)
+    p.add_argument("--video", default="", help="write an mp4 (ffmpeg) at --fps frames/s instead of a live window")
+    p.add_argument("--dpi", type=int, default=100)
     a = p.parse_args()
 
+    import matplotlib
+    if a.video:
+        matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     pa, na = make_player(a.a, a.seed)
@@ -59,8 +64,14 @@ def main():
 
     bg = official_background(bs.state(0).layout)
     cmap = plt.matplotlib.colors.ListedColormap(["#f4f1ea", "#3b3b3b", "#9ec5ff", "#ffb3b3"])
-    plt.ion()
+    if not a.video:
+        plt.ion()
     fig, ax = plt.subplots(figsize=(8, 8.4))
+    writer = None
+    if a.video:
+        from matplotlib.animation import FFMpegWriter
+        writer = FFMpegWriter(fps=a.fps, codec="libx264", extra_args=["-pix_fmt", "yuv420p"])
+        writer.setup(fig, a.video, dpi=a.dpi)
     ax.imshow(np.clip(bg, 0, 3), cmap=cmap, vmin=0, vmax=3, extent=(0, W, 0, H), interpolation="nearest")
     ax.set_xlim(0, W); ax.set_ylim(0, H); ax.set_xticks([]); ax.set_yticks([])
     marker = {COLLECTOR: "o", HUNTER: "^", CARRIER: "s"}
@@ -96,6 +107,9 @@ def main():
                                   linewidths=2.5 if held else 0.8, zorder=3))
         sa, sb = bs.scores[0]
         ax.set_title(f"A (blue) {na}: {sa}    vs    B (red) {nb}: {sb}      t={tick / 50:5.1f}s", fontsize=10)
+        if writer is not None:
+            writer.grab_frame()
+            continue
         fig.canvas.draw_idle()
         plt.pause(0.001)
         wait = 1.0 / a.fps - (time.perf_counter() - t_last)
@@ -105,6 +119,12 @@ def main():
     sa, sb = bs.scores[0]
     ax.set_title(f"FINAL  A {na}: {sa}  vs  B {nb}: {sb}   ({tick / 50:.1f}s, over={bool(bs.over[0])})", fontsize=10)
     print(f"final A {sa} B {sb} t={tick / 50:.1f}s")
+    if writer is not None:
+        for _ in range(int(2 * a.fps)):   # hold the final frame 2 s
+            writer.grab_frame()
+        writer.finish()
+        print("wrote", a.video)
+        return
     plt.ioff()
     plt.show()
 
