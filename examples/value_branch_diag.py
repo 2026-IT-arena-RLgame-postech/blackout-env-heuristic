@@ -73,7 +73,7 @@ def main():
     p.add_argument("--learner", required=True)
     p.add_argument("--critic", required=True, help="<ckpt>_critic.pt (state dict)")
     p.add_argument("--value", required=True, help="the value net the critic was built from (architecture)")
-    p.add_argument("--opponent", required=True, help="net checkpoint for team B")
+    p.add_argument("--opponent", required=True, help="team B: net checkpoint (.pt) or a heuristic descriptor / alias")
     p.add_argument("--roots", type=int, default=128)
     p.add_argument("--k", type=int, default=16)
     p.add_argument("--times", default="10,20,30")
@@ -87,7 +87,15 @@ def main():
     critic = load_value_net(args.value, device=dev)
     critic.load_state_dict(torch.load(args.critic, map_location=dev, weights_only=True))
     critic.eval()
-    opp = NetPolicy.from_checkpoint(args.opponent, device=args.device, fp16=dev.type == "cuda")
+    if args.opponent.endswith(".pt"):
+        opp = NetPolicy.from_checkpoint(args.opponent, device=args.device, fp16=dev.type == "cuda")
+        opp_name = "net:" + args.opponent
+    else:   # heuristic descriptor / alias: a fresh instance per rollout (per-game heuristic state restarts at the root)
+        from blackout_env.rl.grpo import _heuristic_aliases
+        from blackout_env.sim.batch import HeuristicPolicy
+
+        opp = HeuristicPolicy(_heuristic_aliases().get(args.opponent, args.opponent), 0)
+        opp_name = args.opponent
     seeds = list(range(args.seed0, args.seed0 + args.roots))
     rows = []
     keep = {"pk": [], "tm": [], "am": [], "T": [], "mu": [], "var_w": []}
@@ -133,7 +141,7 @@ def main():
         with open(args.out, "w") as f:
             json.dump(rows, f, indent=1)
     if args.save and keep["mu"]:
-        np.savez(args.save, **{k: np.concatenate(v) for k, v in keep.items()}, k=args.k, opponent="net:" + args.opponent)
+        np.savez(args.save, **{k: np.concatenate(v) for k, v in keep.items()}, k=args.k, opponent=opp_name)
 
 
 if __name__ == "__main__":
