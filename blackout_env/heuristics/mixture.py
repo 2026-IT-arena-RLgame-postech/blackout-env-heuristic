@@ -41,6 +41,7 @@ from .v32_four_hunters import StrategicHeuristicV32
 from .v33_specials import StrategicHeuristicV33
 from .v34_bp import StrategicHeuristicV34
 from .oodbp import StrategicOODBP
+from .exploit6 import StrategicX6
 from .v24_late import StrategicHeuristicV24
 from .raider import StrategicRaider
 from .cargo_hunter import StrategicCargoHunter
@@ -93,6 +94,7 @@ POLICY_REGISTRY: dict[str, Callable[..., BaseModel]] = {
     "strategic_v29": StrategicHeuristicV29,  # V28 + the staged reserve joins a tied race (Q10); reserve_join default off = V28; not in the default weights
     "strategic_v30": StrategicHeuristicV30,  # V29 + a lone Hunter already keeps the sanctuary (Q11); solo_sentry default off = V29; not in the default weights
     "strategic_v31": StrategicHeuristicV31,  # V30 + a Carrier that flees only nearer enemies (Q12); scales default 1 = V30; not in the default weights
+    "strategic_x6": StrategicX6,  # V34 + round-6 exploiter behaviours (assassin / shelter ...), reports/bp/exp6
     "strategic_oodbp": StrategicOODBP,  # V34 + a Hunter plan over match time / hiding Hunters (OOD-BP late burst, eco boom)
     "strategic_v34": StrategicHeuristicV34,  # V33 + balance-patch knobs (carrier_delay); defaults = V33
     "strategic_v33": StrategicHeuristicV33,  # V32 + special-item weight knobs (V33, reports/heur_v33); defaults = V32

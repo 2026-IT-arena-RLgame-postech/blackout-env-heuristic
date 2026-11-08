@@ -107,6 +107,49 @@ SETS["F"] = {  # final confirmation on fresh seeds: best singles + combos
     "f_combo_d4": sw(6, BL + ",cap_enter=0.35", b6k("w_dspd=8,danger_hunter_radius=2.5,threat_radius=0.08")),
 }
 
+CAP = BL + ",cap_enter=0.35"
+SETS["G"] = {  # round 3 vs rl10 it1050: X6 family variations
+    "X6": sw(6, CAP),
+    "g_cap05": sw(6, BL + ",cap_enter=0.5"),
+    "g_cap025": sw(6, BL + ",cap_enter=0.25"),
+    "g_cap8": sw(8, CAP),
+    "g_cap4": sw(4.5, CAP),
+    "g_cap_rs30": sw(6, CAP, sw(30, RS)),
+    "g_cap_storm": sw(6, CAP, "B6,storm_units=2,storm_after=5"),
+    "g_cap_bait": sw(6, CAP, "B6,bait=6"),
+    "g_cap_steal": sw(6, CAP, "B6,steal_weight=3.0"),
+    "g_cap_res3": sw(6, CAP + ",reserve_count=3"),
+    "g_cap_q1": sw(6, CAP, "B6,hunter_quota=1"),
+    "g_cap_cm": sw(6, CAP + ",commit_margin=-1.0"),
+}
+
+STEAL = OOD["stealer"]
+SETS["H"] = {  # round 4 vs rl12 it600: economy / tempo exploiters (+ X6 opening combos)
+    "X6": sw(6, CAP),
+    "h_cap_steal": sw(6, CAP, STEAL),
+    "h_cap_steal30": sw(6, CAP, sw(30, B6, STEAL)),
+    "h_cap_pure": sw(6, CAP, OOD["pure_stealer"]),
+    "h_cap_late": sw(6, CAP, OOD["late_burst"]),
+    "h_cap_eco": sw(6, CAP, OOD["eco_boom"]),
+    "h_cap_storm3": sw(6, CAP, "B6,storm_units=3,storm_after=4"),
+    "h_cap_storm_bait": sw(6, CAP, "B6,storm_units=2,storm_after=5,bait=6"),
+    "h_steal_rs": sw(20, STEAL, RS),
+    "h_rs_steal": sw(6, RS, STEAL),
+    "h_cap_v34c": sw(6, CAP, "V34c"),
+    "h_cap_camp30": sw(6, CAP, sw(30, B6, "B6,hunter_roles=south/east,roles_when=always")),
+}
+
+from blackout_env.train.distill.exploit_bp import BY_NAME as _X
+from blackout_env.train.distill.ood_bp import OODHO as _HO
+SETS["I"] = {  # round 5 vs rl15: best exploiters so far + held-out personalities + hunter OODs
+    **{n: _X[n] for n in ("X1_rs6", "X2_bl8", "X3_combo8", "X6_cap6", "X7_capd6")},
+    "g_cap4": SETS["G"]["g_cap4"], "g_cap025": SETS["G"]["g_cap025"],
+    "h_cap_steal30": SETS["H"]["h_cap_steal30"], "h_cap_late": SETS["H"]["h_cap_late"], "h_cap_camp30": SETS["H"]["h_cap_camp30"],
+    **{n: d for n, d, _, _ in _HO},
+    "raid_south": OOD["raid_south"], "blockade": OOD["blockade"], "fwd_post": OOD["fwd_post"], "hunter_duel": OOD["hunter_duel"],
+    "B6": "B6",
+}
+
 if __name__ == "__main__":
     s = SETS[sys.argv[1]]
     sel = sys.argv[2].split(",") if len(sys.argv) > 2 else list(s)
