@@ -22,6 +22,16 @@ SETS["a"] = {
     "as_sh7": X("assassin=30,shelter=7"),
 }
 
+SETS["b"] = {
+    "as_near8": X("assassin=8"),
+    "as_always": X("assassin=30"),
+    "as_near5": X("assassin=5"),
+    "as_near12": X("assassin=12"),
+    "as_u6": X("assassin=30,assassin_until=6"),
+    "as_u12": X("assassin=30,assassin_until=12"),
+    "as_u30": X("assassin=30,assassin_until=30"),
+}
+
 if __name__ == "__main__":
     s = SETS[sys.argv[1]]
     print(";".join(s.values()))
