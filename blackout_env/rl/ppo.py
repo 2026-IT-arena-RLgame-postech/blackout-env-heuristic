@@ -88,6 +88,12 @@ class PPOConfig(GRPOConfig):
     # learning at 1.8x wall speed (reports/rl/ppo_perf2.md).  "true" forces it (also 1 GPU / CPU), "false" disables it.
     async_collect: str = "auto"
     actor_device: str = ""             # "" = auto: the other GPU when "auto" turns async on, else the learner's device
+    actor2_device: str = ""            # (async only) a second actor in its own process on this device (blackout_env/rl/actor2.py):
+                                       # it plays its own games with the same behaviour weights; its batch is appended to the actor's
+    actor2_games: int = 0              # trunk games of the second actor (0 = ``games``)
+    critic_device: str = ""            # "" = the learner's device; else the critic (and its update) lives here and its update runs
+                                       # in a thread concurrently with the policy update (2026-11-09; they are independent: the
+                                       # advantages were computed at collect time)
     async_decoupled: bool = True       # decoupled PPO: clip vs the proximal policy (weights at update start) x truncated IS pi_prox/pi_beh
     async_is_cap: float = 2.0          # truncation of that importance weight
     # ---- teacher distillation in the first iterations (default off = old behaviour, bit-identical; blackout_env/rl/teach.py)
@@ -133,11 +139,12 @@ def _resolve_async(cfg) -> None:
 
 
 class PPOTrainer(GRPOTrainer):
+    _critic_threads = True   # critic_device != device: run the critic update in a thread (False: same order, sequential)
     def __init__(self, cfg: PPOConfig):
         cfg.groups = cfg.games
         _resolve_async(cfg)
         if cfg.cuda_mem_fraction > 0 and torch.device(cfg.device).type == "cuda":
-            torch.cuda.set_per_process_memory_fraction(cfg.cuda_mem_fraction)
+            torch.cuda.set_per_process_memory_fraction(cfg.cuda_mem_fraction, torch.device(cfg.device))
         self.snaps: list[dict] = []        # league snapshots: {path, added, level, last_step, win: deque of (n, sum, sumsq)}
         self.n_fixed = len(cfg.opponents)  # the first n_fixed entries of self.opps are the fixed pool (anchors)
         super().__init__(cfg)
@@ -154,7 +161,8 @@ class PPOTrainer(GRPOTrainer):
             for gf in [self.learner_gf] + [getattr(p, "_gf", None) for p in self.opps]:
                 if gf is not None:
                     gf._pool = self._gpool
-        self.critic = load_value_net(cfg.value, device=self.dev)
+        self.cdev = torch.device(cfg.critic_device or cfg.device)
+        self.critic = load_value_net(cfg.value, device=self.cdev)
         if cfg.critic_opp and self.critic.opp_emb is None:
             if len(self.opps) + cfg.league_max > cfg.critic_opp_slots:
                 raise ValueError(f"critic_opp_slots={cfg.critic_opp_slots} < {len(self.opps)} opponents + {cfg.league_max} league slots")
@@ -170,13 +178,13 @@ class PPOTrainer(GRPOTrainer):
             # buffer is ours (asymmetric ranges allowed).  The new head starts untrained -> _prefit_head in the first collect.
             cr = self.critic
             cr.n_bins = cfg.critic_bins
-            cr.bin_out = torch.nn.Linear(cr.head[-1].in_features, cfg.critic_bins).to(self.dev)
-            e = torch.linspace(cfg.critic_vmin, cfg.critic_vmax, cfg.critic_bins + 1, device=self.dev)
+            cr.bin_out = torch.nn.Linear(cr.head[-1].in_features, cfg.critic_bins).to(self.cdev)
+            e = torch.linspace(cfg.critic_vmin, cfg.critic_vmax, cfg.critic_bins + 1, device=self.cdev)
             cr.register_buffer("bin_centers", (e[:-1] + e[1:]) / 2, persistent=False)
             self.hl_edges = e
             self.hl_sigma = cfg.critic_sigma * (cfg.critic_vmax - cfg.critic_vmin) / cfg.critic_bins
         if cfg.critic_init:   # after the optional heads exist: a hlgauss / critic_opp critic_init carries them
-            sd = torch.load(cfg.critic_init, map_location=self.dev, weights_only=True)
+            sd = torch.load(cfg.critic_init, map_location=self.cdev, weights_only=True)
             if cfg.critic_opp and "opp_emb.weight" in sd and self.critic.opp_emb.weight.shape != sd["opp_emb.weight"].shape:
                 self.critic.enable_opp(sd["opp_emb.weight"].shape[0])
             if self.hl and "bin_out.weight" not in sd:   # a reg critic_init: the bin head stays fresh (pre-fit as usual)
@@ -187,12 +195,24 @@ class PPOTrainer(GRPOTrainer):
                 sd = {k: v for k, v in sd.items() if not k.startswith("opp_emb")}
             self.critic.load_state_dict(sd)
         self.copt = torch.optim.AdamW(self.critic.parameters(), lr=cfg.critic_lr, weight_decay=0.0)
+        # separate critic device: its minibatch permutations come from its own generator (no draw race with the policy thread)
+        self._cgen = None
+        if self.cdev != self.dev:
+            self._cgen = torch.Generator(device=self.cdev)
+            self._cgen.manual_seed(cfg.seed + 7919)
         self._critic0 = [p.detach().clone() for p in self.critic.parameters()] if cfg.critic_anchor > 0 else None
         self._async = bool(cfg.async_collect)
         self.adev = torch.device(cfg.actor_device or cfg.device)
         if self._async:
             self._init_actor()
-        self.cscaler = torch.amp.GradScaler("cuda", init_scale=1024.0, growth_interval=10**9, enabled=bool(cfg.critic_fp16) and self.dev.type == "cuda")
+        self._a2 = None
+        if cfg.actor2_device:
+            assert self._async, "actor2_device needs async_collect"
+            assert not cfg.teach, "actor2_device: no teacher distillation"
+            from .actor2 import Actor2
+
+            self._a2 = Actor2(cfg)
+        self.cscaler = torch.amp.GradScaler("cuda", init_scale=1024.0, growth_interval=10**9, enabled=bool(cfg.critic_fp16) and self.cdev.type == "cuda")
         self._teacher = None
         if cfg.teach:
             assert not cfg.joint, "teach needs joint=False"
@@ -251,12 +271,35 @@ class PPOTrainer(GRPOTrainer):
         return sd
 
     def _collect_actor(self):
+        if self._a2 is not None:   # the second actor plays its games concurrently, with the same behaviour weights
+            self._a2.request(self._act_net, self._act_critic, self.opp_score, self.snaps)
+            s0 = self.opp_score.copy()
         if self._astream is None:
-            return self.collect()
-        with torch.cuda.device(self.adev), torch.cuda.stream(self._astream):
             out = self.collect()
-        self._astream.synchronize()
+        else:
+            with torch.cuda.device(self.adev), torch.cuda.stream(self._astream):
+                out = self.collect()
+            self._astream.synchronize()
+        if self._a2 is not None:
+            out = self._merge_actor2(out, s0)
         return out
+
+    def _merge_actor2(self, out, s0):
+        from .actor2 import merge_batches, merge_pfsp
+
+        batch, stats = out
+        b2, st2, s_c, dfin = self._a2.result()
+        assert len(s_c) == len(self.opp_score) and dfin.shape == self.fin.shape, (len(s_c), len(self.opp_score), dfin.shape, self.fin.shape)
+        self.opp_score = merge_pfsp(s0, self.opp_score, s_c)
+        self.fin = self.fin + dfin
+        self.opp_w = self._pfsp_weights()
+        stats = dict(stats)
+        for k in ("views", "decisions", "trunk_restarts"):
+            stats[k] = stats[k] + st2[k]
+        stats["a2_trunk_s"], stats["a2_leaf_s"], stats["a2_decisions"] = st2["trunk_s"], st2["leaf_s"], st2["decisions"]
+        stats["a2_expl_var"] = st2["expl_var"]
+        stats["opp_fin"] = [int(f[0]) for f in self.fin]
+        return merge_batches(batch, b2), stats
 
     def _step_async(self) -> dict:
         import threading
@@ -460,12 +503,12 @@ class PPOTrainer(GRPOTrainer):
     def _hl_logits(self, g, t, a, o=None):
         """fp32 bin logits [B, bins] (compiled in training for full-size minibatches, like the regression critic)."""
         c = self.cfg
-        if o is None and self.critic.training and c.update_compile and self.dev.type == "cuda" and g.shape[0] in (c.minibatch, c.update_micro):
+        if o is None and self.critic.training and c.update_compile and self.cdev.type == "cuda" and g.shape[0] in (c.minibatch, c.update_micro):
             key = (id(self.critic), c.critic_fp16, "hl")
             if key not in self._compiled:
-                self._compiled[key] = torch.compile(_HLLogits(self.critic, c.critic_fp16, self.dev.type), dynamic=False)
+                self._compiled[key] = torch.compile(_HLLogits(self.critic, c.critic_fp16, self.cdev.type), dynamic=False)
             return self._compiled[key](g, t, a)
-        with torch.autocast(self.dev.type, dtype=torch.float16, enabled=c.critic_fp16 and self.dev.type == "cuda"):
+        with torch.autocast(self.cdev.type, dtype=torch.float16, enabled=c.critic_fp16 and self.cdev.type == "cuda"):
             lg = self.critic.forward_full(g, t, a, opp=o)[1]
         return lg.float()
 
@@ -498,10 +541,10 @@ class PPOTrainer(GRPOTrainer):
 
     def _value_reg(self, g, t, a, o=None):
         g = unpack_graphic(g) if g.dim() == 3 else g
-        if o is None and self.critic.training and self.cfg.update_compile and self.dev.type == "cuda" and g.shape[0] in (self.cfg.minibatch, self.cfg.update_micro):
+        if o is None and self.critic.training and self.cfg.update_compile and self.cdev.type == "cuda" and g.shape[0] in (self.cfg.minibatch, self.cfg.update_micro):
             out = self._compiled_fwd(self.critic, self.cfg.critic_fp16, logits=False)(g, t, a)
         else:
-            with torch.autocast(self.dev.type, dtype=torch.float16, enabled=self.cfg.critic_fp16 and self.dev.type == "cuda"):
+            with torch.autocast(self.cdev.type, dtype=torch.float16, enabled=self.cfg.critic_fp16 and self.cdev.type == "cuda"):
                 out = self.critic(g, t, a, opp=o)
             out = out.float()
         h = out.shape[1] - 4
@@ -514,7 +557,7 @@ class PPOTrainer(GRPOTrainer):
     def _values_np(self, g, t, a, bs=None, orig=False, actor=False, o=None):
         bs = bs or self.cfg.critic_read_batch
         out, ent = [], []
-        dev = self.adev if actor else self.dev
+        dev = self.adev if actor else self.cdev
         for s in range(0, len(g), bs):
             to = lambda x: torch.from_numpy(np.ascontiguousarray(x[s:s + bs])).to(dev)
             oo = to(o) if o is not None else None
@@ -533,8 +576,8 @@ class PPOTrainer(GRPOTrainer):
         views, so the GAE of that very batch (and the policy update after the warm-up) starts from a calibrated critic."""
         c = self.cfg
         orig = self._values_np(g, t, a, orig=True)
-        tgt_v = torch.from_numpy(orig).to(self.dev)
-        gt, tt, at = (torch.from_numpy(np.ascontiguousarray(x)).to(self.dev) for x in (g, t, a))
+        tgt_v = torch.from_numpy(orig).to(self.cdev)
+        gt, tt, at = (torch.from_numpy(np.ascontiguousarray(x)).to(self.cdev) for x in (g, t, a))
         params = list(self.critic.bin_out.parameters())
         for q in self.critic.parameters():
             q.requires_grad_(False)
@@ -543,10 +586,10 @@ class PPOTrainer(GRPOTrainer):
         opt = torch.optim.Adam(params, lr=c.critic_prefit_lr)
         n, ce_hist = len(tgt_v), []
         for _ in range(c.critic_prefit_epochs):
-            perm = torch.randperm(n, device=self.dev)
+            perm = torch.randperm(n, device=self.cdev)
             for s in range(0, n, c.minibatch):
                 mb = perm[s:s + c.minibatch]
-                with torch.autocast(self.dev.type, dtype=torch.float16, enabled=c.critic_fp16 and self.dev.type == "cuda"):
+                with torch.autocast(self.cdev.type, dtype=torch.float16, enabled=c.critic_fp16 and self.cdev.type == "cuda"):
                     lg = self.critic.forward_full(unpack_graphic(gt[mb]) if gt.dim() == 3 else gt[mb], tt[mb], at[mb])[1]
                 loss = -(self._hl_target(tgt_v[mb]) * torch.log_softmax(lg.float(), -1)).sum(-1).mean()
                 opt.zero_grad(set_to_none=True)
@@ -722,14 +765,52 @@ class PPOTrainer(GRPOTrainer):
 
     def update(self, batch):
         c = self.cfg
+        policy_on = self.iter >= max(c.critic_warmup, self.warm_until)
+        if self.cdev == self.dev or not policy_on or not self._critic_threads or not getattr(self, "_critic_par_warm", False):
+            # same device, critic-only iteration, or the first update (compiles both sides once, sequentially)
+            st = self._update_critic(batch)
+            if not policy_on:
+                return st
+            self._critic_par_warm = self.cdev != self.dev
+            return {**st, **super().update(batch)}
+        import threading
+
+        box: dict = {}
+
+        def run():
+            try:
+                if self.cdev.type == "cuda":
+                    with torch.cuda.device(self.cdev):
+                        cs = torch.cuda.Stream(device=self.cdev)
+                        with torch.cuda.stream(cs):
+                            box["st"] = self._update_critic(batch)
+                        cs.synchronize()
+                else:
+                    box["st"] = self._update_critic(batch)
+            except BaseException as e:   # re-raised in the main thread
+                box["err"] = e
+
+        th = threading.Thread(target=run, name="ppo-critic", daemon=True)
+        th.start()
+        try:
+            ps = super().update(batch)
+        finally:
+            th.join()
+        if "err" in box:
+            raise box["err"]
+        return {**box["st"], **ps}
+
+    def _update_critic(self, batch) -> dict:
+        """The critic's epochs over the batch (on ``cdev``); independent of the policy update."""
+        c = self.cfg
         n = len(batch["act"])
-        to = lambda x: torch.from_numpy(x).to(self.dev)
+        to = lambda x: torch.from_numpy(x).to(self.cdev)
         g, t, a, ret = to(batch["g"]), to(batch["t"]), to(batch["a"]), to(batch["ret"])
         op = to(batch["opp"]) if "opp" in batch else None
         vl, nv = 0.0, 0
         self.critic.train()
         for _ in range(c.epochs):
-            perm = torch.randperm(n, device=self.dev)
+            perm = torch.randperm(n, device=self.cdev, generator=self._cgen)
             for s in range(0, n, c.minibatch):
                 mb = perm[s:s + c.minibatch]
                 self.copt.zero_grad(set_to_none=True)
@@ -764,10 +845,7 @@ class PPOTrainer(GRPOTrainer):
                             p_.lerp_(p0, c.critic_anchor)
                 nv += 1
         self.critic.eval()
-        st = {"vf_loss": vl / max(nv, 1)}
-        if self.iter < max(c.critic_warmup, self.warm_until):
-            return st
-        return {**st, **super().update(batch)}
+        return {"vf_loss": vl / max(nv, 1)}
 
     def save(self, path: str, extra: dict | None = None) -> None:
         super().save(path, extra)

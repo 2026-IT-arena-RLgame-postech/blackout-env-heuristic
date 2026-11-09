@@ -381,3 +381,29 @@ def test_ppo_critic_anchor_cpu():
     s = tr.step()
     assert np.isfinite(s["vf_loss"])
     assert all(torch.allclose(p, q) for p, q in zip(tr.critic.parameters(), w0))
+
+
+def test_ppo_critic_device_parallel_cpu():
+    """critic_device != device: same updates as the sequential path (the critic update runs in a thread from the 2nd update)."""
+    from blackout_env.rl.ppo import PPOConfig, PPOTrainer
+
+    def run(par):
+        torch.manual_seed(0)
+        tr = PPOTrainer(PPOConfig(init=CKPT, value=VALUE, device="cpu", games=3, segment=8,
+                                  minibatch=8, epochs=1, critic_warmup=0, seed=5))
+        # a distinct device object of the same type (torch.load cannot map to "cpu:0") + the critic's own generator
+        tr.cdev = torch.device("cpu", 0)
+        tr._cgen = torch.Generator().manual_seed(123)
+        tr._critic_threads = par
+        out = [tr.step() for _ in range(3)]
+        return tr, out
+
+    a, sa = run(False)
+    b, sb = run(True)
+    assert b.cdev != b.dev and getattr(b, "_critic_par_warm", False)
+    for x, y in zip(sa, sb):
+        assert np.isfinite(y["vf_loss"]) and np.isfinite(y["loss"])
+    for p, q in zip(a.critic.parameters(), b.critic.parameters()):
+        assert torch.allclose(p, q, atol=1e-5)
+    for p, q in zip(a.net.parameters(), b.net.parameters()):
+        assert torch.allclose(p, q, atol=1e-5)
