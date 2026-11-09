@@ -407,3 +407,14 @@ def test_ppo_critic_device_parallel_cpu():
         assert torch.allclose(p, q, atol=1e-5)
     for p, q in zip(a.net.parameters(), b.net.parameters()):
         assert torch.allclose(p, q, atol=1e-5)
+
+
+def test_actor2_merge_helpers():
+    from blackout_env.rl.actor2 import merge_batches, merge_pfsp
+
+    s0 = np.array([0.5, 0.5, 0.5, 0.5])
+    sp = np.array([0.6, 0.5, 0.4, 0.5])   # parent saw opponents 0, 2 finish
+    sc = np.array([0.8, 0.7, 0.5, 0.5])   # child saw opponents 0, 1 finish
+    np.testing.assert_allclose(merge_pfsp(s0, sp, sc), [0.7, 0.7, 0.4, 0.5])
+    m = merge_batches({"a": np.zeros(3), "b": np.ones((3, 2))}, {"a": np.ones(2), "b": np.zeros((2, 2))})
+    assert m["a"].shape == (5,) and m["b"].shape == (5, 2) and m["a"][3] == 1

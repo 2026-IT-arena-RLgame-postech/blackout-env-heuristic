@@ -144,7 +144,8 @@ class PPOTrainer(GRPOTrainer):
         cfg.groups = cfg.games
         _resolve_async(cfg)
         if cfg.cuda_mem_fraction > 0 and torch.device(cfg.device).type == "cuda":
-            torch.cuda.set_per_process_memory_fraction(cfg.cuda_mem_fraction, torch.device(cfg.device))
+            d = torch.device(cfg.device)   # the trainer's GPU ("cuda" without an index = the current device)
+            torch.cuda.set_per_process_memory_fraction(cfg.cuda_mem_fraction, d if d.index is not None else torch.cuda.current_device())
         self.snaps: list[dict] = []        # league snapshots: {path, added, level, last_step, win: deque of (n, sum, sumsq)}
         self.n_fixed = len(cfg.opponents)  # the first n_fixed entries of self.opps are the fixed pool (anchors)
         super().__init__(cfg)
