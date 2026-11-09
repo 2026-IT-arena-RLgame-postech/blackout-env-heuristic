@@ -15,3 +15,4 @@ reports/**/shards/
 .claude/
 reports/heur_econ/traj*/
 reports/bp/videos/
+reports/bp/sub_build/
